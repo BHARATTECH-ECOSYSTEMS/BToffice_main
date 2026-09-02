@@ -1,0 +1,68 @@
+services:
+  - type: web
+    name: bharattech-lms-backend
+    runtime: node
+    plan: free
+    rootDir: Integrated/Learning-Management-System/Backend
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 24.14.0
+      - key: NODE_ENV
+        value: production
+      - key: AUTH_MODE
+        value: keycloak
+      - key: PORT
+        value: 10000
+      - key: FRONTEND_URL
+        value: https://bharattech-learning-management-system.onrender.com
+      - key: PUBLIC_BACKEND_URL
+        value: https://bharattech-lms-backend.onrender.com
+      - key: KEYCLOAK_BASE_URL
+        value: https://keycloak-24-0-5-9yaq.onrender.com
+      - key: KEYCLOAK_URL
+        value: https://keycloak-24-0-5-9yaq.onrender.com
+      - key: KEYCLOAK_REALM
+        value: bharattech
+      - key: KEYCLOAK_CLIENT_ID
+        value: lms-client
+      - key: MONGO_URI
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false
+
+  - type: web
+    name: bharattech-learning-management-system
+    runtime: static
+    rootDir: Integrated/Learning-Management-System/frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: Integrated/Learning-Management-System/frontend/dist
+    envVars:
+      - key: NODE_VERSION
+        value: 24.14.0
+      - key: VITE_AUTH_MODE
+        value: keycloak
+      - key: VITE_API_BASE_URL
+        value: https://bharattech-lms-backend.onrender.com/api
+      - key: VITE_KEYCLOAK_URL
+        value: https://keycloak-24-0-5-9yaq.onrender.com
+      - key: VITE_KEYCLOAK_REALM
+        value: bharattech
+      - key: VITE_KEYCLOAK_CLIENT_ID
+        value: lms-client
+      - key: VITE_LMS_URL
+        value: https://bharattech-learning-management-system.onrender.com
+      - key: VITE_INTERVIEW_URL
+        value: https://openinterviewer.onrender.com/login
+      - key: VITE_WORKSPACE_URL
+        value: https://bharattech-workspace.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
