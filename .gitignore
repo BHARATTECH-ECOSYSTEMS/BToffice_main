@@ -28,3 +28,11 @@ target/
 Thumbs.db
 
 
+
+.npm-cache/
+node_modules/
+.next/
+.vercel/
+.env
+.env.local
+

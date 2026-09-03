@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "email": "admin@gmail.com",
+    "password": "$2a$10$WlTqZlDkpMaUaM6xsNMHzeCgrIDUK/ba0FNTX4Iv2HbvY3N.BKPFW",
+    "role": "admin",
+    "username": "Admin User"
+  },
+  {
+    "id": 2,
+    "email": "subadmin@gmail.com",
+    "password": "$2a$10$xZk.wcRm2IZ6e2hyXBasHu2xZotN6FSM9IXPSiVcHQhitfxnAyiRK",
+    "role": "subadmin",
+    "name": "Sub Admin User"
+  },
+  {
+    "id": 3,
+    "email": "employee@gmail.com",
+    "password": "$2a$10$Qc6bWehozmLSyXk6LR9FI.nKeSnM8K3BKbMiupb2F9U5lE3whjgm6",
+    "role": "Employee",
+    "name": "Employee User"
+  },
+  {
+    "id": 4,
+    "email": "intern@gmail.com",
+    "password": "$2a$10$J2Ioa5XO.KtshtFmCvJ6l.r7CXzng1He2KGlFOVFQy0u/eEgxsBfG",
+    "role": "Intern",
+    "name": "Intern User"
+  }
+]

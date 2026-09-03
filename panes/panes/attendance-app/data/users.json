@@ -1,0 +1,9 @@
+[
+  {
+    "id": "user-admin",
+    "name": "Admin User",
+    "email": "admin@company.com",
+    "passwordHash": "240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9",
+    "createdAt": "2026-04-10T09:09:48.764Z"
+  }
+]

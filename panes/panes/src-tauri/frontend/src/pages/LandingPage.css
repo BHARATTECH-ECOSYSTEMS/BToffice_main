@@ -1,0 +1,33 @@
+.landing-page {
+    font-family: Arial, sans-serif;
+}
+
+.hero-section {
+    padding: 100px 0;
+    background-color: #f8f9fa;
+}
+
+.hero-section h1 {
+    font-size: 3rem;
+    margin-bottom: 20px;
+}
+
+.about-section, .services-section, .contact-section {
+    padding: 60px 0;
+}
+
+.service-card {
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    margin-bottom: 20px;
+    transition: transform 0.3s;
+}
+
+.service-card:hover {
+    transform: translateY(-10px);
+}
+
+footer {
+    margin-top: 40px;
+}
