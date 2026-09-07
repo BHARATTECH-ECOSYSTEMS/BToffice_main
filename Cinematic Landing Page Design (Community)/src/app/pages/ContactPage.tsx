@@ -53,10 +53,10 @@ export const ContactPage = () => {
 
       {/* ─── Contact Form ─── */}
       <section className="py-16 px-8 lg:px-16">
-        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-12">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-5 gap-10 lg:gap-14 items-start">
 
           {/* Left: Info */}
-          <div className="lg:col-span-2 flex flex-col gap-8">
+          <div className="lg:col-span-2 flex flex-col gap-8 lg:pr-10 lg:border-r lg:border-[#E2E4E8] pb-10 lg:pb-0 border-b lg:border-b-0 border-[#E2E4E8]">
             <motion.div
               initial={{ opacity: 0, x: -24 }}
               whileInView={{ opacity: 1, x: 0 }}
@@ -88,7 +88,7 @@ export const ContactPage = () => {
                 </div>
               </div>
 
-              <div className="mt-10 p-6 bg-[#FAFAFA] rounded-2xl border border-[#E4E4E7]">
+              <div className="mt-10 p-6 bg-[#F8F9FB] rounded-2xl border border-[#E2E4E8]">
                 <p className="text-[13px] font-semibold text-[#09090B] mb-2">Research collaborations</p>
                 <p className="text-[13px] text-[#71717A] leading-relaxed">
                   We actively collaborate with universities, research institutions, and independent researchers. If you are working in AI infrastructure, memory systems, or any of our six research domains — let us know.
@@ -97,20 +97,20 @@ export const ContactPage = () => {
             </motion.div>
           </div>
 
-          {/* Right: Form */}
+          {/* Right: Form in Metallic Grey Card */}
           <motion.div
             initial={{ opacity: 0, x: 24 }}
             whileInView={{ opacity: 1, x: 0 }}
             viewport={{ once: true }}
-            className="lg:col-span-3"
+            className="lg:col-span-3 bg-gradient-to-b from-[#F8F9FB] via-[#F3F5F8] to-[#EBEEF3] border border-[#D9DDE5] rounded-3xl p-6 sm:p-8 lg:p-9 shadow-[0_10px_35px_-5px_rgba(0,0,0,0.05),0_1px_3px_rgba(0,0,0,0.02)]"
           >
             {submitted ? (
               <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
-                className="h-full flex flex-col items-center justify-center text-center py-20 gap-5"
+                className="h-full flex flex-col items-center justify-center text-center py-16 gap-5"
               >
-                <div className="w-16 h-16 rounded-full bg-[#EDE9FF] flex items-center justify-center">
+                <div className="w-16 h-16 rounded-full bg-[#EDE9FF] flex items-center justify-center shadow-xs">
                   <Send size={24} className="text-[#6A35FF]" />
                 </div>
                 <h3 className="text-2xl font-semibold text-[#09090B]">Message sent</h3>
@@ -118,8 +118,9 @@ export const ContactPage = () => {
                   Thank you for reaching out. We will get back to you within 2 business days.
                 </p>
                 <button
+                  type="button"
                   onClick={() => setSubmitted(false)}
-                  className="mt-4 text-[#6A35FF] text-sm font-medium hover:underline"
+                  className="mt-4 text-[#6A35FF] text-sm font-semibold hover:underline cursor-pointer"
                 >
                   Send another message
                 </button>
@@ -131,7 +132,7 @@ export const ContactPage = () => {
                   <label className="block text-[13px] font-semibold text-[#09090B] mb-3">
                     Reason for contact
                   </label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-2 gap-2.5">
                     {reasons.map(r => {
                       const Icon = r.icon;
                       return (
@@ -139,10 +140,10 @@ export const ContactPage = () => {
                           type="button"
                           key={r.value}
                           onClick={() => setSelected(r.value)}
-                          className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left text-sm font-medium transition-all duration-150 ${
+                          className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left text-sm font-medium transition-all duration-150 cursor-pointer ${
                             selected === r.value
-                              ? 'border-[#6A35FF] bg-[#EDE9FF] text-[#6A35FF]'
-                              : 'border-[#E4E4E7] text-[#3F3F46] hover:border-[#6A35FF]/30 bg-white'
+                              ? 'border-[#6A35FF] bg-[#EDE9FF] text-[#6A35FF] shadow-xs'
+                              : 'border-[#D9DDE5] text-[#3F3F46] hover:border-[#6A35FF]/40 bg-white hover:bg-[#FAFAFC] shadow-xs'
                           }`}
                         >
                           <Icon size={15} />
@@ -159,7 +160,7 @@ export const ContactPage = () => {
                     <input
                       type="text"
                       required
-                      className="w-full px-4 py-3 rounded-xl border border-[#E4E4E7] text-[14px] outline-none focus:border-[#6A35FF]/50 focus:ring-2 focus:ring-[#6A35FF]/10 bg-white"
+                      className="w-full px-4 py-3 rounded-xl border border-[#D9DDE5] text-[14px] outline-none focus:border-[#6A35FF] focus:ring-2 focus:ring-[#6A35FF]/15 bg-white transition-all shadow-xs placeholder:text-[#9CA3AF]"
                       placeholder="Ada"
                     />
                   </div>
@@ -168,7 +169,7 @@ export const ContactPage = () => {
                     <input
                       type="text"
                       required
-                      className="w-full px-4 py-3 rounded-xl border border-[#E4E4E7] text-[14px] outline-none focus:border-[#6A35FF]/50 focus:ring-2 focus:ring-[#6A35FF]/10 bg-white"
+                      className="w-full px-4 py-3 rounded-xl border border-[#D9DDE5] text-[14px] outline-none focus:border-[#6A35FF] focus:ring-2 focus:ring-[#6A35FF]/15 bg-white transition-all shadow-xs placeholder:text-[#9CA3AF]"
                       placeholder="Lovelace"
                     />
                   </div>
@@ -179,7 +180,7 @@ export const ContactPage = () => {
                   <input
                     type="email"
                     required
-                    className="w-full px-4 py-3 rounded-xl border border-[#E4E4E7] text-[14px] outline-none focus:border-[#6A35FF]/50 focus:ring-2 focus:ring-[#6A35FF]/10 bg-white"
+                    className="w-full px-4 py-3 rounded-xl border border-[#D9DDE5] text-[14px] outline-none focus:border-[#6A35FF] focus:ring-2 focus:ring-[#6A35FF]/15 bg-white transition-all shadow-xs placeholder:text-[#9CA3AF]"
                     placeholder="you@organization.com"
                   />
                 </div>
@@ -188,7 +189,7 @@ export const ContactPage = () => {
                   <label className="block text-[13px] font-semibold text-[#09090B] mb-2">Organization <span className="text-[#A1A1AA] font-normal">(optional)</span></label>
                   <input
                     type="text"
-                    className="w-full px-4 py-3 rounded-xl border border-[#E4E4E7] text-[14px] outline-none focus:border-[#6A35FF]/50 focus:ring-2 focus:ring-[#6A35FF]/10 bg-white"
+                    className="w-full px-4 py-3 rounded-xl border border-[#D9DDE5] text-[14px] outline-none focus:border-[#6A35FF] focus:ring-2 focus:ring-[#6A35FF]/15 bg-white transition-all shadow-xs placeholder:text-[#9CA3AF]"
                     placeholder="Your institution or company"
                   />
                 </div>
@@ -198,14 +199,14 @@ export const ContactPage = () => {
                   <textarea
                     required
                     rows={5}
-                    className="w-full px-4 py-3 rounded-xl border border-[#E4E4E7] text-[14px] outline-none focus:border-[#6A35FF]/50 focus:ring-2 focus:ring-[#6A35FF]/10 bg-white resize-none"
+                    className="w-full px-4 py-3 rounded-xl border border-[#D9DDE5] text-[14px] outline-none focus:border-[#6A35FF] focus:ring-2 focus:ring-[#6A35FF]/15 bg-white resize-none transition-all shadow-xs placeholder:text-[#9CA3AF]"
                     placeholder="Tell us what you are working on, what you are interested in, or how we can help..."
                   />
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-4 bg-[#6A35FF] text-white rounded-xl font-semibold text-[15px] hover:bg-[#7C3AED] transition-colors shadow-[0_4px_20px_rgba(106,53,255,0.3)] flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-[#6A35FF] text-white rounded-xl font-semibold text-[15px] hover:bg-[#5B2AE6] active:scale-[0.99] transition-all shadow-[0_4px_20px_rgba(106,53,255,0.3)] hover:shadow-[0_6px_24px_rgba(106,53,255,0.4)] flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <Send size={16} />
                   Send message

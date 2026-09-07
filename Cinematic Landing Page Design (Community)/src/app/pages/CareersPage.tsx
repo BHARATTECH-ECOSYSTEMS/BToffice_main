@@ -1,8 +1,7 @@
-import React, { useState } from 'react';
-import { motion, useInView } from 'motion/react';
-import { useRef } from 'react';
+import React, { useState, useRef } from 'react';
+import { motion, useInView, AnimatePresence } from 'motion/react';
 import { Link } from 'react-router';
-import { ArrowRight, MapPin, Clock, Briefcase } from 'lucide-react';
+import { ArrowRight, MapPin, Clock, Briefcase, Search, X } from 'lucide-react';
 
 const roles = [
   { title: 'Research Scientist — Generative Intelligence', team: 'GI Rivinity', location: 'Hybrid · India', type: 'Full-time', dept: 'Research' },
@@ -26,10 +25,36 @@ const values = [
 
 export const CareersPage = () => {
   const [activeFilter, setActiveFilter] = useState('All');
-  const filtered = activeFilter === 'All' ? roles : roles.filter(r => r.dept === activeFilter);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const heroRef = useRef<HTMLDivElement>(null);
   const isHeroInView = useInView(heroRef, { once: true });
+
+  const toggleSearch = () => {
+    setIsSearchOpen(prev => {
+      const next = !prev;
+      if (next) {
+        setTimeout(() => searchInputRef.current?.focus(), 150);
+      } else {
+        setSearchQuery('');
+      }
+      return next;
+    });
+  };
+
+  const filtered = roles.filter(role => {
+    const matchesDept = activeFilter === 'All' || role.dept === activeFilter;
+    const q = searchQuery.toLowerCase().trim();
+    const matchesSearch = !q || (
+      role.title.toLowerCase().includes(q) ||
+      role.team.toLowerCase().includes(q) ||
+      role.location.toLowerCase().includes(q) ||
+      role.dept.toLowerCase().includes(q)
+    );
+    return matchesDept && matchesSearch;
+  });
 
   return (
     <div className="bg-white" style={{ fontFamily: 'SF Pro Display, Inter, sans-serif' }}>
@@ -130,64 +155,172 @@ export const CareersPage = () => {
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-12"
+            className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12"
           >
             <div>
               <p className="text-xs font-semibold tracking-widest uppercase text-[#6A35FF] mb-2">Open Positions</p>
               <h2 className="text-4xl font-semibold text-[#09090B] tracking-tight">Current openings</h2>
             </div>
-            {/* Filter tabs */}
-            <div className="flex gap-2 bg-[#F5F5F5] rounded-full p-1">
-              {depts.map(d => (
+
+            {/* Filter tabs & Animated Search Expansion */}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Department Tabs */}
+              <div className="flex gap-1.5 bg-[#F5F5F7] rounded-full p-1 border border-[#E4E4E7]/60 shadow-xs">
+                {depts.map(d => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setActiveFilter(d)}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer ${
+                      activeFilter === d
+                        ? 'bg-white text-[#09090B] shadow-sm font-semibold'
+                        : 'text-[#71717A] hover:text-[#09090B]'
+                    }`}
+                  >
+                    {d}
+                  </button>
+                ))}
+
+                {/* Search Toggle Icon */}
                 <button
-                  key={d}
-                  onClick={() => setActiveFilter(d)}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                    activeFilter === d ? 'bg-white text-[#09090B] shadow-sm' : 'text-[#71717A] hover:text-[#09090B]'
+                  type="button"
+                  onClick={toggleSearch}
+                  aria-label="Toggle role search"
+                  className={`w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                    isSearchOpen || searchQuery
+                      ? 'bg-[#6A35FF] text-white shadow-[0_2px_10px_rgba(106,53,255,0.35)]'
+                      : 'text-[#71717A] hover:text-[#09090B] hover:bg-white/80'
                   }`}
                 >
-                  {d}
+                  <Search size={15} />
                 </button>
-              ))}
+              </div>
+
+              {/* Smooth Expanding Search Pop Bar */}
+              <AnimatePresence>
+                {isSearchOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.85, width: 0, x: -10 }}
+                    animate={{ opacity: 1, scale: 1, width: 'auto', x: 0 }}
+                    exit={{ opacity: 0, scale: 0.85, width: 0, x: -10 }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex items-center gap-2 bg-[#F8F9FA] border border-[#6A35FF]/30 focus-within:border-[#6A35FF] focus-within:ring-2 focus-within:ring-[#6A35FF]/15 rounded-full px-3.5 py-1.5 shadow-sm transition-all min-w-[240px] sm:min-w-[280px]">
+                      <Search size={14} className="text-[#6A35FF] flex-shrink-0" />
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="Search roles, teams, skills..."
+                        className="w-full bg-transparent text-[13px] text-[#09090B] outline-none placeholder:text-[#A1A1AA]"
+                      />
+                      {searchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setSearchQuery('')}
+                          className="text-[#A1A1AA] hover:text-[#09090B] p-0.5 rounded-full cursor-pointer"
+                        >
+                          <X size={13} />
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={toggleSearch}
+                        className="text-[#71717A] hover:text-[#09090B] p-1 rounded-full text-xs font-medium cursor-pointer"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </motion.div>
 
+          {/* Search/Filter feedback bar */}
+          {(searchQuery || activeFilter !== 'All') && (
+            <motion.div
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-center justify-between mb-6 px-1 text-xs text-[#71717A]"
+            >
+              <span>
+                Showing <strong className="text-[#09090B]">{filtered.length}</strong> {filtered.length === 1 ? 'role' : 'roles'}
+                {searchQuery && <> matching &ldquo;<span className="text-[#6A35FF] font-medium">{searchQuery}</span>&rdquo;</>}
+                {activeFilter !== 'All' && <> in <span className="font-medium text-[#09090B]">{activeFilter}</span></>}
+              </span>
+              {(searchQuery || activeFilter !== 'All') && (
+                <button
+                  type="button"
+                  onClick={() => { setActiveFilter('All'); setSearchQuery(''); }}
+                  className="text-[#6A35FF] hover:underline font-medium cursor-pointer"
+                >
+                  Reset filters
+                </button>
+              )}
+            </motion.div>
+          )}
+
           <div className="flex flex-col gap-3">
-            {filtered.map((role, i) => (
-              <motion.div
-                key={role.title}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.06, duration: 0.5 }}
-                whileHover={{ x: 4, transition: { duration: 0.15 } }}
-                className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-[#E4E4E7] rounded-2xl px-6 py-5 hover:border-[#6A35FF]/30 hover:shadow-[0_4px_20px_rgba(106,53,255,0.08)] transition-all duration-200 cursor-pointer"
-              >
-                <div className="flex flex-col gap-1.5">
-                  <span className="font-semibold text-[#09090B] text-[15px] group-hover:text-[#6A35FF] transition-colors">
-                    {role.title}
-                  </span>
-                  <div className="flex flex-wrap items-center gap-3 text-[13px] text-[#71717A]">
-                    <span className="flex items-center gap-1.5"><Briefcase size={12} />{role.team}</span>
-                    <span className="flex items-center gap-1.5"><MapPin size={12} />{role.location}</span>
-                    <span className="flex items-center gap-1.5"><Clock size={12} />{role.type}</span>
+            <AnimatePresence mode="popLayout">
+              {filtered.map((role, i) => (
+                <motion.div
+                  key={role.title}
+                  layout
+                  initial={{ opacity: 0, y: 16, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ delay: i * 0.04, duration: 0.35 }}
+                  whileHover={{ x: 4, transition: { duration: 0.15 } }}
+                  className="group flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white border border-[#E4E4E7] rounded-2xl px-6 py-5 hover:border-[#6A35FF]/30 hover:shadow-[0_4px_20px_rgba(106,53,255,0.08)] transition-all duration-200 cursor-pointer"
+                >
+                  <div className="flex flex-col gap-1.5">
+                    <span className="font-semibold text-[#09090B] text-[15px] group-hover:text-[#6A35FF] transition-colors">
+                      {role.title}
+                    </span>
+                    <div className="flex flex-wrap items-center gap-3 text-[13px] text-[#71717A]">
+                      <span className="flex items-center gap-1.5"><Briefcase size={12} />{role.team}</span>
+                      <span className="flex items-center gap-1.5"><MapPin size={12} />{role.location}</span>
+                      <span className="flex items-center gap-1.5"><Clock size={12} />{role.type}</span>
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span className="text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-[#F5F3FF] text-[#6A35FF]">
-                    {role.dept}
-                  </span>
-                  <div className="w-8 h-8 rounded-full border border-[#E4E4E7] flex items-center justify-center group-hover:bg-[#6A35FF] group-hover:border-[#6A35FF] transition-all">
-                    <ArrowRight size={14} className="text-[#71717A] group-hover:text-white transition-colors" />
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[11px] font-semibold uppercase tracking-wider px-3 py-1 rounded-full bg-[#F5F3FF] text-[#6A35FF]">
+                      {role.dept}
+                    </span>
+                    <div className="w-8 h-8 rounded-full border border-[#E4E4E7] flex items-center justify-center group-hover:bg-[#6A35FF] group-hover:border-[#6A35FF] transition-all">
+                      <ArrowRight size={14} className="text-[#71717A] group-hover:text-white transition-colors" />
+                    </div>
                   </div>
-                </div>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))}
+            </AnimatePresence>
           </div>
 
           {/* No positions message */}
           {filtered.length === 0 && (
-            <div className="text-center py-16 text-[#71717A]">No open positions in this department right now.</div>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="text-center py-16 px-4 bg-[#FAFAFA] rounded-2xl border border-[#E4E4E7] flex flex-col items-center gap-3"
+            >
+              <div className="w-12 h-12 rounded-full bg-[#EDE9FF] flex items-center justify-center text-[#6A35FF]">
+                <Search size={20} />
+              </div>
+              <h3 className="text-base font-semibold text-[#09090B]">No open positions found</h3>
+              <p className="text-sm text-[#71717A] max-w-md">
+                No roles match your search criteria. Try searching for a different keyword or resetting your filters.
+              </p>
+              <button
+                type="button"
+                onClick={() => { setActiveFilter('All'); setSearchQuery(''); }}
+                className="mt-2 text-sm font-semibold text-[#6A35FF] hover:underline cursor-pointer"
+              >
+                Clear all filters
+              </button>
+            </motion.div>
           )}
         </div>
       </section>
