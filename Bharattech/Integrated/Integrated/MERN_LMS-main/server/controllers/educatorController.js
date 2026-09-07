@@ -21,7 +21,8 @@ const getCompletedEnrollmentPurchases = async (courseIds) =>
   })
     .populate("userId", "name imageUrl email")
     .populate("courseId", "courseTitle")
-    .sort({ updatedAt: -1, createdAt: -1 });
+    .sort({ updatedAt: -1, createdAt: -1 })
+    .lean();
 
 const ensureEducatorUser = async (req) => {
   const userId = getUserId(req);
@@ -81,12 +82,12 @@ const normalizeCourseData = (courseData) => {
       .map((chapter, chapterIndex) => ({
         chapterId: chapter.chapterId || `chapter-${chapterIndex + 1}`,
         chapterOrder: Number(chapter.chapterOrder) || chapterIndex + 1,
-        chapterTitle: String(chapter.chapterTitle || "").trim(),
+        chapterTitle: String(chapter.chapterTitle || "").trim().slice(0, 200),
         chapterContent: Array.isArray(chapter.chapterContent)
           ? chapter.chapterContent
             .map((lecture, lectureIndex) => ({
               lectureId: lecture.lectureId || `lecture-${chapterIndex + 1}-${lectureIndex + 1}`,
-              lectureTitle: String(lecture.lectureTitle || "").trim(),
+              lectureTitle: String(lecture.lectureTitle || "").trim().slice(0, 200),
               lectureDuration: Number(lecture.lectureDuration) || 1,
               lectureUrl: String(lecture.lectureUrl || "").trim(),
               videoSource: lecture.videoSource === "cloudinary" ? "cloudinary" : "youtube",
@@ -100,8 +101,8 @@ const normalizeCourseData = (courseData) => {
     : [];
 
   return {
-    courseTitle: String(courseData.courseTitle || "").trim(),
-    courseDescription: String(courseData.courseDescription || "").trim(),
+    courseTitle: String(courseData.courseTitle || "").trim().slice(0, 200),
+    courseDescription: String(courseData.courseDescription || "").trim().slice(0, 5000),
     coursePrice: Number(courseData.coursePrice) || 0,
     discount: Number(courseData.discount) || 0,
     courseContent: normalizedChapters,
@@ -132,7 +133,7 @@ const validateCourseData = (courseData) => {
 
 /* =====================================================
    ADD NEW COURSE (Educator + Admin)
-===================================================== */
+==================================================== */
 export const addCourse = async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -149,6 +150,17 @@ export const addCourse = async (req, res) => {
       return res
         .status(400)
         .json({ success: false, message: "Thumbnail is required" });
+    }
+
+    // Validate file type against whitelist
+    const allowedMimes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedMimes.includes(imageFile.mimetype)) {
+      return res.status(400).json({ success: false, message: "Invalid image" });
+    }
+
+    // Validate file size (5MB maximum)
+    if (imageFile.size > 5 * 1024 * 1024) {
+      return res.status(400).json({ success: false, message: "Image too large" });
     }
 
     let parsedCourseData;
@@ -187,13 +199,13 @@ export const addCourse = async (req, res) => {
     });
   } catch (error) {
     console.error("addCourse error:", error);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
 /* =====================================================
    GET EDUCATOR COURSES
-===================================================== */
+==================================================== */
 export const getEducatorCourses = async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -201,7 +213,7 @@ export const getEducatorCourses = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthenticated" });
     }
 
-    const courses = await Course.find(getEducatorCourseFilter(req));
+    const courses = await Course.find(getEducatorCourseFilter(req)).lean();
 
     return res.status(200).json({
       status: "success",
@@ -210,14 +222,14 @@ export const getEducatorCourses = async (req, res) => {
     });
   } catch (error) {
     console.error("getEducatorCourses error:", error);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
 /* =====================================================
    EDUCATOR DASHBOARD DATA
    (total courses, total earnings, enrolled students)
-===================================================== */
+==================================================== */
 export const educatorDashboardData = async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -225,7 +237,9 @@ export const educatorDashboardData = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthenticated" });
     }
 
-    const courses = await Course.find(getEducatorCourseFilter(req));
+    const courses = await Course.find(getEducatorCourseFilter(req))
+      .select("_id")
+      .lean();
     const totalCourses = courses.length;
 
     const courseIds = courses.map((course) => course._id);
@@ -233,7 +247,7 @@ export const educatorDashboardData = async (req, res) => {
     const purchases = await getCompletedEnrollmentPurchases(courseIds);
 
     const totalEarnings = purchases.reduce(
-      (sum, purchase) => sum + purchase.amount,
+      (sum, purchase) => sum + (purchase.amount || 0),
       0
     );
 
@@ -255,13 +269,13 @@ export const educatorDashboardData = async (req, res) => {
     });
   } catch (error) {
     console.error("educatorDashboardData error:", error);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
 /* =====================================================
    GET ENROLLED STUDENTS WITH PURCHASE DATA
-===================================================== */
+==================================================== */
 export const getEnrolledStudentsData = async (req, res) => {
   try {
     const userId = getUserId(req);
@@ -269,7 +283,9 @@ export const getEnrolledStudentsData = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthenticated" });
     }
 
-    const courses = await Course.find(getEducatorCourseFilter(req));
+    const courses = await Course.find(getEducatorCourseFilter(req))
+      .select("_id")
+      .lean();
     const courseIds = courses.map((course) => course._id);
 
     const purchases = await getCompletedEnrollmentPurchases(courseIds);
@@ -289,6 +305,6 @@ export const getEnrolledStudentsData = async (req, res) => {
     });
   } catch (error) {
     console.error("getEnrolledStudentsData error:", error);
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

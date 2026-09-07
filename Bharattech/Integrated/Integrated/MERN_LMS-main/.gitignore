@@ -1,2 +1,11 @@
-node_modules
+# .gitignore
+db.sqlite3
 .env
+.env.local
+.env.production
+node_modules/
+dist/
+build/
+*.log
+.DS_Store
+.backup

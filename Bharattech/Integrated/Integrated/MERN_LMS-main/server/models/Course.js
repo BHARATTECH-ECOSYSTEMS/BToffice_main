@@ -19,7 +19,6 @@ const chapterSchema = new mongoose.Schema(
     chapterId: { type: String, required: true },
     chapterOrder: { type: Number, required: true },
     chapterTitle: { type: String, required: true },
-    chapterContent: { type: String, required: true },
     chapterContent: [lectureSchema],
   },
   { _id: false }
@@ -62,6 +61,12 @@ const courseSchema = new mongoose.Schema(
   },
   { timestamps: true, minimize: false }
 );
+
+// Course Model Indexes
+courseSchema.index({ educator: 1, isPublished: 1 });
+courseSchema.index({ enrolledStudents: 1 });
+courseSchema.index({ isPublished: 1, createdAt: -1 });
+courseSchema.index({ courseTitle: "text", courseDescription: "text" });
 
 const Course = mongoose.model("Course", courseSchema);
 export default Course;

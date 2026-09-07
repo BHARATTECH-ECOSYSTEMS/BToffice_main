@@ -6,9 +6,44 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── BharatTech Global Brand Design Tokens ─── */
+:root {
+  --brand-primary: #ff5a00;
+  --brand-secondary: #0f172a;
+  --brand-accent: #3b82f6;
+  --brand-success: #10b981;
+  --brand-warning: #f59e0b;
+  --brand-error: #ef4444;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+/* Premium transitions for background & border (avoids overriding transform/opacity on animations) */
 * {
   /* font-family: Roboto; */
   font-family: "Ubuntu", sans-serif;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Accessible focus rings for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+/* Skeleton loading animation */
+@keyframes shimmer {
+  0% { background-position: -1000px 0; }
+  100% { background-position: 1000px 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 1000px 100%;
+  animation: shimmer 2s infinite linear;
 }
 
 @layer base {

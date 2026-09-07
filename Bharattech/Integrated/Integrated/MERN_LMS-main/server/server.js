@@ -6,82 +6,175 @@ dns.setServers(["8.8.8.8", "1.1.1.1"]);
 
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
+import mongoSanitize from "express-mongo-sanitize";
+import hpp from "hpp";
 import "dotenv/config";
 import path from "path";
 import { fileURLToPath } from "url";
 import connectDB from "./configs/mongodb.js";
+import connectCloudinary from "./configs/cloudinary.js";
 import { stripeWebhooks } from "./controllers/webhooks.js";
 import educatorRouter from "./routes/educatorRoutes.js";
-import connectCloudinary from "./configs/cloudinary.js";
 import courseRouter from "./routes/courseRoutes.js";
 import userRouter from "./routes/userRoutes.js";
 
-const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const clientDistPath = path.join(__dirname, "..", "client", "dist");
 
-// ===== CORS - FIRST THING =====
-const originn = "*"
+const app = express();
+app.set("trust proxy", 1);
 
-app.use(cors({
-    origin: originn, 
-    credentials: true,              
-    methods: ["GET", "POST", "PUT","PATCH", "DELETE"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-}));
-app.options("", cors()); // Handle preflight requests globally
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", originn); // Allow frontend
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
-  res.header("Access-Control-Allow-Headers", "Authorization, Content-Type");
-  next();
+// === STRICT CORS ===
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true;
+  if (ALLOWED_ORIGINS.includes(origin)) return true;
+  // Allow all local dev hosts/ports
+  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  return false;
+};
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (isAllowedOrigin(origin)) {
+      return callback(null, true);
+    }
+    console.warn(`Blocked CORS: ${origin}`);
+    callback(new Error("Not allowed by CORS"));
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+  maxAge: 86400,
+};
+
+// === RATE LIMITING ===
+const isProd = process.env.NODE_ENV === "production";
+const standardLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProd ? 100 : 2000,
+  message: { status: "fail", message: "Too many requests" },
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
-// ===== DB & Cloudinary =====
+const authLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: isProd ? 15 : 500,
+  message: { status: "fail", message: "Too many auth attempts" },
+});
+
+// === HELMET SECURITY HEADERS ===
+const helmetConfig = helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false,
+  hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
+  hidePoweredBy: true,
+  noSniff: true,
+});
+
+// === SCANNER BLOCKER ===
+const hideOpenApis = (req, res, next) => {
+  res.removeHeader("X-Powered-By");
+  res.setHeader("Server", "BharatTech-LMS-Gateway");
+  const blocked = [
+    "/.env",
+    "/.git",
+    "/config.json",
+    "/phpmyadmin",
+    "/wp-admin",
+    "/admin",
+    "/api/swagger",
+    "/api/docs",
+    "/graphql",
+  ];
+  if (blocked.includes(req.path.toLowerCase())) {
+    return res.status(404).json({ status: "fail", message: "Not found" });
+  }
+  next();
+};
+
+// === SECURITY MIDDLEWARE STACK ===
+app.use(helmetConfig);
+app.use(hideOpenApis);
+app.use(cors(corsOptions));
+app.use(standardLimiter);
+app.use(express.json({ limit: "50kb" }));
+app.use(express.urlencoded({ extended: true, limit: "50kb" }));
+
+// Express 5 compatible sanitization
+const sanitizeMiddleware = (req, res, next) => {
+  if (req.body && typeof req.body === "object") {
+    mongoSanitize.sanitize(req.body, { replaceWith: "_" });
+  }
+  if (req.params && typeof req.params === "object") {
+    mongoSanitize.sanitize(req.params, { replaceWith: "_" });
+  }
+  next();
+};
+
+app.use(sanitizeMiddleware);
+app.use(hpp({ whitelist: ["sort", "page", "limit"] }));
+
+// === DB & CLOUDINARY ===
 await connectDB();
 await connectCloudinary();
 
-// ===== Stripe webhook BEFORE JSON parser =====
-app.post("/api/stripe", 
-  express.raw({ type: 'application/json' }), 
+// === STRIPE WEBHOOK (raw body) ===
+app.post(
+  "/api/stripe",
+  express.raw({ type: "application/json" }),
   stripeWebhooks
 );
 
-// ===== JSON parser =====
-app.use(express.json());
-
-// ===== Routes =====
-app.get("/", (req, res) => {
-  res.json({ message: "API is running..." });
+// === HEALTH CHECK ===
+app.get("/health", (req, res) => {
+  res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-app.use("/api/educator", educatorRouter);
+// === PROTECTED ROUTES ===
+app.use("/api/educator", authLimiter, educatorRouter);
 app.use("/api/courses", courseRouter);
 app.use("/api/user", userRouter);
 
-app.use(express.static(clientDistPath));
+// === STATIC CLIENT (production only) ===
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(clientDistPath));
+  app.get("{/*splat}", (req, res, next) => {
+    if (!req.path.startsWith("/api")) {
+      return res.sendFile(path.join(clientDistPath, "index.html"));
+    }
+    next();
+  });
+}
 
-app.use((req, res, next) => {
-  if (req.method === "GET" && !req.path.startsWith("/api")) {
-    return res.sendFile(path.join(clientDistPath, "index.html"));
-  }
-
-  next();
-});
-
-// ===== 404 =====
+// === 404 ===
 app.use((req, res) => {
-  res.status(404).json({ status: "fail", message: `Can't find ${req.originalUrl}` });
+  res
+    .status(404)
+    .json({ status: "fail", message: `Cannot ${req.method} ${req.originalUrl}` });
 });
 
-// ===== Error handler =====
+// === SAFE ERROR HANDLER ===
 app.use((err, req, res, next) => {
-  console.error("❌ ERROR:", err.message);
-  res.status(500).json({ status: "error", message: "Internal Server Error" });
+  console.error("ERROR:", err);
+  const statusCode = err.status || err.statusCode || 500;
+  const message =
+    statusCode === 500
+      ? "Internal Server Error"
+      : err.message || "Something went wrong";
+  res.status(statusCode).json({ status: "error", message });
 });
 
-const PORT = process.env.PORT || 9001;
+const PORT = process.env.PORT || 65535;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`BharatTech LMS Secure API on port ${PORT}`);
 });

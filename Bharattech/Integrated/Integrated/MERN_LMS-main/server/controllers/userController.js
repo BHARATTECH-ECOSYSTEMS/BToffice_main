@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Course from "../models/Course.js";
 import Purchase from "../models/Purchase.js";
 import User from "../models/User.js";
@@ -61,7 +62,7 @@ export const userEnrolledCourses = async (req, res) => {
     }
 
     await ensureCurrentUser(req);
-    const userData = await User.findById(userId).populate("enrolledCourses");
+    const userData = await User.findById(userId).populate("enrolledCourses").lean();
     if (!userData) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
@@ -83,18 +84,27 @@ export const purchaseCourse = async (req, res) => {
     }
 
     const { courseId } = req.body;
-    if (!courseId) {
-      return res.status(400).json({ success: false, message: "Course id is required" });
+    if (!courseId || !mongoose.Types.ObjectId.isValid(courseId)) {
+      return res.status(400).json({ success: false, message: "Invalid ID" });
     }
 
-    const userData = await ensureCurrentUser(req);
-    const courseData = await Course.findById(courseId).select(
-      "coursePrice discount enrolledStudents"
-    );
-
+    await ensureCurrentUser(req);
+    const userData = await User.findById(userId).populate("enrolledCourses").lean();
     if (!userData) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
+
+    // Prevent duplicate enrollment
+    const isAlreadyEnrolled = userData.enrolledCourses?.some(
+      (c) => (c._id ? c._id.toString() : c.toString()) === courseId.toString()
+    );
+    if (isAlreadyEnrolled) {
+      return res.status(409).json({ success: false, message: "Already enrolled" });
+    }
+
+    const courseData = await Course.findById(courseId)
+      .select("coursePrice discount enrolledStudents")
+      .lean();
     if (!courseData) {
       return res.status(404).json({ success: false, message: "Course not found" });
     }
@@ -145,25 +155,22 @@ export const updateUserCourseProgress = async (req, res) => {
     }
 
     const { courseId, lectureId } = req.body;
-    const progressData = await CourseProgress.findOne({ userId, courseId });
-
-    if (progressData) {
-      if (progressData.lectureCompleted.includes(lectureId)) {
-        return res.status(200).json({
-          status: "success",
-          message: "Lecture already marked as completed",
-        });
-      }
-
-      progressData.lectureCompleted.push(lectureId);
-      await progressData.save();
-    } else {
-      await CourseProgress.create({
-        userId,
-        courseId,
-        lectureCompleted: [lectureId],
-      });
+    if (!courseId || !mongoose.Types.ObjectId.isValid(courseId)) {
+      return res.status(400).json({ success: false, message: "Invalid ID" });
     }
+
+    // Sanitize lectureId to prevent injection
+    const safeLectureId = String(lectureId || "").slice(0, 100);
+    if (!safeLectureId) {
+      return res.status(400).json({ success: false, message: "Invalid lecture ID" });
+    }
+
+    // Atomic update with $addToSet to avoid race conditions and duplicates
+    await CourseProgress.findOneAndUpdate(
+      { userId, courseId },
+      { $addToSet: { lectureCompleted: safeLectureId } },
+      { upsert: true, new: true }
+    );
 
     res.status(200).json({
       status: "success",
@@ -183,7 +190,11 @@ export const getUserCourseProgress = async (req, res) => {
     }
 
     const { courseId } = req.body;
-    const progressData = await CourseProgress.findOne({ userId, courseId });
+    if (!courseId || !mongoose.Types.ObjectId.isValid(courseId)) {
+      return res.status(400).json({ success: false, message: "Invalid ID" });
+    }
+
+    const progressData = await CourseProgress.findOne({ userId, courseId }).lean();
 
     res.status(200).json({
       status: "success",
@@ -203,17 +214,20 @@ export const addUserRating = async (req, res) => {
     }
 
     const { courseId, rating } = req.body;
-    if (!courseId || !rating || rating < 1 || rating > 5) {
+    if (!courseId || !mongoose.Types.ObjectId.isValid(courseId) || !rating || rating < 1 || rating > 5) {
       return res.status(400).json({ success: false, message: "Invalid input" });
     }
 
-    const courseData = await Course.findById(courseId);
+    const [courseData, user] = await Promise.all([
+      Course.findById(courseId),
+      User.findById(userId).select("enrolledCourses").lean(),
+    ]);
+
     if (!courseData) {
       return res.status(404).json({ success: false, message: "Course not found" });
     }
 
-    const user = await User.findById(userId);
-    if (!user || !user.enrolledCourses.includes(courseId)) {
+    if (!user || !user.enrolledCourses?.some((c) => (c._id ? c._id.toString() : c.toString()) === courseId.toString())) {
       return res.status(404).json({
         success: false,
         message: "User has not purchased this course.",

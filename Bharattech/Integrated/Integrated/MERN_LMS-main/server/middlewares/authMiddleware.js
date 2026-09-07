@@ -4,9 +4,7 @@ import jwksClient from "jwks-rsa";
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL || "http://localhost:8080";
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 const KEYCLOAK_CLIENT_IDS = (
-  process.env.KEYCLOAK_CLIENT_IDS ||
-  process.env.KEYCLOAK_CLIENT_ID ||
-  "lms2-client,lms-client"
+  process.env.KEYCLOAK_CLIENT_IDS || "lms2-client,lms-client"
 )
   .split(",")
   .map((id) => id.trim())
@@ -19,23 +17,19 @@ const client = jwksClient({
   cache: true,
   cacheMaxEntries: 5,
   cacheMaxAge: 10 * 60 * 1000,
+  rateLimit: true,
+  jwksRequestsPerMinute: 5,
+  timeout: 5000,
 });
 
 const getKey = (header, callback) => {
   client.getSigningKey(header.kid, (err, key) => {
-    if (err) return callback(err);
+    if (err) {
+      console.error("JWKS Error:", err.message);
+      return callback(err);
+    }
     callback(null, key.getPublicKey());
   });
-};
-
-const attachPortalAdmin = (req) => {
-  req.user = {
-    id: process.env.PORTAL_ADMIN_USER_ID || "bharattech-portal-admin",
-    username: "bharattech-admin",
-    email: "admin@bharattech.local",
-    roles: ["admin"],
-    isPortalAdmin: true,
-  };
 };
 
 export const protect = (roles = []) => {
@@ -45,9 +39,11 @@ export const protect = (roles = []) => {
       ? authHeader.split(" ")[1]
       : null;
 
+    // No token → always reject, regardless of environment
     if (!token || token === "null" || token === "undefined") {
-      attachPortalAdmin(req);
-      return next();
+      return res
+        .status(401)
+        .json({ success: false, message: "Authentication required" });
     }
 
     jwt.verify(
@@ -56,21 +52,21 @@ export const protect = (roles = []) => {
       {
         algorithms: ["RS256"],
         issuer: `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`,
+        clockTolerance: 30,
       },
       (err, decoded) => {
         if (err) {
-          return res.status(401).json({
-            success: false,
-            message: "Invalid or expired token",
-          });
+          return res
+            .status(401)
+            .json({ success: false, message: "Invalid or expired token" });
         }
 
         const clientRoles = KEYCLOAK_CLIENT_IDS.flatMap(
-          (clientId) => decoded?.resource_access?.[clientId]?.roles || []
+          (cid) => decoded?.resource_access?.[cid]?.roles || []
         );
         const realmRoles = decoded?.realm_access?.roles || [];
-        const rolesFromToken = [...clientRoles, ...realmRoles].map((role) =>
-          role.toLowerCase()
+        const rolesFromToken = [...clientRoles, ...realmRoles].map((r) =>
+          r.toLowerCase()
         );
 
         req.user = {
@@ -81,16 +77,16 @@ export const protect = (roles = []) => {
         };
 
         if (roles.length) {
-          const allowed = roles.map((role) => role.toLowerCase());
+          const allowed = roles.map((r) => r.toLowerCase());
           const hasAccess =
             rolesFromToken.includes("admin") ||
-            rolesFromToken.some((role) => allowed.includes(role));
+            rolesFromToken.includes("superadmin") ||
+            rolesFromToken.some((r) => allowed.includes(r));
 
           if (!hasAccess) {
-            return res.status(403).json({
-              success: false,
-              message: "Forbidden: insufficient role",
-            });
+            return res
+              .status(403)
+              .json({ success: false, message: "Forbidden" });
           }
         }
 

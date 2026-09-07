@@ -19,5 +19,8 @@ const courseProgressSchema = new mongoose.Schema(
   { minimize: false }
 );
 
+// CourseProgress Model Indexes
+courseProgressSchema.index({ userId: 1, courseId: 1 }, { unique: true });
+
 const CourseProgress = mongoose.model("CourseProgress", courseProgressSchema);
 export default CourseProgress;
