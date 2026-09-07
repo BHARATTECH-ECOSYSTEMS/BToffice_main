@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { PlugZap, BrainCircuit, Rocket } from 'lucide-react';
+import { GlowCard } from '@/components/ui/spotlight-card';
 
 const steps = [
   {
@@ -11,6 +12,7 @@ const steps = [
       "Link documents, databases, APIs, communication tools, and live data feeds in minutes. Origin ingests and structures everything into a unified knowledge graph.",
     accent: "#6A35FF",
     accentLight: "rgba(106, 53, 255, 0.08)",
+    glowColor: "purple" as const,
   },
   {
     number: "02",
@@ -20,6 +22,7 @@ const steps = [
       "The memory engine learns from every interaction, decision, and outcome. Unlike static models, Origin evolves with your organization — building deeper context over time.",
     accent: "#7C3AED",
     accentLight: "rgba(124, 58, 237, 0.08)",
+    glowColor: "purple" as const,
   },
   {
     number: "03",
@@ -29,6 +32,7 @@ const steps = [
       "Surface intelligence through chat, API, web apps, voice, or custom agents. One unified intelligence layer — infinite ways to interact with it.",
     accent: "#4F46E5",
     accentLight: "rgba(79, 70, 229, 0.08)",
+    glowColor: "purple" as const,
   },
 ];
 
@@ -83,54 +87,60 @@ export const Architecture = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-8%" }}
                 transition={{ duration: 0.6, delay: i * 0.12, ease: [0.16, 1, 0.3, 1] }}
-                className="relative z-10 bg-white rounded-3xl p-8 border border-[#E4E4E7] shadow-[0_2px_16px_rgba(0,0,0,0.04)] flex flex-col justify-between group hover:border-[#6A35FF]/40 transition-all duration-300"
+                className="relative z-10 flex flex-col h-full"
               >
-                <div>
-                  {/* Step header: icon + step number + live pill badge */}
-                  <div className="flex items-center justify-between mb-6">
-                    <div className="flex items-center gap-4">
-                      <div
-                        className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 relative bg-white shadow-xs border border-black/5"
-                        style={{ background: step.accentLight }}
-                      >
-                        <Icon size={22} style={{ color: step.accent }} strokeWidth={1.8} />
-                        {/* Dynamic pulse node on icon */}
-                        <motion.div
-                          className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#6A35FF]"
-                          animate={{ scale: [1, 1.4, 1], opacity: [0.7, 1, 0.7] }}
-                          transition={{ duration: 2, repeat: Infinity, delay: i * 0.6 }}
-                          style={{ boxShadow: "0 0 8px rgba(106,53,255,0.8)" }}
-                        />
+                <GlowCard
+                  customSize={true}
+                  glowColor={step.glowColor}
+                  className="w-full h-full flex flex-col justify-between group hover:border-[#6A35FF]/40 transition-all duration-300"
+                >
+                  <div>
+                    {/* Step header: icon + step number + live pill badge */}
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-4">
+                        <div
+                          className="w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 relative bg-white shadow-xs border border-black/5"
+                          style={{ background: step.accentLight }}
+                        >
+                          <Icon size={22} style={{ color: step.accent }} strokeWidth={1.8} />
+                          {/* Dynamic pulse node on icon */}
+                          <motion.div
+                            className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-[#6A35FF]"
+                            animate={{ scale: [1, 1.4, 1], opacity: [0.7, 1, 0.7] }}
+                            transition={{ duration: 2, repeat: Infinity, delay: i * 0.6 }}
+                            style={{ boxShadow: "0 0 8px rgba(106,53,255,0.8)" }}
+                          />
+                        </div>
+                        <span
+                          className="text-4xl font-bold leading-none tracking-tight"
+                          style={{ color: step.accent }}
+                        >
+                          {step.number}
+                        </span>
                       </div>
-                      <span
-                        className="text-4xl font-bold leading-none tracking-tight"
-                        style={{ color: step.accent }}
-                      >
-                        {step.number}
+
+                      {/* Step indicator tag */}
+                      <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-[#6A35FF]/10 text-[#6A35FF]">
+                        Step {i + 1}
                       </span>
                     </div>
 
-                    {/* Step indicator tag */}
-                    <span className="text-[11px] font-semibold px-3 py-1 rounded-full bg-[#6A35FF]/10 text-[#6A35FF]">
-                      Step {i + 1}
-                    </span>
+                    <h3 className="text-xl font-semibold text-[#09090B] mb-3 tracking-tight">
+                      {step.title}
+                    </h3>
+                    <p className="text-[15px] text-[#52525B] leading-relaxed">{step.description}</p>
                   </div>
 
-                  <h3 className="text-xl font-semibold text-[#09090B] mb-3 tracking-tight">
-                    {step.title}
-                  </h3>
-                  <p className="text-[15px] text-[#52525B] leading-relaxed">{step.description}</p>
-                </div>
-
-                {/* Bottom circuit beam indicator line */}
-                <div className="mt-8 relative h-1 rounded-full bg-[#F4F4F5] overflow-hidden">
-                  <motion.div
-                    className="absolute inset-y-0 w-1/2 rounded-full"
-                    style={{ background: `linear-gradient(90deg, transparent, ${step.accent}, transparent)` }}
-                    animate={{ x: ['-100%', '250%'] }}
-                    transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: i * 0.4 }}
-                  />
-                </div>
+                  {/* Bottom circuit beam indicator line */}
+                  <div className="mt-8 relative h-1 rounded-full bg-[#F4F4F5] overflow-hidden">
+                    <motion.div
+                      className="absolute inset-y-0 w-1/2 rounded-full"
+                      style={{ background: `linear-gradient(90deg, transparent, ${step.accent}, transparent)` }}
+                      animate={{ x: ['-100%', '250%'] }}
+                      transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut", delay: i * 0.4 }}
+                    />
+                  </div>
+                </GlowCard>
               </motion.div>
             );
           })}

@@ -23,7 +23,7 @@ function MyCourses() {
       });
 
       if (data.status === "success") {
-        setCourses(data.data.courses);
+        setCourses(data.data.courses || []);
       } else {
         setCourses([]);
       }
@@ -33,6 +33,7 @@ function MyCourses() {
       setLoading(false);
     }
   };
+
   useEffect(() => {
     if (!isEducator) {
       setCourses([]);
@@ -42,34 +43,65 @@ function MyCourses() {
     fetchEduCourses();
   }, [isEducator]);
 
-  return loading || !courses ? (
-    <Loading />
-  ) : (
-    <div className="h-screen flex flex-col items-start justify-between md:p-8 md:pb-0 p-4 pb-0">
-      <div className="w-full">
-        <h2 className="pb-4 text-lg font-medium">My Courses</h2>
-        <div className="flex flex-col items-center max-w-4xl w-full overflow-hidden rounded-md bg-white border border-gray-500/20">
-          <table className="md:table-auto table-fixed w-full overflow-hidden">
-            <thead className="text-gray-900 border-b border-gray-500/20 text-sm text-left">
-              <tr>
-                <th className="px-4 py-3 font-semibold truncate">
-                  All Courses
+  if (loading || !courses) {
+    return <Loading />;
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-50/50 p-4 pt-6 md:p-8 space-y-6">
+      {/* Top Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-slate-200/80 pb-6">
+        <div>
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+              My Courses
+            </h1>
+            {courses.length > 0 && (
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100/80">
+                {courses.length} {courses.length === 1 ? "Course" : "Courses"}
+              </span>
+            )}
+          </div>
+          <p className="text-sm text-slate-500 mt-1">
+            Manage your published courses, monitor enrollments, and track
+            earnings.
+          </p>
+        </div>
+
+        {/* Quick Add Course Button */}
+        <button
+          onClick={() => navigate("/educator/add-course")}
+          className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-xl shadow-sm shadow-indigo-500/20 transition-all duration-150 active:scale-[0.98] self-start sm:self-auto cursor-pointer"
+        >
+          <span className="text-base leading-none font-bold">+</span>
+          <span>Add New Course</span>
+        </button>
+      </div>
+
+      {/* Courses Table Card */}
+      <div className="w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-slate-200/80 bg-slate-50/75">
+                <th className="py-3.5 px-6 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Course Title
                 </th>
-                <th className="px-4 py-3 font-semibold truncate text-center">
-                  Earnings
+                <th className="py-3.5 px-6 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">
+                  Total Earnings
                 </th>
-                <th className="px-4 py-3 font-semibold truncate text-center">
-                  Students
+                <th className="py-3.5 px-6 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">
+                  Enrolled Students
                 </th>
-                <th className="px-4 py-3 font-semibold truncate text-center">
-                  Published On
+                <th className="py-3.5 px-6 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">
+                  Published Date
                 </th>
               </tr>
             </thead>
-            <tbody className="text-sm text-gray-500">
+            <tbody className="divide-y divide-slate-100 text-sm">
               {courses.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="p-0">
+                  <td colSpan="4" className="py-12">
                     <EmptySection
                       imageSrc={assets.playfull_cat_vase}
                       title="No Courses Created"
@@ -81,34 +113,63 @@ function MyCourses() {
                   </td>
                 </tr>
               ) : (
-                courses.map((course) => (
-                  <tr key={course._id} className="border-b border-gray-500/20">
-                    <td className="md:px-4 pl-2 md:pl-4 py-3 flex items-center space-x-3 truncate">
-                      <img
-                        src={course.courseThumbnail}
-                        alt="Course illustration"
-                        className="w-16"
-                      />
-                      <span className="truncate hideen md:block">
-                        {course.courseTitle}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {currency}{" "}
-                      {Math.floor(
-                        course.enrolledStudents?.length *
-                          (course.coursePrice -
-                            (course.discount * course.coursePrice) / 100)
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {course.enrolledStudents.length}
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      {new Date(course.createdAt).toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))
+                courses.map((course) => {
+                  const studentCount = course.enrolledStudents?.length || 0;
+                  const price = course.coursePrice || 0;
+                  const discount = course.discount || 0;
+                  const effectivePrice = price - (discount * price) / 100;
+                  const earnings = Math.floor(studentCount * effectivePrice);
+
+                  const formattedDate = course.createdAt
+                    ? new Date(course.createdAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })
+                    : "—";
+
+                  return (
+                    <tr
+                      key={course._id}
+                      className="hover:bg-slate-50/70 transition-colors duration-150"
+                    >
+                      {/* Course Info */}
+                      <td className="py-4 px-6">
+                        <div className="flex items-center gap-3.5 min-w-0 max-w-md">
+                          <img
+                            src={course.courseThumbnail}
+                            alt={course.courseTitle || "Course thumbnail"}
+                            className="w-16 h-10 md:w-20 md:h-12 object-contain rounded-lg border border-slate-200/80 shadow-xs flex-shrink-0 bg-slate-100"
+                            onError={(e) => {
+                              e.target.src = assets.playfull_cat_vase;
+                            }}
+                          />
+                          <span className="font-semibold text-slate-800 line-clamp-2 text-sm leading-snug">
+                            {course.courseTitle || "Untitled Course"}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Earnings */}
+                      <td className="py-4 px-6 text-center font-semibold text-slate-900">
+                        {currency || "$"} {earnings.toLocaleString()}
+                      </td>
+
+                      {/* Students */}
+                      <td className="py-4 px-6 text-center">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100/60">
+                          {studentCount}{" "}
+                          {studentCount === 1 ? "student" : "students"}
+                        </span>
+                      </td>
+
+                      {/* Published Date */}
+                      <td className="py-4 px-6 text-center text-xs font-medium text-slate-500">
+                        {formattedDate}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
