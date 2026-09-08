@@ -1,4 +1,4 @@
-﻿import React, { useState } from "react";
+﻿﻿import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import {
   BookOpen,
@@ -38,7 +38,8 @@ const buildLmsPlatformUrl = (baseUrl, user) => {
   const params = new URLSearchParams();
   if (user.role) params.set("role", user.role);
   if (user.email) params.set("email", user.email);
-  if (user.fullName || user.username) params.set("name", user.fullName || user.username);
+  if (user.fullName || user.username)
+    params.set("name", user.fullName || user.username);
 
   if (!params.toString()) return baseUrl;
 
@@ -60,12 +61,13 @@ export default function Sidebar() {
     getExternalUrl(
       import.meta.env.VITE_LMS_URL,
       "http://localhost:5175",
-      LMS_PLATFORM_URL
+      LMS_PLATFORM_URL,
     ),
-    user
+    user,
   );
   const workspaceUrl =
-    import.meta.env.VITE_WORKSPACE_URL || "http://localhost:8087/_accounts/auth/openid";
+    import.meta.env.VITE_WORKSPACE_URL ||
+    "http://localhost:8087/_accounts/auth/openid";
 
   const handleLinkClick = () => {
     if (window.innerWidth < 1024) {
@@ -101,7 +103,7 @@ export default function Sidebar() {
       console.error("Interview launch failed", error);
       alert(
         error?.response?.data?.message ||
-          "Could not open the interview tool. Please try again."
+          "Could not open the interview tool. Please try again.",
       );
     } finally {
       setLaunchingInterview(false);
@@ -151,16 +153,17 @@ export default function Sidebar() {
     },
   ];
 
-const MENU_INTERVIEW = hasRole?.("Admin") || hasRole?.("Super-admin")
-    ? [
-        {
-          label: launchingInterview ? "Opening..." : "Test",
-          icon: ClipboardCheck,
-          action: handleInterviewLaunch,
-          disabled: launchingInterview,
-        },
-      ]
-    : [];
+  const MENU_INTERVIEW =
+    hasRole?.("Admin") || hasRole?.("Super-admin")
+      ? [
+          {
+            label: launchingInterview ? "Opening..." : "Test",
+            icon: ClipboardCheck,
+            action: handleInterviewLaunch,
+            disabled: launchingInterview,
+          },
+        ]
+      : [];
 
   const renderLink = (item, key = item.label) => {
     const Icon = item.icon || BookOpen;
@@ -260,7 +263,9 @@ const MENU_INTERVIEW = hasRole?.("Admin") || hasRole?.("Super-admin")
             {MENU_ORGANIZATION.map(renderLink)}
           </Section>
           {MENU_INTERVIEW.length > 0 && (
-            <Section title="Interview">{MENU_INTERVIEW.map(renderLink)}</Section>
+            <Section title="Interview">
+              {MENU_INTERVIEW.map(renderLink)}
+            </Section>
           )}
         </div>
       </aside>
