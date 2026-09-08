@@ -2,6 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const path = require("path");
 const cors = require("cors");
+const { rateLimit } = require("express-rate-limit");
 
 // Load env before importing routes/controllers that read process.env at module scope.
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
@@ -9,10 +10,28 @@ dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
 const app = express();
 app.set("trust proxy", 1);
 
+/* ------------------ CORS (must be registered FIRST) ------------------ */
+const corsOptions = {
+  origin: true,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "x-demo-role",
+    "X-Demo-Role",
+  ],
+};
+app.use(cors(corsOptions));
+app.options(/.*/, cors(corsOptions));
+
 const inviteRoutes = require("./routes/inviteRoutes");
 
 const connectDB = require("./config/db");
-const { startKeycloakKeepAlive, startSelfKeepAlive } = require("./utils/keepAlive");
+const {
+  startKeycloakKeepAlive,
+  startSelfKeepAlive,
+} = require("./utils/keepAlive");
 
 // Routes
 const authRoutes = require("./routes/authRoutes");
@@ -28,40 +47,53 @@ const policyRoutes = require("./routes/policyRoutes");
 const openInterviewerRoutes = require("./routes/openInterviewerRoutes");
 const { streamPolicyPdf } = require("./controllers/policyController");
 
-
 // 🔐 Keycloak middleware
-const {keycloakAuth} = require("./middlewares/keycloakAuth");
+const { keycloakAuth } = require("./middlewares/keycloakAuth");
 
-
-/* ------------------ MIDDLEWARES ------------------ */
+/* ------------------ BODY PARSING ------------------ */
 
 app.use(express.json());
 
+/* ------------------ INPUT SANITIZATION ------------------ */
+// npm install @exortek/express-mongo-sanitize express-xss-sanitizer hpp
+// Using the maintained Express-5-compatible forks — the original
+// express-mongo-sanitize / xss-clean packages throw on req.query in
+// Express 5, which is what caused your earlier CORS symptom.
+const mongoSanitize = require("@exortek/express-mongo-sanitize");
+const { xss } = require("express-xss-sanitizer");
+const hpp = require("hpp");
+
+app.use(mongoSanitize());
+app.use(xss());
+app.use(hpp());
+
+/* ------------------ RATE LIMITING ------------------ */
+// Registered before routes so it actually applies to real requests.
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 min
+  max: 100,
+  message: "Too many requests",
+});
+app.use("/api", limiter);
+
+/* ------------------ STATIC (now behind cors + sanitization) ------------------ */
+
 app.use("/public", express.static("public"));
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
-
-const corsOptions = {
-  origin: true,
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "x-demo-role",
-    "X-Demo-Role",
-  ],
-};
-
-app.use(cors(corsOptions));
-app.options(/.*/, cors(corsOptions));
+app.use(
+  "/uploads",
+  keycloakAuth,
+  express.static(path.join(__dirname, "uploads")),
+);
 
 app.use("/api/invite", inviteRoutes);
 app.use("/api/openinterviewer", openInterviewerRoutes);
 
-
 /* ------------------ DATABASE ------------------ */
 
-connectDB();
+connectDB().catch((err) => {
+  console.error("❌ Failed to connect to database:", err.message);
+  process.exit(1);
+});
 
 /* ------------------ ROUTES ------------------ */
 
@@ -79,7 +111,7 @@ app.use("/api/tasks", keycloakAuth, taskRoutes);
 app.use("/api/course-progress", keycloakAuth, courseProgressRoutes);
 app.use("/api/certificates", keycloakAuth, certificateRoutes);
 app.use("/api/admin", keycloakAuth, adminRoutes);
-app.use("/certificates", express.static("certificates"));
+app.use("/certificates", keycloakAuth, express.static("certificates"));
 
 /* ------------------ DEFAULT ------------------ */
 
@@ -96,7 +128,7 @@ app.get("/test", (req, res) => {
   res.send("TEST OK");
 });
 
-/* ------------------ ERROR HANDLER ------------------ */
+/* ------------------ ERROR HANDLER (must stay last) ------------------ */
 
 app.use((err, req, res, next) => {
   console.error("Server Error:", err);

@@ -46,18 +46,33 @@ const getKey = (header, callback) => {
 const resolveRole = (decoded) => {
   const clientRoles = decoded.resource_access?.["lms-client"]?.roles || [];
   const realmRoles = decoded.realm_access?.roles || [];
-  const allRolesUpper = [...clientRoles, ...realmRoles].map((role) => role.toUpperCase());
+  const allRolesUpper = [...clientRoles, ...realmRoles].map((role) =>
+    role.toUpperCase(),
+  );
 
-  if (allRolesUpper.includes("SUPERADMIN") || allRolesUpper.includes("SUPER-ADMIN")) return "Superadmin";
+  if (
+    allRolesUpper.includes("SUPERADMIN") ||
+    allRolesUpper.includes("SUPER-ADMIN")
+  )
+    return "Superadmin";
   if (allRolesUpper.includes("ADMIN")) return "Admin";
-  if (allRolesUpper.includes("SUBADMIN") || allRolesUpper.includes("SUB-ADMIN")) return "Subadmin";
+  if (allRolesUpper.includes("SUBADMIN") || allRolesUpper.includes("SUB-ADMIN"))
+    return "Subadmin";
   if (allRolesUpper.includes("EMPLOYEE")) return "Employee";
   return "Intern";
 };
 
 const buildDemoUser = (req) => {
-  const requestedRole = (req.headers["x-demo-role"] || "admin").toString().toLowerCase();
-  const safeRole = ["superadmin", "admin", "subadmin", "employee", "intern"].includes(requestedRole)
+  const requestedRole = (req.headers["x-demo-role"] || "admin")
+    .toString()
+    .toLowerCase();
+  const safeRole = [
+    "superadmin",
+    "admin",
+    "subadmin",
+    "employee",
+    "intern",
+  ].includes(requestedRole)
     ? requestedRole
     : "admin";
   const fullName = `${safeRole.charAt(0).toUpperCase()}${safeRole.slice(1)} User`;
@@ -65,8 +80,8 @@ const buildDemoUser = (req) => {
     safeRole === "superadmin"
       ? "Superadmin"
       : safeRole === "admin"
-      ? "Admin"
-      : `${safeRole.charAt(0).toUpperCase()}${safeRole.slice(1)}`;
+        ? "Admin"
+        : `${safeRole.charAt(0).toUpperCase()}${safeRole.slice(1)}`;
 
   return {
     id: `demo-${safeRole}`,
@@ -176,7 +191,7 @@ const keycloakAuth = async (req, res, next) => {
             } else {
               resolve(verifiedToken);
             }
-          }
+          },
         );
       });
 
@@ -193,7 +208,10 @@ const keycloakAuth = async (req, res, next) => {
 
       next();
     } catch (keycloakErr) {
-      console.warn("Keycloak token verification failed, trying local JWT secret fallback:", keycloakErr.message);
+      console.warn(
+        "Keycloak token verification failed, trying local JWT secret fallback:",
+        keycloakErr.message,
+      );
 
       if (token === "mock-token" || token === "demo-token") {
         req.user = buildDemoUser(req);
@@ -206,7 +224,7 @@ const keycloakAuth = async (req, res, next) => {
           process.env.JWT_SECRET || "fallback-secret-for-encryption-1234567890",
           {
             algorithms: ["HS256"],
-          }
+          },
         );
 
         const localUser = await User.findById(localDecoded.id);
@@ -225,13 +243,20 @@ const keycloakAuth = async (req, res, next) => {
 
         next();
       } catch (localErr) {
-        console.error("Local token verification also failed:", localErr.message);
-        res.status(401).json({ message: "Auth failed", error: keycloakErr.message });
+        console.error(
+          "Local token verification also failed:",
+          localErr.message,
+        );
+        res
+          .status(401)
+          .json({ message: "Auth failed", error: keycloakErr.message });
       }
     }
   } catch (error) {
     console.error("keycloakAuth middleware error:", error);
-    res.status(500).json({ message: "Internal server error during authentication" });
+    res
+      .status(500)
+      .json({ message: "Internal server error during authentication" });
   }
 };
 

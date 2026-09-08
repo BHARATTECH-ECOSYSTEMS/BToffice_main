@@ -8,7 +8,6 @@ import {
   GraduationCap,
   Landmark,
   LayoutDashboard,
-  Loader2,
   Share2,
   Users,
 } from "lucide-react";
@@ -58,7 +57,6 @@ export default function Sidebar() {
   const { sidebarOpen, toggleSidebar } = useSidebar();
   const { hasRole, loading, user } = useAuth();
   const [launchingInterview, setLaunchingInterview] = useState(false);
-
   const lmsUrl = buildLmsPlatformUrl(
     getExternalUrl(
       import.meta.env.VITE_LMS_URL,
@@ -67,7 +65,6 @@ export default function Sidebar() {
     ),
     user,
   );
-
   const workspaceUrl =
     import.meta.env.VITE_WORKSPACE_URL ||
     "http://localhost:8087/_accounts/auth/openid";
@@ -142,7 +139,7 @@ export default function Sidebar() {
       path: "https://fileupload.wetransfer.com/",
     },
     {
-      label: "Certificates",
+      label: hasRole?.("Admin") ? "Certificates" : "Certificates",
       icon: GraduationCap,
       path: "/generate-certificate",
     },
@@ -161,10 +158,9 @@ export default function Sidebar() {
       ? [
           {
             label: launchingInterview ? "Opening..." : "Test",
-            icon: launchingInterview ? Loader2 : ClipboardCheck,
+            icon: ClipboardCheck,
             action: handleInterviewLaunch,
             disabled: launchingInterview,
-            isLoading: launchingInterview,
           },
         ]
       : [];
@@ -181,8 +177,8 @@ export default function Sidebar() {
           title={`${item.label} URL is not configured`}
           className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl p-3 text-left text-sm font-medium text-gray-400 opacity-70"
         >
-          <Icon className="h-5 w-5 flex-shrink-0" />
-          <span className="truncate">{item.label}</span>
+          <Icon className="h-5 w-5" />
+          <span>{item.label}</span>
         </button>
       );
     }
@@ -194,14 +190,10 @@ export default function Sidebar() {
           type="button"
           onClick={item.action}
           disabled={item.disabled}
-          className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-indigo-50 hover:text-indigo-600 active:scale-[0.98] disabled:cursor-wait disabled:opacity-70"
+          className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-wait disabled:opacity-70"
         >
-          <Icon
-            className={`h-5 w-5 flex-shrink-0 ${
-              item.isLoading ? "animate-spin text-indigo-600" : ""
-            }`}
-          />
-          <span className="truncate">{item.label}</span>
+          <Icon className="h-5 w-5" />
+          <span>{item.label}</span>
         </button>
       );
     }
@@ -214,10 +206,10 @@ export default function Sidebar() {
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleLinkClick}
-          className="flex items-center gap-3 rounded-xl p-3 text-sm font-medium text-gray-700 transition-all duration-150 hover:bg-indigo-50 hover:text-indigo-600 active:scale-[0.98]"
+          className="flex items-center gap-3 p-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-600"
         >
-          <Icon className="h-5 w-5 flex-shrink-0" />
-          <span className="truncate">{item.label}</span>
+          <Icon className="w-5 h-5" />
+          <span>{item.label}</span>
         </a>
       );
     }
@@ -228,28 +220,28 @@ export default function Sidebar() {
         to={item.path}
         onClick={handleLinkClick}
         className={({ isActive }) =>
-          `flex items-center gap-3 rounded-xl p-3 text-sm font-medium transition-all duration-150 active:scale-[0.98] ${
+          `flex items-center gap-3 p-3 rounded-xl text-sm font-medium ${
             isActive
-              ? "bg-indigo-600 text-white shadow-sm shadow-indigo-500/25"
+              ? "bg-indigo-600 text-white"
               : "text-gray-700 hover:bg-indigo-50 hover:text-indigo-600"
           }`
         }
       >
-        <Icon className="h-5 w-5 flex-shrink-0" />
-        <span className="truncate">{item.label}</span>
+        <Icon className="w-5 h-5" />
+        <span>{item.label}</span>
       </NavLink>
     );
   };
 
   if (loading) {
-    return <div className="p-4 text-sm text-gray-500">Loading...</div>;
+    return <div className="p-4">Loading...</div>;
   }
 
   return (
     <>
       {sidebarOpen && (
         <div
-          className="lg:hidden fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity duration-300"
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
           onClick={toggleSidebar}
         />
       )}
@@ -257,8 +249,8 @@ export default function Sidebar() {
       <aside
         className={`fixed left-0 top-0 lg:top-[72px] z-50 lg:z-20
         h-full lg:h-[calc(100vh-72px)]
-        w-[220px] bg-white border-r border-gray-100 shadow-[1px_0_5px_0_rgba(0,0,0,0.03)] flex flex-col overflow-hidden
-        transform transition-transform duration-300 ease-in-out
+        w-[220px] bg-white shadow flex flex-col overflow-hidden
+        transform transition-transform duration-300
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
       >
         <div className="h-4 flex-shrink-0" />
@@ -284,7 +276,7 @@ export default function Sidebar() {
 function Section({ title, children }) {
   return (
     <div>
-      <p className="px-2 mb-2 text-[11px] font-bold text-gray-400 uppercase tracking-wider select-none">
+      <p className="px-2 mb-2 text-xs font-bold text-gray-500 uppercase">
         {title}
       </p>
       <div className="space-y-1">{children}</div>
