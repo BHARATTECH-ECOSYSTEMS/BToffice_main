@@ -8,8 +8,10 @@ const userSchema = new mongoose.Schema(
     imageUrl: { type: String, required: true },
     enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: "Course" }],
   },
-  { timestamps: true }
+  { timestamps: true },
 );
+
+userSchema.index({ email: 1 }, { unique: true, sparse: true });
 
 const User = mongoose.model("User", userSchema);
 export default User;

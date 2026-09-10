@@ -7,20 +7,23 @@ import { AppProvider } from "./context/AppContext.jsx";
 import { AuthProvider } from "./context/AuthContext.jsx";
 import { CourseProvider } from "./context/CourseContext.jsx";
 import { EnrollmentProvider } from "./context/EnrollmentContext.jsx";
+import { ErrorBoundary } from "./components/common/ErrorBoundary.jsx";
 
 const renderApp = () => {
   createRoot(document.getElementById("root")).render(
-    <BrowserRouter>
-      <AppProvider>
-        <AuthProvider>
-          <CourseProvider>
-            <EnrollmentProvider>
-              <App />
-            </EnrollmentProvider>
-          </CourseProvider>
-        </AuthProvider>
-      </AppProvider>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <AppProvider>
+          <AuthProvider>
+            <CourseProvider>
+              <EnrollmentProvider>
+                <App />
+              </EnrollmentProvider>
+            </CourseProvider>
+          </AuthProvider>
+        </AppProvider>
+      </BrowserRouter>
+    </ErrorBoundary>,
   );
 };
 

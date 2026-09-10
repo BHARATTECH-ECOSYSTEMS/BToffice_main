@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import { Webhook } from "svix";
 import User from "../models/User.js";
 import Stripe from "stripe";
@@ -67,7 +68,7 @@ export const stripeWebhooks = async (req, res) => {
     event = Stripe.webhooks.constructEvent(
       req.body, // Raw request body (must be raw, not parsed JSON)
       sig, // Stripe signature from headers
-      process.env.STRIPE_WEBHOOK_SECRET // Secret from Stripe dashboard
+      process.env.STRIPE_WEBHOOK_SECRET, // Secret from Stripe dashboard
     );
   } catch (err) {
     console.error("Webhook signature verification failed:", err.message);
@@ -80,42 +81,46 @@ export const stripeWebhooks = async (req, res) => {
     case "payment_intent.succeeded": {
       try {
         const paymentIntent = event.data.object;
-        const { purchaseId, userId, courseId } = paymentIntent.metadata;
+        const { purchaseId, userId, courseId } = paymentIntent.metadata || {};
 
         // Validate metadata exists
         if (!purchaseId || !userId || !courseId) {
           console.error(
             "Missing metadata in payment intent:",
-            paymentIntent.id
+            paymentIntent.id,
           );
           return res.status(400).json({ error: "Missing metadata" });
         }
 
-        // Fetch all relevant data from database
-        const purchaseData = await Purchase.findById(purchaseId);
-        const userData = await User.findById(userId);
-        const courseData = await Course.findById(courseId);
-
-        // Prevents crashes if metadata contains invalid IDs
-        if (!purchaseData || !userData || !courseData) {
-          console.error("Missing data:", { purchaseId, userId, courseId });
+        // Validate ObjectIds in metadata before any database operations
+        if (
+          !mongoose.Types.ObjectId.isValid(purchaseId) ||
+          !mongoose.Types.ObjectId.isValid(userId) ||
+          !mongoose.Types.ObjectId.isValid(courseId)
+        ) {
+          console.error("Invalid ObjectId metadata:", {
+            purchaseId,
+            userId,
+            courseId,
+          });
           return res.status(400).json({ error: "Invalid metadata" });
         }
 
-        // This ensures a student isn't enrolled multiple times
-        if (!courseData.enrolledStudents.includes(userId)) {
-          courseData.enrolledStudents.push(userData._id);
-          await courseData.save();
-        }
+        // Use atomic updates instead of save() for better performance
+        await Course.updateOne(
+          { _id: courseId },
+          { $addToSet: { enrolledStudents: userId } },
+        );
 
-        // Check if course already in user's enrollments
-        if (!userData.enrolledCourses.includes(courseId)) {
-          userData.enrolledCourses.push(courseData._id);
-          await userData.save();
-        }
+        await User.updateOne(
+          { _id: userId },
+          { $addToSet: { enrolledCourses: courseId } },
+        );
 
-        purchaseData.status = "completed";
-        await purchaseData.save();
+        await Purchase.updateOne(
+          { _id: purchaseId },
+          { $set: { status: "completed" } },
+        );
       } catch (error) {
         // If any database operation fails, we catch and log it
         console.error("Checkout session error:", error);
@@ -139,23 +144,24 @@ export const stripeWebhooks = async (req, res) => {
         if (sessions.data.length === 0) {
           console.error(
             "No session found for payment intent:",
-            paymentIntentId
+            paymentIntentId,
           );
           break;
         }
 
         const session = sessions.data[0];
-        const { purchaseId } = session.metadata;
+        const { purchaseId } = session.metadata || {};
 
         if (!purchaseId) {
           console.error("No purchaseId in metadata");
           break;
         }
 
-        const purchaseData = await Purchase.findById(purchaseId);
-        if (purchaseData) {
-          purchaseData.status = "failed";
-          await purchaseData.save();
+        if (mongoose.Types.ObjectId.isValid(purchaseId)) {
+          await Purchase.updateOne(
+            { _id: purchaseId },
+            { $set: { status: "failed" } },
+          );
         }
       } catch (error) {
         console.error("Payment failed handler error:", error);
