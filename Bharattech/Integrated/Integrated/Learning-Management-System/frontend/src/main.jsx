@@ -140,6 +140,20 @@ if (shouldUseDemoAuth) {
     if (keycloak.refreshToken) localStorage.setItem("refresh_token", keycloak.refreshToken);
     if (keycloak.idToken)      localStorage.setItem("id_token",      keycloak.idToken);
 
+    keycloak.onTokenExpired = () => {
+      keycloak.updateToken(30).then(() => {
+        if (keycloak.token) {
+          localStorage.setItem("token", keycloak.token);
+          localStorage.setItem("accessToken", keycloak.token);
+        }
+        if (keycloak.refreshToken) {
+          localStorage.setItem("refresh_token", keycloak.refreshToken);
+        }
+      }).catch((err) => {
+        console.warn("Auto-token refresh failed:", err);
+      });
+    };
+
     renderApp();
   };
 

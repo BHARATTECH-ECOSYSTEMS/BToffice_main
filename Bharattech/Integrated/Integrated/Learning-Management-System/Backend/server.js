@@ -45,6 +45,7 @@ const resetLinkRoutes = require("./routes/resetLinkRoutes");
 const resourceRoutes = require("./routes/resource");
 const policyRoutes = require("./routes/policyRoutes");
 const openInterviewerRoutes = require("./routes/openInterviewerRoutes");
+const librechatBridge = require("./routes/librechatBridge");
 const { streamPolicyPdf } = require("./controllers/policyController");
 
 // 🔐 Keycloak middleware
@@ -111,6 +112,7 @@ app.use("/api/tasks", keycloakAuth, taskRoutes);
 app.use("/api/course-progress", keycloakAuth, courseProgressRoutes);
 app.use("/api/certificates", keycloakAuth, certificateRoutes);
 app.use("/api/admin", keycloakAuth, adminRoutes);
+app.use("/api/ai-assistant", keycloakAuth, librechatBridge);
 app.use("/certificates", keycloakAuth, express.static("certificates"));
 
 /* ------------------ DEFAULT ------------------ */

@@ -9,7 +9,7 @@ const getUserId = (req) => req.user?.id;
 const hasAdminAccess = (req) =>
   req.user?.isPortalAdmin ||
   (req.user?.roles || []).some((role) =>
-    ["admin", "superadmin", "super-admin"].includes(String(role).toLowerCase())
+    ["admin", "superadmin", "super-admin"].includes(String(role).toLowerCase()),
   );
 const getEducatorCourseFilter = (req) =>
   hasAdminAccess(req) ? {} : { educator: getUserId(req) };
@@ -26,28 +26,41 @@ const getCompletedEnrollmentPurchases = async (courseIds) =>
 
 const ensureEducatorUser = async (req) => {
   const userId = getUserId(req);
+  const email = req.user?.email;
+
   const fallbackName =
     req.user?.name ||
     req.user?.fullName ||
     req.user?.username ||
-    req.user?.email ||
+    email ||
     "BharatTech Educator";
 
-  return User.findByIdAndUpdate(
-    userId,
-    {
-      $setOnInsert: {
-        _id: userId,
-        name: fallbackName,
-        email: req.user?.email || `${userId}@bharattech.local`,
-        imageUrl: req.user?.imageUrl || "",
-        enrolledCourses: [],
-      },
-    },
-    { new: true, upsert: true }
-  );
-};
+  // First use the authenticated ID; otherwise reuse the existing email record.
+  let user = await User.findById(userId);
 
+  if (!user && email) {
+    user = await User.findOne({ email });
+  }
+
+  if (user) return user;
+
+  try {
+    return await User.create({
+      _id: userId,
+      name: fallbackName,
+      email: email || `${userId}@bharattech.local`,
+      imageUrl: req.user?.imageUrl || "",
+      enrolledCourses: [],
+    });
+  } catch (error) {
+    // Another request may have created this email simultaneously.
+    if (error?.code === 11000 && email) {
+      const existingUser = await User.findOne({ email });
+      if (existingUser) return existingUser;
+    }
+    throw error;
+  }
+};
 const getLocalImageDataUrl = async (filePath, mimeType = "image/png") => {
   const imageBuffer = await fs.promises.readFile(filePath);
   return `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
@@ -69,7 +82,10 @@ const getCourseThumbnailUrl = async (imageFile) => {
         return imageUpload.secure_url;
       }
     } catch (error) {
-      console.warn("Cloudinary thumbnail upload failed, using embedded image:", error.message);
+      console.warn(
+        "Cloudinary thumbnail upload failed, using embedded image:",
+        error.message,
+      );
     }
   }
 
@@ -79,30 +95,44 @@ const getCourseThumbnailUrl = async (imageFile) => {
 const normalizeCourseData = (courseData) => {
   const normalizedChapters = Array.isArray(courseData.courseContent)
     ? courseData.courseContent
-      .map((chapter, chapterIndex) => ({
-        chapterId: chapter.chapterId || `chapter-${chapterIndex + 1}`,
-        chapterOrder: Number(chapter.chapterOrder) || chapterIndex + 1,
-        chapterTitle: String(chapter.chapterTitle || "").trim().slice(0, 200),
-        chapterContent: Array.isArray(chapter.chapterContent)
-          ? chapter.chapterContent
-            .map((lecture, lectureIndex) => ({
-              lectureId: lecture.lectureId || `lecture-${chapterIndex + 1}-${lectureIndex + 1}`,
-              lectureTitle: String(lecture.lectureTitle || "").trim().slice(0, 200),
-              lectureDuration: Number(lecture.lectureDuration) || 1,
-              lectureUrl: String(lecture.lectureUrl || "").trim(),
-              videoSource: lecture.videoSource === "cloudinary" ? "cloudinary" : "youtube",
-              isPreviewFree: Boolean(lecture.isPreviewFree),
-              lectureOrder: Number(lecture.lectureOrder) || lectureIndex + 1,
-            }))
-            .filter((lecture) => lecture.lectureTitle && lecture.lectureUrl)
-          : [],
-      }))
-      .filter((chapter) => chapter.chapterTitle)
+        .map((chapter, chapterIndex) => ({
+          chapterId: chapter.chapterId || `chapter-${chapterIndex + 1}`,
+          chapterOrder: Number(chapter.chapterOrder) || chapterIndex + 1,
+          chapterTitle: String(chapter.chapterTitle || "")
+            .trim()
+            .slice(0, 200),
+          chapterContent: Array.isArray(chapter.chapterContent)
+            ? chapter.chapterContent
+                .map((lecture, lectureIndex) => ({
+                  lectureId:
+                    lecture.lectureId ||
+                    `lecture-${chapterIndex + 1}-${lectureIndex + 1}`,
+                  lectureTitle: String(lecture.lectureTitle || "")
+                    .trim()
+                    .slice(0, 200),
+                  lectureDuration: Number(lecture.lectureDuration) || 1,
+                  lectureUrl: String(lecture.lectureUrl || "").trim(),
+                  videoSource:
+                    lecture.videoSource === "cloudinary"
+                      ? "cloudinary"
+                      : "youtube",
+                  isPreviewFree: Boolean(lecture.isPreviewFree),
+                  lectureOrder:
+                    Number(lecture.lectureOrder) || lectureIndex + 1,
+                }))
+                .filter((lecture) => lecture.lectureTitle && lecture.lectureUrl)
+            : [],
+        }))
+        .filter((chapter) => chapter.chapterTitle)
     : [];
 
   return {
-    courseTitle: String(courseData.courseTitle || "").trim().slice(0, 200),
-    courseDescription: String(courseData.courseDescription || "").trim().slice(0, 5000),
+    courseTitle: String(courseData.courseTitle || "")
+      .trim()
+      .slice(0, 200),
+    courseDescription: String(courseData.courseDescription || "")
+      .trim()
+      .slice(0, 5000),
     coursePrice: Number(courseData.coursePrice) || 0,
     discount: Number(courseData.discount) || 0,
     courseContent: normalizedChapters,
@@ -112,10 +142,17 @@ const normalizeCourseData = (courseData) => {
 const validateCourseData = (courseData) => {
   if (!courseData.courseTitle) return "Course title is required";
   if (!courseData.courseDescription) return "Course description is required";
-  if (!Array.isArray(courseData.courseContent) || courseData.courseContent.length === 0) {
+  if (
+    !Array.isArray(courseData.courseContent) ||
+    courseData.courseContent.length === 0
+  ) {
     return "At least one chapter is required";
   }
-  if (!courseData.courseContent.some((chapter) => chapter.chapterContent.length > 0)) {
+  if (
+    !courseData.courseContent.some(
+      (chapter) => chapter.chapterContent.length > 0,
+    )
+  ) {
     return "At least one lecture with a video URL is required";
   }
   if (courseData.discount < 0 || courseData.discount > 100) {
@@ -123,7 +160,10 @@ const validateCourseData = (courseData) => {
   }
   for (const chapter of courseData.courseContent) {
     for (const lecture of chapter.chapterContent) {
-      if (lecture.videoSource === "youtube" && !isValidYouTubeUrl(lecture.lectureUrl)) {
+      if (
+        lecture.videoSource === "youtube" &&
+        !isValidYouTubeUrl(lecture.lectureUrl)
+      ) {
         return `Invalid YouTube URL for lecture: "${lecture.lectureTitle || "Untitled Lecture"}"`;
       }
     }
@@ -138,10 +178,12 @@ export const addCourse = async (req, res) => {
   try {
     const userId = getUserId(req);
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthenticated" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthenticated" });
     }
 
-    await ensureEducatorUser(req);
+    const educatorUser = await ensureEducatorUser(req);
 
     const { courseData } = req.body;
     const imageFile = req.file;
@@ -160,7 +202,9 @@ export const addCourse = async (req, res) => {
 
     // Validate file size (5MB maximum)
     if (imageFile.size > 5 * 1024 * 1024) {
-      return res.status(400).json({ success: false, message: "Image too large" });
+      return res
+        .status(400)
+        .json({ success: false, message: "Image too large" });
     }
 
     let parsedCourseData;
@@ -176,10 +220,12 @@ export const addCourse = async (req, res) => {
 
     const validationMessage = validateCourseData(parsedCourseData);
     if (validationMessage) {
-      return res.status(400).json({ success: false, message: validationMessage });
+      return res
+        .status(400)
+        .json({ success: false, message: validationMessage });
     }
 
-    parsedCourseData.educator = userId;
+    parsedCourseData.educator = educatorUser._id;
     parsedCourseData.isPublished = true;
 
     parsedCourseData.courseThumbnail = await getCourseThumbnailUrl(imageFile);
@@ -188,7 +234,10 @@ export const addCourse = async (req, res) => {
 
     if (imageFile.path) {
       fs.promises.unlink(imageFile.path).catch((cleanupError) => {
-        console.warn("Could not remove uploaded course thumbnail temp file:", cleanupError.message);
+        console.warn(
+          "Could not remove uploaded course thumbnail temp file:",
+          cleanupError.message,
+        );
       });
     }
 
@@ -199,7 +248,9 @@ export const addCourse = async (req, res) => {
     });
   } catch (error) {
     console.error("addCourse error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -210,7 +261,9 @@ export const getEducatorCourses = async (req, res) => {
   try {
     const userId = getUserId(req);
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthenticated" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthenticated" });
     }
 
     const courses = await Course.find(getEducatorCourseFilter(req)).lean();
@@ -222,7 +275,9 @@ export const getEducatorCourses = async (req, res) => {
     });
   } catch (error) {
     console.error("getEducatorCourses error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -234,7 +289,9 @@ export const educatorDashboardData = async (req, res) => {
   try {
     const userId = getUserId(req);
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthenticated" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthenticated" });
     }
 
     const courses = await Course.find(getEducatorCourseFilter(req))
@@ -248,7 +305,7 @@ export const educatorDashboardData = async (req, res) => {
 
     const totalEarnings = purchases.reduce(
       (sum, purchase) => sum + (purchase.amount || 0),
-      0
+      0,
     );
 
     const enrolledStudentsData = purchases
@@ -269,7 +326,9 @@ export const educatorDashboardData = async (req, res) => {
     });
   } catch (error) {
     console.error("educatorDashboardData error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -280,7 +339,9 @@ export const getEnrolledStudentsData = async (req, res) => {
   try {
     const userId = getUserId(req);
     if (!userId) {
-      return res.status(401).json({ success: false, message: "Unauthenticated" });
+      return res
+        .status(401)
+        .json({ success: false, message: "Unauthenticated" });
     }
 
     const courses = await Course.find(getEducatorCourseFilter(req))
@@ -305,6 +366,8 @@ export const getEnrolledStudentsData = async (req, res) => {
     });
   } catch (error) {
     console.error("getEnrolledStudentsData error:", error);
-    return res.status(500).json({ success: false, message: "Internal server error" });
+    return res
+      .status(500)
+      .json({ success: false, message: "Internal server error" });
   }
 };

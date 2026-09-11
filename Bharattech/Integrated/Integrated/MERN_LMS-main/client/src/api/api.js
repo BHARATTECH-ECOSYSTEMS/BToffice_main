@@ -9,7 +9,10 @@ const api = axios.create({
 
 // Attach token automatically
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token"); // or your token logic
+  const token =
+    localStorage.getItem("token") ||
+    localStorage.getItem("accessToken") ||
+    sessionStorage.getItem("bharattechLmsToken");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }

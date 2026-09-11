@@ -36,6 +36,10 @@ services:
         sync: false
       - key: EMAIL_PASS
         sync: false
+      - key: LIBRECHAT_URL
+        value: https://bharattech-librechat.onrender.com
+      - key: LIBRECHAT_SHARED_SECRET
+        generateValue: true
 
   - type: web
     name: bharattech-learning-management-system
@@ -62,6 +66,8 @@ services:
         value: https://openinterviewer.onrender.com/login
       - key: VITE_WORKSPACE_URL
         value: https://bharattech-workspace.onrender.com
+      - key: VITE_LIBRECHAT_URL
+        value: https://bharattech-librechat.onrender.com
     routes:
       - type: rewrite
         source: /*

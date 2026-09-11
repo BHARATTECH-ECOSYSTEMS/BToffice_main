@@ -10,7 +10,8 @@ const KEYCLOAK_CLIENT_IDS = (
   .map((id) => id.trim())
   .filter(Boolean);
 
-const jwksUri = `${KEYCLOAK_URL.replace(/\/+$/, "")}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs`;
+const normalizedKeycloakUrl = KEYCLOAK_URL.replace(/\/+$/, "");
+const jwksUri = `${normalizedKeycloakUrl}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs`;
 
 const client = jwksClient({
   jwksUri,
@@ -46,19 +47,58 @@ export const protect = (roles = []) => {
         .json({ success: false, message: "Authentication required" });
     }
 
+    // First try local JWT secret if configured (for development / local tokens)
+    if (process.env.JWT_SECRET) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const rolesFromToken = (
+          Array.isArray(decoded.roles)
+            ? decoded.roles
+            : [decoded.role || "student"]
+        ).map((r) => String(r).toLowerCase());
+
+        req.user = {
+          id: decoded.id || decoded.sub || decoded.userId,
+          username: decoded.username || decoded.name || "user",
+          email: decoded.email,
+          roles: rolesFromToken,
+        };
+
+        if (roles.length) {
+          const allowed = roles.map((r) => r.toLowerCase());
+          const hasAccess =
+            rolesFromToken.includes("admin") ||
+            rolesFromToken.includes("superadmin") ||
+            rolesFromToken.some((r) => allowed.includes(r));
+
+          if (!hasAccess) {
+            return res.status(403).json({ success: false, message: "Forbidden" });
+          }
+        }
+        return next();
+      } catch {
+        // Fall back to Keycloak RS256 JWKS verification
+      }
+    }
+
     jwt.verify(
       token,
       getKey,
       {
         algorithms: ["RS256"],
-        issuer: `${KEYCLOAK_URL}/realms/${KEYCLOAK_REALM}`,
-        clockTolerance: 30,
+        issuer: `${normalizedKeycloakUrl}/realms/${KEYCLOAK_REALM}`,
+        clockTolerance: 60,
       },
       (err, decoded) => {
         if (err) {
+          console.error("Token verification failed:", err.message);
           return res
             .status(401)
-            .json({ success: false, message: "Invalid or expired token" });
+            .json({
+              success: false,
+              message: "Invalid or expired token",
+              error: err.message,
+            });
         }
 
         const clientRoles = KEYCLOAK_CLIENT_IDS.flatMap(

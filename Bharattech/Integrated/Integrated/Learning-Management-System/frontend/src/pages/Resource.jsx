@@ -15,6 +15,7 @@ import { useEffect, useState, useCallback, useRef, forwardRef } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuth } from "../LMS/context/AuthContext";
 import api from "../api/axios";
+import { AIChatEmbed } from "../components/resources/AIChatEmbed";
 
 const BHARATTECH_APP_URL = "bharattech://open";
 const BHARATTECH_DOWNLOAD_URL = "/downloads/BharatTech_0.53.0_x64-setup.exe";
@@ -530,6 +531,18 @@ const Resource = () => {
           </div>
         ))}
       </div>
+
+      {/* AI Assistant Section */}
+      <section className="mt-12">
+        <div className="flex items-center gap-3 mb-6">
+          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300" />
+          <span className="text-xs font-semibold tracking-wider text-slate-500 uppercase bg-slate-100 px-3.5 py-1 rounded-full border border-slate-200">
+            AI Powered
+          </span>
+          <div className="h-px flex-1 bg-gradient-to-l from-transparent via-slate-300" />
+        </div>
+        <AIChatEmbed className="min-h-[700px]" minHeight="700px" />
+      </section>
 
       {/* ADD RESOURCE MODAL */}
       {isAdding && isAdmin && (
