@@ -14,6 +14,7 @@ import {
 import { useSidebar } from "../contexts/SidebarContext";
 import { useAuth } from "../LMS/context/AuthContext";
 import api from "../api/axios";
+import keycloak from "../auth/keycloak";
 import { buildFallbackLaunchUrl } from "../utils/openInterviewer";
 
 const LOCAL_HOSTS = ["localhost", "127.0.0.1"];
@@ -32,23 +33,46 @@ const getExternalUrl = (configuredUrl, localUrl, deployedUrl = "") => {
   return isLocalHost ? localUrl : deployedUrl;
 };
 
-const buildLmsPlatformUrl = (baseUrl, user) => {
-  if (!baseUrl || !user) return baseUrl;
+const buildLmsPlatformUrl = (baseUrl, user, explicitToken, explicitRefresh) => {
+  if (!baseUrl) return baseUrl;
 
   const params = new URLSearchParams();
-  if (user.role) params.set("role", user.role);
-  if (user.email) params.set("email", user.email);
-  if (user.fullName || user.username)
+
+  if (user?.role) params.set("role", user.role);
+  if (user?.email) params.set("email", user.email);
+
+  if (user?.fullName || user?.username) {
     params.set("name", user.fullName || user.username);
+  }
+
+  const token =
+    explicitToken ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("accessToken") ||
+    sessionStorage.getItem("token");
+
+  if (token) params.set("token", token);
+
+  const refreshToken =
+    explicitRefresh ||
+    localStorage.getItem("refresh_token") ||
+    sessionStorage.getItem("refresh_token");
+
+  if (refreshToken) params.set("refresh_token", refreshToken);
 
   if (!params.toString()) return baseUrl;
 
   try {
     const url = new URL(baseUrl);
-    params.forEach((value, key) => url.searchParams.set(key, value));
+
+    params.forEach((value, key) => {
+      url.searchParams.set(key, value);
+    });
+
     return url.toString();
   } catch {
     const separator = baseUrl.includes("?") ? "&" : "?";
+
     return `${baseUrl}${separator}${params.toString()}`;
   }
 };
@@ -56,7 +80,9 @@ const buildLmsPlatformUrl = (baseUrl, user) => {
 export default function Sidebar() {
   const { sidebarOpen, toggleSidebar } = useSidebar();
   const { hasRole, loading, user } = useAuth();
+
   const [launchingInterview, setLaunchingInterview] = useState(false);
+
   const lmsUrl = buildLmsPlatformUrl(
     getExternalUrl(
       import.meta.env.VITE_LMS_URL,
@@ -65,6 +91,7 @@ export default function Sidebar() {
     ),
     user,
   );
+
   const workspaceUrl =
     import.meta.env.VITE_WORKSPACE_URL ||
     "http://localhost:8087/_accounts/auth/openid";
@@ -79,11 +106,13 @@ export default function Sidebar() {
     if (launchingInterview) return;
 
     const interviewWindow = window.open("", "_blank");
+
     setLaunchingInterview(true);
     handleLinkClick();
 
     try {
       const { data } = await api.post("/openinterviewer/launch-token");
+
       const launchUrl =
         data?.launchUrl ||
         (data?.token ? buildFallbackLaunchUrl(data.token) : null);
@@ -100,7 +129,9 @@ export default function Sidebar() {
       }
     } catch (error) {
       interviewWindow?.close();
+
       console.error("Interview launch failed", error);
+
       alert(
         error?.response?.data?.message ||
           "Could not open the interview tool. Please try again.",
@@ -110,22 +141,77 @@ export default function Sidebar() {
     }
   };
 
+  const handleLmsLaunch = async () => {
+    handleLinkClick();
+
+    let activeToken =
+      localStorage.getItem("token") || localStorage.getItem("accessToken");
+
+    let activeRefresh = localStorage.getItem("refresh_token");
+
+    if (keycloak?.authenticated) {
+      try {
+        await keycloak.updateToken(30);
+
+        activeToken = keycloak.token || activeToken;
+        activeRefresh = keycloak.refreshToken || activeRefresh;
+
+        if (activeToken) {
+          localStorage.setItem("token", activeToken);
+          localStorage.setItem("accessToken", activeToken);
+        }
+
+        if (activeRefresh) {
+          localStorage.setItem("refresh_token", activeRefresh);
+        }
+      } catch (err) {
+        console.warn("Keycloak token refresh before LMS launch failed:", err);
+      }
+    }
+
+    const targetUrl = buildLmsPlatformUrl(
+      getExternalUrl(
+        import.meta.env.VITE_LMS_URL,
+        "http://localhost:5175",
+        LMS_PLATFORM_URL,
+      ),
+      user,
+      activeToken,
+      activeRefresh,
+    );
+
+    window.open(targetUrl, "_blank", "noopener,noreferrer");
+  };
+
   const MENU_TOP = [
-    { label: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
-    { label: "People", icon: Users, path: "/people" },
+    {
+      label: "Dashboard",
+      icon: LayoutDashboard,
+      path: "/dashboard",
+    },
+    {
+      label: "People",
+      icon: Users,
+      path: "/people",
+    },
   ];
 
   const MENU_LEARNING = [
     {
       label: "LMS Platform",
       icon: Landmark,
+      action: handleLmsLaunch,
       external: true,
       path: lmsUrl,
     },
   ];
 
   const MENU_RESOURCES = [
-    { label: "Resources", icon: BookOpen, path: "/resources" },
+    {
+      label: "Resources",
+      icon: BookOpen,
+      path: "/resources",
+    },
     {
       label: "Workspace",
       icon: FolderKanban,
@@ -257,11 +343,15 @@ export default function Sidebar() {
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-6">
           <Section title="Navigation">{MENU_TOP.map(renderLink)}</Section>
+
           <Section title="Learning">{MENU_LEARNING.map(renderLink)}</Section>
+
           <Section title="Resources">{MENU_RESOURCES.map(renderLink)}</Section>
+
           <Section title="Organization Management">
             {MENU_ORGANIZATION.map(renderLink)}
           </Section>
+
           {MENU_INTERVIEW.length > 0 && (
             <Section title="Interview">
               {MENU_INTERVIEW.map(renderLink)}
@@ -279,6 +369,7 @@ function Section({ title, children }) {
       <p className="px-2 mb-2 text-xs font-bold text-gray-500 uppercase">
         {title}
       </p>
+
       <div className="space-y-1">{children}</div>
     </div>
   );

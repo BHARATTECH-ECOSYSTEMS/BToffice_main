@@ -26,28 +26,41 @@ const getCompletedEnrollmentPurchases = async (courseIds) =>
 
 const ensureEducatorUser = async (req) => {
   const userId = getUserId(req);
+  const email = req.user?.email;
+
   const fallbackName =
     req.user?.name ||
     req.user?.fullName ||
     req.user?.username ||
-    req.user?.email ||
+    email ||
     "BharatTech Educator";
 
-  return User.findByIdAndUpdate(
-    userId,
-    {
-      $setOnInsert: {
-        _id: userId,
-        name: fallbackName,
-        email: req.user?.email || `${userId}@bharattech.local`,
-        imageUrl: req.user?.imageUrl || "",
-        enrolledCourses: [],
-      },
-    },
-    { new: true, upsert: true },
-  );
-};
+  // First use the authenticated ID; otherwise reuse the existing email record.
+  let user = await User.findById(userId);
 
+  if (!user && email) {
+    user = await User.findOne({ email });
+  }
+
+  if (user) return user;
+
+  try {
+    return await User.create({
+      _id: userId,
+      name: fallbackName,
+      email: email || `${userId}@bharattech.local`,
+      imageUrl: req.user?.imageUrl || "",
+      enrolledCourses: [],
+    });
+  } catch (error) {
+    // Another request may have created this email simultaneously.
+    if (error?.code === 11000 && email) {
+      const existingUser = await User.findOne({ email });
+      if (existingUser) return existingUser;
+    }
+    throw error;
+  }
+};
 const getLocalImageDataUrl = async (filePath, mimeType = "image/png") => {
   const imageBuffer = await fs.promises.readFile(filePath);
   return `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
@@ -170,7 +183,7 @@ export const addCourse = async (req, res) => {
         .json({ success: false, message: "Unauthenticated" });
     }
 
-    await ensureEducatorUser(req);
+    const educatorUser = await ensureEducatorUser(req);
 
     const { courseData } = req.body;
     const imageFile = req.file;
@@ -212,7 +225,7 @@ export const addCourse = async (req, res) => {
         .json({ success: false, message: validationMessage });
     }
 
-    parsedCourseData.educator = userId;
+    parsedCourseData.educator = educatorUser._id;
     parsedCourseData.isPublished = true;
 
     parsedCourseData.courseThumbnail = await getCourseThumbnailUrl(imageFile);
