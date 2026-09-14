@@ -10,12 +10,13 @@ import {
   Link2,
   AppWindow,
   Command,
+  Bot,
+  Sparkles,
 } from "lucide-react";
 import { useEffect, useState, useCallback, useRef, forwardRef } from "react";
 import toast, { Toaster } from "react-hot-toast";
 import { useAuth } from "../LMS/context/AuthContext";
 import api from "../api/axios";
-import { AIChatEmbed } from "../components/resources/AIChatEmbed";
 
 const BHARATTECH_APP_URL = "bharattech://open";
 const BHARATTECH_DOWNLOAD_URL = "/downloads/BharatTech_0.53.0_x64-setup.exe";
@@ -174,6 +175,69 @@ const Resource = () => {
     window.location.href = `${BHARATTECH_APP_URL}?${params.toString()}`;
     toast.success("Opening BharatTech Coding Workspace app...");
   }, [keycloak]);
+
+  const [isLaunchingLibreChat, setIsLaunchingLibreChat] = useState(false);
+
+  const openLibreChat = useCallback(async () => {
+    setIsLaunchingLibreChat(true);
+
+    // Open blank window immediately to prevent popup blockers
+    const newTab = window.open("about:blank", "_blank");
+
+    try {
+      if (keycloak?.authenticated) {
+        try {
+          await keycloak.updateToken(30);
+        } catch (error) {
+          console.warn(
+            "Could not refresh Keycloak token before LibreChat launch",
+            error,
+          );
+        }
+      }
+
+      let librechatBase =
+        import.meta.env.VITE_LIBRECHAT_URL || "http://localhost:3080";
+
+      try {
+        const res = await api.get("/ai-assistant/token");
+        if (res?.data?.librechatUrl) {
+          librechatBase = res.data.librechatUrl;
+        }
+      } catch (err) {
+        console.warn(
+          "Could not fetch ai-assistant config, using default URL",
+          err,
+        );
+      }
+
+      const cleanBase = librechatBase.replace(/\/+$/, "");
+      // OpenID SSO endpoint initiates Keycloak authentication for LibreChat
+      const ssoLaunchUrl = `${cleanBase}/oauth/openid`;
+
+      if (newTab) {
+        newTab.opener = null;
+        newTab.location.href = ssoLaunchUrl;
+      } else {
+        window.open(ssoLaunchUrl, "_blank", "noopener,noreferrer");
+      }
+
+      toast.success("Opening LibreChat with SSO...");
+    } catch (err) {
+      if (newTab) newTab.close();
+      console.error("LibreChat launch error:", err);
+      toast.error("Failed to open LibreChat");
+    } finally {
+      setIsLaunchingLibreChat(false);
+    }
+  }, [keycloak]);
+
+  const openLibreChatDirect = useCallback(() => {
+    const librechatBase =
+      import.meta.env.VITE_LIBRECHAT_URL || "http://localhost:3080";
+    window.open(librechatBase, "_blank", "noopener,noreferrer");
+    toast.success("Opening LibreChat...");
+  }, []);
 
   const downloadBharatTechApp = useCallback(() => {
     const linkElement = document.createElement("a");
@@ -448,6 +512,69 @@ const Resource = () => {
             </div>
           </div>
         </div>
+
+        {/* LIBRECHAT AI CARD */}
+        <div className={cardShell}>
+          <div className="h-[5px] bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-700" />
+          <div className="flex h-full flex-col p-5">
+            <IconBadge
+              icon={Bot}
+              className="mb-4 bg-indigo-50 text-indigo-600"
+            />
+            <Eyebrow className="text-blue-500">AI Assistant</Eyebrow>
+            <h3 className="mb-1.5 text-[17px] font-bold tracking-tight text-slate-900">
+              LibreChat
+            </h3>
+            <p className="mb-5 text-sm leading-relaxed text-slate-500">
+              Open BharatTech AI Assistant with Keycloak SSO
+            </p>
+
+            <div className="mt-auto flex flex-col gap-2.5">
+              <Btn
+                variant="primary"
+                onClick={openLibreChat}
+                disabled={isLaunchingLibreChat}
+                className="w-full"
+              >
+                {isLaunchingLibreChat ? (
+                  <>
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    <span>Connecting SSO...</span>
+                  </>
+                ) : (
+                  <>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span>Open</span>
+                  </>
+                )}
+              </Btn>
+              <p className="py-3.5 text-center text-xs font-medium text-slate-500">
+                Enterprise AI & Code Assistant
+              </p>
+              <Btn
+                variant="outline"
+                onClick={openLibreChatDirect}
+                className="w-full"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-indigo-600" />
+                Direct Web Access
+              </Btn>
+
+              {/* Status & Capabilities line — matches coder card geometry */}
+              <div className="flex items-center justify-center gap-3 pt-1 text-xs text-slate-400">
+                <span className="flex items-center gap-1">
+                  <Bot className="h-3.5 w-3.5" />
+                  GPT & Claude
+                </span>
+                <span className="h-3 w-px bg-slate-200" />
+                <span className="flex items-center gap-1">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  SSO Ready
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
         {/* RESOURCE CARDS */}
         {resources.map((r) => (
           <div key={r?._id} className={cardShell}>
@@ -531,18 +658,6 @@ const Resource = () => {
           </div>
         ))}
       </div>
-
-      {/* AI Assistant Section */}
-      <section className="mt-12">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="h-px flex-1 bg-gradient-to-r from-transparent via-slate-300" />
-          <span className="text-xs font-semibold tracking-wider text-slate-500 uppercase bg-slate-100 px-3.5 py-1 rounded-full border border-slate-200">
-            AI Powered
-          </span>
-          <div className="h-px flex-1 bg-gradient-to-l from-transparent via-slate-300" />
-        </div>
-        <AIChatEmbed className="min-h-[700px]" minHeight="700px" />
-      </section>
 
       {/* ADD RESOURCE MODAL */}
       {isAdding && isAdmin && (
