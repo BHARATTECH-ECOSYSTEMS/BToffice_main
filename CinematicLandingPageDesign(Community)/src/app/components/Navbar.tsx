@@ -1,53 +1,60 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Link, useLocation, useNavigate } from 'react-router';
-import { Menu, X, ArrowUpRight, ExternalLink, Hash, FileText } from 'lucide-react';
-import { ImageWithFallback } from './figma/ImageWithFallback';
-import bharattechLogo from '../../imports/BHARATTECH_ORIGIN_Logo-02.png';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { Link, useLocation, useNavigate } from "react-router";
+import {
+  Menu,
+  X,
+  ArrowUpRight,
+  ExternalLink,
+  Hash,
+  FileText,
+} from "lucide-react";
+import { ImageWithFallback } from "./figma/ImageWithFallback";
+import bharattechLogo from "../../imports/BHARATTECH_ORIGIN_Logo-02.png";
 
 const isLocalDev =
-  typeof window !== 'undefined' &&
-  ['localhost', '127.0.0.1'].includes(window.location.hostname);
+  typeof window !== "undefined" &&
+  ["localhost", "127.0.0.1"].includes(window.location.hostname);
 
 const employeeLoginUrl = isLocalDev
-  ? 'http://localhost:5173/login'
-  : 'https://bharattech-learning-management-system.onrender.com/login';
+  ? "http://localhost:5173/login"
+  : "https://learning-management-frontend-v1nx.onrender.com/login";
 
 interface NavItemSection {
   label: string;
-  type: 'section';
+  type: "section";
   id: string;
 }
 
 interface NavItemRoute {
   label: string;
-  type: 'route';
+  type: "route";
   to: string;
 }
 
 type NavItem = NavItemSection | NavItemRoute;
 
 const mainSections: NavItemSection[] = [
-  { label: 'Home', type: 'section', id: 'home' },
-  { label: 'Mission', type: 'section', id: 'mission' },
-  { label: 'Capabilities', type: 'section', id: 'capabilities' },
+  { label: "Home", type: "section", id: "home" },
+  { label: "Mission", type: "section", id: "mission" },
+  { label: "Capabilities", type: "section", id: "capabilities" },
 ];
 
 const pageRoutes: NavItemRoute[] = [
-  { label: 'Research', type: 'route', to: '/research' },
-  { label: 'Careers', type: 'route', to: '/careers' },
-  { label: 'Blog', type: 'route', to: '/blog' },
-  { label: 'Contact', type: 'route', to: '/contact' },
+  { label: "Research", type: "route", to: "/research" },
+  { label: "Careers", type: "route", to: "/careers" },
+  { label: "Blog", type: "route", to: "/blog" },
+  { label: "Contact", type: "route", to: "/contact" },
 ];
 
 export const Navbar = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<string>('home');
+  const [activeSection, setActiveSection] = useState<string>("home");
 
   useEffect(() => {
-    if (location.pathname !== '/') return;
+    if (location.pathname !== "/") return;
 
     const sectionIds = mainSections.map((s) => s.id);
     const handleScroll = () => {
@@ -66,18 +73,18 @@ export const Navbar = () => {
       }
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll, { passive: true });
     handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [location.pathname]);
 
   const handleSectionClick = (id: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     setMobileOpen(false);
-    if (location.pathname === '/') {
-      document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    if (location.pathname === "/") {
+      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
     } else {
-      navigate('/', { state: { scrollTo: id } });
+      navigate("/", { state: { scrollTo: id } });
     }
   };
 
@@ -105,7 +112,8 @@ export const Navbar = () => {
           {/* Section Navigation Links */}
           <div className="flex items-center gap-1">
             {mainSections.map((item) => {
-              const isActive = location.pathname === '/' && activeSection === item.id;
+              const isActive =
+                location.pathname === "/" && activeSection === item.id;
               return (
                 <a
                   key={item.label}
@@ -113,8 +121,8 @@ export const Navbar = () => {
                   onClick={handleSectionClick(item.id)}
                   className={`relative px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1 ${
                     isActive
-                      ? 'text-[#09090B] font-semibold bg-white shadow-xs'
-                      : 'text-[#09090B]/60 hover:text-[#09090B] hover:bg-white/50'
+                      ? "text-[#09090B] font-semibold bg-white shadow-xs"
+                      : "text-[#09090B]/60 hover:text-[#09090B] hover:bg-white/50"
                   }`}
                   title={`Scroll to ${item.label} section`}
                 >
@@ -125,7 +133,10 @@ export const Navbar = () => {
           </div>
 
           {/* Divider */}
-          <div className="w-[1px] h-4 bg-[#09090B]/15 mx-1" aria-hidden="true" />
+          <div
+            className="w-[1px] h-4 bg-[#09090B]/15 mx-1"
+            aria-hidden="true"
+          />
 
           {/* Page Navigation Links */}
           <div className="flex items-center gap-1">
@@ -137,8 +148,8 @@ export const Navbar = () => {
                   to={item.to}
                   className={`relative px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 flex items-center gap-1 ${
                     isActive
-                      ? 'text-[#09090B] font-semibold bg-white shadow-xs'
-                      : 'text-[#09090B]/65 hover:text-[#09090B] hover:bg-white/50'
+                      ? "text-[#09090B] font-semibold bg-white shadow-xs"
+                      : "text-[#09090B]/65 hover:text-[#09090B] hover:bg-white/50"
                   }`}
                   title={`Go to ${item.label} page`}
                 >
@@ -167,7 +178,7 @@ export const Navbar = () => {
         <button
           type="button"
           onClick={() => setMobileOpen((open) => !open)}
-          aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
           aria-expanded={mobileOpen}
           className="lg:hidden flex items-center justify-center w-10 h-10 rounded-full bg-[#F4F4F8]/85 backdrop-blur-xl border border-[#EDEDF3] text-[#09090B] flex-shrink-0 shadow-xs active:scale-95 transition-transform"
         >
@@ -182,7 +193,7 @@ export const Navbar = () => {
             initial={{ opacity: 0, y: -10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.98 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
             className="lg:hidden mt-3 max-w-7xl mx-auto flex flex-col gap-3 bg-[#F4F4F8]/95 backdrop-blur-2xl rounded-2xl border border-[#EDEDF3] p-4 shadow-xl max-h-[80vh] overflow-y-auto"
           >
             {/* Section Links */}
@@ -193,7 +204,8 @@ export const Navbar = () => {
               </div>
               <div className="flex flex-col gap-1 mt-1">
                 {mainSections.map((item) => {
-                  const isActive = location.pathname === '/' && activeSection === item.id;
+                  const isActive =
+                    location.pathname === "/" && activeSection === item.id;
                   return (
                     <a
                       key={item.label}
@@ -201,12 +213,14 @@ export const Navbar = () => {
                       onClick={handleSectionClick(item.id)}
                       className={`px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center justify-between ${
                         isActive
-                          ? 'bg-white text-[#09090B] font-semibold shadow-xs'
-                          : 'text-[#09090B]/75 hover:bg-white/60'
+                          ? "bg-white text-[#09090B] font-semibold shadow-xs"
+                          : "text-[#09090B]/75 hover:bg-white/60"
                       }`}
                     >
                       <span>{item.label}</span>
-                      <span className="text-xs text-[#09090B]/40 font-normal">Section</span>
+                      <span className="text-xs text-[#09090B]/40 font-normal">
+                        Section
+                      </span>
                     </a>
                   );
                 })}
@@ -231,8 +245,8 @@ export const Navbar = () => {
                       onClick={() => setMobileOpen(false)}
                       className={`px-3.5 py-2.5 rounded-xl text-sm font-medium transition-colors flex items-center justify-between ${
                         isActive
-                          ? 'bg-white text-[#09090B] font-semibold shadow-xs'
-                          : 'text-[#09090B]/75 hover:bg-white/60'
+                          ? "bg-white text-[#09090B] font-semibold shadow-xs"
+                          : "text-[#09090B]/75 hover:bg-white/60"
                       }`}
                     >
                       <span>{item.label}</span>

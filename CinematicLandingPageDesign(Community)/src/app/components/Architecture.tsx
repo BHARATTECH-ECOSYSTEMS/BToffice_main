@@ -4,8 +4,7 @@ import {
   AnimatePresence,
   useMotionValue,
   useSpring,
-  useTransform,
-} from "motion/react";
+} from "motion/react"; // or 'framer-motion'
 import {
   PlugZap,
   BrainCircuit,
@@ -21,7 +20,6 @@ import {
   ArrowRight,
   Cpu,
   Layers,
-  Share2,
   ShieldCheck,
   Zap,
   Play,
@@ -115,7 +113,7 @@ const steps: StepData[] = [
 ];
 
 // ==========================================
-// Magnetic Button Component
+// Responsive Magnetic Button Component
 // ==========================================
 const MagneticButton = ({
   children,
@@ -132,17 +130,18 @@ const MagneticButton = ({
   const x = useMotionValue(0);
   const y = useMotionValue(0);
 
-  const springConfig = { damping: 15, stiffness: 150, mass: 0.1 };
+  const springConfig = { damping: 18, stiffness: 200, mass: 0.1 };
   const mouseX = useSpring(x, springConfig);
   const mouseY = useSpring(y, springConfig);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLButtonElement>) => {
-    if (!ref.current) return;
+    // Only apply magnetic physics on mouse/fine pointer devices
+    if (!window.matchMedia("(pointer: fine)").matches || !ref.current) return;
     const { left, top, width, height } = ref.current.getBoundingClientRect();
     const centerX = left + width / 2;
     const centerY = top + height / 2;
-    x.set((e.clientX - centerX) * 0.25);
-    y.set((e.clientY - centerY) * 0.25);
+    x.set((e.clientX - centerX) * 0.2);
+    y.set((e.clientY - centerY) * 0.2);
   };
 
   const handleMouseLeave = () => {
@@ -157,18 +156,19 @@ const MagneticButton = ({
       onMouseLeave={handleMouseLeave}
       onClick={onClick}
       style={{ x: mouseX, y: mouseY }}
-      whileTap={{ scale: 0.97 }}
-      className={`relative group inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-full font-medium text-[15px] transition-all duration-300 select-none overflow-hidden ${
+      whileTap={{ scale: 0.98 }}
+      className={`relative group inline-flex items-center justify-center gap-2.5 px-7 py-3.5 rounded-full font-medium text-sm sm:text-base tracking-tight transition-all duration-300 select-none overflow-hidden w-full sm:w-auto active:scale-[0.98] ${
         primary
-          ? "bg-[#6A35FF] text-white shadow-[0_4px_24px_rgba(106,53,255,0.28)] hover:shadow-[0_8px_32px_rgba(106,53,255,0.45)] hover:bg-[#5B25EE]"
-          : "bg-white text-[#09090B] border border-zinc-200 hover:border-[#6A35FF]/40 hover:text-[#6A35FF] shadow-[0_2px_8px_rgba(0,0,0,0.03)]"
+          ? "bg-[#09090B] text-white hover:bg-[#18181B] hover:shadow-[0_10px_30px_rgba(106,53,255,0.3)] shadow-sm"
+          : "bg-white/90 hover:bg-[#FAFAFC] text-[#09090B] border border-zinc-200 hover:border-zinc-400/60 shadow-xs hover:shadow-sm"
       } ${className}`}
     >
-      {/* Subtle shine highlight for primary button */}
       {primary && (
-        <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out" />
+        <span className="absolute inset-0 w-full h-full bg-gradient-to-r from-transparent via-white/15 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out pointer-events-none" />
       )}
-      <span className="relative z-10 flex items-center gap-2">{children}</span>
+      <span className="relative z-10 flex items-center justify-center gap-2">
+        {children}
+      </span>
     </motion.button>
   );
 };
@@ -186,32 +186,30 @@ const IngestionVisual = () => {
   ];
 
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center p-6 sm:p-10 select-none overflow-hidden">
-      {/* Background radial glow */}
-      <div className="absolute w-72 h-72 rounded-full bg-[#6A35FF]/10 blur-3xl pointer-events-none" />
+    <div className="relative w-full h-full flex flex-col items-center justify-center p-4 sm:p-8 select-none overflow-hidden">
+      <div className="absolute w-64 sm:w-72 h-64 sm:h-72 rounded-full bg-[#6A35FF]/10 blur-3xl pointer-events-none" />
 
-      {/* Dynamic Graph Visualizer */}
-      <div className="relative z-10 w-full max-w-md flex items-center justify-between gap-4">
-        {/* Left Side: Source Nodes */}
-        <div className="flex flex-col gap-2.5">
+      <div className="relative z-10 w-full max-w-sm sm:max-w-md flex items-center justify-between gap-2 sm:gap-4">
+        {/* Left: Source Nodes */}
+        <div className="flex flex-col gap-2">
           {sources.map((src, idx) => {
             const Icon = src.icon;
             return (
               <motion.div
                 key={src.name}
-                initial={{ opacity: 0, x: -20 }}
+                initial={{ opacity: 0, x: -16 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.4, delay: idx * 0.08 }}
-                whileHover={{ scale: 1.04, x: 4 }}
-                className="flex items-center gap-2.5 px-3.5 py-2 rounded-xl bg-white/90 backdrop-blur-md border border-zinc-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.04)] cursor-pointer"
+                transition={{ duration: 0.35, delay: idx * 0.06 }}
+                whileHover={{ scale: 1.03, x: 3 }}
+                className="flex items-center gap-2 sm:gap-2.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-white/95 backdrop-blur-md border border-zinc-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.03)] cursor-pointer"
               >
                 <div
-                  className="w-7 h-7 rounded-lg flex items-center justify-center text-white text-xs shadow-xs"
+                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center text-white text-xs shadow-xs flex-shrink-0"
                   style={{ backgroundColor: src.color }}
                 >
-                  <Icon size={14} />
+                  <Icon size={13} />
                 </div>
-                <span className="text-xs font-semibold text-zinc-800">
+                <span className="text-[11px] sm:text-xs font-semibold text-zinc-800 whitespace-nowrap">
                   {src.name}
                 </span>
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse ml-auto" />
@@ -220,10 +218,10 @@ const IngestionVisual = () => {
           })}
         </div>
 
-        {/* Center: Particle Stream Lines (SVG) */}
-        <div className="flex-1 flex flex-col items-center justify-center px-2">
+        {/* Center: Particle Stream Lines */}
+        <div className="flex-1 flex flex-col items-center justify-center px-1 sm:px-2">
           <svg
-            className="w-full h-44 overflow-visible"
+            className="w-full h-36 sm:h-44 overflow-visible"
             viewBox="0 0 100 100"
             preserveAspectRatio="none"
           >
@@ -239,7 +237,6 @@ const IngestionVisual = () => {
                 <motion.circle
                   r="2.5"
                   fill="#6A35FF"
-                  initial={{ offsetDistance: "0%" }}
                   animate={{
                     cx: [0, 50, 100],
                     cy: [y, 50, 50],
@@ -257,39 +254,37 @@ const IngestionVisual = () => {
           </svg>
         </div>
 
-        {/* Right Side: Central Ingestion Core */}
-        <div className="flex flex-col items-center">
+        {/* Right: Central Ingestion Core */}
+        <div className="flex flex-col items-center flex-shrink-0">
           <motion.div
             animate={{
               boxShadow: [
                 "0 0 0 0 rgba(106,53,255,0.2)",
-                "0 0 0 16px rgba(106,53,255,0)",
+                "0 0 0 14px rgba(106,53,255,0)",
               ],
             }}
             transition={{ duration: 2, repeat: Infinity }}
-            className="w-20 h-20 rounded-2xl bg-gradient-to-tr from-[#6A35FF] to-[#9065FF] flex flex-col items-center justify-center text-white p-3 shadow-lg shadow-purple-500/25 relative"
+            className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-[#6A35FF] to-[#9065FF] flex flex-col items-center justify-center text-white p-2.5 shadow-lg shadow-purple-500/25 relative"
           >
-            <Layers className="w-8 h-8 mb-1 animate-bounce" />
-            <span className="text-[10px] font-bold tracking-wider uppercase">
+            <Layers className="w-6 h-6 sm:w-8 sm:h-8 mb-0.5 sm:mb-1" />
+            <span className="text-[9px] sm:text-[10px] font-bold tracking-wider uppercase">
               Origin
             </span>
-
-            {/* Orbiting micro-badge */}
-            <div className="absolute -bottom-2.5 px-2 py-0.5 rounded-full bg-zinc-900 text-[9px] font-mono text-emerald-400 border border-zinc-700 whitespace-nowrap shadow-xs">
+            <div className="absolute -bottom-2.5 px-2 py-0.5 rounded-full bg-zinc-900 text-[8px] sm:text-[9px] font-mono text-emerald-400 border border-zinc-700 whitespace-nowrap shadow-xs">
               LIVE SYNC
             </div>
           </motion.div>
         </div>
       </div>
 
-      {/* Real-time Telemetry Bar */}
-      <div className="mt-8 w-full max-w-md bg-zinc-50 border border-zinc-200/80 rounded-xl p-3 flex items-center justify-between text-xs font-mono">
-        <div className="flex items-center gap-2 text-zinc-600">
-          <Cpu size={14} className="text-[#6A35FF]" />
-          <span>Knowledge Graph Node v4.2</span>
+      {/* Telemetry Bar */}
+      <div className="mt-6 sm:mt-8 w-full max-w-sm sm:max-w-md bg-zinc-50/90 border border-zinc-200/80 rounded-xl p-2.5 sm:p-3 flex items-center justify-between text-[11px] sm:text-xs font-mono">
+        <div className="flex items-center gap-2 text-zinc-600 truncate">
+          <Cpu size={14} className="text-[#6A35FF] flex-shrink-0" />
+          <span className="truncate">Knowledge Graph Node v4.2</span>
         </div>
-        <div className="flex items-center gap-1.5 text-emerald-600 font-semibold">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+        <div className="flex items-center gap-1.5 text-emerald-600 font-semibold flex-shrink-0 ml-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping" />
           <span>99.98% Synced</span>
         </div>
       </div>
@@ -302,15 +297,14 @@ const IngestionVisual = () => {
 // ==========================================
 const NeuralVisual = () => {
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center p-6 sm:p-10 select-none overflow-hidden">
-      <div className="absolute w-80 h-80 rounded-full bg-[#7C3AED]/10 blur-3xl pointer-events-none" />
+    <div className="relative w-full h-full flex flex-col items-center justify-center p-4 sm:p-8 select-none overflow-hidden">
+      <div className="absolute w-72 sm:w-80 h-72 sm:h-80 rounded-full bg-[#7C3AED]/10 blur-3xl pointer-events-none" />
 
-      {/* Memory Graph Visualization Matrix */}
-      <div className="relative z-10 w-full max-w-md bg-white/80 backdrop-blur-md border border-zinc-200/80 rounded-2xl p-5 shadow-[0_8px_32px_rgba(124,58,237,0.06)]">
+      <div className="relative z-10 w-full max-w-sm sm:max-w-md bg-white/90 backdrop-blur-md border border-zinc-200/80 rounded-2xl p-4 sm:p-5 shadow-[0_8px_32px_rgba(124,58,237,0.06)]">
         {/* Header HUD */}
-        <div className="flex items-center justify-between border-b border-zinc-100 pb-3 mb-4">
+        <div className="flex items-center justify-between border-b border-zinc-100 pb-2.5 mb-3">
           <div className="flex items-center gap-2">
-            <Sparkles size={16} className="text-[#7C3AED]" />
+            <Sparkles size={15} className="text-[#7C3AED]" />
             <span className="text-xs font-semibold text-zinc-900">
               Neural Memory Synthesis
             </span>
@@ -321,13 +315,9 @@ const NeuralVisual = () => {
         </div>
 
         {/* Neural Network Nodes */}
-        <div className="relative h-56 sm:h-60 w-full flex items-center justify-center overflow-hidden">
-          {/* Background Synaptic Connection Lines (SVG) */}
-          <svg
-            className="absolute inset-0 w-full h-full pointer-events-none stroke-purple-200/70"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {/* Diagonal Synapse Lines */}
+        <div className="relative h-52 sm:h-60 w-full flex items-center justify-center overflow-hidden">
+          {/* Synaptic Connection Lines */}
+          <svg className="absolute inset-0 w-full h-full pointer-events-none stroke-purple-200/70">
             <line
               x1="22%"
               y1="22%"
@@ -362,15 +352,14 @@ const NeuralVisual = () => {
             />
           </svg>
 
-          {/* Concentric Orbital Radar Rings */}
+          {/* Radar Rings */}
           <div
-            className="absolute w-44 h-44 rounded-full border border-purple-200/50 animate-spin"
+            className="absolute w-40 sm:w-44 h-40 sm:h-44 rounded-full border border-purple-200/50 animate-spin"
             style={{ animationDuration: "25s" }}
           />
-          <div className="absolute w-28 h-28 rounded-full border border-dashed border-purple-300/70" />
-          <div className="absolute w-64 h-64 rounded-full bg-[#7C3AED]/5 blur-2xl pointer-events-none" />
+          <div className="absolute w-24 sm:w-28 h-24 sm:h-28 rounded-full border border-dashed border-purple-300/70" />
 
-          {/* Center: Core Intelligence Nucleus */}
+          {/* Center Nucleus */}
           <motion.div
             animate={{
               scale: [1, 1.05, 1],
@@ -381,106 +370,81 @@ const NeuralVisual = () => {
               ],
             }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            className="relative z-10 w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] flex items-center justify-center text-white"
+            className="relative z-10 w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-[#7C3AED] to-[#5B21B6] flex items-center justify-center text-white"
           >
-            <BrainCircuit size={26} strokeWidth={2} />
-            {/* Micro Live Ping Dot */}
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+            <BrainCircuit size={24} strokeWidth={2} />
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-300 border-2 border-white" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-purple-300 border-2 border-white" />
             </span>
           </motion.div>
 
-          {/* Node 1: Top-Left */}
+          {/* Floating Nodes with Responsive Text */}
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: [0, -6, 0] }}
-            transition={{
-              opacity: { duration: 0.4 },
-              y: {
-                duration: 3.5,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 0,
-              },
-            }}
-            className="absolute top-3 left-3 sm:top-4 sm:left-6 z-20"
+            animate={{ y: [0, -5, 0] }}
+            transition={{ duration: 3.5, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-2 left-2 sm:top-3 sm:left-4 z-20"
           >
-            <div className="px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-purple-200/90 text-xs font-semibold text-zinc-800 shadow-[0_4px_16px_rgba(124,58,237,0.08)] flex items-center gap-2 hover:border-[#7C3AED] transition-colors cursor-default">
-              <span className="w-2 h-2 rounded-full bg-[#7C3AED] animate-pulse" />
-              <span>User Preferences</span>
+            <div className="px-2.5 py-1 sm:py-1.5 rounded-lg bg-white/95 backdrop-blur-md border border-purple-200/90 text-[10px] sm:text-xs font-semibold text-zinc-800 shadow-xs flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#7C3AED] animate-pulse" />
+              <span>User Prefs</span>
             </div>
           </motion.div>
 
-          {/* Node 2: Top-Right */}
           <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: [0, 6, 0] }}
+            animate={{ y: [0, 5, 0] }}
             transition={{
-              opacity: { duration: 0.4, delay: 0.1 },
-              y: {
-                duration: 3.8,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 0.6,
-              },
+              duration: 3.8,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 0.6,
             }}
-            className="absolute top-3 right-3 sm:top-4 sm:right-6 z-20"
+            className="absolute top-2 right-2 sm:top-3 sm:right-4 z-20"
           >
-            <div className="px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-purple-200/90 text-xs font-semibold text-zinc-800 shadow-[0_4px_16px_rgba(124,58,237,0.08)] flex items-center gap-2 hover:border-[#7C3AED] transition-colors cursor-default">
-              <span className="w-2 h-2 rounded-full bg-[#6A35FF]" />
+            <div className="px-2.5 py-1 sm:py-1.5 rounded-lg bg-white/95 backdrop-blur-md border border-purple-200/90 text-[10px] sm:text-xs font-semibold text-zinc-800 shadow-xs flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#6A35FF]" />
               <span>Domain Lexicon</span>
             </div>
           </motion.div>
 
-          {/* Node 3: Bottom-Left */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: [0, 6, 0] }}
+            animate={{ y: [0, 5, 0] }}
             transition={{
-              opacity: { duration: 0.4, delay: 0.2 },
-              y: {
-                duration: 3.6,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 1.2,
-              },
+              duration: 3.6,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 1.2,
             }}
-            className="absolute bottom-3 left-3 sm:bottom-4 sm:left-6 z-20"
+            className="absolute bottom-2 left-2 sm:bottom-3 sm:left-4 z-20"
           >
-            <div className="px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-purple-200/90 text-xs font-semibold text-zinc-800 shadow-[0_4px_16px_rgba(124,58,237,0.08)] flex items-center gap-2 hover:border-[#7C3AED] transition-colors cursor-default">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <div className="px-2.5 py-1 sm:py-1.5 rounded-lg bg-white/95 backdrop-blur-md border border-purple-200/90 text-[10px] sm:text-xs font-semibold text-zinc-800 shadow-xs flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
               <span>Decision Logs</span>
             </div>
           </motion.div>
 
-          {/* Node 4: Bottom-Right */}
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: [0, -6, 0] }}
+            animate={{ y: [0, -5, 0] }}
             transition={{
-              opacity: { duration: 0.4, delay: 0.3 },
-              y: {
-                duration: 4.0,
-                repeat: Infinity,
-                ease: "easeInOut",
-                delay: 1.8,
-              },
+              duration: 4.0,
+              repeat: Infinity,
+              ease: "easeInOut",
+              delay: 1.8,
             }}
-            className="absolute bottom-3 right-3 sm:bottom-4 sm:right-6 z-20"
+            className="absolute bottom-2 right-2 sm:bottom-3 sm:right-4 z-20"
           >
-            <div className="px-3 py-1.5 rounded-xl bg-white/95 backdrop-blur-md border border-purple-200/90 text-xs font-semibold text-zinc-800 shadow-[0_4px_16px_rgba(124,58,237,0.08)] flex items-center gap-2 hover:border-[#7C3AED] transition-colors cursor-default">
-              <span className="w-2 h-2 rounded-full bg-[#4F46E5]" />
-              <span>Semantic Embeddings</span>
+            <div className="px-2.5 py-1 sm:py-1.5 rounded-lg bg-white/95 backdrop-blur-md border border-purple-200/90 text-[10px] sm:text-xs font-semibold text-zinc-800 shadow-xs flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#4F46E5]" />
+              <span>Embeddings</span>
             </div>
           </motion.div>
         </div>
 
         {/* Live Weight Feedback Bar */}
-        <div className="mt-4 pt-3 border-t border-zinc-100 flex items-center justify-between text-[11px]">
+        <div className="mt-3 pt-2.5 border-t border-zinc-100 flex items-center justify-between text-[11px]">
           <span className="text-zinc-500">Active Token Parameters</span>
           <span className="font-mono font-semibold text-[#7C3AED]">
-            3.8M Context Windows
+            3.8M Context
           </span>
         </div>
       </div>
@@ -493,13 +457,12 @@ const NeuralVisual = () => {
 // ==========================================
 const DeploymentVisual = () => {
   return (
-    <div className="relative w-full h-full flex flex-col items-center justify-center p-6 sm:p-10 select-none overflow-hidden">
-      <div className="absolute w-80 h-80 rounded-full bg-[#4F46E5]/10 blur-3xl pointer-events-none" />
+    <div className="relative w-full h-full flex flex-col items-center justify-center p-4 sm:p-8 select-none overflow-hidden">
+      <div className="absolute w-72 sm:w-80 h-72 sm:h-80 rounded-full bg-[#4F46E5]/10 blur-3xl pointer-events-none" />
 
-      {/* Interactive Runtime Terminal Card */}
-      <div className="relative z-10 w-full max-w-md bg-zinc-950 rounded-2xl p-4 sm:p-5 shadow-2xl border border-zinc-800 text-zinc-200">
-        {/* Terminal Titlebar */}
-        <div className="flex items-center justify-between border-b border-zinc-800 pb-3 mb-3">
+      <div className="relative z-10 w-full max-w-sm sm:max-w-md bg-zinc-950 rounded-2xl p-4 sm:p-5 shadow-2xl border border-zinc-800 text-zinc-200">
+        {/* Titlebar */}
+        <div className="flex items-center justify-between border-b border-zinc-800 pb-2.5 mb-3">
           <div className="flex items-center gap-1.5">
             <div className="w-2.5 h-2.5 rounded-full bg-rose-500/80" />
             <div className="w-2.5 h-2.5 rounded-full bg-amber-500/80" />
@@ -507,47 +470,50 @@ const DeploymentVisual = () => {
           </div>
           <div className="flex items-center gap-1.5 text-[11px] font-mono text-zinc-400">
             <Terminal size={12} />
-            <span>origin.runtime.deploy()</span>
+            <span>origin.deploy()</span>
           </div>
           <span className="text-[10px] font-mono text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2 py-0.5 rounded">
             200 OK
           </span>
         </div>
 
-        {/* Code Snippet Preview */}
-        <div className="font-mono text-xs text-zinc-300 space-y-1.5 py-1">
+        {/* Code Preview */}
+        <div className="font-mono text-[11px] sm:text-xs text-zinc-300 space-y-1 py-1 overflow-x-auto">
           <p className="text-zinc-500">// Initialize streaming interface</p>
           <p>
             <span className="text-[#818CF8]">const</span> agent ={" "}
             <span className="text-[#38BDF8]">Origin</span>.
             <span className="text-purple-400">createClient</span>({"{"}
           </p>
-          <p className="pl-4 text-emerald-300">
+          <p className="pl-3.5 text-emerald-300">
             stream: <span className="text-amber-300">true</span>,
           </p>
-          <p className="pl-4 text-emerald-300">
+          <p className="pl-3.5 text-emerald-300">
             cache:{" "}
             <span className="text-amber-300">&quot;neural-edge&quot;</span>
           </p>
           <p>{"}"});</p>
           <div className="pt-2 flex items-center gap-2 text-[#818CF8]">
             <span>&gt;</span>
-            <span className="text-zinc-100">
+            <span className="text-zinc-100 truncate">
               Deploying: Chat, Slack, REST API...
             </span>
-            <span className="w-2 h-4 bg-[#818CF8] animate-pulse" />
+            <span className="w-1.5 h-3.5 bg-[#818CF8] animate-pulse flex-shrink-0" />
           </div>
         </div>
 
         {/* Channels Grid Pills */}
-        <div className="mt-4 pt-3 border-t border-zinc-800/80 grid grid-cols-3 gap-2">
-          {["Web / Mobile", "Voice Agent", "REST SDK"].map((channel) => (
+        <div className="mt-4 pt-3 border-t border-zinc-800/80 grid grid-cols-3 gap-1.5 sm:gap-2">
+          {["Web / App", "Voice Bot", "REST API"].map((channel) => (
             <div
               key={channel}
-              className="px-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-[10px] font-medium text-center text-zinc-300 flex items-center justify-center gap-1"
+              className="px-1.5 sm:px-2 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-[10px] font-medium text-center text-zinc-300 flex items-center justify-center gap-1 truncate"
             >
-              <CheckCircle2 size={10} className="text-emerald-400" />
-              <span>{channel}</span>
+              <CheckCircle2
+                size={10}
+                className="text-emerald-400 flex-shrink-0"
+              />
+              <span className="truncate">{channel}</span>
             </div>
           ))}
         </div>
@@ -559,34 +525,30 @@ const DeploymentVisual = () => {
 // ==========================================
 // Main Architecture Section Component
 // ==========================================
-export const Architecture = () => {
+export const Architecture: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
-  const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Auto-advance step timeline when not interacting
+  // Auto-advance step timeline when not paused
   useEffect(() => {
     if (!isAutoPlaying) return;
-    autoPlayTimerRef.current = setInterval(() => {
+    const interval = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % steps.length);
     }, 6000);
 
-    return () => {
-      if (autoPlayTimerRef.current) clearInterval(autoPlayTimerRef.current);
-    };
+    return () => clearInterval(interval);
   }, [isAutoPlaying]);
-
-  const currentStepData = steps[activeStep];
 
   return (
     <section
-      className="relative py-28 sm:py-36 px-6 sm:px-8 lg:px-12 bg-[#FAFAFA] text-[#09090B] overflow-hidden selection:bg-[#6A35FF]/15 selection:text-[#6A35FF]"
+      id="architecture"
+      className="relative py-20 sm:py-28 lg:py-32 px-4 sm:px-8 lg:px-12 bg-[#FAFAFA] text-[#09090B] overflow-hidden selection:bg-[#6A35FF]/15 selection:text-[#6A35FF]"
       style={{
         fontFamily:
           "SF Pro Display, -apple-system, BlinkMacSystemFont, Inter, sans-serif",
       }}
     >
-      {/* Background Decorative Grid Canvas */}
+      {/* Background Decorative Grid */}
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.35]"
         style={{
@@ -595,15 +557,12 @@ export const Architecture = () => {
         }}
       />
 
-      {/* Top Ambient Glow Orb */}
+      {/* Top Ambient Glow */}
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[350px] bg-gradient-to-b from-[#6A35FF]/8 via-[#7C3AED]/4 to-transparent blur-[120px] pointer-events-none rounded-full" />
 
       <div className="max-w-7xl mx-auto relative z-10">
-        {/* ==========================================
-            Header Section: Typographic Masthead
-           ========================================== */}
-        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-16 sm:mb-20">
-          {/* Eyebrow badge */}
+        {/* ── Masthead ── */}
+        <div className="flex flex-col items-center text-center max-w-3xl mx-auto mb-12 sm:mb-16 lg:mb-20">
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -617,13 +576,12 @@ export const Architecture = () => {
             </span>
           </motion.div>
 
-          {/* Main Headline with high-craft gradient accent */}
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-            className="text-4xl sm:text-5xl lg:text-6xl font-semibold tracking-tight text-[#09090B] leading-[1.12]"
+            className="text-3xl sm:text-5xl lg:text-6xl font-semibold tracking-tight text-[#09090B] leading-[1.12]"
           >
             Launch your enterprise AI assistant{" "}
             <span className="relative whitespace-nowrap">
@@ -646,40 +604,36 @@ export const Architecture = () => {
             </span>
           </motion.h2>
 
-          {/* Subtitle */}
           <motion.p
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-6 text-base sm:text-lg text-[#52525B] leading-relaxed max-w-2xl font-normal"
+            className="mt-4 sm:mt-6 text-base sm:text-lg text-[#52525B] leading-relaxed max-w-2xl font-normal"
           >
             A cohesive three-stage intelligence engine that transforms raw
             enterprise silos into an evolving, self-improving memory layer.
           </motion.p>
         </div>
 
-        {/* ==========================================
-            Interactive System Stage (Desktop Dual-Pane)
-           ========================================== */}
+        {/* ── Interactive Dual-Pane Stage ── */}
         <div
-          className="bg-white/70 backdrop-blur-xl border border-zinc-200/80 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05),0_0_1px_1px_rgba(0,0,0,0.03)]"
+          className="bg-white/80 backdrop-blur-xl border border-zinc-200/80 rounded-3xl p-4 sm:p-6 lg:p-8 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.05),0_0_1px_1px_rgba(0,0,0,0.03)]"
           onMouseEnter={() => setIsAutoPlaying(false)}
           onMouseLeave={() => setIsAutoPlaying(true)}
         >
-          {/* Top Progress Controller Bar */}
-          <div className="flex items-center justify-between pb-6 border-b border-zinc-100">
+          {/* Top Controller Bar */}
+          <div className="flex items-center justify-between pb-4 sm:pb-6 border-b border-zinc-100">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              <span className="text-[11px] sm:text-xs font-semibold text-zinc-500 uppercase tracking-wider">
                 Interactive Pipeline
               </span>
               <span className="text-zinc-300">•</span>
-              <span className="text-xs font-mono text-[#6A35FF] font-semibold">
+              <span className="text-[11px] sm:text-xs font-mono text-[#6A35FF] font-semibold">
                 Step {activeStep + 1} of 3
               </span>
             </div>
 
-            {/* Play/Pause Auto-Scrub Toggle */}
             <button
               onClick={() => setIsAutoPlaying(!isAutoPlaying)}
               className="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-zinc-500 hover:text-zinc-800 bg-zinc-100 hover:bg-zinc-200/80 transition-colors"
@@ -692,10 +646,10 @@ export const Architecture = () => {
             </button>
           </div>
 
-          {/* Main Dual-Pane Section */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch pt-6">
-            {/* Left Rail: Interactive Step Cards (5 cols) */}
-            <div className="lg:col-span-5 flex flex-col gap-3.5 justify-between">
+          {/* Grid Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch pt-6">
+            {/* Left Rail: Interactive Step Cards */}
+            <div className="lg:col-span-5 flex flex-col gap-3 justify-between">
               {steps.map((step, idx) => {
                 const Icon = step.icon;
                 const isActive = activeStep === idx;
@@ -707,14 +661,13 @@ export const Architecture = () => {
                       setActiveStep(idx);
                       setIsAutoPlaying(false);
                     }}
-                    whileHover={{ scale: 1.01 }}
-                    className={`relative p-5 sm:p-6 rounded-2xl cursor-pointer transition-all duration-300 border ${
+                    whileHover={{ scale: 1.008 }}
+                    className={`relative p-4 sm:p-5 lg:p-6 rounded-2xl cursor-pointer transition-all duration-300 border ${
                       isActive
                         ? "bg-white border-zinc-300 shadow-[0_8px_24px_-4px_rgba(106,53,255,0.12)]"
                         : "bg-zinc-50/60 hover:bg-white/90 border-transparent hover:border-zinc-200"
                     }`}
                   >
-                    {/* Active Step Indicator Pill & Timeline Progress Bar */}
                     {isActive && (
                       <motion.div
                         layoutId="activeCardIndicator"
@@ -727,10 +680,9 @@ export const Architecture = () => {
                       />
                     )}
 
-                    <div className="flex items-start gap-4">
-                      {/* Step Number + Icon Badge */}
+                    <div className="flex items-start gap-3.5 sm:gap-4">
                       <div
-                        className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors duration-300"
+                        className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors duration-300"
                         style={{
                           background: isActive
                             ? step.accentLight
@@ -738,13 +690,13 @@ export const Architecture = () => {
                           color: isActive ? step.accent : "#71717A",
                         }}
                       >
-                        <Icon size={20} />
+                        <Icon size={19} />
                       </div>
 
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center justify-between mb-1 gap-2">
                           <span
-                            className="text-[11px] font-bold font-mono tracking-wider uppercase"
+                            className="text-[10px] sm:text-[11px] font-bold font-mono tracking-wider uppercase truncate"
                             style={{
                               color: isActive ? step.accent : "#A1A1AA",
                             }}
@@ -752,13 +704,13 @@ export const Architecture = () => {
                             STEP {step.number} • {step.tag}
                           </span>
                           {isActive && (
-                            <span className="text-[11px] font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
+                            <span className="text-[10px] sm:text-[11px] font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60 flex-shrink-0">
                               {step.metricValue}
                             </span>
                           )}
                         </div>
 
-                        <h3 className="text-base sm:text-lg font-semibold text-zinc-900 tracking-tight">
+                        <h3 className="text-sm sm:text-base lg:text-lg font-semibold text-zinc-900 tracking-tight">
                           {step.title}
                         </h3>
 
@@ -766,7 +718,6 @@ export const Architecture = () => {
                           {step.description}
                         </p>
 
-                        {/* Expanded features for the currently active step */}
                         <AnimatePresence>
                           {isActive && (
                             <motion.div
@@ -783,7 +734,7 @@ export const Architecture = () => {
                                 >
                                   <CheckCircle2
                                     size={13}
-                                    className="text-[#6A35FF]"
+                                    className="text-[#6A35FF] flex-shrink-0"
                                   />
                                   <span>{feat}</span>
                                 </div>
@@ -794,10 +745,11 @@ export const Architecture = () => {
                       </div>
                     </div>
 
-                    {/* Auto-play progress bar filling on active card */}
+                    {/* Progress indicator that resets on activeStep change */}
                     {isActive && isAutoPlaying && (
                       <div className="absolute bottom-0 left-4 right-4 h-[2px] bg-zinc-100 overflow-hidden rounded-full">
                         <motion.div
+                          key={`progress-${activeStep}`}
                           initial={{ width: "0%" }}
                           animate={{ width: "100%" }}
                           transition={{ duration: 6, ease: "linear" }}
@@ -810,8 +762,8 @@ export const Architecture = () => {
               })}
             </div>
 
-            {/* Right Canvas: Dynamic Living Interface Stage (7 cols) */}
-            <div className="lg:col-span-7 bg-zinc-100/70 border border-zinc-200/80 rounded-2xl relative overflow-hidden flex items-center justify-center min-h-[380px] lg:min-h-[440px]">
+            {/* Right Canvas */}
+            <div className="lg:col-span-7 bg-zinc-100/70 border border-zinc-200/80 rounded-2xl relative overflow-hidden flex items-center justify-center min-h-[340px] sm:min-h-[400px] lg:min-h-[440px]">
               <AnimatePresence mode="wait">
                 {activeStep === 0 && (
                   <motion.div
@@ -819,7 +771,7 @@ export const Architecture = () => {
                     initial={{ opacity: 0, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                     className="w-full h-full"
                   >
                     <IngestionVisual />
@@ -831,7 +783,7 @@ export const Architecture = () => {
                     initial={{ opacity: 0, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                     className="w-full h-full"
                   >
                     <NeuralVisual />
@@ -843,7 +795,7 @@ export const Architecture = () => {
                     initial={{ opacity: 0, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.96 }}
-                    transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                    transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                     className="w-full h-full"
                   >
                     <DeploymentVisual />
@@ -854,30 +806,28 @@ export const Architecture = () => {
           </div>
         </div>
 
-        {/* ==========================================
-            Bottom CTA & Action Row
-           ========================================== */}
+        {/* ── Bottom CTA & Action Row ── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="flex flex-col sm:flex-row items-center justify-between gap-6 mt-14 pt-8 border-t border-zinc-200/80"
+          className="flex flex-col lg:flex-row items-center justify-between gap-6 mt-12 sm:mt-14 pt-8 border-t border-zinc-200/80"
         >
-          {/* Trust Metric Badges */}
-          <div className="flex flex-wrap items-center justify-center sm:justify-start gap-6 text-xs text-zinc-500 font-medium">
+          {/* Trust Badges */}
+          <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 sm:gap-6 text-xs text-zinc-500 font-medium">
             <div className="flex items-center gap-2">
-              <ShieldCheck size={16} className="text-[#6A35FF]" />
+              <ShieldCheck size={16} className="text-[#6A35FF] flex-shrink-0" />
               <span>SOC2 Type II &amp; HIPAA Compliant</span>
             </div>
             <div className="flex items-center gap-2">
-              <Zap size={16} className="text-[#6A35FF]" />
+              <Zap size={16} className="text-[#6A35FF] flex-shrink-0" />
               <span>Zero Training on Customer Data</span>
             </div>
           </div>
 
-          {/* Action Buttons with Magnetic Physics */}
-          <div className="flex items-center gap-3 w-full sm:w-auto justify-center">
+          {/* Action Buttons: Full width on mobile, auto-width on desktop */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3.5 w-full sm:w-auto justify-center">
             <MagneticButton primary>
               <span>Get started free</span>
               <ArrowRight size={16} />
