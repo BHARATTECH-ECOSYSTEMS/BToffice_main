@@ -20,6 +20,8 @@ import { buildFallbackLaunchUrl } from "../utils/openInterviewer";
 const LOCAL_HOSTS = ["localhost", "127.0.0.1"];
 const LMS_PLATFORM_URL =
   "https://bharattech-integrated-mern-lms-main-uk61.onrender.com";
+const FILESYNC_PLATFORM_URL =
+  "https://bharattech-filesync.onrender.com";
 
 const isLocalUrl = (url = "") => /localhost|127\.0\.0\.1/i.test(url);
 
@@ -82,6 +84,11 @@ export default function Sidebar() {
   const workspaceUrl =
     import.meta.env.VITE_WORKSPACE_URL ||
     "http://localhost:8087/_accounts/auth/openid";
+  const fileSyncUrl = getExternalUrl(
+    import.meta.env.VITE_FILESYNC_URL,
+    "http://localhost:8080",
+    FILESYNC_PLATFORM_URL,
+  );
 
   const handleLinkClick = () => {
     if (window.innerWidth < 1024) {
@@ -189,7 +196,7 @@ export default function Sidebar() {
       label: "File Transfer",
       icon: Share2,
       external: true,
-      path: "https://fileupload.wetransfer.com/",
+      path: fileSyncUrl,
     },
     {
       label: hasRole?.("Admin") ? "Certificates" : "Certificates",

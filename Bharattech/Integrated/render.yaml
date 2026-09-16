@@ -68,6 +68,8 @@ services:
         value: https://bharattech-workspace.onrender.com
       - key: VITE_LIBRECHAT_URL
         value: https://bharattech-librechat.onrender.com
+      - key: VITE_FILESYNC_URL
+        value: https://bharattech-filesync.onrender.com
     routes:
       - type: rewrite
         source: /*

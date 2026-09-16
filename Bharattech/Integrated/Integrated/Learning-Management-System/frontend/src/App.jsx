@@ -34,6 +34,7 @@ import Wow from "./LMS/pages/Wow";
 import Resource from "./pages/Resource";
 import Layout from "./pages/Layout";
 import Workspace from "./pages/Workspace";
+import FileTransfer from "./pages/FileTransfer";
 import MyCertificatesPage from "./pages/MyCertificatesPage";
 import MyCertificates from "./pages/MyCertificates";
 import People from "./pages/People";
@@ -77,6 +78,8 @@ export default function App() {
       <Route path="/my-certificate" element={<Navigate to="/certificates" replace />} />
       <Route path="/resources" element={<Layout><Resource /></Layout>} />
       <Route path="/workspace" element={<Workspace />} />
+      <Route path="/file-transfer" element={<Layout><FileTransfer /></Layout>} />
+      <Route path="/filesync" element={<Navigate to="/file-transfer" replace />} />
       
       {/* LMS Routes */}
       <Route path="/lms/login" element={<LMSLogin />} />
