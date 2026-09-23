@@ -13,10 +13,7 @@ import CMS from "./cms";
 import Forms from "./forms";
 import Clicks from "./clicks";
 import SplitTesting from "./split-testing";
-import AdminDashboard from "./admin-dashboard";
-import SubAdminDashboard from "./subadmin-dashboard";
-import EmployeeDashboard from "./employee-dashboard";
-import InternDashboard from "./intern-dashboard";
+
 import Profile from "./pages/Profile";
 import PolicyCompliance from "./pages/PolicyCompliance";
 import Interview from "./pages/Interview";
@@ -70,10 +67,10 @@ export default function App() {
       <Route path="/forms" element={<Forms />} />
       <Route path="/clicks" element={<Clicks />} />
       <Route path="/split-testing" element={<SplitTesting />} />
-      <Route path="/admin-dashboard" element={<AdminDashboard />} />
-      <Route path="/subadmin-dashboard" element={<SubAdminDashboard />} />
-      <Route path="/employee-dashboard" element={<EmployeeDashboard />} />
-      <Route path="/intern-dashboard" element={<InternDashboard />} />
+      <Route path="/admin-dashboard" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/subadmin-dashboard" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/employee-dashboard" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/intern-dashboard" element={<Navigate to="/dashboard" replace />} />
       <Route path="/profile" element={<Profile />} />
       <Route path="/my-certificate" element={<Navigate to="/certificates" replace />} />
       <Route path="/resources" element={<Layout><Resource /></Layout>} />

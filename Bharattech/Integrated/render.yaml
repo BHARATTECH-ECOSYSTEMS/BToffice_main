@@ -70,6 +70,8 @@ services:
         value: https://bharattech-librechat.onrender.com
       - key: VITE_FILESYNC_URL
         value: https://bharattech-filesync.onrender.com
+      - key: VITE_CHATWOOT_URL
+        value: http://localhost:3000
     routes:
       - type: rewrite
         source: /*

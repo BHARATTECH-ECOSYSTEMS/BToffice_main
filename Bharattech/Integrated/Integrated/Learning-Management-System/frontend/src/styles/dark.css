@@ -1,0 +1,216 @@
+/* Dark Mode Overrides */
+.dark body {
+  background-color: #090f1d !important;
+  color: #f8fafc !important;
+}
+
+.dark .dashboard-container {
+  background: radial-gradient(circle at top right, #1a2342, #080c16) !important;
+}
+
+.dark aside,
+.dark nav {
+  background-color: rgba(13, 21, 44, 0.96) !important;
+  border-color: #1e2a4a !important;
+}
+
+.dark .bg-white {
+  background-color: #131c35 !important;
+}
+
+.dark .dashboard-card {
+  background-color: rgba(19, 28, 53, 0.96) !important;
+  border-color: rgba(36, 50, 96, 0.8) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark .dashboard-card:hover {
+  border-color: rgba(37, 99, 235, 0.5) !important;
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5) !important;
+}
+
+.dark .dashboard-stat-card {
+  background: linear-gradient(135deg, #131c35 0%, #1c2b54 100%) !important;
+  border-color: rgba(37, 99, 235, 0.3) !important;
+}
+
+.dark .dashboard-stat-card:hover {
+  background: linear-gradient(135deg, #1c2b54 0%, #131c35 100%) !important;
+  border-color: rgba(37, 99, 235, 0.5) !important;
+}
+
+.dark .dashboard-chart-card {
+  background-color: #131c35 !important;
+  border-color: rgba(30, 41, 74, 0.8) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+}
+
+.dark .dashboard-chart-card:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4) !important;
+}
+
+.dark .dashboard-table {
+  background-color: #131c35 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+}
+
+.dark .dashboard-table thead {
+  background: linear-gradient(135deg, #1b284e 0%, #131c35 100%) !important;
+}
+
+.dark .dashboard-table tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .dashboard-table tbody tr:hover {
+  background: linear-gradient(90deg, rgba(37, 99, 235, 0.12) 0%, rgba(19, 28, 53, 0.05) 100%) !important;
+}
+
+.dark .bg-gray-50,
+.dark .bg-gray-100 {
+  background-color: #1c2b54 !important;
+}
+
+.dark .bg-blue-50 {
+  background-color: rgba(37, 99, 235, 0.15) !important;
+  border-color: rgba(37, 99, 235, 0.3) !important;
+}
+
+.dark .bg-green-50 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.dark .bg-red-50,
+.dark .bg-red-100 {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.dark .text-gray-900,
+.dark .text-gray-800,
+.dark .text-gray-750,
+.dark .text-gray-700,
+.dark label,
+.dark p.text-gray-900,
+.dark span.text-gray-900,
+.dark h1,
+.dark h2,
+.dark h3,
+.dark h4,
+.dark h5,
+.dark h6 {
+  color: #ffffff !important;
+}
+
+.dark .text-gray-600,
+.dark .text-gray-500,
+.dark p.text-gray-600,
+.dark span.text-gray-600 {
+  color: #cbd5e1 !important;
+}
+
+.dark input:not([type="submit"]):not([type="button"]),
+.dark select,
+.dark textarea {
+  background-color: #090e1a !important;
+  color: #ffffff !important;
+  border-color: #1e2b4e !important;
+}
+
+.dark select option {
+  background-color: #131c35 !important;
+  color: #ffffff !important;
+}
+
+.dark input:focus,
+.dark select:focus {
+  border-color: #2563eb !important;
+}
+
+input.login-field,
+.dark input.login-field:not([type="submit"]):not([type="button"]) {
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+.dark .dashboard-button-secondary {
+  background-color: transparent !important;
+  border-color: #2563eb !important;
+  color: #2563eb !important;
+}
+
+.dark .dashboard-button-secondary:hover {
+  background-color: #2563eb !important;
+  color: white !important;
+}
+
+.dark .dashboard-gradient-text {
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 50%, #94a3b8 100%) !important;
+  -webkit-background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  background-clip: text !important;
+}
+
+.dark .shadow-lg.ring-1.ring-black\/5 {
+  background-color: #131c35 !important;
+  border: 1px solid #1e2a4a !important;
+}
+
+.dark .shadow-lg.ring-1.ring-black\/5 button {
+  color: #cbd5e1 !important;
+}
+
+.dark .shadow-lg.ring-1.ring-black\/5 button:hover {
+  background-color: #1e2a4a !important;
+}
+
+.dark .shadow-lg.ring-1.ring-black\/5 button.text-red-600:hover {
+  background-color: rgba(239, 68, 68, 0.2) !important;
+}
+
+.logo-container {
+  position: relative;
+  overflow: hidden;
+}
+
+.dark .logo-container::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.6) 50%, rgba(255, 255, 255, 0) 100%);
+  animation: logoShimmerSweep 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.dark .logo-img {
+  animation: logoGlowAndShine 3s ease-in-out infinite;
+}
+
+.dark .layout-root {
+  background-color: #090f1d !important;
+}
+
+.dark .from-blue-50 {
+  background-image: radial-gradient(circle at top right, #1a2342, #080c16) !important;
+}
+
+.dark .bg-white\/80,
+.dark .bg-white\/90,
+.dark .bg-white\/95,
+.dark [class*="bg-white/"] {
+  background-color: #131c35 !important;
+  color: #ffffff !important;
+}
+
+.dark .border-gray-100,
+.dark .border-gray-200,
+.dark .border-gray-300,
+.dark .border,
+.dark [class*="border-white/"] {
+  border-color: #243260 !important;
+}

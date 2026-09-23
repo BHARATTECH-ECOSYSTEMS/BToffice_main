@@ -1,0 +1,56 @@
+/* Bharat Hero gradient banner styles */
+.bharat-hero-banner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+  background: radial-gradient(120% 80% at 70% 30%, hsl(230 85% 55%) 0%, hsl(235 80% 35%) 35%, hsl(240 70% 18%) 65%, hsl(240 60% 8%) 100%);
+}
+
+/* Soft grain / glow overlay */
+.bharat-hero-banner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(255,255,255,0.18), transparent 55%),
+    radial-gradient(circle at 80% 70%, rgba(120,140,255,0.25), transparent 60%);
+  pointer-events: none;
+}
+
+/* Violet wash + radial top glow */
+.bharat-hero-glow {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, hsl(245 58% 51% / 0.35) 0%, hsl(245 58% 51% / 0.12) 35%, transparent 70%),
+    radial-gradient(60% 80% at 50% 0%, hsl(245 58% 51% / 0.5) 0%, hsl(245 58% 51% / 0.2) 35%, transparent 70%);
+}
+
+/* Vertical light beams (Bharat hero highlight effect) */
+.bharat-hero-beams {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 100%;
+  pointer-events: none;
+  background-image:
+    linear-gradient(180deg, rgba(255,255,255,0.7), rgba(255,255,255,0) 80%),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 22px,
+      rgba(255,255,255,0.45) 22px 23px,
+      transparent 23px 60px,
+      rgba(255,255,255,0.28) 60px 61px,
+      transparent 61px 110px,
+      rgba(255,255,255,0.6) 110px 112px,
+      transparent 112px 170px
+    );
+  background-blend-mode: screen;
+  -webkit-mask-image: radial-gradient(80% 90% at 50% 0%, black 0%, black 25%, transparent 70%);
+  mask-image: radial-gradient(80% 90% at 50% 0%, black 0%, black 25%, transparent 70%);
+}

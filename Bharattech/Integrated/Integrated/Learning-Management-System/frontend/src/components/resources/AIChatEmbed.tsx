@@ -131,7 +131,9 @@ export const AIChatEmbed: React.FC<AIChatEmbedProps> = ({
     );
   }
 
-  const iframeSrc = `${resolvedTarget.replace(/\/+$/, "")}/c/new?embed=true&token=${encodeURIComponent(token || "")}`;
+  const iframeSrc = token
+    ? `${resolvedTarget.replace(/\/+$/, "")}/api/auth/sso?token=${encodeURIComponent(token)}&embed=true`
+    : `${resolvedTarget.replace(/\/+$/, "")}/c/new?embed=true`;
 
   return (
     <div

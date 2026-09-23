@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { NavLink } from "react-router-dom";
 import {
   BookOpen,
   ClipboardCheck,
@@ -10,69 +9,29 @@ import {
   LayoutDashboard,
   Share2,
   Users,
+  Receipt,
+  KanbanSquare,
+  ShieldCheck,
+  MessagesSquare,
 } from "lucide-react";
 import { useSidebar } from "../contexts/SidebarContext";
 import { useAuth } from "../LMS/context/AuthContext";
 import api from "../api/axios";
 import keycloak from "../auth/keycloak";
 import { buildFallbackLaunchUrl } from "../utils/openInterviewer";
-
-const LOCAL_HOSTS = ["localhost", "127.0.0.1"];
-const LMS_PLATFORM_URL =
-  "https://bharattech-integrated-mern-lms-main-uk61.onrender.com";
-const FILESYNC_PLATFORM_URL =
-  "https://bharattech-filesync.onrender.com";
-
-const isLocalUrl = (url = "") => /localhost|127\.0\.0\.1/i.test(url);
-
-const getExternalUrl = (configuredUrl, localUrl, deployedUrl = "") => {
-  const isLocalHost = LOCAL_HOSTS.includes(window.location.hostname);
-
-  if (configuredUrl && (isLocalHost || !isLocalUrl(configuredUrl))) {
-    return configuredUrl;
-  }
-
-  return isLocalHost ? localUrl : deployedUrl;
-};
-
-const buildLmsPlatformUrl = (baseUrl, user, explicitToken, explicitRefresh) => {
-  if (!baseUrl) return baseUrl;
-
-  const params = new URLSearchParams();
-  if (user?.role) params.set("role", user.role);
-  if (user?.email) params.set("email", user.email);
-  if (user?.fullName || user?.username)
-    params.set("name", user.fullName || user.username);
-
-  const token =
-    explicitToken ||
-    localStorage.getItem("token") ||
-    localStorage.getItem("accessToken") ||
-    sessionStorage.getItem("token");
-  if (token) params.set("token", token);
-
-  const refreshToken =
-    explicitRefresh ||
-    localStorage.getItem("refresh_token") ||
-    sessionStorage.getItem("refresh_token");
-  if (refreshToken) params.set("refresh_token", refreshToken);
-
-  if (!params.toString()) return baseUrl;
-
-  try {
-    const url = new URL(baseUrl);
-    params.forEach((value, key) => url.searchParams.set(key, value));
-    return url.toString();
-  } catch {
-    const separator = baseUrl.includes("?") ? "&" : "?";
-    return `${baseUrl}${separator}${params.toString()}`;
-  }
-};
+import {
+  LMS_PLATFORM_URL,
+  FILESYNC_PLATFORM_URL,
+  getExternalUrl,
+  buildLmsPlatformUrl,
+} from "../utils/sidebarUrls";
+import { SidebarItem, SidebarSection } from "./sidebar/SidebarNavItem";
 
 export default function Sidebar() {
   const { sidebarOpen, toggleSidebar } = useSidebar();
   const { hasRole, loading, user } = useAuth();
   const [launchingInterview, setLaunchingInterview] = useState(false);
+
   const lmsUrl = buildLmsPlatformUrl(
     getExternalUrl(
       import.meta.env.VITE_LMS_URL,
@@ -89,6 +48,33 @@ export default function Sidebar() {
     "http://localhost:8080",
     FILESYNC_PLATFORM_URL,
   );
+  const invoiceBuilderUrl = getExternalUrl(
+    import.meta.env.VITE_INVOICE_BUILDER_URL,
+    "http://localhost:3001",
+    "http://localhost:3001",
+  );
+  const planeUrl = getExternalUrl(
+    import.meta.env.VITE_PLANE_URL,
+    "http://localhost:8090",
+    "http://localhost:8090",
+  );
+  const planeSsoUrl = `${planeUrl.replace(/\/+$/, "")}/auth/keycloak/`;
+  const securoUrl = getExternalUrl(
+    import.meta.env.VITE_SECURO_URL,
+    "http://localhost:3002",
+    "http://localhost:3002",
+  );
+  const securoSsoUrl = `${securoUrl.replace(/\/+$/, "")}/api/auth/oidc/login`;
+  const chatwootUrl = getExternalUrl(
+    import.meta.env.VITE_CHATWOOT_URL,
+    "http://localhost:3000",
+    "http://localhost:3000",
+  );
+  const chatwootSsoUrl = `${chatwootUrl.replace(/\/+$/, "")}/app/login`;
+  const canAccessInvoice =
+    hasRole?.("Admin") ||
+    hasRole?.("Super-admin") ||
+    hasRole?.(["admin", "superadmin"]);
 
   const handleLinkClick = () => {
     if (window.innerWidth < 1024) {
@@ -98,7 +84,6 @@ export default function Sidebar() {
 
   const handleInterviewLaunch = async () => {
     if (launchingInterview) return;
-
     const interviewWindow = window.open("", "_blank");
     setLaunchingInterview(true);
     handleLinkClick();
@@ -109,9 +94,7 @@ export default function Sidebar() {
         data?.launchUrl ||
         (data?.token ? buildFallbackLaunchUrl(data.token) : null);
 
-      if (!launchUrl) {
-        throw new Error("Interview launch URL was not returned");
-      }
+      if (!launchUrl) throw new Error("Interview launch URL was not returned");
 
       if (interviewWindow) {
         interviewWindow.opener = null;
@@ -131,9 +114,28 @@ export default function Sidebar() {
     }
   };
 
+  const handleChatwootLaunch = async () => {
+    handleLinkClick();
+    const chatwootWindow = window.open("", "_blank");
+    try {
+      if (keycloak?.authenticated) {
+        try { await keycloak.updateToken(30); } catch {}
+      }
+      const { data } = await api.post("/chatwoot/sso-url");
+      const launchUrl = data?.ssoUrl || chatwootSsoUrl;
+      if (chatwootWindow) {
+        chatwootWindow.opener = null;
+        chatwootWindow.location.href = launchUrl;
+      } else {
+        window.location.href = launchUrl;
+      }
+    } catch {
+      if (chatwootWindow) chatwootWindow.location.href = chatwootSsoUrl;
+    }
+  };
+
   const handleLmsLaunch = async () => {
     handleLinkClick();
-
     let activeToken =
       localStorage.getItem("token") || localStorage.getItem("accessToken");
     let activeRefresh = localStorage.getItem("refresh_token");
@@ -186,31 +188,25 @@ export default function Sidebar() {
 
   const MENU_RESOURCES = [
     { label: "Resources", icon: BookOpen, path: "/resources" },
+    { label: "Workspace", icon: FolderKanban, external: true, path: workspaceUrl },
+    { label: "File Transfer", icon: Share2, external: true, path: fileSyncUrl },
+    { label: "Projects (Plane)", icon: KanbanSquare, external: true, path: planeSsoUrl },
+    { label: "Securo (Finance)", icon: ShieldCheck, external: true, path: securoSsoUrl },
     {
-      label: "Workspace",
-      icon: FolderKanban,
+      label: "Chatwoot Support",
+      icon: MessagesSquare,
+      action: handleChatwootLaunch,
       external: true,
-      path: workspaceUrl,
+      path: chatwootSsoUrl,
     },
-    {
-      label: "File Transfer",
-      icon: Share2,
-      external: true,
-      path: fileSyncUrl,
-    },
-    {
-      label: hasRole?.("Admin") ? "Certificates" : "Certificates",
-      icon: GraduationCap,
-      path: "/generate-certificate",
-    },
+    ...(canAccessInvoice
+      ? [{ label: "Invoice Builder", icon: Receipt, external: true, path: invoiceBuilderUrl }]
+      : []),
+    { label: "Certificates", icon: GraduationCap, path: "/generate-certificate" },
   ];
 
   const MENU_ORGANIZATION = [
-    {
-      label: "Policy/Compliance",
-      icon: FileCheck2,
-      path: "/policy-compliance",
-    },
+    { label: "Policy/Compliance", icon: FileCheck2, path: "/policy-compliance" },
   ];
 
   const MENU_INTERVIEW =
@@ -225,77 +221,7 @@ export default function Sidebar() {
         ]
       : [];
 
-  const renderLink = (item, key = item.label) => {
-    const Icon = item.icon || BookOpen;
-
-    if (item.external && !item.path) {
-      return (
-        <button
-          key={key}
-          type="button"
-          disabled
-          title={`${item.label} URL is not configured`}
-          className="flex w-full cursor-not-allowed items-center gap-3 rounded-xl p-3 text-left text-sm font-medium text-gray-400 opacity-70"
-        >
-          <Icon className="h-5 w-5" />
-          <span>{item.label}</span>
-        </button>
-      );
-    }
-
-    if (item.action) {
-      return (
-        <button
-          key={key}
-          type="button"
-          onClick={item.action}
-          disabled={item.disabled}
-          className="flex w-full items-center gap-3 rounded-xl p-3 text-left text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-600 disabled:cursor-wait disabled:opacity-70"
-        >
-          <Icon className="h-5 w-5" />
-          <span>{item.label}</span>
-        </button>
-      );
-    }
-
-    if (item.external) {
-      return (
-        <a
-          key={key}
-          href={item.path}
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={handleLinkClick}
-          className="flex items-center gap-3 p-3 rounded-xl text-sm font-medium text-gray-700 hover:bg-indigo-50 hover:text-indigo-600"
-        >
-          <Icon className="w-5 h-5" />
-          <span>{item.label}</span>
-        </a>
-      );
-    }
-
-    return (
-      <NavLink
-        key={key}
-        to={item.path}
-        onClick={handleLinkClick}
-        className={({ isActive }) =>
-          `flex items-center gap-3 p-3 rounded-xl text-sm font-medium ${
-            isActive
-              ? "bg-indigo-600 text-white"
-              : "text-gray-700 hover:bg-indigo-50 hover:text-indigo-600"
-          }`
-        }
-      >
-        <Icon className="w-5 h-5" />
-        <span>{item.label}</span>
-      </NavLink>
-    );
-  };
-
-  if (loading) {
-    return <div className="p-4">Loading...</div>;
-  }
+  if (loading) return <div className="p-4">Loading...</div>;
 
   return (
     <>
@@ -316,30 +242,39 @@ export default function Sidebar() {
         <div className="h-4 flex-shrink-0" />
 
         <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain p-3 space-y-6">
-          <Section title="Navigation">{MENU_TOP.map(renderLink)}</Section>
-          <Section title="Learning">{MENU_LEARNING.map(renderLink)}</Section>
-          <Section title="Resources">{MENU_RESOURCES.map(renderLink)}</Section>
-          <Section title="Organization Management">
-            {MENU_ORGANIZATION.map(renderLink)}
-          </Section>
+          <SidebarSection title="Navigation">
+            {MENU_TOP.map((item) => (
+              <SidebarItem key={item.label} item={item} onLinkClick={handleLinkClick} />
+            ))}
+          </SidebarSection>
+
+          <SidebarSection title="Learning">
+            {MENU_LEARNING.map((item) => (
+              <SidebarItem key={item.label} item={item} onLinkClick={handleLinkClick} />
+            ))}
+          </SidebarSection>
+
+          <SidebarSection title="Resources">
+            {MENU_RESOURCES.map((item) => (
+              <SidebarItem key={item.label} item={item} onLinkClick={handleLinkClick} />
+            ))}
+          </SidebarSection>
+
+          <SidebarSection title="Organization Management">
+            {MENU_ORGANIZATION.map((item) => (
+              <SidebarItem key={item.label} item={item} onLinkClick={handleLinkClick} />
+            ))}
+          </SidebarSection>
+
           {MENU_INTERVIEW.length > 0 && (
-            <Section title="Interview">
-              {MENU_INTERVIEW.map(renderLink)}
-            </Section>
+            <SidebarSection title="Interview">
+              {MENU_INTERVIEW.map((item) => (
+                <SidebarItem key={item.label} item={item} onLinkClick={handleLinkClick} />
+              ))}
+            </SidebarSection>
           )}
         </div>
       </aside>
     </>
-  );
-}
-
-function Section({ title, children }) {
-  return (
-    <div>
-      <p className="px-2 mb-2 text-xs font-bold text-gray-500 uppercase">
-        {title}
-      </p>
-      <div className="space-y-1">{children}</div>
-    </div>
   );
 }
