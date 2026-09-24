@@ -13,6 +13,7 @@ import {
   KanbanSquare,
   ShieldCheck,
   MessagesSquare,
+  ScreenShare,
 } from "lucide-react";
 import { useSidebar } from "../contexts/SidebarContext";
 import { useAuth } from "../LMS/context/AuthContext";
@@ -71,6 +72,11 @@ export default function Sidebar() {
     "http://localhost:3000",
   );
   const chatwootSsoUrl = `${chatwootUrl.replace(/\/+$/, "")}/app/login`;
+  const serverUrl = getExternalUrl(
+    import.meta.env.VITE_SERVER_URL || import.meta.env.VITE_SCREEGO_URL,
+    "http://localhost:5050",
+    "http://localhost:5050",
+  );
   const canAccessInvoice =
     hasRole?.("Admin") ||
     hasRole?.("Super-admin") ||
@@ -199,6 +205,7 @@ export default function Sidebar() {
       external: true,
       path: chatwootSsoUrl,
     },
+    { label: "Screen Share (Server)", icon: ScreenShare, external: true, path: serverUrl },
     ...(canAccessInvoice
       ? [{ label: "Invoice Builder", icon: Receipt, external: true, path: invoiceBuilderUrl }]
       : []),

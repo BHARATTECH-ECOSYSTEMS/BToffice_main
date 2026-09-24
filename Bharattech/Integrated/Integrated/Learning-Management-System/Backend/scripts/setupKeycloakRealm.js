@@ -22,6 +22,8 @@ const KEYCLOAK_OPENINTERVIEWER_CLIENT_ID =
   process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || "openinterviewer-client";
 const KEYCLOAK_CHATWOOT_CLIENT_ID =
   process.env.KEYCLOAK_CHATWOOT_CLIENT_ID || "chatwoot-client";
+const KEYCLOAK_LOBEHUB_CLIENT_ID =
+  process.env.KEYCLOAK_LOBEHUB_CLIENT_ID || "lobehub-client";
 
 const kcAdmin = new KcAdminClient({
   baseUrl: KEYCLOAK_BASE_URL,
@@ -159,6 +161,72 @@ async function configureClientRedirectUris(clientId = KEYCLOAK_CLIENT_ID_APP) {
   );
 }
 
+async function ensureLobeHubClient() {
+  await authAdmin();
+  const clientId = KEYCLOAK_LOBEHUB_CLIENT_ID;
+  const secret =
+    process.env.LOBEHUB_CLIENT_SECRET ||
+    "57eb3159522c2e6d77a7809d5d7431f2daddbc8cf4d06e13";
+  const lobehubUrl = (process.env.LOBEHUB_URL || "http://localhost:3210").replace(
+    /\/+$/,
+    ""
+  );
+
+  let clients = await kcAdmin.clients.find({ realm: KEYCLOAK_REALM, clientId });
+  let client = clients?.[0];
+
+  const redirectUris = [
+    `${lobehubUrl}/*`,
+    `${lobehubUrl}/api/auth/callback/keycloak`,
+  ];
+  const webOrigins = [lobehubUrl, "+"];
+
+  if (!client?.id) {
+    console.log(`[Keycloak] Creating confidential client "${clientId}"...`);
+    await kcAdmin.clients.create({
+      realm: KEYCLOAK_REALM,
+      clientId,
+      name: "LobeHub AI Workspace",
+      description: "LobeHub Self-Hosted AI Platform with Keycloak SSO",
+      enabled: true,
+      protocol: "openid-connect",
+      publicClient: false,
+      clientAuthenticatorType: "client-secret",
+      secret,
+      standardFlowEnabled: true,
+      implicitFlowEnabled: false,
+      directAccessGrantsEnabled: true,
+      serviceAccountsEnabled: true,
+      redirectUris,
+      webOrigins,
+    });
+  } else {
+    console.log(`[Keycloak] Updating client "${clientId}" redirect URIs...`);
+    const existingRedirects = client.redirectUris || [];
+    const existingOrigins = client.webOrigins || [];
+    const mergedRedirects = Array.from(
+      new Set([...existingRedirects, ...redirectUris])
+    );
+    const mergedOrigins = Array.from(
+      new Set([...existingOrigins, ...webOrigins])
+    );
+
+    await kcAdmin.clients.update(
+      { realm: KEYCLOAK_REALM, id: client.id },
+      {
+        ...client,
+        publicClient: false,
+        clientAuthenticatorType: "client-secret",
+        secret: client.secret || secret,
+        standardFlowEnabled: true,
+        directAccessGrantsEnabled: true,
+        redirectUris: mergedRedirects,
+        webOrigins: mergedOrigins,
+      }
+    );
+  }
+}
+
 async function setupKeycloakRealm() {
   await authAdmin();
   await getOrCreateRealm();
@@ -168,6 +236,7 @@ async function setupKeycloakRealm() {
   await configureClientRedirectUris(KEYCLOAK_CLIENT_ID_APP);
   await configureClientRedirectUris(KEYCLOAK_OPENINTERVIEWER_CLIENT_ID);
   await configureClientRedirectUris(KEYCLOAK_CHATWOOT_CLIENT_ID);
+  await ensureLobeHubClient();
   return { success: true, realm: KEYCLOAK_REALM };
 }
 

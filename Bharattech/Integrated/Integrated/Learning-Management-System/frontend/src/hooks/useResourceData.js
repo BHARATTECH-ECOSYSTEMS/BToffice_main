@@ -23,6 +23,7 @@ export function useResourceData() {
   const [isLaunchingPlane, setIsLaunchingPlane] = useState(false);
   const [isLaunchingSecuro, setIsLaunchingSecuro] = useState(false);
   const [isLaunchingChatwoot, setIsLaunchingChatwoot] = useState(false);
+  const [isLaunchingLobeHub, setIsLaunchingLobeHub] = useState(false);
 
   const isAdmin = hasRole("Admin");
   const canAccessInvoice =
@@ -225,6 +226,53 @@ export function useResourceData() {
     toast.success("Opening Invoice Builder...");
   }, [canAccessInvoice]);
 
+  const openServer = useCallback(() => {
+    const url =
+      import.meta.env.VITE_SERVER_URL ||
+      import.meta.env.VITE_SCREEGO_URL ||
+      "http://localhost:5050";
+    window.open(url, "_blank", "noopener,noreferrer");
+    toast.success("Opening Server (Screego Screen Share)...");
+  }, []);
+
+  const openExcalidraw = useCallback(() => {
+    const url =
+      import.meta.env.VITE_EXCALIDRAW_URL ||
+      "http://localhost:5001";
+    window.open(url, "_blank", "noopener,noreferrer");
+    toast.success("Opening Excalidraw Whiteboard...");
+  }, []);
+
+  const openLobeHub = useCallback(async () => {
+    setIsLaunchingLobeHub(true);
+    const newTab = window.open("about:blank", "_blank");
+    try {
+      if (keycloak?.authenticated) {
+        try { await keycloak.updateToken(30); } catch {}
+      }
+
+      const res = await api.post("/lobehub/sso-url");
+      if (!res?.data?.ssoUrl) {
+        throw new Error("Did not receive a valid SSO session URL from backend");
+      }
+
+      const ssoLaunchUrl = res.data.ssoUrl;
+      if (newTab) {
+        newTab.opener = null;
+        newTab.location.href = ssoLaunchUrl;
+      } else {
+        window.open(ssoLaunchUrl, "_blank", "noopener,noreferrer");
+      }
+      toast.success("Opening LobeHub with Seamless SSO...");
+    } catch (err) {
+      if (newTab) newTab.close();
+      console.error("LobeHub SSO launch error:", err);
+      toast.error(err?.response?.data?.message || err?.message || "Failed to open LobeHub SSO session");
+    } finally {
+      setIsLaunchingLobeHub(false);
+    }
+  }, [keycloak]);
+
   const downloadBharatTechApp = useCallback(() => {
     const linkElement = document.createElement("a");
     linkElement.href = BHARATTECH_DOWNLOAD_URL;
@@ -284,8 +332,10 @@ export function useResourceData() {
     isAdding, setIsAdding, selectedUser, setSelectedUser,
     pageLoading, authLoading, error, isDeleting,
     isLaunchingLibreChat, isLaunchingPlane, isLaunchingSecuro, isLaunchingChatwoot,
+    isLaunchingLobeHub,
     isAdmin, canAccessInvoice,
     openCoder, openLibreChat, openPlane, openSecuro, openChatwoot, openInvoiceBuilder,
+    openServer, openExcalidraw, openLobeHub,
     downloadBharatTechApp, handleDelete, handleAdd, assignResource,
     retryLoad: () => loadPageData()
   };

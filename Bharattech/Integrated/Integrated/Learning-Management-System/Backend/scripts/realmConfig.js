@@ -13,6 +13,7 @@ const CONNECTED_APP_ORIGINS = [
   process.env.VITE_BHARAT_URL || "http://localhost:8081",
   process.env.OPEN_INTERVIEWER_URL || "http://localhost:3000",
   process.env.CHATWOOT_URL || "http://localhost:3000",
+  process.env.LOBEHUB_URL || "http://localhost:3210",
 ];
 
 const NAME_PROTOCOL_MAPPERS = [

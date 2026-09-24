@@ -13,8 +13,10 @@ export default function Resource() {
     isAdding, setIsAdding, selectedUser, setSelectedUser,
     pageLoading, authLoading, error, isDeleting,
     isLaunchingLibreChat, isLaunchingPlane, isLaunchingSecuro, isLaunchingChatwoot,
+    isLaunchingLobeHub,
     isAdmin, canAccessInvoice,
     openCoder, openLibreChat, openPlane, openSecuro, openChatwoot, openInvoiceBuilder,
+    openServer, openExcalidraw, openLobeHub,
     downloadBharatTechApp, handleDelete, handleAdd, assignResource,
     retryLoad
   } = useResourceData();
@@ -92,6 +94,10 @@ export default function Resource() {
           isLaunchingSecuro={isLaunchingSecuro}
           openInvoiceBuilder={openInvoiceBuilder}
           canAccessInvoice={canAccessInvoice}
+          openServer={openServer}
+          openExcalidraw={openExcalidraw}
+          openLobeHub={openLobeHub}
+          isLaunchingLobeHub={isLaunchingLobeHub}
         />
 
         {resources.map((r) => (
