@@ -1,0 +1,73 @@
+services:
+  - type: web
+    name: bharattech-librechat
+    runtime: image
+    image:
+      url: ghcr.io/danny-avila/librechat:latest
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: PORT
+        value: 3080
+      - key: NODE_ENV
+        value: production
+      - key: DOMAIN_CLIENT
+        value: https://bharattech-librechat.onrender.com
+      - key: DOMAIN_SERVER
+        value: https://bharattech-librechat.onrender.com
+      - key: APP_TITLE
+        value: BharatTech AI
+      - key: CUSTOM_FOOTER
+        value: "Powered by BharatTech AI"
+      - key: CUSTOM_FOOTER_URL
+        value: https://bharattech.com
+      - key: MONGO_URI
+        sync: false
+      - key: ALLOW_SOCIAL_LOGIN
+        value: "true"
+      - key: OPENID_ISSUER
+        value: https://keycloak-24-0-5-9yaq.onrender.com/realms/bharattech
+      - key: OPENID_CLIENT_ID
+        value: librechat-client
+      - key: OPENID_CLIENT_SECRET
+        sync: false
+      - key: OPENID_SESSION_SECRET
+        generateValue: true
+      - key: OPENID_AUTO_REDIRECT
+        value: "true"
+      - key: OPENID_BUTTON_LABEL
+        value: "Continue with Keycloak SSO"
+      - key: OPENID_CALLBACK_URL
+        value: /oauth/openid/callback
+      - key: OPENID_SCOPE
+        value: "openid profile email"
+      - key: OPENID_IMAGE_FIELD
+        value: picture
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: SESSION_EXPIRY
+        value: "86400000"
+      - key: REFRESH_TOKEN_EXPIRY
+        value: "604800000"
+      - key: SECURE_COOKIES
+        value: "true"
+      - key: ALLOWED_ORIGINS
+        value: "https://bharattech-learning-management-system.onrender.com,http://localhost:5173,http://localhost:5174"
+      - key: CORS_ORIGIN
+        value: "https://bharattech-learning-management-system.onrender.com,http://localhost:5173,http://localhost:5174"
+      - key: TRUST_PROXY
+        value: "true"
+      - key: SHOW_BIRTHDAY_ICON
+        value: "false"
+      - key: SEARCH
+        value: "false"
+      - key: BHARATTECH_SHARED_SECRET
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false

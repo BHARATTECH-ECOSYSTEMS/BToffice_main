@@ -1,0 +1,93 @@
+version: "3.8"
+
+services:
+  api:
+    # ── BharatTech: Build from local source (includes SecuPrompt middleware) ──
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: librechat-api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3080}:3080"
+    env_file:
+      - .env
+    environment:
+      - HOST=0.0.0.0
+      - NODE_ENV=production
+      - MONGO_URI=${MONGO_URI}
+      - MEILI_HTTP_ADDR=meilisearch:7700
+      - MEILI_HOST=http://meilisearch:7700
+      - RAG_API_URL=http://rag:8000
+      - SECUPROMPT_ENABLED=${SECUPROMPT_ENABLED:-true}
+      - SECUPROMPT_MODE=${SECUPROMPT_MODE:-block}
+    depends_on:
+      - mongodb
+      - meilisearch
+    networks:
+      - librechat-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./librechat.yaml:/app/librechat.yaml:ro
+      - ./api/server/controllers/auth/ssoController.js:/app/api/server/controllers/auth/ssoController.js:ro
+      - ./api/server/routes/auth.js:/app/api/server/routes/auth.js:ro
+      - ./api/server/routes/oauth.js:/app/api/server/routes/oauth.js:ro
+
+  mongodb:
+    image: mongo:7.0-jammy
+    container_name: librechat-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER:-librechat}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASS:-changeme}
+    networks:
+      - librechat-network
+    command: ["--auth"]
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.12
+    container_name: librechat-meilisearch
+    restart: unless-stopped
+    ports:
+      - "7700:7700"
+    volumes:
+      - meilisearch_data:/meili_data
+    environment:
+      - MEILI_MASTER_KEY=${MEILI_MASTER_KEY}
+      - MEILI_NO_ANALYTICS=true
+    networks:
+      - librechat-network
+
+  rag:
+    image: ghcr.io/danny-avila/librechat-rag-api-dev-lite:latest
+    container_name: librechat-rag
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      - RAG_PORT=8000
+      - UVICORN_WORKERS=1
+      - RAG_OPENAI_API_BASE=${OPENAI_API_BASE:-}
+      - RAG_OPENAI_API_KEY=${OPENAI_API_KEY}
+      - RAG_OPENAI_API_KEY=${OPENAI_API_KEY}
+      - EMBEDDINGS_PROVIDER=${EMBEDDINGS_PROVIDER:-openai}
+      - RAG_EMBEDDINGS_MODEL=${EMBEDDINGS_MODEL:-text-embedding-3-small}
+    depends_on:
+      - mongodb
+    networks:
+      - librechat-network
+
+volumes:
+  mongodb_data:
+  meilisearch_data:
+
+networks:
+  librechat-network:
+    driver: bridge
