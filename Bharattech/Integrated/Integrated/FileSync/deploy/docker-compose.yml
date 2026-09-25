@@ -1,0 +1,31 @@
+services:
+  filesync:
+    # build: ..
+    image: poliuscorp/filesync
+    container_name: filesync-app
+    environment:
+      - SECRET_KEY=${SECRET_KEY:-bharattech_filesync_dev_secret_key_32bytes}
+    ports:
+      - "${FILESYNC_PORT:-8080}:80"
+    depends_on:
+      - coturn
+    restart: unless-stopped
+
+  coturn:
+    image: coturn/coturn:alpine
+    container_name: filesync-coturn
+    command:
+      - --fingerprint
+      - --use-auth-secret
+      - --no-multicast-peers
+      - --no-cli
+      - --realm=filesync.app
+      - --static-auth-secret=${SECRET_KEY:-bharattech_filesync_dev_secret_key_32bytes}
+      - --listening-port=3478
+      - --min-port=50000
+      - --max-port=50100
+    ports:
+      - "3478:3478/tcp"
+      - "3478:3478/udp"
+      - "50000-50100:50000-50100/udp"
+    restart: unless-stopped
