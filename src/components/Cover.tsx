@@ -1,4 +1,4 @@
-import { useId, useMemo } from 'react';
+import { useMemo } from 'react';
 import { rng } from '../gl/formations';
 
 type Line = { d: string; w: number; o: number };
@@ -99,7 +99,6 @@ function convergence(r: () => number) {
  * No stock imagery anywhere on the site: every picture is drawn from the system.
  */
 export function Cover({ seed, variant = 0 }: { seed: string; variant?: number }) {
-  const id = useId().replace(/:/g, '');
   const art = useMemo(() => {
     let h = 2166136261;
     for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619);
@@ -111,24 +110,13 @@ export function Cover({ seed, variant = 0 }: { seed: string; variant?: number })
 
   return (
     <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-      <defs>
-        <radialGradient id={`r${id}`} cx={fx} cy={fy} r="0.6">
-          <stop offset="0" stopColor="#6A35FF" stopOpacity="0.28" />
-          <stop offset="1" stopColor="#6A35FF" stopOpacity="0" />
-        </radialGradient>
-        <linearGradient id={`l${id}`} x1="0" x2="1" y1="0" y2="1">
-          <stop offset="0" stopColor="var(--ink)" stopOpacity="0.5" />
-          <stop offset="1" stopColor="#6A35FF" />
-        </linearGradient>
-      </defs>
-      <rect width={W} height={H} fill={`url(#r${id})`} />
-      <g fill="none" stroke={`url(#l${id})`} strokeLinecap="round">
+      <g fill="none" stroke="var(--cover-ink)" strokeLinecap="round">
         {art.out.map((p, i) => (
-          <path key={i} d={p.d} strokeWidth={p.w} opacity={p.o} />
+          <path key={i} d={p.d} strokeWidth={p.w} opacity={p.o * 0.75} />
         ))}
       </g>
-      <circle cx={fx * W} cy={fy * H} r="3.2" fill="#6A35FF" />
-      <circle cx={fx * W} cy={fy * H} r="10" fill="none" stroke="#6A35FF" strokeOpacity="0.4" />
+      <circle cx={fx * W} cy={fy * H} r="3.2" fill="var(--violet)" />
+      <circle cx={fx * W} cy={fy * H} r="10" fill="none" stroke="var(--violet)" strokeOpacity="0.5" />
     </svg>
   );
 }

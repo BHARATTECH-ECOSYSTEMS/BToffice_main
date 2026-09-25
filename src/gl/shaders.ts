@@ -22,11 +22,13 @@ export const particleVertex = /* glsl */ `
   uniform float uHighlightAmt;
   uniform float uWave;
   uniform float uExplode;
+  uniform float uWarp;
 
   varying float vAcc;
   varying float vAlpha;
   varying float vShade;
   varying float vHl;
+  varying float vTint;
 
   float stagger(float m, float th) {
     float s = clamp(m * 1.45 - th * 0.45, 0.0, 1.0);
@@ -67,6 +69,10 @@ export const particleVertex = /* glsl */ `
     world.xy += (d / max(dist, 1e-4)) * push * 0.1;
     world.z += push * 0.12;
 
+    // scrolling fast stretches the field; it settles when you stop
+    world.y += (aRand.y - 0.5) * uWarp * 0.9;
+    world.z += (aRand.z - 0.5) * uWarp * 0.6;
+
     vec4 mv = viewMatrix * world;
     gl_Position = projectionMatrix * mv;
 
@@ -74,7 +80,8 @@ export const particleVertex = /* glsl */ `
     float hl = (uHighlight > -0.5 && abs(grp - uHighlight) < 0.5) ? uHighlightAmt : 0.0;
     vHl = hl;
 
-    gl_PointSize = uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.3) * (7.0 / -mv.z);
+    gl_PointSize = uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.3) * (7.0 / -mv.z) * 2.2;
+    vTint = step(0.82, fract(aRand.y * 7.31)) * (0.5 + 0.5 * sin(p.x * 1.3 + p.y * 0.9 + uTime * 0.4));
 
     // Parked particles (acc -1) only fade; they borrow the colour of the other side.
     bool hideFrom = aAccFrom < -0.5;
@@ -100,20 +107,26 @@ export const particleFragment = /* glsl */ `
   uniform vec3 uHot;
   uniform float uAlpha;
   uniform float uInkAlpha;
+  uniform vec3 uCyan;
+  uniform float uHalo;
 
   varying float vAcc;
   varying float vAlpha;
   varying float vShade;
   varying float vHl;
+  varying float vTint;
 
   void main() {
-    float d = length(gl_PointCoord - 0.5);
-    if (d > 0.5) discard;
-    float soft = smoothstep(0.5, 0.32, d);
-    vec3 accent = mix(uDeep, uBright, pow(vShade, 1.6));
+    // a crisp core inside a soft halo: points read as light, not dots
+    float d = length(gl_PointCoord - 0.5) * 2.0;
+    if (d > 1.0) discard;
+    float core = smoothstep(0.42, 0.18, d);
+    float halo = exp(-d * d * 5.0) * uHalo;
+    vec3 accent = mix(uDeep, uBright, pow(vShade, 1.4));
+    accent = mix(accent, uCyan, vTint * 0.75);
     vec3 col = mix(uInk, accent, smoothstep(0.0, 1.0, vAcc));
-    col = mix(col, uHot, vHl * 0.7);
-    float a = soft * vAlpha * uAlpha * mix(uInkAlpha, 1.0, vAcc);
+    col = mix(col, uHot, vHl * 0.6);
+    float a = (core + halo) * vAlpha * uAlpha * mix(uInkAlpha, 1.0, vAcc) * 0.85;
     gl_FragColor = vec4(col, a);
   }
 `;

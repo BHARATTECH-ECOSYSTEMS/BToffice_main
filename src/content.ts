@@ -246,3 +246,124 @@ export const TERMS = [
 ] as const;
 
 export const LEGAL_DATE = "June 2026";
+
+// ── Explainers: written for a first-time visitor ─────────────────────────
+
+export const PILLARS_PLAIN = [
+  { title: 'It remembers', body: 'Context carries over between sessions, tools and people, instead of starting from zero every time.' },
+  { title: 'It connects', body: 'Specialised systems for language, vision, research and location share one memory and work as one.' },
+  { title: 'It keeps learning', body: 'It improves through use after it is deployed, rather than waiting for the next training cycle.' },
+];
+
+/** A concept scene: the same request, today and with Origin. Illustrative, not a product transcript. */
+export const SCENARIO = {
+  setup: 'A water-policy team returns to a groundwater study after three weeks.',
+  earlier: 'We are studying groundwater across 40 districts. Here are our survey notes and satellite data.',
+  question: 'Which districts did we flag as critical, and has anything changed since?',
+  today: {
+    reply: 'I don’t have access to earlier conversations. Could you share the district list and the data again?',
+    outcomes: ['Context lost', 'Data uploaded again', 'Each tool starts alone'],
+  },
+  origin: {
+    reply: 'Last time we flagged 7 districts as critical. New satellite imagery since then shows further decline in 3 of them. I’ve drafted an updated brief with the sources linked.',
+    trace: [
+      { layer: 'Memory Engine', text: 'Recalled the study and the 7 flagged districts' },
+      { layer: 'Geo Intelligence', text: 'Compared new satellite imagery' },
+      { layer: 'Agents', text: 'Drafted a brief and linked the sources' },
+    ],
+    outcomes: ['Context kept', 'Tools work together', 'Learns from new data'],
+  },
+};
+
+export const FLOW = [
+  {
+    step: 'Understand',
+    body: 'Reads the request in whatever form it arrives: typed, spoken, a document or an image.',
+    powered: ['AI Search', 'Voice Intelligence', 'Vision Intelligence'],
+    trace: 'Request received: “Which districts did we flag as critical, and has anything changed?”',
+  },
+  {
+    step: 'Recall',
+    body: 'Brings back what it already knows about you, your work and the world, so nothing needs repeating.',
+    powered: ['Memory Engine', 'Knowledge Engine'],
+    trace: 'Found the groundwater study from three weeks ago: notes, data and 7 flagged districts.',
+  },
+  {
+    step: 'Reason',
+    body: 'Plans the steps, checks its sources and investigates what is missing before it answers.',
+    powered: ['Reasoning Engine', 'Research Engine', 'Geo Intelligence'],
+    trace: 'Plan: compare new satellite imagery with the flagged districts. Result: decline in 3 of 7.',
+  },
+  {
+    step: 'Act',
+    body: 'Hands the work to specialised agents and workflows, always inside the permissions you set.',
+    powered: ['Agent Builder', 'Workflow Builder', 'Security Layer'],
+    trace: 'Drafted an updated brief, linked every source and shared it with the study team.',
+  },
+  {
+    step: 'Learn',
+    body: 'Keeps what it learned, so the next request starts further ahead than this one did.',
+    powered: ['Memory Engine', 'Knowledge Engine'],
+    trace: 'Saved the new findings to the study. Next time, it starts from here.',
+  },
+];
+
+export const AUDIENCE_DETAIL = [
+  {
+    name: 'Researchers',
+    line: 'A research partner that remembers every source, experiment and dead end, and picks up exactly where you left off.',
+    uses: ['Long-horizon literature reviews', 'Hypotheses tracked over months', 'Shared memory for the whole lab'],
+  },
+  {
+    name: 'Developers',
+    line: 'Build on one intelligence instead of stitching models together. Memory, reasoning and agents, exposed as clean interfaces.',
+    uses: ['Developer APIs', 'Agents that inherit context', 'Deploy from cloud to edge'],
+  },
+  {
+    name: 'Enterprises',
+    line: 'Organisation-wide intelligence on your own data, under your own governance, shared across teams instead of siloed in tools.',
+    uses: ['Knowledge that outlives projects', 'Observable workflow automation', 'Isolation and policy at every layer'],
+  },
+  {
+    name: 'Governments',
+    line: 'Sovereign intelligence for public services, planning and infrastructure, with data that remains under national control.',
+    uses: ['Sovereign cloud', 'Geospatial planning', 'Secure, auditable systems'],
+  },
+  {
+    name: 'Education',
+    line: 'Learning that remembers each student’s progress, for institutions and learners, on the devices they already have.',
+    uses: ['Persistent learning context', 'Voice-first access', 'Lightweight on-device models'],
+  },
+  {
+    name: 'Startups',
+    line: 'Start from a foundation, not from scratch. Ship intelligent products on shared infrastructure and a common ecosystem.',
+    uses: ['AI Studio', 'Marketplace of agents and models', 'Edge-ready deployment'],
+  },
+];
+
+export const FAQ = [
+  {
+    q: 'What does Bharattech Origin do?',
+    a: 'We are an Indian deep-technology research and engineering company. We are building an operating system for intelligence: the shared layer that lets AI systems remember context, work together and keep learning, from national data centres down to phones and devices.',
+  },
+  {
+    q: 'What is “Generative Intelligence”?',
+    a: 'Generative AI creates content: text, images, code. Generative Intelligence is our term for systems that generate new capabilities. They learn through use, keep memory over time, and combine specialised models to solve problems none of them could solve alone.',
+  },
+  {
+    q: 'How is this different from today’s AI chat assistants?',
+    a: 'Assistants are applications; we work one level down, on infrastructure. Most assistants start each session from zero and work alone. Origin is designed so memory persists, knowledge is shared between specialised systems, and learning continues after deployment.',
+  },
+  {
+    q: 'What is Rivinity?',
+    a: 'Rivinity is our flagship research programme. GI Rivinity is the intelligence model at its centre. Rivinity Core is the operating layer that connects it to applications, industries and devices.',
+  },
+  {
+    q: 'Can I use it today?',
+    a: 'Rivinity is in active research and development, and we share progress in the Journal. If you are a researcher, institution or organisation interested in early collaboration, write to us.',
+  },
+  {
+    q: 'What happens to data?',
+    a: 'Security and sovereignty are design principles, not features: data and intelligence are meant to stay under the control of the people and organisations they serve. Our privacy policy explains how this website handles information.',
+  },
+];

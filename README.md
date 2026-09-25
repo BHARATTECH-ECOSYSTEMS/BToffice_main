@@ -47,3 +47,13 @@ npm run build
   stock photos and the ISO/GDPR/SOC 2 badges. Add the badges back only if the certifications are real.
 - The contact form opens the visitor's mail client (there's no backend yet). Career "apply" links do the same.
 - Journal articles show the excerpt plus a "full essay coming" note until real article bodies exist.
+
+## Themes and breakpoints
+
+- Dark is the default; the sun/moon button in the nav switches to light and the choice is remembered
+  (`src/theme.ts`). The particle engine follows the theme: additive glow on dark, crisp ink on light.
+- `src/styles/global.css` is one stylesheet with light/dark tokens at the top. Layouts step down at
+  ≤1100px (tablet), ≤900px (compact: everything stacks, 3D visuals sit in a band at the top of their
+  section and scroll with it) and ≤560px (phone).
+- On compact screens the capabilities gallery becomes a native swipe carousel and "How it works"
+  becomes a vertical timeline.

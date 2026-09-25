@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Lenis from 'lenis';
 import { Engine, type Target } from './Engine';
+import { getTheme, onTheme } from '../theme';
 
 interface Entry {
   el: HTMLElement;
@@ -21,6 +22,31 @@ export function useScene() {
   const ctx = useContext(SceneContext);
   if (!ctx) throw new Error('useScene must be used inside <SceneProvider>');
   return ctx;
+}
+
+/**
+ * World-space y (at z = 0) of a point `offset` px below the top of `el`, so a formation can be
+ * pinned to a place on the page instead of to the screen. Mirrors the camera set-up in Engine.
+ */
+export function worldYOf(el: HTMLElement | null, offset: number) {
+  if (!el) return 0;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  const aspect = w / h;
+  const z = aspect < 1 ? 7 / Math.max(0.62, aspect) ** 0.55 : 7;
+  const perPx = (2 * z * Math.tan((35 / 2) * (Math.PI / 180))) / h;
+  return (h / 2 - (el.getBoundingClientRect().top + offset)) * perPx;
+}
+
+export const isCompact = () => window.innerWidth <= 900;
+
+/**
+ * On compact screens a visual sits in a band at the top of its section and scrolls with it,
+ * instead of staying fixed behind the text. `band` is the band's centre as a share of the viewport height.
+ */
+export function attachTo(el: HTMLElement | null, band: number, s: number): { mobilePose: { x: number; y: number; s: number }; follow?: number } {
+  if (!isCompact()) return { mobilePose: { x: 0, y: 0, s } };
+  return { mobilePose: { x: 0, y: worldYOf(el, window.innerHeight * band), s }, follow: 16 };
 }
 
 /**
@@ -64,11 +90,17 @@ export function SceneProvider({ children }: { children: ReactNode }) {
     } catch {
       canvas.style.display = 'none'; // no WebGL: the typography carries the page on its own
     }
+    engine?.setDark(getTheme() === 'dark');
+    const offTheme = onTheme((t) => engine?.setDark(t === 'dark'));
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const lenis = reduced ? null : new Lenis({ duration: 1.15, smoothWheel: true });
     let raf = 0;
+    let lastY = window.scrollY;
     const scrollLoop = (time: number) => {
       lenis?.raf(time);
+      const y = window.scrollY;
+      engine?.setVelocity(y - lastY);
+      lastY = y;
       raf = requestAnimationFrame(scrollLoop);
     };
     raf = requestAnimationFrame(scrollLoop);
@@ -93,12 +125,7 @@ export function SceneProvider({ children }: { children: ReactNode }) {
         const p = Math.min(1, Math.max(0, raw));
         e.onProgress?.(p, e === best);
       }
-      if (best) {
-        const t = best.target();
-        engine?.setTarget(t);
-        const theme = (t.params?.dark ?? 0) > 0.5 ? 'dark' : 'light';
-        if (document.documentElement.dataset.theme !== theme) document.documentElement.dataset.theme = theme;
-      }
+      if (best) engine?.setTarget(best.target());
     };
     // Drive section logic from the render loop when we have one, else from rAF.
     let stop: () => void;
@@ -128,6 +155,7 @@ export function SceneProvider({ children }: { children: ReactNode }) {
 
     return () => {
       stop();
+      offTheme();
       cancelAnimationFrame(raf);
       lenis?.destroy();
       engine?.destroy();
@@ -136,6 +164,7 @@ export function SceneProvider({ children }: { children: ReactNode }) {
 
   return (
     <SceneContext.Provider value={api}>
+      <div className="atmos" aria-hidden="true" />
       <canvas ref={canvasRef} className="scene" aria-hidden="true" />
       {children}
     </SceneContext.Provider>

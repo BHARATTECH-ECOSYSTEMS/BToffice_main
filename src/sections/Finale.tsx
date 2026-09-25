@@ -18,7 +18,7 @@ export function Finale() {
   return (
     <section id="next" ref={ref} className="section finale" data-chapter="Next era">
       <div className="wrap">
-        <Kicker index="08">What comes next</Kicker>
+        <Kicker index="12">What comes next</Kicker>
         <Lines className="display" lines={['The next era of', 'intelligence', 'begins here.']} />
         <Fade className="finale-actions" delay={300}>
           <Link to="/contact" className="btn btn-solid">

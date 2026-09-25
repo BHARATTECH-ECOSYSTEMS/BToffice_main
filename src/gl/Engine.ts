@@ -32,6 +32,8 @@ export interface Target {
   pose?: Partial<Pose>;
   mobilePose?: Partial<Pose>;
   params?: Partial<Params>;
+  /** How tightly the pose tracks its goal; high values pin a formation to the page while scrolling. */
+  follow?: number;
 }
 
 export interface ScreenAnchor {
@@ -56,11 +58,11 @@ const BASE_POSE: Record<FormationKey, Pose> = {
 
 const MOBILE_POSE: Partial<Pose> = { x: 0, y: 0.7, s: 0.62 };
 
-const DEFAULT_PARAMS: Params = { decay: 0, drift: 1, dark: 0, alpha: 1, wave: 1, highlight: -1, spinX: 0, spinY: 0, explode: 0, drag: 0 };
+const DEFAULT_PARAMS: Params = { decay: 0, drift: 1, dark: 1, alpha: 1, wave: 1, highlight: -1, spinX: 0, spinY: 0, explode: 0, drag: 0 };
 
 const THEME = {
-  light: { ink: new THREE.Color('#1B1A2B'), inkAlpha: 0.5, deep: new THREE.Color('#3A1FA8'), bright: new THREE.Color('#7B5CFF'), hot: new THREE.Color('#4A1FFF'), trail: new THREE.Color('#6A35FF') },
-  dark: { ink: new THREE.Color('#CFCBEA'), inkAlpha: 0.42, deep: new THREE.Color('#6A35FF'), bright: new THREE.Color('#D2C2FF'), hot: new THREE.Color('#E9E1FF'), trail: new THREE.Color('#D8CCFF') },
+  light: { ink: new THREE.Color('#2a2740'), inkAlpha: 0.55, deep: new THREE.Color('#3A1FA8'), bright: new THREE.Color('#7B5CFF'), hot: new THREE.Color('#4A1FFF'), trail: new THREE.Color('#6A35FF') },
+  dark: { ink: new THREE.Color('#7d76a8'), inkAlpha: 0.3, deep: new THREE.Color('#5b3df5'), bright: new THREE.Color('#b9a6ff'), hot: new THREE.Color('#ffffff'), trail: new THREE.Color('#c9bcff') },
 };
 
 const stagger = (m: number, th: number) => {
@@ -112,6 +114,9 @@ export class Engine {
   private height = 1;
   private listeners = new Set<() => void>();
   private tmp = new THREE.Vector3();
+  private velocity = 0;
+  private dark = true;
+  private warp = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -173,6 +178,7 @@ export class Engine {
       fragmentShader: particleFragment,
       transparent: true,
       depthWrite: false,
+      blending: THREE.AdditiveBlending,
       uniforms: {
         uMix: { value: 0 },
         uTime: { value: 0 },
@@ -192,6 +198,9 @@ export class Engine {
         uHot: { value: THEME.light.hot.clone() },
         uAlpha: { value: 1 },
         uInkAlpha: { value: THEME.light.inkAlpha },
+        uCyan: { value: new THREE.Color('#4fd8ff') },
+        uWarp: { value: 0 },
+        uHalo: { value: 0.35 },
       },
     });
     this.group.add(new THREE.Points(this.geometry, this.material));
@@ -220,6 +229,21 @@ export class Engine {
   setTarget(t: Target) {
     this.target = t;
     if (t.key !== this.toKey) this.morphTo(t.key);
+  }
+
+  /** Scroll velocity (px per frame); fast scrolling stretches the field. */
+  /** Follows the site theme: glowing light on dark, crisp ink on light. */
+  setDark(dark: boolean) {
+    this.dark = dark;
+    const blending = dark ? THREE.AdditiveBlending : THREE.NormalBlending;
+    for (const m of [this.material, this.arcMat]) {
+      m.blending = blending;
+      m.needsUpdate = true;
+    }
+  }
+
+  setVelocity(v: number) {
+    if (Math.abs(v) > Math.abs(this.velocity)) this.velocity = v;
   }
 
   get currentKey() {
@@ -315,6 +339,7 @@ export class Engine {
       fragmentShader: trailFragment,
       transparent: true,
       depthWrite: false,
+      blending: THREE.AdditiveBlending,
       uniforms: {
         uTime: { value: 0 },
         uPixelRatio: { value: 1 },
@@ -357,13 +382,21 @@ export class Engine {
     this.time += dt * (this.reducedMotion ? 0 : 1);
     this.progress += dt / this.duration;
 
-    const mobile = this.width < 760;
+    const mobile = this.width <= 900;
     const t = this.target;
     const goal: Pose = { ...BASE_POSE[t.key], ...t.pose, ...(mobile ? { ...MOBILE_POSE, ...t.mobilePose } : {}) };
-    const want: Params = { ...DEFAULT_PARAMS, ...t.params };
+    if (!mobile) {
+      // Compositions are authored for a 16:10 screen; narrower ones pull side visuals in and scale them down.
+      const fit = Math.min(1, this.width / this.height / 1.6);
+      goal.x *= fit;
+      goal.s *= Math.pow(fit, 0.7);
+    }
+    const want: Params = { ...DEFAULT_PARAMS, ...t.params, dark: this.dark ? 1 : 0 };
     if (this.reducedMotion) want.drift = 0;
 
-    const k = 2.4;
+    const k = t.follow ?? 2.4;
+    this.warp = damp(this.warp, Math.min(1, Math.abs(this.velocity) / 60), 4, dt);
+    this.velocity = damp(this.velocity, 0, 6, dt);
     for (const key of Object.keys(goal) as (keyof Pose)[]) this.pose[key] = damp(this.pose[key], goal[key], k, dt);
     for (const key of ['decay', 'drift', 'dark', 'alpha', 'wave', 'spinX', 'spinY', 'explode', 'drag'] as const)
       this.params[key] = damp(this.params[key], want[key], key === 'dark' ? 3.5 : 3, dt);
@@ -402,6 +435,8 @@ export class Engine {
     u.uWave.value = this.params.wave;
     u.uExplode.value = this.params.explode;
     u.uAlpha.value = this.params.alpha;
+    u.uWarp.value = this.reducedMotion ? 0 : this.warp;
+    u.uHalo.value = 0.06 + 0.29 * d;
     (u.uInk.value as THREE.Color).lerpColors(THEME.light.ink, THEME.dark.ink, d);
     (u.uDeep.value as THREE.Color).lerpColors(THEME.light.deep, THEME.dark.deep, d);
     (u.uBright.value as THREE.Color).lerpColors(THEME.light.bright, THEME.dark.bright, d);

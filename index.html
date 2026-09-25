@@ -5,7 +5,18 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bharattech Origin | The Operating System for Intelligence</title>
     <meta name="description" content="Bharattech Origin is an Indian deep-technology research company building a unified intelligence infrastructure designed to learn, remember, reason and evolve." />
-    <meta name="theme-color" content="#FBFBFA" />
+    <meta name="theme-color" content="#08080C" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('origin-theme');
+          if (t !== 'light' && t !== 'dark') t = 'dark';
+          document.documentElement.dataset.theme = t;
+        } catch (e) {
+          document.documentElement.dataset.theme = 'dark';
+        }
+      })();
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

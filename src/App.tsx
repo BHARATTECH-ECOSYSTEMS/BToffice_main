@@ -44,6 +44,7 @@ function Layout() {
 
   return (
     <div className="app">
+      <div className="grain" aria-hidden="true" />
       <a className="skip" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}>
         Skip to content
       </a>

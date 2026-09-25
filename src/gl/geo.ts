@@ -46,6 +46,18 @@ export const WORLD: { name: string; at: LonLat }[] = [
   { name: 'Jakarta', at: [106.85, -6.21] },
 ];
 
+/** Labelled on the globe: India, and the regions its links reach. */
+export const GLOBE_LABELS: { name: string; at: LonLat; home?: boolean }[] = [
+  { name: 'India', at: [79, 22.5], home: true },
+  { name: 'Europe', at: [13.4, 52.52] },
+  { name: 'Americas', at: [-74.0, 40.71] },
+  { name: 'Africa', at: [36.82, -1.29] },
+  { name: 'Middle East', at: [55.27, 25.2] },
+  { name: 'Southeast Asia', at: [103.82, 1.35] },
+  { name: 'East Asia', at: [139.69, 35.69] },
+  { name: 'Oceania', at: [151.21, -33.87] },
+];
+
 export const INDIA_BBOX = { minLon: 68, maxLon: 97.5, minLat: 7.8, maxLat: 37.2 };
 
 export function inPolygon([x, y]: LonLat, poly: LonLat[]): boolean {

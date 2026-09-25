@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Link } from 'react-router';
-import { useFormation, useScene } from '../gl/Scene';
+import { attachTo, useFormation, useScene } from '../gl/Scene';
 import { Lines, Arrow } from '../components/Reveal';
 import { CAPABILITIES, DOMAINS, LAYERS } from '../content';
 
@@ -15,7 +14,7 @@ export function Hero() {
   const ref = useRef<HTMLElement>(null);
   const [ready, setReady] = useState(false);
   const { scrollTo } = useScene();
-  useFormation(ref, { key: 'logo', pose: { x: 1.65, s: 0.92 }, mobilePose: { y: 1.05, s: 0.56 } });
+  useFormation(ref, () => ({ key: 'logo', pose: { x: 1.65, s: 0.92 }, ...attachTo(ref.current, 0.25, 0.56) }));
 
   useEffect(() => {
     const t = setTimeout(() => setReady(true), 250);
@@ -32,17 +31,18 @@ export function Hero() {
             <span className="eyebrow-dot" />
             Generative Intelligence Infrastructure
           </p>
-          <Lines as="h1" className="display" show={ready} delay={80} lines={['Intelligence', 'should never', <>forget<em>.</em></>]} />
+          <Lines as="h1" className="display" show={ready} delay={80} lines={['Intelligence', 'should never', <span className="accent">forget.</span>]} />
           <p className={`lede fade ${ready ? 'is-in' : ''}`} style={d(520)}>
-            A unified intelligence infrastructure, designed to learn, remember, reason and evolve.
+            Bharattech Origin is building the operating system for intelligence: one shared layer that lets AI remember context, work
+            across tools and keep learning.
           </p>
           <div className={`hero-actions fade ${ready ? 'is-in' : ''}`} style={d(640)}>
-            <button className="btn btn-solid" onClick={() => scrollTo(document.getElementById('mission')!)}>
-              Explore the system <Arrow dir="down" size={13} />
+            <button className="btn btn-solid" onClick={() => scrollTo(document.getElementById('intro')!)}>
+              See what we’re building <Arrow dir="down" size={13} />
             </button>
-            <Link to="/about" className="btn btn-ghost">
-              Read our thesis
-            </Link>
+            <button className="btn btn-ghost" onClick={() => scrollTo(document.getElementById('how')!)}>
+              How it works
+            </button>
           </div>
         </div>
       </div>

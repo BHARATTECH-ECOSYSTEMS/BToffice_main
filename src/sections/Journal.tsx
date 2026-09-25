@@ -34,7 +34,7 @@ export function Journal() {
     <section id="journal" ref={ref} className="section journal" data-chapter="Journal">
       <div className="wrap">
         <SectionHead
-          index="07"
+          index="10"
           label="Journal"
           title={['Notes from the frontier.']}
           aside={

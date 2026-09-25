@@ -1,20 +1,21 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { useFormation } from '../gl/Scene';
 import { useAnchors } from '../gl/useAnchors';
 import { Fade, Arrow, SectionHead } from '../components/Reveal';
 import { DOMAINS } from '../content';
+import { DomainArt } from '../components/DomainArt';
+import { useFormation, worldYOf } from '../gl/Scene';
 
-/** Six research domains = six segments of the helix. Opening one lights its segment. */
+const HELIX_BAND = 200; // px from the top of the section to the helix axis
+
+/** Six research domains = six segments of the helix. Pointing at a card lights its segment. */
 export function Laboratory() {
   const ref = useRef<HTMLElement>(null);
-  const [open, setOpen] = useState<number | null>(null);
   const [hover, setHover] = useState<number | null>(null);
-  const lit = hover ?? open;
+  const lit = hover;
   const litRef = useRef(lit);
   litRef.current = lit;
 
-  const recede = useRef(0);
   const tags = useRef<(HTMLSpanElement | null)[]>([]);
   useAnchors(['helix'], (pts, settle) => {
     tags.current.forEach((el, i) => {
@@ -23,25 +24,23 @@ export function Laboratory() {
         el.style.opacity = '0';
         return;
       }
-      const focus = litRef.current === null ? 1 - recede.current : litRef.current === i ? 1 : 0.3;
+      const focus = litRef.current === null || litRef.current === i ? 1 : 0.35;
       el.style.opacity = String(settle * focus);
       el.style.transform = `translate3d(${pts[i].x}px, ${pts[i].y}px, 0) translate(-50%, -100%)`;
     });
   });
 
-  // The helix owns the top of the section, then steps back once the reading starts.
-  useFormation(
-    ref,
-    () => ({
+  // The helix is part of the page: it scrolls with its band at the top of the section.
+  useFormation(ref, () => {
+    const y = worldYOf(ref.current, HELIX_BAND);
+    return {
       key: 'helix',
-      params: { dark: 1, highlight: litRef.current ?? -1, alpha: 0.9 - recede.current * 0.72 },
-      pose: { y: 0.95, s: 0.76 },
-      mobilePose: { y: 1.6, s: 0.5 },
-    }),
-    (p) => {
-      recede.current = litRef.current === null ? Math.min(1, Math.max(0, (p - 0.2) / 0.14)) : 0.4;
-    },
-  );
+      params: { dark: 1, highlight: litRef.current ?? -1, alpha: 0.95 },
+      pose: { y, s: 0.76, rz: 0 },
+      mobilePose: { y, s: 0.5, rz: 0 },
+      follow: 16,
+    };
+  });
 
   return (
     <section id="laboratory" ref={ref} className="section lab" data-chapter="Laboratory">
@@ -55,7 +54,7 @@ export function Laboratory() {
       </div>
       <div className="wrap">
         <SectionHead
-          index="05"
+          index="07"
           label="Laboratory"
           title={['Six domains.', 'One research programme.']}
           aside={
@@ -64,41 +63,36 @@ export function Laboratory() {
             </Link>
           }
         />
-        <ul className="domain-list" onMouseLeave={() => setHover(null)}>
-          {DOMAINS.map((d, i) => {
-            const isOpen = open === i;
-            return (
-              <Fade as="li" key={d.id} className={`domain ${isOpen ? 'is-open' : ''}`} delay={i * 70}>
-                <button
-                  className="domain-row"
-                  aria-expanded={isOpen}
-                  aria-controls={`domain-${d.id}`}
-                  onClick={() => setOpen(isOpen ? null : i)}
-                  onMouseEnter={() => setHover(i)}
-                >
-                  <span className="num">{String(i + 1).padStart(2, '0')}</span>
-                  <span className="domain-name">{d.name}</span>
-                  <span className="domain-field">{d.field}</span>
-                  <span className="domain-plus" aria-hidden="true" />
-                </button>
-                <div className="domain-more" id={`domain-${d.id}`}>
-                  <div>
-                    <div className="domain-more-inner">
-                      <p>{d.body}</p>
-                      <div className="tags">
-                        {d.focus.map((f) => (
-                          <span key={f} className="tag">
-                            {f}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
+        <div className="lab-grid" onMouseLeave={() => setHover(null)}>
+          {DOMAINS.map((d, i) => (
+            <Fade key={d.id} delay={(i % 3) * 80}>
+              <Link
+                to="/research"
+                className={`lab-card ${lit === i ? 'is-lit' : ''}`}
+                onMouseEnter={() => setHover(i)}
+                onFocus={() => setHover(i)}
+                onBlur={() => setHover(null)}
+              >
+                <div className="lab-card-art">
+                  <DomainArt index={i} />
+                  <span className="lab-card-num">{String(i + 1).padStart(2, '0')}</span>
+                </div>
+                <div className="lab-card-text">
+                  <p className="lab-card-field">{d.field}</p>
+                  <h3>{d.name}</h3>
+                  <p className="lab-card-body">{d.body}</p>
+                  <div className="tags">
+                    {d.focus.slice(0, 3).map((f) => (
+                      <span key={f} className="tag">
+                        {f}
+                      </span>
+                    ))}
                   </div>
                 </div>
-              </Fade>
-            );
-          })}
-        </ul>
+              </Link>
+            </Fade>
+          ))}
+        </div>
       </div>
     </section>
   );

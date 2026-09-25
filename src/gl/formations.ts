@@ -1,5 +1,5 @@
 import { distToThreads, THREAD_HALF_WIDTH } from './threads';
-import { INDIA, INDIA_BBOX, INDIA_HUBS, WORLD, inPolygon, lonLatToVec, type LonLat } from './geo';
+import { INDIA, INDIA_BBOX, INDIA_HUBS, WORLD, GLOBE_LABELS, inPolygon, lonLatToVec, type LonLat } from './geo';
 
 /**
  * A formation is one arrangement of the same N particles.
@@ -117,6 +117,7 @@ export function logo(n: number): Formation {
     const rr = LOGO_R * (0.975 + r() * 0.025);
     b.push(x * rr, y * rr, z * rr, 1);
   }
+  b.f.anchors = [[0, 0, 0], [LOGO_R, 0, 0]]; // centre and rim: lets HTML measure the mark
   return b.dust(r);
 }
 
@@ -361,7 +362,7 @@ export function arcPoint(a: LonLat, c: LonLat, t: number): V3 {
   const so = Math.sin(om) || 1e-6;
   const k1 = Math.sin((1 - t) * om) / so;
   const k2 = Math.sin(t * om) / so;
-  const lift = 1 + Math.sin(Math.PI * t) * (0.04 + om * 0.08);
+  const lift = 1 + Math.sin(Math.PI * t) * Math.min(0.1, 0.03 + om * 0.05);
   return [
     (p[0] * k1 + q[0] * k2) * GLOBE_R * lift,
     (p[1] * k1 + q[1] * k2) * GLOBE_R * lift,
@@ -404,7 +405,7 @@ export function globe(n: number): Formation {
     const [x, y, z] = arcPoint(a, c, r());
     b.push(x, y, z, 0.7, 1);
   }
-  b.f.anchors = INDIA_HUBS.map((h) => lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.02));
+  b.f.anchors = GLOBE_LABELS.map((h) => lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.03));
   return b.dust(r);
 }
 
@@ -486,7 +487,8 @@ function siloMembership(n: number, source: Formation) {
 }
 
 // labels sit on the outside of the grid so the gaps between rows stay clear
-const siloAnchors = (): V3[] => SILO_CENTERS.map(([x, y]) => [x, y > 0 ? y + 0.46 : y - 0.46, 0]);
+// anchors 0–5: label positions; 6–11: silo centres
+const siloAnchors = (): V3[] => [...SILO_CENTERS.map(([x, y]): V3 => [x, y > 0 ? y + 0.46 : y - 0.46, 0]), ...SILO_CENTERS];
 
 /** Step 2: soft, living spheres, each alone. */
 export function silos(n: number, source: Formation): Formation {

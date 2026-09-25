@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { useFormation } from '../gl/Scene';
+import { attachTo, useFormation } from '../gl/Scene';
 import { useAnchors } from '../gl/useAnchors';
 import { Lines, Kicker, Fade } from '../components/Reveal';
 import { LAYERS } from '../content';
@@ -17,12 +17,13 @@ export function Architecture() {
 
   useFormation(
     ref,
-    () => ({ key: 'layers', params: { dark: 1, highlight: activeRef.current, explode: 1 }, mobilePose: { y: 1.3, s: 0.48 } }),
+    () => ({ key: 'layers', params: { highlight: activeRef.current, explode: 1 }, ...attachTo(ref.current, 0.3, 0.5) }),
     (p) => {
       const s = Math.min(LAYERS.length - 1, Math.floor(Math.max(0, p - 0.04) * 1.08 * LAYERS.length));
       if (s !== last.current) {
         last.current = s;
         setScrolled(s);
+        setHovered(null); // scrolling always wins over a resting pointer
       }
     },
   );
@@ -50,7 +51,7 @@ export function Architecture() {
         </div>
         <div className="wrap arch-grid">
           <div className="arch-copy">
-            <Kicker index="03">Architecture</Kicker>
+            <Kicker index="05">Architecture</Kicker>
             <Lines className="h2" lines={['An operating system,', 'not an application.']} />
             <Fade as="p" className="body" delay={150}>
               Nine layers, one continuous system. Intelligence flows from sovereign compute at the base to the applications people

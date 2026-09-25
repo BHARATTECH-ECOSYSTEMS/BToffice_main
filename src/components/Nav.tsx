@@ -4,10 +4,28 @@ import { Brand } from './LogoMark';
 import { Arrow } from './Reveal';
 import { EMPLOYEE_LOGIN_URL, EMAIL } from '../content';
 import { useScene } from '../gl/Scene';
+import { useTheme } from '../theme';
+
+function ThemeToggle({ className = '', tabIndex }: { className?: string; tabIndex?: number }) {
+  const [theme, toggle] = useTheme();
+  const next = theme === 'dark' ? 'light' : 'dark';
+  return (
+    <button className={`theme-toggle ${className}`} onClick={toggle} aria-label={`Switch to ${next} mode`} title={`Switch to ${next} mode`} tabIndex={tabIndex}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        {theme === 'dark' ? (
+          <path d="M12 4V2M12 22v-2M4.9 4.9L3.5 3.5M20.5 20.5l-1.4-1.4M4 12H2M22 12h-2M4.9 19.1l-1.4 1.4M20.5 3.5l-1.4 1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
+        ) : (
+          <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
+        )}
+      </svg>
+    </button>
+  );
+}
 
 const LINKS = [
   { label: 'About', to: '/about' },
   { label: 'Capabilities', to: '/', section: 'capabilities' },
+  { label: 'How it works', to: '/', section: 'how' },
   { label: 'Research', to: '/research' },
   { label: 'Careers', to: '/careers' },
   { label: 'Journal', to: '/blog' },
@@ -63,13 +81,17 @@ export function Nav() {
               </NavLink>
             ),
           )}
+          <ThemeToggle />
           <a className="nav-cta" href={EMPLOYEE_LOGIN_URL} target="_blank" rel="noopener noreferrer">
             Employee login <Arrow dir="up-right" size={11} />
           </a>
         </nav>
-        <button className="nav-menu-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="sheet">
+        <div className="nav-mobile">
+          <ThemeToggle />
+          <button className="nav-menu-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="sheet">
           {open ? 'Close' : 'Menu'} <span className="burger" />
-        </button>
+          </button>
+        </div>
       </div>
 
       <div className="sheet" id="sheet" aria-hidden={!open}>
