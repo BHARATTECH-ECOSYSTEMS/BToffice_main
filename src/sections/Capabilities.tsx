@@ -65,8 +65,9 @@ export function Capabilities() {
           <span className="callout-dot" />
           <span className="callout-line" />
           <div className="callout-card" key={active}>
-            <p className="mono muted">
-              {String(active + 1).padStart(2, '0')} · {group}
+            <p className="callout-meta">
+              <span className="num">{String(active + 1).padStart(2, '0')}</span>
+              {group}
             </p>
             <p className="callout-name">{cap.name}</p>
             <p className="callout-body">{cap.body}</p>
@@ -74,7 +75,7 @@ export function Capabilities() {
         </div>
         <div className="wrap caps-grid">
           <div className="caps-copy">
-            <Kicker index="02">One intelligence</Kicker>
+            <Kicker index="02">Capabilities</Kicker>
             <Lines className="h2" lines={['One intelligence.', 'Infinite capabilities.']} />
             <Fade as="p" className="body" delay={150}>
               Not a suite of products. Every capability draws on the same memory, reasoning and security.
@@ -82,10 +83,7 @@ export function Capabilities() {
             <div className="cap-groups" onMouseLeave={() => setHovered(null)}>
               {CAPABILITY_GROUPS.map((g, gi) => (
                 <Fade key={g} className="cap-group" delay={200 + gi * 90}>
-                  <p className="mono cap-group-title">
-                    <span>Ring {gi + 1}</span>
-                    {g}
-                  </p>
+                  <p className="cap-group-title">{g}</p>
                   <ul>
                     {CAPABILITIES.slice(gi * PER_RING, (gi + 1) * PER_RING).map((c, j) => {
                       const i = gi * PER_RING + j;

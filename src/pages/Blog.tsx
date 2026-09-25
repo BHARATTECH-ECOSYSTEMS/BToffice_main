@@ -15,9 +15,9 @@ export function Blog() {
         label="Ideas · Research · Impact"
         title={['Notes from', 'the frontier.']}
         lede="Essays on memory, reasoning and the architecture of intelligence, written by the people building it."
-        target={{ key: 'fragments', params: { alpha: 0.45 }, pose: { x: 0.6 } }}
+        target={{ key: 'orbit6', pose: { x: 1.7, s: 0.9 } }}
       />
-      <Zone target={{ key: 'field', params: { alpha: 0.4 } }} className="section" id="posts">
+      <Zone target={{ key: 'field', params: { alpha: 0 } }} className="section" id="posts">
         <div className="wrap">
           <div className="filters" style={{ marginBottom: 48 }}>
             <div className="segmented" role="group" aria-label="Category">

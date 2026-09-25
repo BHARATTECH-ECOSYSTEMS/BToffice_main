@@ -2,7 +2,7 @@ import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { useFormation } from '../gl/Scene';
 import { useAnchors } from '../gl/useAnchors';
-import { Lines, Kicker, Fade, Arrow } from '../components/Reveal';
+import { Fade, Arrow, SectionHead } from '../components/Reveal';
 import { DOMAINS } from '../content';
 
 /** Six research domains = six segments of the helix. Opening one lights its segment. */
@@ -14,6 +14,7 @@ export function Laboratory() {
   const litRef = useRef(lit);
   litRef.current = lit;
 
+  const recede = useRef(0);
   const tags = useRef<(HTMLSpanElement | null)[]>([]);
   useAnchors(['helix'], (pts, settle) => {
     tags.current.forEach((el, i) => {
@@ -22,40 +23,47 @@ export function Laboratory() {
         el.style.opacity = '0';
         return;
       }
-      el.style.opacity = String(settle * (litRef.current === null || litRef.current === i ? 1 : 0.35));
+      const focus = litRef.current === null ? 1 - recede.current : litRef.current === i ? 1 : 0.3;
+      el.style.opacity = String(settle * focus);
       el.style.transform = `translate3d(${pts[i].x}px, ${pts[i].y}px, 0) translate(-50%, -100%)`;
     });
   });
 
-  useFormation(ref, () => ({
-    key: 'helix',
-    params: { dark: 1, highlight: litRef.current ?? -1, alpha: 0.85 },
-    pose: { y: 0.85, s: 0.8 },
-    mobilePose: { y: 1.6, s: 0.5 },
-  }));
+  // The helix owns the top of the section, then steps back once the reading starts.
+  useFormation(
+    ref,
+    () => ({
+      key: 'helix',
+      params: { dark: 1, highlight: litRef.current ?? -1, alpha: 0.9 - recede.current * 0.72 },
+      pose: { y: 0.95, s: 0.76 },
+      mobilePose: { y: 1.6, s: 0.5 },
+    }),
+    (p) => {
+      recede.current = litRef.current === null ? Math.min(1, Math.max(0, (p - 0.2) / 0.14)) : 0.4;
+    },
+  );
 
   return (
-    <section id="laboratory" ref={ref} className="section lab" data-chapter="Laboratory" style={{ paddingTop: 'clamp(300px, 56vh, 560px)' }}>
+    <section id="laboratory" ref={ref} className="section lab" data-chapter="Laboratory">
       <div className="helix-tags" aria-hidden="true">
         {DOMAINS.map((d, i) => (
-          <span key={d.id} ref={(el) => (tags.current[i] = el)} className={`helix-tag mono ${lit === i ? 'is-lit' : ''}`}>
+          <span key={d.id} ref={(el) => (tags.current[i] = el)} className={`helix-tag ${lit === i ? 'is-lit' : ''}`}>
             <b>{String(i + 1).padStart(2, '0')}</b>
             <span>{d.name}</span>
           </span>
         ))}
       </div>
       <div className="wrap">
-        <div className="lab-head">
-          <div>
-            <Kicker index="05">Laboratory</Kicker>
-            <Lines className="h2" lines={['Six domains.', 'One research programme.']} />
-          </div>
-          <Fade>
-            <Link to="/research" className="btn btn-ghost">
-              Enter the lab <Arrow />
+        <SectionHead
+          index="05"
+          label="Laboratory"
+          title={['Six domains.', 'One research programme.']}
+          aside={
+            <Link to="/research" className="link">
+              Enter the lab <Arrow size={13} />
             </Link>
-          </Fade>
-        </div>
+          }
+        />
         <ul className="domain-list" onMouseLeave={() => setHover(null)}>
           {DOMAINS.map((d, i) => {
             const isOpen = open === i;
@@ -68,7 +76,7 @@ export function Laboratory() {
                   onClick={() => setOpen(isOpen ? null : i)}
                   onMouseEnter={() => setHover(i)}
                 >
-                  <span className="mono num">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="num">{String(i + 1).padStart(2, '0')}</span>
                   <span className="domain-name">{d.name}</span>
                   <span className="domain-field">{d.field}</span>
                   <span className="domain-plus" aria-hidden="true" />
@@ -79,7 +87,7 @@ export function Laboratory() {
                       <p>{d.body}</p>
                       <div className="tags">
                         {d.focus.map((f) => (
-                          <span key={f} className="tag mono">
+                          <span key={f} className="tag">
                             {f}
                           </span>
                         ))}

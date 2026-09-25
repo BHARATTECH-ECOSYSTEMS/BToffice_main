@@ -9,7 +9,7 @@ import { NotFound } from './NotFound';
 export function Article() {
   const { slug } = useParams();
   const ref = useRef<HTMLElement>(null);
-  useFormation(ref, { key: 'field', params: { alpha: 0.3 } });
+  useFormation(ref, { key: 'field', params: { alpha: 0 } });
   const i = POSTS.findIndex((p) => p.slug === slug);
   if (i < 0) return <NotFound />;
   const post = POSTS[i];
@@ -17,7 +17,7 @@ export function Article() {
   return (
     <article ref={ref} className="page section" style={{ paddingTop: 160 }}>
       <div className="wrap article">
-        <Fade as="p" className="story-meta mono">
+        <Fade as="p" className="story-meta">
           <Link to="/blog" className="link">
             ← Journal
           </Link>

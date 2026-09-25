@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { particleVertex, particleFragment, trailVertex, trailFragment } from './shaders';
-import { logo, fragments, silos, frozen, orbit, layers, globe, helix, field, arcPoint, ARCS, LOGO_R, rng, type Formation } from './formations';
-import { SAMPLED_THREADS } from './threads';
+import { logo, fragments, silos, frozen, orbit, layers, globe, helix, field, arcPoint, ARCS, rng, type Formation } from './formations';
 
 export type FormationKey = 'logo' | 'fragments' | 'silos' | 'frozen' | 'alone' | 'orbit15' | 'orbit6' | 'layers' | 'globe' | 'helix' | 'field';
 
@@ -80,7 +79,6 @@ export class Engine {
   private group = new THREE.Group();
   private geometry = new THREE.BufferGeometry();
   private material: THREE.ShaderMaterial;
-  private threadMat: THREE.ShaderMaterial;
   private arcMat: THREE.ShaderMaterial;
   private formations = {} as Record<FormationKey, Formation>;
   private attr: Record<'from' | 'to' | 'accFrom' | 'accTo' | 'grpFrom' | 'grpTo', THREE.BufferAttribute>;
@@ -100,7 +98,6 @@ export class Engine {
   private mouseWorld = new THREE.Vector3(99, 99, 0);
   private mouseAmt = 0;
   private tilt = new THREE.Vector2();
-  private pulseAge = 99;
   private dragging = false;
   private dragX = 0;
   private dragSpin = 0;
@@ -142,27 +139,21 @@ export class Engine {
     const r = rng(3);
     this.rand = new Float32Array(n * 4);
     for (let i = 0; i < n; i++) {
-      this.rand[i * 4] = 0.55 + Math.pow(r(), 3) * 1.5;
+      this.rand[i * 4] = 0.8 + r() * 0.45;
       this.rand[i * 4 + 1] = r();
       this.rand[i * 4 + 2] = r();
       this.rand[i * 4 + 3] = 0.5 + r();
     }
 
-    // The first frame is a galaxy that condenses into the mark.
+    // The first frame is the mark, slightly contracted and invisible: it resolves in place.
     const start = new Float32Array(n * 3);
-    for (let i = 0; i < n; i++) {
-      const a = r() * Math.PI * 2;
-      const d = 2.5 + r() * 5;
-      start[i * 3] = Math.cos(a) * d * 1.3;
-      start[i * 3 + 1] = (r() - 0.5) * 1.2 + Math.sin(a) * d * 0.25;
-      start[i * 3 + 2] = Math.sin(a) * d * 0.5 - 1.5;
-    }
+    for (let i = 0; i < n * 3; i++) start[i] = f.logo.pos[i] * 0.82;
 
     const mk = (arr: Float32Array, size: number) => new THREE.BufferAttribute(arr, size).setUsage(THREE.DynamicDrawUsage);
     this.attr = {
       from: mk(start, 3),
       to: mk(new Float32Array(f.logo.pos), 3),
-      accFrom: mk(new Float32Array(n).fill(0.1), 1),
+      accFrom: mk(new Float32Array(n).fill(-1), 1),
       accTo: mk(new Float32Array(f.logo.acc), 1),
       grpFrom: mk(new Float32Array(n).fill(-1), 1),
       grpTo: mk(new Float32Array(f.logo.grp), 1),
@@ -188,9 +179,7 @@ export class Engine {
         uDrift: { value: 1 },
         uMouse: { value: this.mouseWorld },
         uMouseAmt: { value: 0 },
-        uPulseOrigin: { value: new THREE.Vector3(99, 99, 0) },
-        uPulseAge: { value: 99 },
-        uSize: { value: small ? 2.2 : 1.9 },
+        uSize: { value: small ? 2 : 1.8 },
         uPixelRatio: { value: 1 },
         uDecay: { value: 0 },
         uHighlight: { value: -1 },
@@ -207,9 +196,8 @@ export class Engine {
     });
     this.group.add(new THREE.Points(this.geometry, this.material));
 
-    this.threadMat = this.makeTrailMaterial(3.2, 0.16);
-    this.arcMat = this.makeTrailMaterial(2.4, 0.22);
-    this.group.add(this.buildThreadTrails(), this.buildArcTrails());
+    this.arcMat = this.makeTrailMaterial(1.8, 0.12);
+    this.group.add(this.buildArcTrails());
     this.scene.add(this.group);
 
     if (this.reducedMotion) {
@@ -273,7 +261,6 @@ export class Engine {
     document.removeEventListener('visibilitychange', this.onVisibility);
     this.geometry.dispose();
     this.material.dispose();
-    this.threadMat.dispose();
     this.arcMat.dispose();
     this.renderer.dispose();
   }
@@ -294,13 +281,13 @@ export class Engine {
     for (let i = 0; i < n; i++) {
       const rp = this.rand[i * 4 + 1];
       const st = stagger(mix, this.rand[i * 4 + 2]);
-      const tr = Math.sin(Math.PI * st) * 0.32;
+      const tr = Math.sin(Math.PI * st) * 0.1;
       const fx = from[i * 3], fy = from[i * 3 + 1], fz = from[i * 3 + 2];
       const tx = to[i * 3], ty = to[i * 3 + 1], tz = to[i * 3 + 2];
       from[i * 3] = fx + (tx - fx) * st + tr * Math.sin(rp * 6.2831 + ty * 2);
       from[i * 3 + 1] = fy + (ty - fy) * st + tr * Math.cos(rp * 5.1 + fx * 2);
       from[i * 3 + 2] = fz + (tz - fz) * st + tr * Math.sin(rp * 3.7);
-      accF[i] = accF[i] + (accT[i] - accF[i]) * st;
+      accF[i] = accF[i] < -0.5 || accT[i] < -0.5 ? (st < 0.5 ? accF[i] : accT[i]) : accF[i] + (accT[i] - accF[i]) * st;
       grpF[i] = st < 0.5 ? grpF[i] : grpT[i];
     }
     const f = this.formations[key];
@@ -337,33 +324,6 @@ export class Engine {
         uVisible: { value: 0 },
       },
     });
-  }
-
-  /** Light travelling along the three threads, always towards the origin point. */
-  private buildThreadTrails() {
-    const pos: number[] = [];
-    const t: number[] = [];
-    const seed: number[] = [];
-    SAMPLED_THREADS.forEach((curve, ci) => {
-      const dense = 420;
-      for (let k = 0; k < dense; k++) {
-        const f = (k / (dense - 1)) * (curve.length - 1);
-        const i0 = Math.floor(f);
-        const i1 = Math.min(curve.length - 1, i0 + 1);
-        const u = curve[i0][0] + (curve[i1][0] - curve[i0][0]) * (f - i0);
-        const v = curve[i0][1] + (curve[i1][1] - curve[i0][1]) * (f - i0);
-        const rr = u * u + v * v;
-        if (rr > 0.97) continue;
-        pos.push(u * LOGO_R, v * LOGO_R, Math.sqrt(1 - rr) * LOGO_R * 0.97);
-        t.push(k / (dense - 1));
-        seed.push(ci * 0.37);
-      }
-    });
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('aT', new THREE.Float32BufferAttribute(t, 1));
-    g.setAttribute('aSeed', new THREE.Float32BufferAttribute(seed, 1));
-    return new THREE.Points(g, this.threadMat);
   }
 
   private buildArcTrails() {
@@ -429,7 +389,6 @@ export class Engine {
       this.dragVel = damp(this.dragVel, 0, 2.5, dt);
     }
     this.mouseAmt = damp(this.mouseAmt, this.mouse.x < 5 && !this.reducedMotion ? 1 : 0, 3, dt);
-    this.pulseAge += dt;
 
     const d = this.params.dark;
     const u = this.material.uniforms;
@@ -437,7 +396,6 @@ export class Engine {
     u.uTime.value = this.time;
     u.uDrift.value = this.params.drift;
     u.uMouseAmt.value = this.mouseAmt;
-    u.uPulseAge.value = this.pulseAge;
     u.uDecay.value = this.params.decay;
     u.uHighlight.value = this.hlGroup;
     u.uHighlightAmt.value = this.hlAmt;
@@ -450,11 +408,10 @@ export class Engine {
     (u.uHot.value as THREE.Color).lerpColors(THEME.light.hot, THEME.dark.hot, d);
     u.uInkAlpha.value = THEME.light.inkAlpha + (THEME.dark.inkAlpha - THEME.light.inkAlpha) * d;
 
-    for (const [mat, key] of [[this.threadMat, 'logo'], [this.arcMat, 'globe']] as const) {
-      mat.uniforms.uTime.value = this.time;
-      mat.uniforms.uVisible.value = this.presence(key) * this.params.alpha;
-      (mat.uniforms.uColor.value as THREE.Color).lerpColors(THEME.light.trail, THEME.dark.trail, d);
-    }
+    const arc = this.arcMat.uniforms;
+    arc.uTime.value = this.time;
+    arc.uVisible.value = this.presence('globe') * this.params.alpha * 0.8;
+    (arc.uColor.value as THREE.Color).lerpColors(THEME.light.trail, THEME.dark.trail, d);
 
     this.renderer.render(this.scene, this.camera);
     this.listeners.forEach((fn) => fn());
@@ -473,7 +430,6 @@ export class Engine {
     this.camera.position.z = this.camera.aspect < 1 ? 7 / Math.max(0.62, this.camera.aspect) ** 0.55 : 7;
     this.camera.updateProjectionMatrix();
     this.material.uniforms.uPixelRatio.value = pr;
-    this.threadMat.uniforms.uPixelRatio.value = pr;
     this.arcMat.uniforms.uPixelRatio.value = pr;
   };
 
@@ -511,11 +467,6 @@ export class Engine {
       window.addEventListener('pointerup', up);
       window.addEventListener('pointercancel', up);
     }
-    this.mouse.set((e.clientX / this.width) * 2 - 1, -(e.clientY / this.height) * 2 + 1);
-    this.updateMouseWorld();
-    (this.material.uniforms.uPulseOrigin.value as THREE.Vector3).copy(this.mouseWorld);
-    this.pulseAge = 0;
-    if (e.pointerType === 'touch') this.mouse.set(10, 10);
   };
 
   private onVisibility = () => {

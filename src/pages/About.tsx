@@ -18,7 +18,7 @@ export function About() {
         target={{ key: 'logo', pose: { x: 1.8 } }}
       />
 
-      <Zone target={{ key: 'fragments', params: { alpha: 0.45 } }} className="section">
+      <Zone target={{ key: 'logo', pose: { x: 1.8 }, params: { alpha: 0 } }} className="section">
         <div className="wrap split">
           <Kicker index="01">Philosophy</Kicker>
           <div style={{ display: 'grid', gap: 48 }}>
@@ -36,7 +36,7 @@ export function About() {
         </div>
       </Zone>
 
-      <Zone target={{ key: 'logo', pose: { x: 0, y: 0, s: 1.15 }, params: { dark: 1, alpha: 0.35 } }} className="section" id="vision">
+      <Zone target={{ key: 'logo', pose: { x: 0, y: 0, s: 1.15 }, params: { dark: 1, alpha: 0.22 } }} className="section" id="vision">
         <div className="wrap" style={{ display: 'grid', gap: 'clamp(80px, 16vh, 180px)' }}>
           <div>
             <Kicker index="02">Vision</Kicker>
@@ -51,7 +51,7 @@ export function About() {
         </div>
       </Zone>
 
-      <Zone target={() => ({ key: 'orbit6', params: { highlight: hlRef.current ?? -1 } })} className="section">
+      <Zone target={() => ({ key: 'orbit6', params: { highlight: hlRef.current ?? -1, alpha: 0 } })} className="section">
         <div className="wrap">
           <div style={{ maxWidth: 720, marginBottom: 56 }}>
             <Kicker index="04">Principles</Kicker>

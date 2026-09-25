@@ -71,10 +71,32 @@ export function Fade({
 
 export function Kicker({ index, children }: { index?: string; children: ReactNode }) {
   return (
-    <Fade as="p" className="kicker mono">
-      {index && <b>{index}</b>}
-      {children}
+    <Fade as="p" className="kicker">
+      {index && <span className="kicker-num">{index}</span>}
+      <span>{children}</span>
     </Fade>
+  );
+}
+
+/** The one header every content section uses: label on the left, statement on a 12-column grid. */
+export function SectionHead({ index, label, title, lede, aside }: { index: string; label: string; title: ReactNode[]; lede?: ReactNode; aside?: ReactNode }) {
+  return (
+    <header className="sec-head">
+      <Kicker index={index}>{label}</Kicker>
+      <div className="sec-head-main">
+        <Lines className="h2" lines={title} />
+        {lede && (
+          <Fade as="p" className="lede" delay={120}>
+            {lede}
+          </Fade>
+        )}
+      </div>
+      {aside && (
+        <Fade className="sec-head-aside" delay={160}>
+          {aside}
+        </Fade>
+      )}
+    </header>
   );
 }
 

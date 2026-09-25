@@ -47,11 +47,32 @@ class Builder {
     this.f.acc[k] = acc;
     this.f.grp[k] = grp;
   }
-  /** Sparse ambient dust fills whatever budget is left. */
-  dust(r: () => number, spread: V3 = [5, 3, 3], acc = 0.05) {
-    while (!this.full) this.push((r() - 0.5) * 2 * spread[0], (r() - 0.5) * 2 * spread[1], (r() - 0.5) * 2 * spread[2] - 0.5, acc);
-    return this.f;
+  /**
+   * Whatever budget is left stays invisible (acc = HIDDEN), parked on top of a
+   * visible particle so it never streaks across the page while morphing.
+   */
+  dust(r: () => number) {
+    while (!this.full) this.push(0, 0, 0, HIDDEN);
+    return park(this.f, r);
   }
+}
+
+export const HIDDEN = -1;
+
+/** Moves every hidden particle onto a random visible one. */
+export function park(f: Formation, r: () => number) {
+  const visible: number[] = [];
+  for (let i = 0; i < f.acc.length; i++) if (f.acc[i] > HIDDEN) visible.push(i);
+  if (!visible.length) return f;
+  for (let i = 0; i < f.acc.length; i++) {
+    if (f.acc[i] > HIDDEN) continue;
+    const j = visible[Math.floor(r() * visible.length)];
+    f.pos[i * 3] = f.pos[j * 3];
+    f.pos[i * 3 + 1] = f.pos[j * 3 + 1];
+    f.pos[i * 3 + 2] = f.pos[j * 3 + 2];
+    f.grp[i] = -1;
+  }
+  return f;
 }
 
 function onSphere(r: () => number): V3 {
@@ -96,13 +117,7 @@ export function logo(n: number): Formation {
     const rr = LOGO_R * (0.975 + r() * 0.025);
     b.push(x * rr, y * rr, z * rr, 1);
   }
-  // a faint galaxy of loose particles: the threads' future, waiting
-  while (!b.full) {
-    const [x, y, z] = onSphere(r);
-    const d = LOGO_R * (1.45 + Math.pow(r(), 2) * 2.6);
-    b.push(x * d * 1.3, y * d * 0.8, z * d * 0.6 - 0.6, 0.18);
-  }
-  return b.f;
+  return b.dust(r);
 }
 
 // ── 2. Fragmentation ───────────────────────────────────────────────────────
@@ -131,7 +146,7 @@ export function fragments(n: number, source: Formation): Formation {
     const y = source.pos[i * 3 + 1];
     const z = source.pos[i * 3 + 2];
     if (i >= core) {
-      b.push((r() - 0.5) * 9, (r() - 0.5) * 5, (r() - 0.5) * 4 - 0.8, 0.05, -1);
+      b.push(0, 0, 0, HIDDEN);
       continue;
     }
     let best = 0;
@@ -154,7 +169,7 @@ export function fragments(n: number, source: Formation): Formation {
     );
   }
   b.f.anchors = centers;
-  return b.f;
+  return park(b.f, r);
 }
 
 // ── 3. Orbit ───────────────────────────────────────────────────────────────
@@ -224,7 +239,7 @@ export function orbit(n: number, satellites: number, seed = 5): Formation {
     b.push(c[0] * tt, c[1] * tt + bow, c[2] * tt, 0.6, s);
   }
   b.f.anchors = sats;
-  return b.dust(r, [5.5, 3.2, 3], 0.08);
+  return b.dust(r);
 }
 
 // ── 4. Exploded architecture ───────────────────────────────────────────────
@@ -331,7 +346,7 @@ export function layers(n: number): Formation {
     const a = r() * Math.PI * 2;
     b.push(Math.cos(a) * 0.025, (r() - 0.5) * (top * 2 + 0.9), Math.sin(a) * 0.025, 1, -1);
   }
-  return b.dust(r, [5, 3, 3], 0.05);
+  return b.dust(r);
 }
 
 // ── 5. The network ─────────────────────────────────────────────────────────
@@ -346,7 +361,7 @@ export function arcPoint(a: LonLat, c: LonLat, t: number): V3 {
   const so = Math.sin(om) || 1e-6;
   const k1 = Math.sin((1 - t) * om) / so;
   const k2 = Math.sin(t * om) / so;
-  const lift = 1 + Math.sin(Math.PI * t) * (0.1 + om * 0.16);
+  const lift = 1 + Math.sin(Math.PI * t) * (0.04 + om * 0.08);
   return [
     (p[0] * k1 + q[0] * k2) * GLOBE_R * lift,
     (p[1] * k1 + q[1] * k2) * GLOBE_R * lift,
@@ -390,7 +405,7 @@ export function globe(n: number): Formation {
     b.push(x, y, z, 0.7, 1);
   }
   b.f.anchors = INDIA_HUBS.map((h) => lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.02));
-  return b.dust(r, [5.5, 3.2, 2.5], 0.04);
+  return b.dust(r);
 }
 
 // ── 6. The laboratory ──────────────────────────────────────────────────────
@@ -420,7 +435,7 @@ export function helix(n: number, segments = 6): Formation {
     b.push(x, Math.cos(phase) * rad * t, Math.sin(phase) * rad * t, 0.25, seg);
   }
   for (let sgi = 0; sgi < segments; sgi++) b.f.anchors.push([-L + ((sgi + 0.5) * 2 * L) / segments, rad + 0.28, 0]);
-  return b.dust(r, [5.5, 3, 2.5], 0.05);
+  return b.dust(r);
 }
 
 // ── 7. Terrain ─────────────────────────────────────────────────────────────
@@ -437,7 +452,7 @@ export function field(n: number): Formation {
       const lit = r() < 0.035;
       b.push(x, -1.35, z, lit ? 1 : 0.1, -2);
     }
-  return b.dust(r, [6, 2.6, 3], 0.1);
+  return b.dust(r);
 }
 
 // ── Silos: today's AI, as six tools that never talk ───────────────────────
@@ -481,7 +496,7 @@ export function silos(n: number, source: Formation): Formation {
   for (let i = 0; i < n; i++) {
     const k = member[i];
     if (k < 0) {
-      b.push((r() - 0.5) * 10, (r() - 0.5) * 5.5, (r() - 0.5) * 3 - 0.8, 0.04, -1);
+      b.push(0, 0, 0, HIDDEN);
       continue;
     }
     const [x, y, z] = onSphere(r);
@@ -490,7 +505,7 @@ export function silos(n: number, source: Formation): Formation {
     b.push(c[0] + x * d, c[1] + y * d, c[2] + z * d, k === 1 ? 0.7 : 0.35, k);
   }
   b.f.anchors = siloAnchors();
-  return b.f;
+  return park(b.f, r);
 }
 
 function cubeLattice(steps: number): V3[] {
@@ -518,7 +533,7 @@ export function frozen(n: number, source: Formation, stubs = false): Formation {
   for (let i = 0; i < n; i++) {
     const k = member[i];
     if (k < 0) {
-      b.push((r() - 0.5) * 10, (r() - 0.5) * 5.5, (r() - 0.5) * 3 - 0.8, 0.03, -1);
+      b.push(0, 0, 0, HIDDEN);
       continue;
     }
     const c = SILO_CENTERS[k];
@@ -534,5 +549,5 @@ export function frozen(n: number, source: Formation, stubs = false): Formation {
     b.push(c[0] + p[0] * CUBE, c[1] + p[1] * CUBE, c[2] + p[2] * CUBE, 0.1, k);
   }
   b.f.anchors = siloAnchors();
-  return b.f;
+  return park(b.f, r);
 }

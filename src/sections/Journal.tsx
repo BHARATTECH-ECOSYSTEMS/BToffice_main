@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Link } from 'react-router';
 import { useFormation } from '../gl/Scene';
-import { Lines, Kicker, Fade, Arrow } from '../components/Reveal';
+import { Fade, Arrow, SectionHead } from '../components/Reveal';
 import { Cover } from '../components/Cover';
 import { POSTS } from '../content';
 
@@ -13,7 +13,7 @@ export function Story({ post, index }: { post: (typeof POSTS)[number]; index: nu
           <Cover seed={post.slug} variant={index} />
         </div>
         <div style={{ display: 'grid', gap: 12 }}>
-          <p className="story-meta mono">
+          <p className="story-meta">
             <span>{post.category}</span>
             <span>{post.date}</span>
             <span>{post.read}</span>
@@ -28,22 +28,21 @@ export function Story({ post, index }: { post: (typeof POSTS)[number]; index: nu
 
 export function Journal() {
   const ref = useRef<HTMLElement>(null);
-  useFormation(ref, { key: 'field', params: { alpha: 0.55 } });
+  useFormation(ref, { key: 'field', params: { alpha: 0 } });
   const [lead, ...rest] = POSTS;
   return (
     <section id="journal" ref={ref} className="section journal" data-chapter="Journal">
       <div className="wrap">
-        <div className="journal-head">
-          <div>
-            <Kicker index="07">Journal</Kicker>
-            <Lines className="h2" lines={['Ideas. Research.', 'Impact.']} />
-          </div>
-          <Fade>
+        <SectionHead
+          index="07"
+          label="Journal"
+          title={['Notes from the frontier.']}
+          aside={
             <Link to="/blog" className="link">
-              Read the journal <Arrow />
+              Read the journal <Arrow size={13} />
             </Link>
-          </Fade>
-        </div>
+          }
+        />
         <div className="journal-grid">
           <Story post={lead} index={0} />
           <div className="journal-side">

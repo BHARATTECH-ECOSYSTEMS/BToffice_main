@@ -25,7 +25,7 @@ export function Research() {
         target={{ key: 'helix', pose: { y: 0.9, s: 0.9 } }}
       />
 
-      <Zone target={() => ({ key: 'orbit6', params: { dark: 1, highlight: selRef.current } })} className="section">
+      <Zone target={() => ({ key: 'orbit6', params: { dark: 1, highlight: selRef.current, alpha: 0 } })} className="section">
         <div className="wrap explorer">
           <div>
             <Kicker index="01">Domains</Kicker>
@@ -58,7 +58,7 @@ export function Research() {
             <p className="body">{d.body}</p>
             <div className="tags" style={{ gridColumn: 'auto' }}>
               {d.focus.map((f) => (
-                <span key={f} className="tag mono">
+                <span key={f} className="tag">
                   {f}
                 </span>
               ))}
@@ -67,7 +67,7 @@ export function Research() {
         </div>
       </Zone>
 
-      <Zone target={{ key: 'layers', params: { alpha: 0.5 }, pose: { x: 1.9 } }} className="section">
+      <Zone target={{ key: 'layers', params: { alpha: 0 }, pose: { x: 1.9 } }} className="section">
         <div className="wrap split">
           <Kicker index="02">Unified architecture</Kicker>
           <div>
@@ -78,7 +78,7 @@ export function Research() {
         </div>
       </Zone>
 
-      <Zone target={{ key: 'field' }} className="section">
+      <Zone target={{ key: 'field', params: { alpha: 0.5 } }} className="section">
         <div className="wrap">
           <div style={{ maxWidth: 720, marginBottom: 48 }}>
             <Kicker index="03">Technology focus</Kicker>

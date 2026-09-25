@@ -29,7 +29,7 @@ export function Careers() {
         </a>
       </PageHero>
 
-      <Zone target={{ key: 'field', params: { alpha: 0.7 } }} className="section">
+      <Zone target={{ key: 'field', params: { alpha: 0 } }} className="section">
         <div className="wrap">
           <Kicker index="01">How we work</Kicker>
           <div className="values" style={{ marginTop: 40 }}>
@@ -44,7 +44,7 @@ export function Careers() {
         </div>
       </Zone>
 
-      <Zone target={{ key: 'field', params: { alpha: 0.35 } }} className="section" id="roles">
+      <Zone target={{ key: 'field', params: { alpha: 0 } }} className="section" id="roles">
         <div className="wrap">
           <div style={{ marginBottom: 40 }}>
             <Kicker index="02">Open roles</Kicker>

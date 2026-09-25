@@ -21,9 +21,9 @@ export function PageHero({ index, label, title, lede, target, children }: {
   return (
     <section ref={ref} className="page-hero">
       <div className="wrap">
-        <p className={`kicker mono fade ${ready ? 'is-in' : ''}`}>
-          <b>{index}</b>
-          {label}
+        <p className={`kicker fade ${ready ? 'is-in' : ''}`}>
+          <span className="kicker-num">{index}</span>
+          <span>{label}</span>
         </p>
         <Lines as="h1" className="h1" lines={title} show={ready} delay={100} />
         <div className={`fade ${ready ? 'is-in' : ''}`} style={{ '--d': '600ms' } as React.CSSProperties}>

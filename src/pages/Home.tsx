@@ -7,7 +7,6 @@ import { Laboratory } from '../sections/Laboratory';
 import { Builders } from '../sections/Builders';
 import { Journal } from '../sections/Journal';
 import { Finale } from '../sections/Finale';
-import { Rail } from '../components/Rail';
 
 export function Home() {
   return (
@@ -21,7 +20,6 @@ export function Home() {
       <Builders />
       <Journal />
       <Finale />
-      <Rail />
     </>
   );
 }

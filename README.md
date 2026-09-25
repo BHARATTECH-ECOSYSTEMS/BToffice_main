@@ -9,17 +9,18 @@ act out the story:
 
 | Chapter | Formation | What the particles do |
 |---|---|---|
-| Hero | the mark | Condense from a galaxy into the logo; light travels along the threads into the origin point |
+| Hero | the mark | The logo resolves in place: a purple sphere with the three threads cut through it |
 | The problem | mark, silos, frozen, alone | The mark forgets (dissolves), splits into six labelled tools, freezes into rigid cubes, then reaches for its neighbours and never connects |
 | Capabilities | orbit | 15 satellites on 3 rings (Understand, Build, Operate); a grouped list to read, one callout pinned to the active satellite |
 | Architecture | exploded stack | 9 layers, each with its own pattern; the active layer lifts out of the stack and is tagged in place |
 | Network | globe | India in dot-matrix, arcs of light to the world; drag to rotate |
 | Laboratory | helix | 6 labelled segments = 6 research domains; opening a domain lights its segment |
-| Builders / Journal | field | A calm breathing terrain |
+| Builders / Journal | none | Typography only: the particles step aside while people read |
 | Finale | the mark | Everything returns to the logo, rising over the horizon |
 
 Inner pages reuse the same system with their own formations, so moving between routes morphs
-the scene instead of reloading it. Move the cursor to part the particles; click anywhere to send a pulse.
+the scene instead of reloading it. Particles only ever appear as part of a shape; spare ones are parked
+invisibly on the shape itself, so nothing drifts across the page.
 
 ## Run
 
@@ -37,7 +38,7 @@ npm run build
 - `src/gl/useAnchors.ts`: pins HTML labels to live particle structures
 - `src/gl/Scene.tsx`: `useFormation(ref, target)`: any section declares what the scene becomes while it's in view
 - `src/content.ts`: all copy and data in one place
-- `src/sections/*`, `src/pages/*`: layout; `src/styles/global.css`: the design system
+- `src/sections/*`, `src/pages/*`: layout; `src/styles/global.css`: the design system (Geist, 12-column grid, one section-header pattern)
 
 ## Notes
 

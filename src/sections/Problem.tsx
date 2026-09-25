@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import { useRef, useState } from 'react';
 import { useFormation, useScene } from '../gl/Scene';
 import { useAnchors } from '../gl/useAnchors';
 import type { FormationKey } from '../gl/Engine';
@@ -70,7 +70,7 @@ export function Problem() {
       <div className="pin-stage">
         <div className="silo-labels" aria-hidden="true">
           {SILOS.map((s, i) => (
-            <span key={s} ref={(el) => (labels.current[i] = el)} className={`silo-label mono ${step === 3 ? 'is-cut' : ''}`}>
+            <span key={s} ref={(el) => (labels.current[i] = el)} className={`silo-label ${step === 3 ? 'is-cut' : ''}`}>
               {s}
             </span>
           ))}
@@ -83,7 +83,7 @@ export function Problem() {
               {PROBLEMS.map((pr, i) => (
                 <li key={pr.title} className={i === step ? 'is-active' : i < step ? 'is-past' : ''}>
                   <button onClick={() => jump(i)} aria-current={i === step}>
-                    <span className="mono">{String(i + 1).padStart(2, '0')}</span>
+                    <span className="num">{String(i + 1).padStart(2, '0')}</span>
                     <span className="problem-title">{pr.title}</span>
                   </button>
                   <div className="problem-body">
@@ -93,17 +93,16 @@ export function Problem() {
                 </li>
               ))}
             </ol>
+            <p className="problem-caption" aria-live="polite">
+              <span className="dot" />
+              <span>{PROBLEMS[step].caption}</span>
+              {step === 0 && (
+                <span ref={retained} className="problem-value">
+                  100%
+                </span>
+              )}
+            </p>
           </div>
-          <p className="problem-caption mono" aria-live="polite" style={{ '--x': '0' } as CSSProperties}>
-            <span className="dot" />
-            {PROBLEMS[step].caption}
-            {step === 0 && (
-              <>
-                {' '}
-                <span ref={retained} className="violet">100%</span>
-              </>
-            )}
-          </p>
         </div>
       </div>
     </section>

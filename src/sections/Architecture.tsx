@@ -44,7 +44,7 @@ export function Architecture() {
       <div className="pin-stage">
         <div ref={tag} className="layer-tag" aria-hidden="true">
           <span className="layer-tag-line" />
-          <span className="layer-tag-text mono" key={active}>
+          <span className="layer-tag-text" key={active}>
             <b>{String(active + 1).padStart(2, '0')}</b> {LAYERS[active].name}
           </span>
         </div>
@@ -60,7 +60,7 @@ export function Architecture() {
               {LAYERS.map((l, i) => (
                 <li key={l.name} className={`layer-item ${i === active ? 'is-active' : ''}`}>
                   <button className="layer-btn" onMouseEnter={() => setHovered(i)} onFocus={() => setHovered(i)} onBlur={() => setHovered(null)}>
-                    <span className="mono">{String(i + 1).padStart(2, '0')}</span>
+                    <span className="num">{String(i + 1).padStart(2, '0')}</span>
                     <span className="name">{l.name}</span>
                     <span className="desc">
                       <span>{l.body}</span>

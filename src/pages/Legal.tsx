@@ -5,7 +5,7 @@ import { PRIVACY, TERMS, LEGAL_DATE } from '../content';
 function LegalPage({ index, title, sections }: { index: string; title: string[]; sections: readonly (readonly [string, string])[] }) {
   return (
     <div className="page">
-      <PageHero index={index} label={`Effective ${LEGAL_DATE} · Last updated ${LEGAL_DATE}`} title={title} lede="Written to be read, not skimmed past." target={{ key: 'field', params: { alpha: 0.35 } }} />
+      <PageHero index={index} label={`Effective ${LEGAL_DATE} · Last updated ${LEGAL_DATE}`} title={title} lede="Written to be read, not skimmed past." target={{ key: 'field', params: { alpha: 0 } }} />
       <div className="wrap legal">
         <ol className="toc">
           {sections.map(([h], i) => (

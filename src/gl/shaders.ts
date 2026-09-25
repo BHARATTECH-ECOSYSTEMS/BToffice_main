@@ -15,8 +15,6 @@ export const particleVertex = /* glsl */ `
   uniform float uDrift;
   uniform vec3 uMouse;
   uniform float uMouseAmt;
-  uniform vec3 uPulseOrigin;
-  uniform float uPulseAge;
   uniform float uSize;
   uniform float uPixelRatio;
   uniform float uDecay;
@@ -43,14 +41,14 @@ export const particleVertex = /* glsl */ `
       sin(aRand.y * 6.2831 + aTo.y * 2.0),
       cos(aRand.y * 5.1 + aFrom.x * 2.0),
       sin(aRand.y * 3.7)
-    ) * 0.32;
+    ) * 0.1;
 
     float t = uTime * aRand.w;
     p += vec3(
       sin(t * 0.7 + aRand.y * 6.2831),
       cos(t * 0.6 + aRand.y * 4.7),
       sin(t * 0.5 + aRand.y * 3.1)
-    ) * 0.014 * uDrift;
+    ) * 0.008 * uDrift;
 
     // terrain breathes
     float waveW = (aGrpTo < -1.5 ? st : 0.0) + (aGrpFrom < -1.5 ? 1.0 - st : 0.0);
@@ -62,18 +60,12 @@ export const particleVertex = /* glsl */ `
 
     vec4 world = modelMatrix * vec4(p, 1.0);
 
-    // the cursor parts the particles like a hand through water
+    // the cursor gently displaces what it passes over
     vec2 d = world.xy - uMouse.xy;
     float dist = length(d);
-    float push = smoothstep(0.95, 0.0, dist) * uMouseAmt;
-    world.xy += (d / max(dist, 1e-4)) * push * 0.32;
-    world.z += push * 0.25;
-
-    // click pulse: a ring of light travelling outward
-    float radius = uPulseAge * 3.4;
-    float ring = exp(-pow((length(world.xy - uPulseOrigin.xy) - radius) * 3.5, 2.0)) * exp(-uPulseAge * 1.6);
-    vec2 away = world.xy - uPulseOrigin.xy;
-    world.xy += (away / max(length(away), 1e-4)) * ring * 0.22;
+    float push = smoothstep(0.6, 0.0, dist) * uMouseAmt;
+    world.xy += (d / max(dist, 1e-4)) * push * 0.1;
+    world.z += push * 0.12;
 
     vec4 mv = viewMatrix * world;
     gl_Position = projectionMatrix * mv;
@@ -82,15 +74,21 @@ export const particleVertex = /* glsl */ `
     float hl = (uHighlight > -0.5 && abs(grp - uHighlight) < 0.5) ? uHighlightAmt : 0.0;
     vHl = hl;
 
-    gl_PointSize = uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.35 + ring * 2.2) * (7.0 / -mv.z);
+    gl_PointSize = uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.3) * (7.0 / -mv.z);
 
-    vAcc = mix(aAccFrom, aAccTo, st);
+    // Parked particles (acc -1) only fade; they borrow the colour of the other side.
+    bool hideFrom = aAccFrom < -0.5;
+    bool hideTo = aAccTo < -0.5;
+    float accF = hideFrom ? aAccTo : aAccFrom;
+    float accT = hideTo ? accF : aAccTo;
+    vAcc = max(mix(accF, accT, st), 0.0);
     vShade = clamp(dot(normalize(p + vec3(0.0001)), normalize(vec3(0.35, 0.55, 0.75))) * 0.5 + 0.5, 0.0, 1.0);
 
     float depth = smoothstep(-10.5, -5.2, mv.z);
     float forgotten = step(aRand.z, uDecay);
     float dim = (uHighlight > -0.5) ? mix(1.0, 0.45, uHighlightAmt) : 1.0;
-    vAlpha = mix(0.22, 1.0, depth) * (1.0 - forgotten * 0.94) * mix(dim, 1.0, hl);
+    float shown = mix(hideFrom ? 0.0 : 1.0, hideTo ? 0.0 : 1.0, st);
+    vAlpha = mix(0.3, 1.0, depth) * (1.0 - forgotten * 0.94) * mix(dim, 1.0, hl) * shown;
   }
 `;
 
@@ -111,7 +109,7 @@ export const particleFragment = /* glsl */ `
   void main() {
     float d = length(gl_PointCoord - 0.5);
     if (d > 0.5) discard;
-    float soft = smoothstep(0.5, 0.18, d);
+    float soft = smoothstep(0.5, 0.32, d);
     vec3 accent = mix(uDeep, uBright, pow(vShade, 1.6));
     vec3 col = mix(uInk, accent, smoothstep(0.0, 1.0, vAcc));
     col = mix(col, uHot, vHl * 0.7);
