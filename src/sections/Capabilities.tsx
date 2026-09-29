@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
 import { useFormation } from '../gl/Scene';
-import { Lines, Kicker, Fade } from '../components/Reveal';
+import { Lines, Kicker } from '../components/Reveal';
+import { useScrollSteps } from '../components/useScrollSteps';
 import { CAPABILITIES, CAPABILITY_GROUPS } from '../content';
 
 const PER_GROUP = CAPABILITIES.length / CAPABILITY_GROUPS.length;
@@ -35,54 +35,83 @@ const Icon = ({ i, size = 22 }: { i: number; size?: number }) => (
   </svg>
 );
 
-/** Fifteen capabilities in three groups, one group at a time. */
+function Group({ g }: { g: number }) {
+  return (
+    <div className="caps-grid" role="tabpanel" key={g}>
+      {CAPABILITIES.slice(g * PER_GROUP, (g + 1) * PER_GROUP).map((c, j) => {
+        const i = g * PER_GROUP + j;
+        return (
+          <article key={c.name} className="cap-card" style={{ animationDelay: `${j * 70}ms` }}>
+            <span className="cap-icon">
+              <Icon i={i} />
+            </span>
+            <h4>{c.name}</h4>
+            <p>{c.body}</p>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Fifteen capabilities in three groups. Scrolling turns the page from one group to the next. */
 export function Capabilities() {
-  const ref = useRef<HTMLElement>(null);
-  const [group, setGroup] = useState(0);
-  const [hot, setHot] = useState(false);
+  const { ref, active, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(CAPABILITY_GROUPS.length, 60);
   useFormation(ref, { key: 'field', params: { alpha: 0 } });
+  const local = (i: number) => Math.min(1, Math.max(0, progress * CAPABILITY_GROUPS.length - i));
+
+  const head = (
+    <header className="caps-head">
+      <div>
+        <Kicker index="03">Capabilities</Kicker>
+        <Lines className="h2" lines={['One intelligence.', <span className="accent">Infinite capabilities.</span>]} />
+      </div>
+      {pinned && (
+        <div className="caps-groups" role="tablist" aria-label="Capability groups">
+          {CAPABILITY_GROUPS.map((g, i) => (
+            <button key={g} role="tab" aria-selected={i === active} onClick={() => jump(i)}>
+              <span>{g}</span>
+              <i style={{ transform: `scaleX(${local(i)})` }} />
+            </button>
+          ))}
+        </div>
+      )}
+    </header>
+  );
 
   return (
-    <section id="capabilities" ref={ref} className="section caps" data-chapter="Capabilities">
-      <div className="wrap">
-        <header className="caps-head">
-          <div>
-            <Kicker index="03">Capabilities</Kicker>
-            <Lines className="h2" lines={['One intelligence.', <span className="accent">Infinite capabilities.</span>]} />
+    <section id="capabilities" ref={ref} className={`section caps ${pinned ? 'is-pinned' : ''}`} data-chapter="Capabilities" style={style}>
+      <div className={pinned ? 'steps-stage' : ''}>
+        <div className="wrap">
+          {head}
+          {pinned ? (
+            <>
+              <div className="caps-line" key={`l${active}`}>
+                <span className="caps-big">0{active + 1}</span>
+                <p className="lede">{GROUP_LINES[active]}</p>
+              </div>
+              <Group g={active} />
+            </>
+          ) : (
+            CAPABILITY_GROUPS.map((g, i) => (
+              <div key={g} className="caps-block">
+                <div className="caps-line">
+                  <span className="caps-big">0{i + 1}</span>
+                  <div>
+                    <h3 className="caps-name">{g}</h3>
+                    <p className="lede">{GROUP_LINES[i]}</p>
+                  </div>
+                </div>
+                <Group g={i} />
+              </div>
+            ))
+          )}
+          <div className="caps-base">
+            <span>Every capability draws on the same</span>
+            <b>memory</b>
+            <b>reasoning</b>
+            <b>security</b>
           </div>
-          <div className="caps-groups" role="tablist" aria-label="Capability groups">
-            {CAPABILITY_GROUPS.map((g, i) => (
-              <button key={g} role="tab" aria-selected={i === group} onClick={() => setGroup(i)}>
-                {g}
-              </button>
-            ))}
-          </div>
-        </header>
-
-        <Fade as="p" className="caps-line lede" key={`l${group}`}>
-          {GROUP_LINES[group]}
-        </Fade>
-
-        <div className="caps-grid" role="tabpanel" key={group} onMouseEnter={() => setHot(true)} onMouseLeave={() => setHot(false)}>
-          {CAPABILITIES.slice(group * PER_GROUP, (group + 1) * PER_GROUP).map((c, j) => {
-            const i = group * PER_GROUP + j;
-            return (
-              <article key={c.name} className="cap-card" style={{ animationDelay: `${j * 60}ms` }}>
-                <span className="cap-icon">
-                  <Icon i={i} />
-                </span>
-                <h4>{c.name}</h4>
-                <p>{c.body}</p>
-              </article>
-            );
-          })}
-        </div>
-
-        <div className={`caps-base ${hot ? 'is-hot' : ''}`}>
-          <span>Every capability draws on the same</span>
-          <b>memory</b>
-          <b>reasoning</b>
-          <b>security</b>
         </div>
       </div>
     </section>

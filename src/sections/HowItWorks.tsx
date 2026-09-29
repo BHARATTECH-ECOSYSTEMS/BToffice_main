@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useFormation } from '../gl/Scene';
-import { Kicker, Lines, Fade, useInView } from '../components/Reveal';
+import { Kicker, Lines, Fade } from '../components/Reveal';
+import { useScrollSteps } from '../components/useScrollSteps';
 import { FLOW } from '../content';
 
 const X = [120, 360, 600, 840, 1080]; // station centres on the 1200-wide diagram
@@ -104,49 +105,35 @@ function Learn({ x }: { x: number }) {
 
 const VIGNETTES = [Understand, Recall, Reason, Act, Learn];
 
-const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
-
 /**
- * One request, followed through the system. It advances on its own while on screen and pauses
- * when the pointer is over it; any station can be clicked.
+ * One request, followed through the system. On wide screens scrolling moves the request
+ * along the line and each station performs its part as the request arrives.
  */
 export function HowItWorks() {
-  const ref = useRef<HTMLElement>(null);
-  const [wrapRef, inView] = useInView<HTMLDivElement>({ once: false, margin: '-10% 0px -10% 0px' });
-  const [active, setActive] = useState(0);
-  const [paused, setPaused] = useState(false);
-  const idle = useRef(0);
-
+  const { ref, active: scrolled, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(FLOW.length, 55);
+  const [picked, setPicked] = useState(0);
+  const active = pinned ? scrolled : picked;
   useFormation(ref, { key: 'field', params: { alpha: 0 } });
-
-  useEffect(() => {
-    if (!inView || paused || reduced()) return;
-    const id = setInterval(() => {
-      if (Date.now() < idle.current) return;
-      setActive((a) => (a + 1) % FLOW.length);
-    }, 3400);
-    return () => clearInterval(id);
-  }, [inView, paused]);
-
-  const jump = (i: number) => {
-    idle.current = Date.now() + 9000;
-    setActive(i);
-  };
-  const frac = (X[active] - 40) / 1120;
+  // the request glides continuously between stations while scrolling
+  const pos = pinned ? Math.min(FLOW.length - 1, progress * FLOW.length - 0.5) : active;
+  const seg0 = Math.max(0, Math.min(FLOW.length - 2, Math.floor(pos)));
+  const px = pos <= 0 ? X[0] : X[seg0] + (X[seg0 + 1] - X[seg0]) * Math.min(1, pos - seg0);
+  const frac = (px - 40) / 1120;
+  const pick = (i: number) => (pinned ? jump(i) : setPicked(i));
 
   const step = FLOW[active];
 
   return (
-    <section id="how" ref={ref} className="section how" data-chapter="How it works">
-      <div>
-        <div ref={wrapRef} className="wrap how-stage" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
+    <section id="how" ref={ref} className={`section how ${pinned ? 'is-pinned' : ''}`} data-chapter="How it works" style={style}>
+      <div className={pinned ? 'steps-stage' : ''}>
+        <div className="wrap how-stage">
           <header className="how-head">
             <div>
               <Kicker index="04">How it works</Kicker>
               <Lines className="h2" lines={['From a question to an answer.']} />
             </div>
             <Fade as="p" className="body" delay={120}>
-              The request from the scenario above, followed through the system: five stations, one shared memory underneath. Select any step.
+              The request from the scenario above, followed through the system: five stations, one shared memory underneath. Keep scrolling to follow it.
             </Fade>
           </header>
 
@@ -169,14 +156,14 @@ export function HowItWorks() {
             </text>
 
             <line className="dg-rail" x1={40} x2={1160} y1={Y} y2={Y} />
-            <line className="dg-rail-fill" x1={40} x2={1160} y1={Y} y2={Y} style={{ transformOrigin: '40px 0', transform: `scaleX(${frac})`, transition: 'transform 0.9s var(--ease-io)' }} />
+            <line className="dg-rail-fill" x1={40} x2={1160} y1={Y} y2={Y} style={{ transformOrigin: '40px 0', transform: `scaleX(${frac})`, transition: pinned ? 'none' : 'transform 0.9s var(--ease-io)' }} />
 
             {X.map((x, i) => (
               <g
                 key={x}
                 className={`dg-node ${i === active ? 'is-active' : ''} ${i < active ? 'is-done' : ''}`}
                 transform={`translate(${x} ${Y})`}
-                onClick={() => jump(i)}
+                onClick={() => pick(i)}
                 role="button"
                 aria-label={FLOW[i].step}
               >
@@ -188,7 +175,7 @@ export function HowItWorks() {
               </g>
             ))}
 
-            <g className="dg-packet" style={{ transform: `translate(${X[active]}px, ${Y}px)`, transition: 'transform 0.9s var(--ease-io)' }}>
+            <g className="dg-packet" style={{ transform: `translate(${px}px, ${Y}px)`, transition: pinned ? 'none' : 'transform 0.9s var(--ease-io)' }}>
               <circle r={16} className="dg-packet-ring" />
               <circle r={6} />
             </g>
