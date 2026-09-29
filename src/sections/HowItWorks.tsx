@@ -1,11 +1,10 @@
-import { useRef, useState } from 'react';
-import { useFormation, useScene } from '../gl/Scene';
-import { Kicker, Lines, Fade } from '../components/Reveal';
+import { useEffect, useRef, useState } from 'react';
+import { useFormation } from '../gl/Scene';
+import { Kicker, Lines, Fade, useInView } from '../components/Reveal';
 import { FLOW } from '../content';
 
 const X = [120, 360, 600, 840, 1080]; // station centres on the 1200-wide diagram
 const Y = 196; // the line every request travels along
-const SPAN = X[4] - X[0];
 
 const NODE_ICONS = [
   'M-8 0h3M-3-5v10M1-8v16M5-4v8M8 0h1',
@@ -105,55 +104,49 @@ function Learn({ x }: { x: number }) {
 
 const VIGNETTES = [Understand, Recall, Reason, Act, Learn];
 
+const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
 /**
- * One request, followed through the system. The section is pinned; scrolling moves the
- * request along the line and each station performs its part as the request arrives.
+ * One request, followed through the system. It advances on its own while on screen and pauses
+ * when the pointer is over it; any station can be clicked.
  */
 export function HowItWorks() {
   const ref = useRef<HTMLElement>(null);
-  const { scrollTo } = useScene();
+  const [wrapRef, inView] = useInView<HTMLDivElement>({ once: false, margin: '-10% 0px -10% 0px' });
   const [active, setActive] = useState(0);
-  const last = useRef(0);
-  const packet = useRef<SVGGElement>(null);
-  const fill = useRef<SVGLineElement>(null);
+  const [paused, setPaused] = useState(false);
+  const idle = useRef(0);
 
-  useFormation(
-    ref,
-    { key: 'logo', params: { alpha: 0 } },
-    (p) => {
-      const t = Math.min(4, Math.max(0, p * 4.7 - 0.3)); // 0…4 along the stations
-      const x = X[0] + (t / 4) * SPAN;
-      packet.current?.setAttribute('transform', `translate(${x} ${Y})`);
-      fill.current?.setAttribute('x2', String(x));
-      const s = Math.min(4, Math.floor(t + 0.35));
-      if (s !== last.current) {
-        last.current = s;
-        setActive(s);
-      }
-    },
-  );
+  useFormation(ref, { key: 'field', params: { alpha: 0 } });
+
+  useEffect(() => {
+    if (!inView || paused || reduced()) return;
+    const id = setInterval(() => {
+      if (Date.now() < idle.current) return;
+      setActive((a) => (a + 1) % FLOW.length);
+    }, 3400);
+    return () => clearInterval(id);
+  }, [inView, paused]);
 
   const jump = (i: number) => {
-    const el = ref.current;
-    if (!el) return;
-    const top = el.getBoundingClientRect().top + window.scrollY;
-    scrollTo(top + ((i + 0.3) / 4.7) * (el.offsetHeight - window.innerHeight));
+    idle.current = Date.now() + 9000;
+    setActive(i);
   };
+  const frac = (X[active] - 40) / 1120;
 
   const step = FLOW[active];
 
   return (
-    <section id="how" ref={ref} className="pin how" data-chapter="How it works">
-      <div className="pin-stage">
-        <div className="wrap how-stage">
+    <section id="how" ref={ref} className="section how" data-chapter="How it works">
+      <div>
+        <div ref={wrapRef} className="wrap how-stage" onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}>
           <header className="how-head">
             <div>
               <Kicker index="04">How it works</Kicker>
               <Lines className="h2" lines={['From a question to an answer.']} />
             </div>
             <Fade as="p" className="body" delay={120}>
-              The request from the scenario above, followed through the system. Keep scrolling: five stations, one shared memory
-              underneath.
+              The request from the scenario above, followed through the system: five stations, one shared memory underneath. Select any step.
             </Fade>
           </header>
 
@@ -176,7 +169,7 @@ export function HowItWorks() {
             </text>
 
             <line className="dg-rail" x1={40} x2={1160} y1={Y} y2={Y} />
-            <line ref={fill} className="dg-rail-fill" x1={40} x2={X[0]} y1={Y} y2={Y} />
+            <line className="dg-rail-fill" x1={40} x2={1160} y1={Y} y2={Y} style={{ transformOrigin: '40px 0', transform: `scaleX(${frac})`, transition: 'transform 0.9s var(--ease-io)' }} />
 
             {X.map((x, i) => (
               <g
@@ -195,7 +188,7 @@ export function HowItWorks() {
               </g>
             ))}
 
-            <g ref={packet} className="dg-packet" transform={`translate(${X[0]} ${Y})`}>
+            <g className="dg-packet" style={{ transform: `translate(${X[active]}px, ${Y}px)`, transition: 'transform 0.9s var(--ease-io)' }}>
               <circle r={16} className="dg-packet-ring" />
               <circle r={6} />
             </g>
