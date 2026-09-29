@@ -26,6 +26,9 @@
   --fill: rgba(248, 247, 243, 0.05);
   --accent: #9480ff;
   --accent-fill: #6d4bff;
+  --brand-fill: #6d4bff;
+  --brand-text: #9480ff;
+  --brand-soft: rgba(148, 128, 255, 0.14);
   --accent-soft: rgba(148, 128, 255, 0.14);
   --accent-line: rgba(148, 128, 255, 0.45);
   --on-accent: #ffffff;
@@ -63,6 +66,9 @@
   --fill: rgba(12, 12, 16, 0.04);
   --accent: #5b3df5;
   --accent-fill: #5b3df5;
+  --brand-fill: #5b3df5;
+  --brand-text: #5b3df5;
+  --brand-soft: rgba(91, 61, 245, 0.09);
   --accent-soft: rgba(91, 61, 245, 0.09);
   --accent-line: rgba(91, 61, 245, 0.4);
   --tango-text: #d9560f;
@@ -886,16 +892,20 @@ svg {
   box-shadow: inset 0 0 0 1px var(--accent-line), var(--shadow);
 }
 .bento-art {
-  aspect-ratio: 344 / 160;
   border-bottom: 1px solid var(--line);
-  background-color: var(--card-2);
-  background-image: radial-gradient(var(--line-strong) 1px, transparent 1px);
-  background-size: 16px 16px;
-  background-position: -8px -8px;
+  background: var(--card-2);
 }
-.bento-art svg {
+.dg {
+  display: block;
   width: 100%;
-  height: 100%;
+  height: auto;
+  overflow: visible;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.bento-art .dg {
+  overflow: hidden;
 }
 .bento-text {
   display: grid;
@@ -1183,261 +1193,46 @@ svg {
 
 /* ── 02 Problem ─────────────────────────────────────────────────────────── */
 
-.problem {
-  height: 400svh;
-}
-.problem .pin-stage {
-  align-items: stretch;
-}
-.problem-stage {
-  position: relative;
-  height: 100%;
+.problem-grid {
   display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  grid-template-rows: auto 1fr auto;
-  column-gap: var(--gap);
-  padding-top: 36px;
-  padding-bottom: 32px;
-}
-.problem-head {
-  grid-column: 1 / span 6;
-}
-.problem-head .h2 {
-  margin-top: 14px;
-  font-size: clamp(1.5rem, 2.2vw, 2.1rem);
-  color: var(--ink-2);
-}
-.problem-statement {
-  grid-column: 1 / span 5;
-  align-self: center;
-  display: grid;
-  gap: 16px;
-  animation: statement-in 0.6s var(--ease) both;
-}
-@keyframes statement-in {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-}
-.problem-big-num {
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--accent);
-}
-.problem-big {
-  font-size: clamp(2.75rem, 5.6vw, 5.5rem);
-  font-weight: 500;
-  line-height: 0.98;
-  letter-spacing: -0.05em;
-}
-.problem-say {
-  max-width: 34ch;
-  font-size: var(--t-lede);
-  color: var(--ink-2);
-}
-.problem-caption {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  justify-self: start;
-  padding: 8px 12px;
-  border-radius: var(--r-sm);
-  font-size: 13px;
-  color: var(--ink-2);
-  box-shadow: inset 0 0 0 1px var(--line);
-}
-.problem-caption .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-}
-.problem-timeline {
-  grid-column: 1 / -1;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--gap);
 }
-.problem-timeline button {
-  width: 100%;
-  display: grid;
-  gap: 12px;
-  color: var(--ink-3);
-  transition: color 0.3s ease;
-}
-.problem-timeline .is-past button {
-  color: var(--ink-2);
-}
-.problem-timeline .is-active button,
-.problem-timeline button:hover {
-  color: var(--ink);
-}
-.problem-track {
-  position: relative;
-  display: block;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--line-strong);
-  overflow: hidden;
-}
-.problem-bar {
-  position: absolute;
-  inset: 0;
-  background: var(--accent);
-  transform-origin: left;
-  transform: scaleX(var(--p, 0));
-}
-.problem-seg {
+.problem-card {
   display: flex;
-  align-items: baseline;
-  gap: 10px;
-  font-size: 15px;
-  font-weight: 500;
-}
-.problem-timeline .is-active .num {
-  color: var(--accent);
-}
-
-.problem-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 2;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-}
-.problem-overlay > g,
-.ov-label {
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-.ov-track {
-  stroke: var(--line-strong);
-  stroke-width: 2;
-}
-.ov-arc {
-  stroke: var(--accent);
-  stroke-width: 2.5;
-  stroke-linecap: round;
-}
-.ov-label {
-  z-index: 3;
-}
-.ov-gauge-label {
-  display: grid;
-  gap: 2px;
-  padding: 10px 14px;
-  border-radius: var(--r-md);
-  background: var(--glass);
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--card);
+  border-radius: var(--r-lg);
   box-shadow: inset 0 0 0 1px var(--line), var(--shadow);
 }
-.ov-gauge-label span {
-  font-size: 12px;
-  color: var(--ink-3);
+.problem-art {
+  background: var(--card-2);
+  border-bottom: 1px solid var(--line);
 }
-.ov-gauge-label b {
-  font-size: 1.5rem;
-  font-weight: 500;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
+.problem-art .dg {
+  overflow: hidden;
+}
+.problem-text {
+  display: grid;
+  gap: 6px;
+  padding: 20px 24px 24px;
+}
+.problem-text .num {
+  font-family: var(--mono);
+  font-size: 12px;
   color: var(--accent);
 }
-.ov-walls line {
-  stroke: var(--ink-3);
-  stroke-width: 1;
-  stroke-dasharray: 5 6;
-}
-.ov-wall-tag {
-  padding: 5px 10px;
-  border-radius: 999px;
-  font-size: 12px;
+.problem-text h3 {
+  font-size: var(--t-h3);
   font-weight: 500;
-  color: var(--ink);
-  background: var(--glass);
-  box-shadow: inset 0 0 0 1px var(--line-strong);
+  letter-spacing: -0.03em;
+  line-height: 1.15;
 }
-.ov-time line {
-  stroke-width: 2;
-  vector-effect: non-scaling-stroke;
-}
-.ov-time-solid {
-  stroke: var(--accent);
-}
-.ov-time-dash {
-  stroke: var(--ink-3);
-  stroke-dasharray: 4 5;
-}
-.ov-time-dot {
-  fill: var(--accent);
-}
-.ov-time-end {
-  fill: var(--ink-3);
-}
-.ov-legend {
-  position: absolute;
-  right: max(calc((100vw - var(--max)) / 2 + var(--gutter)), var(--gutter));
-  bottom: 96px;
-  z-index: 3;
-  display: flex;
-  gap: 20px;
-  font-size: 12.5px;
+.problem-text p {
+  max-width: 44ch;
+  font-size: 15px;
   color: var(--ink-2);
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-.ov-legend.is-on {
-  opacity: 1;
-}
-.ov-legend span {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.ov-legend i {
-  width: 22px;
-  border-top: 2px solid var(--accent);
-}
-.ov-legend i.dash {
-  border-top: 2px dashed var(--ink-3);
-}
-.ov-links line {
-  stroke: var(--accent);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-}
-.ov-x circle {
-  fill: var(--card);
-  stroke: var(--line-strong);
-}
-.ov-x path {
-  stroke: var(--danger);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-}
-.silo-label {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  padding: 4px 9px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--ink-2);
-  background: var(--glass);
-  box-shadow: inset 0 0 0 1px var(--line);
-}
-.silo-label.step-2 {
-  color: var(--frost);
-}
-.silo-label.step-3 {
-  color: var(--ink-3);
 }
 
 /* ── 03 Capabilities: horizontal gallery ────────────────────────────────── */
@@ -4085,11 +3880,4 @@ svg {
   --accent-soft: var(--pitch-soft);
   --accent-line: var(--pitch-line);
   --on-accent: var(--on-tone);
-}
-
-/* ── Live motion scenes (src/reel) ──────────────────────────────────────── */
-
-.live-scene {
-  border-bottom: 1px solid var(--line);
-  cursor: crosshair;
 }

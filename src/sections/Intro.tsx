@@ -1,7 +1,8 @@
 import { useRef, type CSSProperties } from 'react';
 import { useFormation } from '../gl/Scene';
 import { Fade, SectionHead, useInView } from '../components/Reveal';
-import { LiveScene } from '../components/LiveScene';
+import { Diagram } from '../viz/Diagram';
+import { connect, learn, remember } from '../viz/intro';
 import { PILLARS_PLAIN, SCENARIO } from '../content';
 
 /** It remembers: sessions come and go, one memory thread runs underneath all of them. */
@@ -14,7 +15,11 @@ function Mark({ ok }: { ok: boolean }) {
 }
 
 /** What the company is building, said plainly, then shown as one concrete scene. */
-const CLIPS = ['memory', 'connect', 'learn'] as const;
+const ART = [
+  { draw: remember, hold: 10.2, label: 'Notes from earlier sessions are kept in memory and recalled in a later one' },
+  { draw: connect, hold: undefined, label: 'Six separate systems share one memory: what one learns, all of them receive' },
+  { draw: learn, hold: 9.6, label: 'After deployment a frozen model stays flat while Origin keeps improving' },
+];
 
 export function Intro() {
   const ref = useRef<HTMLElement>(null);
@@ -36,7 +41,9 @@ export function Intro() {
           {PILLARS_PLAIN.map((p, i) => {
             return (
               <Fade key={p.title} className="bento plain-item" delay={i * 90}>
-                <LiveScene name={CLIPS[i]} label={p.title} />
+                <div className="bento-art">
+                  <Diagram draw={ART[i].draw} period={12} hold={ART[i].hold} label={ART[i].label} still={[10.2, 2, 10][i]} />
+                </div>
                 <div className="bento-text">
                   <span className="num">{String(i + 1).padStart(2, '0')}</span>
                   <h3>{p.title}</h3>

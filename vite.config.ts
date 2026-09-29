@@ -6,7 +6,7 @@ export default defineConfig({
   server: { port: 5175 },
   plugins: [react()],
   build: {
-    rollupOptions: { input: { main: 'index.html', reel: 'reel.html' }, output: { manualChunks: { three: ['three'] } } },
+    rollupOptions: { input: { main: 'index.html' }, output: { manualChunks: { three: ['three'] } } },
     chunkSizeWarningLimit: 700,
   },
 })
