@@ -97,6 +97,9 @@ const ICON: Record<string, string> = {
   lock: 'M-5 -1h10v8h-10zM-3 -1v-3a3 3 0 0 1 6 0v3',
   snow: 'M0 -8v16M-7 -4l14 8M-7 4l14-8',
   agent: 'M-6 -3h12v9h-12zM0 -3v-4M-2 -8h4M-3 1.5h.01M3 1.5h.01M-2.5 4h5',
+  shield: 'M0 -9l8 3v5c0 5-3.5 8.5-8 10-4.5-1.5-8-5-8-10v-5l8-3zM-3.5 0.5l2.5 2.5 4.5-5',
+  server: 'M-8 -8h16v6h-16zM-8 2h16v6h-16zM-4.5 -5h.01M-4.5 5h.01',
+  phone: 'M-4.5 -8h9v16h-9zM-1.5 5h3',
   check: 'M-4 0l3 3 5-6',
   x: 'M-3.5 -3.5l7 7M3.5 -3.5l-7 7',
 };
