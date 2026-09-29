@@ -108,6 +108,7 @@ export const particleFragment = /* glsl */ `
   uniform float uAlpha;
   uniform float uInkAlpha;
   uniform vec3 uCyan;
+  uniform vec3 uYellow;
   uniform float uHalo;
 
   varying float vAcc;
@@ -123,7 +124,8 @@ export const particleFragment = /* glsl */ `
     float core = smoothstep(0.42, 0.18, d);
     float halo = exp(-d * d * 5.0) * uHalo;
     vec3 accent = mix(uDeep, uBright, pow(vShade, 1.4));
-    accent = mix(accent, uCyan, vTint * 0.75);
+    vec3 warm = mix(uCyan, uYellow, step(0.5, fract(vAcc * 9.3 + vShade * 5.1)));
+    accent = mix(accent, warm, vTint * 0.75);
     vec3 col = mix(uInk, accent, smoothstep(0.0, 1.0, vAcc));
     col = mix(col, uHot, vHl * 0.6);
     float a = (core + halo) * vAlpha * uAlpha * mix(uInkAlpha, 1.0, vAcc) * 0.85;

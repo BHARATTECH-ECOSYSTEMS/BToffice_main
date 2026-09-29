@@ -6,28 +6,44 @@
 
 /* ── Tokens ─────────────────────────────────────────────────────────────── */
 
+/* Brand palette. Violet (--accent) stays the primary; the rest are supporting. */
+:root {
+  --tango: #ff8643;
+  --pitch: #f59e00;
+  --cultured: #f8f7f3;
+}
+
 :root,
 :root[data-theme='dark'] {
   --bg: #08080c;
   --card: #111117;
   --card-2: #16161e;
-  --ink: #f2f1f7;
-  --ink-2: rgba(242, 241, 247, 0.7);
-  --ink-3: rgba(242, 241, 247, 0.46);
-  --line: rgba(242, 241, 247, 0.08);
-  --line-strong: rgba(242, 241, 247, 0.16);
-  --fill: rgba(242, 241, 247, 0.05);
+  --ink: #f8f7f3;
+  --ink-2: rgba(248, 247, 243, 0.7);
+  --ink-3: rgba(248, 247, 243, 0.46);
+  --line: rgba(248, 247, 243, 0.08);
+  --line-strong: rgba(248, 247, 243, 0.16);
+  --fill: rgba(248, 247, 243, 0.05);
   --accent: #9480ff;
   --accent-fill: #6d4bff;
   --accent-soft: rgba(148, 128, 255, 0.14);
   --accent-line: rgba(148, 128, 255, 0.45);
   --on-accent: #ffffff;
+  --tango-text: #ff8643;
+  --tango-fill: #ff8643;
+  --tango-soft: rgba(255, 134, 67, 0.14);
+  --tango-line: rgba(255, 134, 67, 0.5);
+  --pitch-text: #f59e00;
+  --pitch-fill: #f59e00;
+  --pitch-soft: rgba(245, 158, 0, 0.14);
+  --pitch-line: rgba(245, 158, 0, 0.5);
+  --on-tone: #1a0f04;
   --panel: #13121c;
-  --panel-ink: #f2f1f7;
+  --panel-ink: #f8f7f3;
   --panel-ink-2: rgba(242, 241, 247, 0.66);
-  --frost: #a8e4ff;
-  --danger: #ef5d58;
-  --ok: #3ecf8e;
+  --frost: #ff8643;
+  --danger: #ff8643;
+  --ok: #f59e00;
   --nav-bg: rgba(8, 8, 12, 0.78);
   --glass: rgba(17, 17, 23, 0.82);
   --shadow: 0 24px 48px -28px rgba(0, 0, 0, 0.8);
@@ -36,7 +52,7 @@
 }
 
 :root[data-theme='light'] {
-  --bg: #f7f7f5;
+  --bg: #f8f7f3;
   --card: #ffffff;
   --card-2: #f1f0f4;
   --ink: #0c0c10;
@@ -49,11 +65,19 @@
   --accent-fill: #5b3df5;
   --accent-soft: rgba(91, 61, 245, 0.09);
   --accent-line: rgba(91, 61, 245, 0.4);
+  --tango-text: #d9560f;
+  --tango-soft: rgba(255, 134, 67, 0.13);
+  --tango-line: rgba(217, 86, 15, 0.45);
+  --pitch-text: #c47d00;
+  --pitch-soft: rgba(245, 158, 0, 0.14);
+  --pitch-line: rgba(184, 116, 0, 0.5);
   --panel: #111018;
-  --panel-ink: #f2f1f7;
+  --panel-ink: #f8f7f3;
   --panel-ink-2: rgba(242, 241, 247, 0.66);
-  --frost: #0b7fb0;
-  --nav-bg: rgba(247, 247, 245, 0.84);
+  --frost: #d9560f;
+  --danger: #d9560f;
+  --ok: #b87400;
+  --nav-bg: rgba(248, 247, 243, 0.84);
   --glass: rgba(255, 255, 255, 0.9);
   --shadow: 0 1px 2px rgba(12, 12, 16, 0.04), 0 18px 40px -24px rgba(24, 16, 64, 0.18);
   --grain: 0.025;
@@ -2859,7 +2883,7 @@ svg {
   height: 10px;
   border-radius: 50%;
   background: var(--ok);
-  box-shadow: 0 0 0 4px rgba(62, 207, 142, 0.15);
+  box-shadow: 0 0 0 4px rgba(245, 158, 0, 0.18);
 }
 .faq-contact p {
   display: grid;
@@ -4018,4 +4042,54 @@ svg {
   .segmented button {
     flex: none;
   }
+}
+
+/* ── Secondary accents ──────────────────────────────────────────────────────
+   Components read --accent*, so a tone re-points those vars for a subtree.
+   Violet stays the lead; cards rotate violet → tango → pitch. */
+
+.tone-tango,
+.problem,
+.caps .accent,
+.bento:nth-child(3n + 2),
+.cap-card:nth-child(3n + 2),
+.aud-card:nth-child(3n + 2),
+.net-card:nth-child(3n + 2),
+.lab-card:nth-child(3n + 2),
+.value:nth-child(3n + 2),
+.job:nth-child(3n + 2),
+.layer-item:nth-child(3n + 2),
+.faq-item:nth-child(3n + 2),
+.story:nth-child(3n + 2) {
+  --accent: var(--tango-text);
+  --accent-fill: var(--tango-fill);
+  --accent-soft: var(--tango-soft);
+  --accent-line: var(--tango-line);
+  --on-accent: var(--on-tone);
+}
+
+.tone-pitch,
+.network .accent,
+.bento:nth-child(3n),
+.cap-card:nth-child(3n),
+.aud-card:nth-child(3n),
+.net-card:nth-child(3n),
+.lab-card:nth-child(3n),
+.value:nth-child(3n),
+.job:nth-child(3n),
+.layer-item:nth-child(3n),
+.faq-item:nth-child(3n),
+.story:nth-child(3n) {
+  --accent: var(--pitch-text);
+  --accent-fill: var(--pitch-fill);
+  --accent-soft: var(--pitch-soft);
+  --accent-line: var(--pitch-line);
+  --on-accent: var(--on-tone);
+}
+
+/* ── Live motion scenes (src/reel) ──────────────────────────────────────── */
+
+.live-scene {
+  border-bottom: 1px solid var(--line);
+  cursor: crosshair;
 }
