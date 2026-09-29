@@ -76,7 +76,7 @@ export function About() {
             {AUDIENCES.map((a, i) => (
               <span key={a}>
                 {a}
-                {i < AUDIENCES.length - 1 && <i>/</i>}
+                {i < AUDIENCES.length - 1 && <i>/ </i>}
               </span>
             ))}
           </Fade>
