@@ -25,7 +25,7 @@ export function Laboratory() {
         />
         <div className="lab-grid">
           {DOMAINS.map((d, i) => (
-            <Fade key={d.id} delay={(i % 3) * 80}>
+            <Fade key={d.id} delay={(i % 3) * 100} data-fx="tilt">
               <Link to="/research" className="lab-card">
                 <div className="lab-card-art">
                   <Diagram draw={DOMAIN_DRAWS[i]} period={8} w={DOMAIN_W} h={DOMAIN_H} label={DOMAIN_LABELS[i]} still={DOMAIN_STILL[i]} />

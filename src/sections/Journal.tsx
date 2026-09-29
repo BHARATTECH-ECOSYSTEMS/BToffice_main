@@ -7,7 +7,7 @@ import { POSTS } from '../content';
 
 export function Story({ post, index }: { post: (typeof POSTS)[number]; index: number }) {
   return (
-    <Fade as="article" delay={index * 90}>
+    <Fade as="article" delay={index * 140} data-fx="wipe">
       <Link to={`/blog/${post.slug}`} className="story">
         <div className="story-cover">
           <Cover seed={post.slug} variant={index} />

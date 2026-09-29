@@ -27,7 +27,7 @@ export function Problem() {
         />
         <div className="problem-grid">
           {PROBLEMS.map((p, i) => (
-            <Fade key={p.title} className="problem-card" delay={(i % 2) * 90}>
+            <Fade key={p.title} className="problem-card" delay={(i % 2) * 160} data-fx="wipe">
               <div className="problem-art">
                 <Diagram draw={ART[i].draw} period={ART[i].period} h={250} still={ART[i].still} label={ART[i].label} />
               </div>

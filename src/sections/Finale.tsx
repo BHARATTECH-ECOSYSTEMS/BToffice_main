@@ -1,7 +1,6 @@
 import { useRef } from 'react';
-import { Link } from 'react-router';
 import { useFormation } from '../gl/Scene';
-import { Lines, Kicker, Fade, Arrow } from '../components/Reveal';
+import { Lines, Kicker } from '../components/Reveal';
 
 /** Everything returns to the mark: rising over the horizon like a planet. */
 export function Finale() {
@@ -20,14 +19,6 @@ export function Finale() {
       <div className="wrap">
         <Kicker index="12">What comes next</Kicker>
         <Lines className="display" lines={['The next era of', 'intelligence', 'begins here.']} />
-        <Fade className="finale-actions" delay={300}>
-          <Link to="/contact" className="btn btn-solid">
-            Start a conversation <Arrow size={13} />
-          </Link>
-          <Link to="/careers" className="btn btn-ghost">
-            Join the builders
-          </Link>
-        </Fade>
       </div>
     </section>
   );

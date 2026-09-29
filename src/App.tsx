@@ -3,6 +3,7 @@ import { createHashRouter, Outlet, RouterProvider, useLocation } from 'react-rou
 import { SceneProvider, useScene } from './gl/Scene';
 import { Nav } from './components/Nav';
 import { Footer } from './components/Footer';
+import { ChapterRail } from './components/ChapterRail';
 import { Home } from './pages/Home';
 import { About } from './pages/About';
 import { Research } from './pages/Research';
@@ -49,6 +50,7 @@ function Layout() {
         Skip to content
       </a>
       <Nav />
+      <ChapterRail />
       <main id="main" tabIndex={-1} key={pathname} style={{ outline: 'none' }}>
         <Outlet />
       </main>

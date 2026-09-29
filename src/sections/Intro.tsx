@@ -40,7 +40,7 @@ export function Intro() {
         <div className="plain">
           {PILLARS_PLAIN.map((p, i) => {
             return (
-              <Fade key={p.title} className="bento plain-item" delay={i * 90}>
+              <Fade key={p.title} className="bento plain-item" delay={i * 110} data-fx="blur">
                 <div className="bento-art">
                   <Diagram draw={ART[i].draw} period={12} h={ART[i].h} label={ART[i].label} still={ART[i].still} />
                 </div>

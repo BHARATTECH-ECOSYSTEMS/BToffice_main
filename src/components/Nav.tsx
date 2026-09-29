@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import { Brand } from './LogoMark';
 import { Arrow } from './Reveal';
@@ -34,17 +34,54 @@ const LINKS = [
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
+  const [section, setSection] = useState<string | null>(null);
+  const [pill, setPill] = useState<{ x: number; w: number; on: boolean }>({ x: 0, w: 0, on: false });
+  const bar = useRef<HTMLElement>(null);
+  const links = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { scrollTo } = useScene();
 
+  // Hide while reading downwards, come back on the way up; track progress and the section in view.
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+    let last = window.scrollY;
+    let raf = 0;
+    const tick = () => {
+      raf = 0;
+      const y = window.scrollY;
+      setScrolled(y > 40);
+      if (Math.abs(y - last) > 6) {
+        setHidden(y > last && y > 480);
+        last = y;
+      }
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      bar.current?.style.setProperty('--p', String(max > 0 ? y / max : 0));
+      const mid = window.innerHeight / 2;
+      const found = LINKS.find((l) => {
+        const el = l.section && document.getElementById(l.section);
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        return r.top <= mid && r.bottom >= mid;
+      });
+      setSection(found?.section ?? null);
+    };
+    const on = () => {
+      if (!raf) raf = requestAnimationFrame(tick);
+    };
+    tick();
+    window.addEventListener('scroll', on, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', on);
+    };
+  }, [pathname]);
+
+  const hover = (e: React.MouseEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    setPill({ x: el.offsetLeft, w: el.offsetWidth, on: true });
+  };
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
@@ -64,19 +101,20 @@ export function Nav() {
   };
 
   return (
-    <header className={`nav ${scrolled ? 'is-scrolled' : ''} ${open ? 'menu-open' : ''}`}>
+    <header ref={bar} className={`nav ${scrolled ? 'is-scrolled' : ''} ${hidden && !open ? 'is-hidden' : ''} ${open ? 'menu-open' : ''}`}>
       <div className="nav-inner">
         <Link to="/" className="brand" aria-label="Bharattech Origin home">
           <Brand />
         </Link>
-        <nav className="nav-links" aria-label="Primary">
+        <nav ref={links} className="nav-links" aria-label="Primary" onMouseLeave={() => setPill((p) => ({ ...p, on: false }))}>
+          <span className="nav-pill" aria-hidden="true" style={{ transform: `translateX(${pill.x}px)`, width: pill.w, opacity: pill.on ? 1 : 0 }} />
           {LINKS.map((l) =>
             l.section ? (
-              <a key={l.label} href={`#/`} onClick={go(l)} className="nav-link">
+              <a key={l.label} href={`#/`} onClick={go(l)} onMouseEnter={hover} className={`nav-link ${pathname === '/' && section === l.section ? 'is-current' : ''}`}>
                 {l.label}
               </a>
             ) : (
-              <NavLink key={l.label} to={l.to} className="nav-link">
+              <NavLink key={l.label} to={l.to} onMouseEnter={hover} className="nav-link">
                 {l.label}
               </NavLink>
             ),
@@ -92,6 +130,7 @@ export function Nav() {
           {open ? 'Close' : 'Menu'} <span className="burger" />
           </button>
         </div>
+        <span className="nav-progress" aria-hidden="true" />
       </div>
 
       <div className="sheet" id="sheet" aria-hidden={!open}>

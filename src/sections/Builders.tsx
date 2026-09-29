@@ -39,7 +39,7 @@ export function Builders() {
         />
 
         <div className="jobs">
-          <Fade className="jobs-summary">
+          <Fade className="jobs-summary" data-fx="slide">
             <p className="jobs-big">
               <b>{ROLES.length}</b>
               <span>open roles</span>
@@ -69,7 +69,7 @@ export function Builders() {
             </Link>
           </Fade>
 
-          <Fade className="jobs-board" delay={100}>
+          <Fade className="jobs-board" delay={120} data-fx="blur">
             <div className="jobs-board-head">
               <div className="segmented" role="group" aria-label="Team">
                 {DEPTS.map((d) => (

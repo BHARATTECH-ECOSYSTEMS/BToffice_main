@@ -48,7 +48,7 @@ export function Network() {
             </Fade>
           </div>
         </header>
-        <Fade className="net-grid">
+        <Fade className="net-grid" data-fx="scale">
           <div className="net-art">
             <Diagram
               draw={network(focus)}
