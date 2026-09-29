@@ -4,6 +4,7 @@ import { SceneProvider, useScene } from './gl/Scene';
 import { Nav } from './components/Nav';
 import { Footer } from './components/Footer';
 import { ChapterRail } from './components/ChapterRail';
+import { useRooms } from './components/Rooms';
 import { Home } from './pages/Home';
 import { About } from './pages/About';
 import { Research } from './pages/Research';
@@ -17,6 +18,7 @@ import { NotFound } from './pages/NotFound';
 function Layout() {
   const { pathname, state } = useLocation();
   const { scrollTo } = useScene();
+  useRooms();
 
   useEffect(() => {
     const target = (state as { scrollTo?: string } | null)?.scrollTo;

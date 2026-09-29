@@ -9,7 +9,7 @@ export function Audiences() {
   const ref = useRef<HTMLElement>(null);
   useFormation(ref, { key: 'orbit6', params: { alpha: 0 } });
   return (
-    <section id="audiences" ref={ref} className="section audiences" data-chapter="Who it’s for">
+    <section id="audiences" ref={ref} className="section audiences room" data-room="violet" data-chapter="Who it’s for">
       <div className="wrap">
         <SectionHead
           index="08"
@@ -19,7 +19,7 @@ export function Audiences() {
         />
         <div className="aud-grid">
           {AUDIENCE_DETAIL.map((a, i) => (
-            <Fade key={a.name} delay={(i % 3) * 100} className="aud-card" data-fx="slide">
+            <Fade key={a.name} delay={(i % 3) * 100} className="aud-card">
               <div className="aud-art">
                 <Diagram draw={AUDIENCE_DRAWS[i]} period={8} w={AUD_W} h={AUD_H} label={AUDIENCE_LABELS[i]} still={AUDIENCE_STILL[i]} />
                 <span className="aud-num">{String(i + 1).padStart(2, '0')}</span>

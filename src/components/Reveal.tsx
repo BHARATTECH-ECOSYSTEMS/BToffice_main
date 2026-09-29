@@ -1,7 +1,8 @@
+import { ScrubText } from './Rooms';
 import { useEffect, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
 
 export function useInView<T extends Element>(options: { once?: boolean; margin?: string } = {}) {
-  const { once = true, margin = '0px 0px -12% 0px' } = options;
+  const { once = true, margin = '0px 0px -6% 0px' } = options;
   const ref = useRef<T>(null);
   const [inView, setInView] = useState(false);
   useEffect(() => {
@@ -79,16 +80,20 @@ export function Kicker({ index, children }: { index?: string; children: ReactNod
 }
 
 /** The one header every content section uses: label on the left, statement on a 12-column grid. */
-export function SectionHead({ index, label, title, lede, aside }: { index: string; label: string; title: ReactNode[]; lede?: ReactNode; aside?: ReactNode }) {
+export function SectionHead({ index, label, title, lede, aside, scrub }: { index: string; label: string; title: ReactNode[]; lede?: ReactNode; aside?: ReactNode; scrub?: boolean }) {
   return (
     <header className="sec-head">
       <Kicker index={index}>{label}</Kicker>
       <div className="sec-head-main">
         <Lines className="h2" lines={title} />
-        {lede && (
-          <Fade as="p" className="lede" delay={120}>
-            {lede}
-          </Fade>
+        {lede && scrub && typeof lede === 'string' ? (
+          <ScrubText text={lede} className="lede lede-scrub" />
+        ) : (
+          lede && (
+            <Fade as="p" className="lede" delay={120}>
+              {lede}
+            </Fade>
+          )
         )}
       </div>
       {aside && (

@@ -34,13 +34,14 @@ export function Intro() {
           index="01"
           label="What we’re building"
           title={['AI that remembers, connects', 'and keeps learning.']}
+          scrub
           lede="Most AI tools start from zero every time, work alone and stop learning once they are trained. We are building the layer underneath them: one shared intelligence that every application can draw on."
         />
 
         <div className="plain">
           {PILLARS_PLAIN.map((p, i) => {
             return (
-              <Fade key={p.title} className="bento plain-item" delay={i * 110} data-fx="blur">
+              <Fade key={p.title} className="bento plain-item" delay={i * 110}>
                 <div className="bento-art">
                   <Diagram draw={ART[i].draw} period={12} h={ART[i].h} label={ART[i].label} still={ART[i].still} />
                 </div>

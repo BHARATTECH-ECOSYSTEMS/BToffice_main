@@ -23,7 +23,7 @@ const rivinity: Draw = (t) => {
   const learned = LESSONS.filter((_, i) => i < k || (i === k && l > 1.2)).length;
   return (
     <g style={{ opacity: g }}>
-      <Label x={70} y={30} text="Something new happens" size={10} />
+      <Label x={88} y={30} text="Something new happens" size={10} />
       {fly < 1 && <Chip x={lerp(70, 210, fly)} y={lerp(60, 92, fly)} tone={LESSONS[k].tone} text={LESSONS[k].text} s={1 - 0.35 * fly} a={smooth(seg(l, 0, 0.25))} />}
       <rect x={160} y={36} width={140} height={124} rx={12} style={{ fill: 'var(--card)', stroke: C.violet, strokeWidth: 1.4 }} />
       <Label x={172} y={56} text="Model keeps it" tone="violet" anchor="start" size={10.5} />

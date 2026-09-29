@@ -478,8 +478,9 @@ svg {
 }
 .fade {
   opacity: 0;
-  transform: translate3d(0, 12px, 0);
-  transition: opacity 0.8s var(--ease), transform 0.8s var(--ease);
+  transform: translate3d(0, 10px, 0);
+  filter: blur(8px);
+  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease), filter 0.9s var(--ease);
   transition-delay: var(--d, 0ms);
 }
 .fade.is-in,
@@ -487,41 +488,7 @@ svg {
 .is-in .fade {
   opacity: 1;
   transform: none;
-}
-/* Section entrances: each section arrives its own way */
-.fade[data-fx='wipe'] {
-  opacity: 1;
-  transform: none;
-  clip-path: inset(0 100% 0 0 round var(--r-lg));
-  transition: clip-path 1.1s var(--ease-io);
-  transition-delay: var(--d, 0ms);
-}
-.fade[data-fx='wipe'].is-in {
-  clip-path: inset(0 0 0 0 round var(--r-lg));
-}
-.fade[data-fx='blur'] {
-  filter: blur(12px);
-  transform: translate3d(0, 24px, 0);
-  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease), filter 0.9s var(--ease);
-  transition-delay: var(--d, 0ms);
-}
-.fade[data-fx='blur'].is-in {
   filter: none;
-}
-.fade[data-fx='scale'] {
-  transform: scale(0.94);
-  transition: opacity 1s var(--ease), transform 1.2s var(--ease);
-}
-.fade[data-fx='tilt'] {
-  transform: perspective(1000px) rotateX(18deg) translate3d(0, 40px, 0);
-  transform-origin: 50% 0;
-  transition: opacity 0.9s var(--ease), transform 1.1s var(--ease);
-  transition-delay: var(--d, 0ms);
-}
-.fade[data-fx='slide'] {
-  transform: translate3d(-48px, 0, 0);
-  transition: opacity 0.9s var(--ease), transform 1s var(--ease);
-  transition-delay: var(--d, 0ms);
 }
 @keyframes rise-in {
   from {
@@ -1396,7 +1363,6 @@ svg {
 }
 .cap-card:hover {
   box-shadow: inset 0 0 0 1px var(--accent-line), var(--shadow);
-  transform: translateY(-3px);
 }
 .cap-icon {
   display: grid;
@@ -2151,10 +2117,9 @@ svg {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: box-shadow 0.3s ease, transform 0.4s var(--ease);
+  transition: box-shadow 0.3s ease;
 }
 .aud-card:hover {
-  transform: translateY(-4px);
   box-shadow: inset 0 0 0 1px var(--accent-line), var(--shadow);
 }
 .aud-art {
@@ -2665,7 +2630,7 @@ svg {
 /* ── 12 Finale ──────────────────────────────────────────────────────────── */
 
 .finale {
-  padding: var(--section-y) 0 clamp(340px, 54vh, 600px);
+  padding: var(--section-y) 0 clamp(260px, 42vh, 460px);
 }
 .finale .kicker {
   margin-bottom: 24px;
@@ -3721,4 +3686,95 @@ svg {
 .lab,
 .audiences {
   overflow-x: clip;
+}
+
+/* ── Rooms (after D-5.0) ─────────────────────────────────────────────────────
+   A few sections are rooms: tinted, rounded sheets that unfold from an inset shape to full width as they arrive
+   (Rooms.tsx scrubs --room-p). The page's glow leans toward the colour of the room in view. */
+
+.room {
+  --room-c: var(--brand-fill);
+  margin-inline: 10px;
+  border-radius: 34px;
+  background: color-mix(in srgb, var(--room-c) 7%, var(--bg));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--room-c) 16%, transparent);
+  clip-path: inset(calc((1 - var(--room-p, 1)) * 4%) calc((1 - var(--room-p, 1)) * 4.5%) 0 calc((1 - var(--room-p, 1)) * 4.5%) round calc(34px + (1 - var(--room-p, 1)) * 30px));
+}
+.room + .room {
+  margin-top: 10px;
+}
+.room--tango {
+  --room-c: var(--tango-fill);
+}
+.room--pitch {
+  --room-c: var(--pitch-fill);
+}
+:root[data-theme='light'] .room {
+  background: color-mix(in srgb, var(--room-c) 9%, var(--bg));
+}
+.atmos::before {
+  content: '';
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(50% 45% at 50% 60%, var(--aura, transparent), transparent 70%);
+  opacity: 0.55;
+  transition: --aura 0.8s ease, opacity 0.8s ease;
+}
+html[data-room='violet'] .atmos::before {
+  --aura: color-mix(in srgb, var(--brand-fill) 22%, transparent);
+}
+html[data-room='tango'] .atmos::before {
+  --aura: color-mix(in srgb, var(--tango-fill) 18%, transparent);
+}
+html[data-room='pitch'] .atmos::before {
+  --aura: color-mix(in srgb, var(--pitch-fill) 16%, transparent);
+}
+@property --aura {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: transparent;
+}
+
+/* section headers: the hairline draws across as the label arrives, so 01 → 02 → 03 read as one run */
+.sec-head .kicker {
+  position: relative;
+  padding-top: 18px;
+}
+.sec-head .kicker::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: var(--line-strong);
+  transform: scaleX(0);
+  transform-origin: 0 50%;
+  transition: transform 1.1s var(--ease-io);
+}
+.sec-head .kicker.is-in::before {
+  transform: none;
+}
+
+/* statements whose words brighten as you read down (ScrubText) */
+.sw {
+  opacity: var(--o, 1);
+  transition: opacity 0.15s linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .room {
+    clip-path: none;
+  }
+  .sec-head .kicker::before {
+    transform: none;
+  }
+}
+
+.lede-scrub {
+  max-width: 34ch;
+  font-size: clamp(1.25rem, 2vw, 1.75rem);
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.02em;
+  color: var(--ink);
 }

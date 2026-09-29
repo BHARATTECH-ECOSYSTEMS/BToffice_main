@@ -10,7 +10,7 @@ const ROW = 40;
 
 /** Nine layers. Scrolling takes a request down the stack; each layer shows what it does. */
 export function Architecture() {
-  const { ref, active: scrolled, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(LAYERS.length, 38);
+  const { ref, active: scrolled, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(LAYERS.length, 28);
   const [picked, setPicked] = useState<number | null>(null);
   const active = pinned ? scrolled : (picked ?? 0);
   useFormation(ref, { key: 'field', params: { alpha: 0 } });

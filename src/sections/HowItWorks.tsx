@@ -110,7 +110,7 @@ const VIGNETTES = [Understand, Recall, Reason, Act, Learn];
  * along the line and each station performs its part as the request arrives.
  */
 export function HowItWorks() {
-  const { ref, active: scrolled, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(FLOW.length, 55);
+  const { ref, active: scrolled, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(FLOW.length, 40);
   const [picked, setPicked] = useState(0);
   const active = pinned ? scrolled : picked;
   useFormation(ref, { key: 'field', params: { alpha: 0 } });
@@ -124,7 +124,7 @@ export function HowItWorks() {
   const step = FLOW[active];
 
   return (
-    <section id="how" ref={ref} className={`section how ${pinned ? 'is-pinned' : ''}`} data-chapter="How it works" style={style}>
+    <section id="how" ref={ref} className={`section how room ${pinned ? 'is-pinned' : ''}`} data-room="violet" data-chapter="How it works" style={style}>
       <div className={pinned ? 'steps-stage' : ''}>
         <div className="wrap how-stage">
           <header className="how-head">

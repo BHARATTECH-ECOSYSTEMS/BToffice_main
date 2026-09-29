@@ -17,7 +17,7 @@ export function Problem() {
   const ref = useRef<HTMLElement>(null);
   useFormation(ref, { key: 'field', params: { alpha: 0 } });
   return (
-    <section id="mission" ref={ref} className="section problem" data-chapter="The problem">
+    <section id="mission" ref={ref} className="section problem room room--tango" data-room="tango" data-chapter="The problem">
       <div className="wrap">
         <SectionHead
           index="02"
@@ -27,7 +27,7 @@ export function Problem() {
         />
         <div className="problem-grid">
           {PROBLEMS.map((p, i) => (
-            <Fade key={p.title} className="problem-card" delay={(i % 2) * 160} data-fx="wipe">
+            <Fade key={p.title} className="problem-card" delay={(i % 2) * 160}>
               <div className="problem-art">
                 <Diagram draw={ART[i].draw} period={ART[i].period} h={250} still={ART[i].still} label={ART[i].label} />
               </div>

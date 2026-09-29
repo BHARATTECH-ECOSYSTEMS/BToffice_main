@@ -37,7 +37,7 @@ export function Network() {
   const [focus, setFocus] = useState<NetFocus>(null);
   useFormation(ref, { key: 'field', params: { alpha: 0 } });
   return (
-    <section id="network" ref={ref} className="section net" data-chapter="Network">
+    <section id="network" ref={ref} className="section net room room--pitch" data-room="pitch" data-chapter="Network">
       <div className="wrap">
         <header className="sec-head">
           <Kicker index="06">Network</Kicker>
@@ -48,7 +48,7 @@ export function Network() {
             </Fade>
           </div>
         </header>
-        <Fade className="net-grid" data-fx="scale">
+        <Fade className="net-grid">
           <div className="net-art">
             <Diagram
               draw={network(focus)}

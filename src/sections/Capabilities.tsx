@@ -56,7 +56,7 @@ function Group({ g }: { g: number }) {
 
 /** Fifteen capabilities in three groups. Scrolling turns the page from one group to the next. */
 export function Capabilities() {
-  const { ref, active, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(CAPABILITY_GROUPS.length, 60);
+  const { ref, active, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(CAPABILITY_GROUPS.length, 45);
   useFormation(ref, { key: 'field', params: { alpha: 0 } });
   const local = (i: number) => Math.min(1, Math.max(0, progress * CAPABILITY_GROUPS.length - i));
 
