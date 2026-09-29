@@ -1,65 +1,68 @@
-import { Chip, C, Icon, Label, Lines, Panel, Tag, type Tone } from './atoms';
-import { inOut, lerp, out, back, seg, smooth, tri, window_ } from './math';
+import { Chip, C, Icon, Label, Panel, Tag, type Tone } from './atoms';
+import { back, inOut, lerp, out, seg, smooth, tri, window_ } from './math';
 import type { Draw } from './Diagram';
 
-/* ── It forgets ───────────────────────────────────────────────────────────── */
+/* ── It forgets ─────────────────────────────────────────────────────────────
+   A session fills with what you told it. It ends. The next one asks for everything again. */
 
 const CHIPS = [
-  { x: 64, y: 84, tone: 'tango' as Tone },
-  { x: 144, y: 84, tone: 'pitch' as Tone },
-  { x: 64, y: 122, tone: 'pitch' as Tone },
-  { x: 144, y: 122, tone: 'tango' as Tone },
-  { x: 64, y: 160, tone: 'tango' as Tone },
-  { x: 144, y: 160, tone: 'pitch' as Tone },
+  { x: 72, y: 70, text: 'Your goal', tone: 'tango' as Tone },
+  { x: 168, y: 70, text: 'Files', tone: 'pitch' as Tone },
+  { x: 72, y: 104, text: 'Decisions', tone: 'pitch' as Tone },
+  { x: 168, y: 104, text: 'Deadlines', tone: 'tango' as Tone },
+  { x: 72, y: 138, text: 'Names', tone: 'tango' as Tone },
+  { x: 168, y: 138, text: 'Draft', tone: 'pitch' as Tone },
 ];
 
 export const forgets: Draw = (t) => {
   const g = 1 - smooth(seg(t, 9.4, 10));
-  const drain = CHIPS.map((_, i) => seg(t, 4.6 + i * 0.2, 5.6 + i * 0.2));
-  const kept = CHIPS.reduce((n, _, i) => n + smooth(seg(t, 0.5 + i * 0.5, 0.9 + i * 0.5)) * (1 - smooth(drain[i])), 0);
-  const second = smooth(seg(t, 6, 6.6));
+  const drain = CHIPS.map((_, i) => seg(t, 4.4 + i * 0.15, 5.3 + i * 0.15));
+  const kept = CHIPS.reduce((n, _, i) => n + smooth(seg(t, 0.4 + i * 0.45, 0.8 + i * 0.45)) * (1 - smooth(drain[i])), 0);
+  const second = smooth(seg(t, 5.9, 6.4));
 
   return (
     <g style={{ opacity: g }}>
-      <Panel x={20} y={28} w={200} h={196} title="Session 1" active={1 - second} tone="tango">
+      <Panel x={16} y={20} w={208} h={188} title="Today's session" active={1 - second} tone="tango">
         {CHIPS.map((c, i) => {
-          const a = back(seg(t, 0.5 + i * 0.5, 0.95 + i * 0.5));
+          const a = back(seg(t, 0.4 + i * 0.45, 0.85 + i * 0.45));
           const d = inOut(drain[i]);
-          return <Chip key={i} x={c.x} y={c.y + d * 70} w={62} h={26} tone={c.tone} s={0.6 + 0.4 * a} a={a * (1 - out(seg(drain[i], 0.4, 1)))} />;
+          return <Chip key={i} x={c.x} y={c.y + d * 24} tone={c.tone} text={c.text} s={(0.6 + 0.4 * a) * (1 - 0.3 * d)} a={a * (1 - out(seg(drain[i], 0.1, 0.8)))} />;
         })}
-        {/* how much context the session holds */}
-        <rect x={40} y={196} width={160} height={6} rx={3} style={{ fill: 'var(--line)' }} />
-        <rect x={40} y={196} width={Math.max(0, 160 * (kept / CHIPS.length))} height={6} rx={3} style={{ fill: C.tango }} />
-        <Label x={40} y={190} text="Context" tone="mute" anchor="start" size={10} />
+        <Label x={32} y={178} text="What it knows" tone="mute" anchor="start" size={10} />
+        <rect x={32} y={186} width={176} height={6} rx={3} style={{ fill: 'var(--line)' }} />
+        <rect x={32} y={186} width={Math.max(0, 176 * (kept / CHIPS.length))} height={6} rx={3} style={{ fill: C.tango }} />
       </Panel>
-      <Tag x={120} y={250} text="Session ends" tone="tango" a={smooth(seg(t, 4.3, 4.7))} />
+      <Tag x={120} y={232} text="Session ends: all of it is gone" tone="tango" a={smooth(seg(t, 4.2, 4.6))} />
 
-      {/* nothing crosses to the next one */}
-      <g style={{ opacity: smooth(seg(t, 5.6, 6.2)) }}>
-        <path d="M228 126h24" style={{ stroke: 'var(--ink-3)', strokeWidth: 1.4, strokeDasharray: '3 3' }} fill="none" />
-        <circle cx={240} cy={126} r={9} style={{ fill: 'var(--card)', stroke: 'var(--tango-fill)', strokeWidth: 1.2 }} />
-        <Icon name="x" x={240} y={126} s={0.8} tone="tango" />
+      <g style={{ opacity: smooth(seg(t, 5.4, 5.9)) }}>
+        <path d="M228 114h24" style={{ stroke: 'var(--ink-3)', strokeWidth: 1.4, strokeDasharray: '3 3' }} fill="none" />
+        <circle cx={240} cy={114} r={9} style={{ fill: 'var(--card)', stroke: 'var(--tango-fill)', strokeWidth: 1.2 }} />
+        <Icon name="x" x={240} y={114} s={0.8} tone="tango" />
       </g>
 
-      <g style={{ opacity: 0.35 * (1 - second) }}>
-        <Panel x={260} y={28} w={200} h={196} title="Next session" active={0} tone="ink" />
-      </g>
-      <g style={{ opacity: second }}>
-        <Panel x={260} y={28} w={200} h={196} title="Next session" active={second} tone="ink">
-          <rect x={280} y={62} width={26} height={18} rx={9} style={{ fill: C.tango }} />
-          <text x={293} y={75} textAnchor="middle" style={{ fill: '#fff', fontSize: 12, fontWeight: 600, fontFamily: 'var(--sans)' }}>?</text>
-          <Lines x={316} y={68} w={120} n={1} />
-          <rect x={280} y={104} width={2} height={14} style={{ fill: 'var(--ink)', opacity: Math.floor(t * 2) % 2 ? 0 : 0.8 }} />
-          <rect x={280} y={196} width={160} height={6} rx={3} style={{ fill: 'var(--line)' }} />
-          <Label x={280} y={190} text="Context" tone="mute" anchor="start" size={10} />
+      <g style={{ opacity: 0.35 + 0.65 * second }}>
+        <Panel x={256} y={20} w={208} h={188} title="Tomorrow's session" active={second} tone="ink">
+          <g style={{ opacity: smooth(seg(t, 6.5, 6.9)) }}>
+            <rect x={272} y={48} width={176} height={46} rx={10} style={{ fill: 'var(--card-2)', stroke: 'var(--line-strong)' }} />
+            <text x={284} y={67} style={{ fill: 'var(--ink)', fontSize: 10.5, fontWeight: 500, fontFamily: 'var(--sans)' }}>
+              What is your goal? Can you
+            </text>
+            <text x={284} y={82} style={{ fill: 'var(--ink)', fontSize: 10.5, fontWeight: 500, fontFamily: 'var(--sans)' }}>
+              upload the files again?
+            </text>
+          </g>
+          <Label x={272} y={178} text="What it knows" tone="mute" anchor="start" size={10} />
+          <rect x={272} y={186} width={176} height={6} rx={3} style={{ fill: 'var(--line)' }} />
+          <Label x={448} y={178} text="0%" tone="tango" anchor="end" size={10} a={second} />
         </Panel>
-        <Tag x={360} y={250} text="Starts from zero" tone="ink" a={smooth(seg(t, 6.8, 7.2))} />
       </g>
+      <Tag x={360} y={232} text="You start over" tone="ink" a={smooth(seg(t, 7.0, 7.4))} />
     </g>
   );
 };
 
-/* ── It is fragmented ─────────────────────────────────────────────────────── */
+/* ── It is fragmented ───────────────────────────────────────────────────────
+   Each tool holds something the others need. Every hand-off hits a wall. */
 
 const TOOLS = [
   { name: 'Chat', icon: 'chat' },
@@ -70,158 +73,179 @@ const TOOLS = [
   { name: 'Voice', icon: 'voice' },
 ];
 const BX = (i: number) => 88 + (i % 3) * 152;
-const BY = (i: number) => 76 + Math.floor(i / 3) * 112;
-const TRIES: [number, number][] = [[0, 1], [4, 5], [1, 4], [3, 4]];
+const BY = (i: number) => 58 + Math.floor(i / 3) * 104;
+const TRIES: { from: number; to: number; item: string }[] = [
+  { from: 0, to: 1, item: 'Your question' },
+  { from: 5, to: 4, item: 'Meeting audio' },
+  { from: 2, to: 1, item: 'Survey notes' },
+  { from: 4, to: 3, item: 'Chart image' },
+];
 
 export const fragmented: Draw = (t) => {
-  const g = 1 - smooth(seg(t, 9.4, 10));
-  const k = Math.min(3, Math.floor(t / 2.35));
-  const l = t - k * 2.35;
-  const [a, b] = TRIES[k];
-  const go = inOut(seg(l, 0.2, 1.0));
-  const back_ = inOut(seg(l, 1.25, 2.0));
-  const u = 0.5 * go * (1 - back_);
+  const g = 1 - smooth(seg(t, 9.6, 10));
+  const k = Math.min(3, Math.floor(t / 2.4));
+  const l = t - k * 2.4;
+  const { from: a, to: b, item } = TRIES[k];
   const dx = Math.sign(BX(b) - BX(a)), dy = Math.sign(BY(b) - BY(a));
   const sx = BX(a) + dx * 50, sy = BY(a) + dy * 38;
   const mx = (BX(a) + BX(b)) / 2, my = (BY(a) + BY(b)) / 2;
-  const px = lerp(sx, mx - dx * 8, u * 2), py = lerp(sy, my - dy * 8, u * 2);
-  const bump = tri(l, 0.9, 1.5);
+  const go = inOut(seg(l, 0.2, 1.0));
+  const back_ = inOut(seg(l, 1.3, 2.1));
+  const u = go * (1 - back_);
+  const px = lerp(sx, mx - dx * 14, u), py = lerp(sy, my - dy * 10, u);
+  const bump = tri(l, 0.9, 1.6);
 
   return (
     <g style={{ opacity: g }}>
-      {/* the walls between tools */}
       {[[0, 1], [1, 2], [3, 4], [4, 5], [0, 3], [1, 4], [2, 5]].map(([i, j], n) => {
         const cx = (BX(i) + BX(j)) / 2, cy = (BY(i) + BY(j)) / 2;
         const horizontal = BY(i) === BY(j);
         const hit = (i === a && j === b) || (i === b && j === a);
         return (
-          <line key={n} x1={horizontal ? cx : cx - 14} x2={horizontal ? cx : cx + 14} y1={horizontal ? cy - 14 : cy} y2={horizontal ? cy + 14 : cy}
+          <line key={n} x1={horizontal ? cx : cx - 16} x2={horizontal ? cx : cx + 16} y1={horizontal ? cy - 16 : cy} y2={horizontal ? cy + 16 : cy}
             style={{ stroke: hit && bump > 0 ? C.tango : 'var(--ink-3)', strokeWidth: hit && bump > 0 ? 2.6 : 1.6, strokeDasharray: '2 4', strokeLinecap: 'round' }} />
         );
       })}
       {TOOLS.map((tl, i) => {
-        const sender = i === a;
-        const lit = sender ? window_(l, 0.1, 2.1, 0.2) : 0;
-        const shake = sender && l > 1.0 && l < 1.5 ? Math.sin(l * 60) * 1.6 * bump : 0;
+        const lit = i === a ? window_(l, 0.1, 2.2, 0.2) : i === b ? bump : 0;
         return (
-          <g key={tl.name} style={{ transform: `translate(${shake}px, 0)` }}>
-            <rect x={BX(i) - 44} y={BY(i) - 32} width={88} height={64} rx={12} style={{ fill: 'var(--card)', stroke: lit > 0.05 ? C.tango : 'var(--line-strong)', strokeWidth: 1 + lit * 0.7 }} />
-            <Icon name={tl.icon} x={BX(i)} y={BY(i) - 6} s={1.25} tone={lit > 0.05 ? 'tango' : 'ink'} />
-            <Label x={BX(i)} y={BY(i) + 21} text={tl.name} tone={lit > 0.05 ? 'tango' : 'mute'} />
+          <g key={tl.name}>
+            <rect x={BX(i) - 44} y={BY(i) - 30} width={88} height={60} rx={12} style={{ fill: 'var(--card)', stroke: lit > 0.05 ? C.tango : 'var(--line-strong)', strokeWidth: 1 + lit * 0.7 }} />
+            <Icon name={tl.icon} x={BX(i)} y={BY(i) - 6} s={1.2} tone={lit > 0.05 ? 'tango' : 'ink'} />
+            <Label x={BX(i)} y={BY(i) + 20} text={tl.name} tone={lit > 0.05 ? 'tango' : 'mute'} />
           </g>
         );
       })}
-      {go > 0.001 && <Chip x={px} y={py} w={26} h={13} tone="tango" />}
+      {go > 0.001 && <Chip x={px} y={py} w={20} h={10} tone="tango" lines={false} />}
       {bump > 0 && (
         <g style={{ opacity: bump }}>
           <circle cx={mx} cy={my} r={10} style={{ fill: 'var(--card)', stroke: C.tango, strokeWidth: 1.3 }} />
           <Icon name="x" x={mx} y={my} s={0.85} tone="tango" />
         </g>
       )}
-      <Tag x={240} y={282} text="6 tools, no shared memory" tone="ink" />
+      <Tag x={240} y={232} text={`${TOOLS[a].name} → ${TOOLS[b].name}: “${item}” is blocked`} tone="tango" a={window_(l, 0.1, 2.35, 0.2)} />
     </g>
   );
 };
 
-/* ── It stops learning ────────────────────────────────────────────────────── */
+/* ── It stops learning ──────────────────────────────────────────────────────
+   A model is trained in January. The months after keep happening. Ask it about
+   any of them and it has no idea. */
 
-const MONTHS = 7;
-const KNOWN = 74;
-const BASE = 246;
-const worldH = (i: number) => 62 + i * 25;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
+const TX = (i: number) => 58 + i * 62;
+const TY = 150;
+const EVENTS = [
+  { m: 1, text: 'New policy', tone: 'tango' as Tone },
+  { m: 2, text: 'Price change', tone: 'pitch' as Tone },
+  { m: 4, text: 'New research', tone: 'tango' as Tone },
+  { m: 6, text: 'Fresh data', tone: 'pitch' as Tone },
+];
 
 export const stops: Draw = (t) => {
-  const g = 1 - smooth(seg(t, 11.3, 12));
-  const cx = (i: number) => 64 + i * 60;
-  const lastIn = smooth(seg(t, 8.2, 9.0));
+  const g = 1 - smooth(seg(t, 11.4, 12));
+  const run = seg(t, 0.8, 6.8);
+  const head = lerp(TX(0), TX(6), run);
+  const ask = smooth(seg(t, 7.4, 7.9));
+  const reply = smooth(seg(t, 8.6, 9.0));
 
   return (
     <g style={{ opacity: g }}>
-      <path d={`M36 30V${BASE}H452`} fill="none" style={{ stroke: 'var(--line-strong)', strokeWidth: 1.2 }} />
-      <Label x={452} y={BASE + 20} text="Time after training" anchor="end" size={10.5} />
+      {/* what the model knows: everything up to its training date */}
+      <rect x={20} y={TY - 50} width={TX(0) + 10 - 20} height={62} rx={10} style={{ fill: 'var(--brand-soft)', stroke: C.violet, strokeWidth: 1.2 }} />
+      <Icon name="snow" x={TX(0) - 10} y={TY - 34} s={0.7} tone="violet" />
+      <Label x={TX(0) - 10} y={TY - 12} text="Trained" tone="violet" size={9.5} />
 
-      {Array.from({ length: MONTHS }, (_, i) => {
-        const grow = out(seg(t, 0.4 + i * 0.85, 1.3 + i * 0.85));
-        const h = worldH(i) * grow;
-        const known = Math.min(h, KNOWN);
-        const unknown = Math.max(0, h - KNOWN);
+      {/* the timeline keeps running */}
+      <line x1={20} x2={460} y1={TY} y2={TY} style={{ stroke: 'var(--line-strong)', strokeWidth: 1.4 }} />
+      <line x1={TX(0) + 10} x2={head} y1={TY} y2={TY} style={{ stroke: C.tango, strokeWidth: 2 }} />
+      {MONTHS.map((m, i) => (
+        <g key={m}>
+          <circle cx={TX(i)} cy={TY} r={3.5} style={{ fill: head >= TX(i) - 1 ? (i === 0 ? C.violet : C.tango) : 'var(--line-strong)' }} />
+          <Label x={TX(i)} y={TY + 34} text={m} size={10} tone={i === 0 ? 'violet' : 'mute'} />
+        </g>
+      ))}
+      <Label x={(TX(1) + TX(6)) / 2} y={TY + 56} text="Everything after training: never learned" tone="tango" size={10.5} a={smooth(seg(t, 2.4, 3))} />
+
+      {EVENTS.map((e, i) => {
+        const on = back(seg(t, 0.8 + (e.m / 6) * 6 - 0.3, 0.8 + (e.m / 6) * 6 + 0.15));
+        const y = TY - 30 - (i % 2) * 28;
         return (
-          <g key={i}>
-            <rect x={cx(i) - 16} y={BASE - known} width={32} height={known} rx={i === 0 ? 4 : 0} style={{ fill: 'var(--line-strong)' }} />
-            {unknown > 0 && <rect x={cx(i) - 16} y={BASE - h} width={32} height={unknown} rx={4} style={{ fill: C.tango, opacity: 0.9 }} />}
+          <g key={e.text} style={{ opacity: Math.min(1, on) }}>
+            <line x1={TX(e.m)} x2={TX(e.m)} y1={TY - 4} y2={y + 8} style={{ stroke: C[e.tone], strokeWidth: 1 }} />
+            <Chip x={TX(e.m)} y={y} tone={e.tone} text={e.text} s={0.7 + 0.3 * on} />
           </g>
         );
       })}
 
-      {/* what the model knows stays where it was */}
-      <line x1={36} x2={452} y1={BASE - KNOWN} y2={BASE - KNOWN} style={{ stroke: 'var(--ink)', strokeWidth: 1.4, strokeDasharray: '5 4' }} />
-      <g style={{ opacity: smooth(seg(t, 0.3, 0.9)) }}>
-        <rect x={40} y={20} width={10} height={10} rx={3} style={{ fill: 'var(--line-strong)' }} />
-        <Icon name="snow" x={62} y={25} s={0.6} tone="ink" />
-        <Label x={72} y={29} text="What the model knows" tone="ink" anchor="start" size={10.5} />
-        <rect x={220} y={20} width={10} height={10} rx={3} style={{ fill: C.tango }} />
-        <Label x={236} y={29} text="What has happened since" tone="tango" anchor="start" size={10.5} />
+      {/* a question about something recent */}
+      <g style={{ opacity: ask }}>
+        <rect x={20} y={18} width={200} height={28} rx={14} style={{ fill: 'var(--card)', stroke: 'var(--line-strong)' }} />
+        <text x={34} y={36} style={{ fill: 'var(--ink)', fontSize: 10.5, fontWeight: 500, fontFamily: 'var(--sans)' }}>
+          What changed in the new policy?
+        </text>
       </g>
-
-      <g style={{ opacity: lastIn }}>
-        <path d={`M${cx(MONTHS - 1) + 26} ${BASE - KNOWN}v${-(worldH(MONTHS - 1) - KNOWN)}`} fill="none" style={{ stroke: 'var(--tango-fill)', strokeWidth: 1.4 }} />
-        <Tag x={cx(MONTHS - 1) - 34} y={BASE - worldH(MONTHS - 1) - 16} text="Never learned" tone="tango" />
+      <g style={{ opacity: reply }}>
+        <rect x={234} y={18} width={226} height={28} rx={14} style={{ fill: 'var(--tango-soft)', stroke: C.tango }} />
+        <Icon name="x" x={250} y={32} s={0.75} tone="tango" />
+        <text x={262} y={36} style={{ fill: 'var(--tango-text)', fontSize: 10.5, fontWeight: 600, fontFamily: 'var(--sans)' }}>
+          I have no information on that.
+        </text>
       </g>
     </g>
   );
 };
 
-/* ── It works alone ───────────────────────────────────────────────────────── */
+/* ── It works alone ─────────────────────────────────────────────────────────
+   Three agents get the same report. Each writes the same summary, because none
+   of them can see what the others did. */
 
 const AG = [90, 240, 390];
-const AY = 210;
+const AY = 150;
 
 export const alone: Draw = (t) => {
   const g = 1 - smooth(seg(t, 9.4, 10));
-  const dl = (i: number) => inOut(seg(t, 0.4 + i * 0.25, 1.5 + i * 0.25));
-  const work = (i: number) => seg(t, 1.9 + i * 0.1, 3.4);
+  const dl = (i: number) => inOut(seg(t, 0.4 + i * 0.25, 1.4 + i * 0.25));
+  const work = (i: number) => seg(t, 1.8 + i * 0.1, 3.3);
+  const done = smooth(seg(t, 3.2, 3.6));
   const tries = [
-    { from: 0, to: 1, t0: 4.0 },
+    { from: 0, to: 1, t0: 4.2 },
     { from: 2, to: 1, t0: 6.0 },
   ];
   return (
     <g style={{ opacity: g }}>
-      {/* one source, read three times */}
-      <rect x={216} y={22} width={48} height={48} rx={12} style={{ fill: 'var(--card)', stroke: 'var(--line-strong)' }} />
-      <Icon name="docs" x={240} y={46} s={1.25} tone="ink" />
-      <Label x={240} y={86} text="Same document" tone="mute" />
+      <Chip x={240} y={30} tone="ink" text="Quarterly report" />
 
       {AG.map((x, i) => {
         const d = dl(i);
-        const done = smooth(seg(t, 3.2, 3.7));
+        const w = work(i);
         return (
           <g key={i}>
-            <path d={`M240 96L${x} ${AY - 52}`} fill="none" style={{ stroke: 'var(--line)', strokeWidth: 1.2 }} />
-            {d > 0 && d < 1 && <Chip x={lerp(240, x, d)} y={lerp(96, AY - 52, d)} w={24} h={12} tone="pitch" />}
-            <circle cx={x} cy={AY} r={30} style={{ fill: 'var(--card)', stroke: work(i) > 0 && work(i) < 1 ? C.pitch : 'var(--line-strong)', strokeWidth: 1.4 }} />
-            <Icon name="agent" x={x} y={AY} s={1.3} tone="ink" />
-            {work(i) > 0 && work(i) < 1 && (
-              <circle cx={x} cy={AY} r={38} fill="none" strokeLinecap="round" style={{ stroke: C.pitch, strokeWidth: 2, strokeDasharray: `${work(i) * 60} 300`, transform: `rotate(${work(i) * 300 - 90}deg)`, transformOrigin: `${x}px ${AY}px` }} />
+            <path d={`M240 42L${x} ${AY - 30}`} fill="none" style={{ stroke: 'var(--line)', strokeWidth: 1.2 }} />
+            {d > 0 && d < 1 && <Chip x={lerp(240, x, d)} y={lerp(42, AY - 30, d)} w={20} h={10} tone="ink" lines={false} />}
+            <circle cx={x} cy={AY} r={26} style={{ fill: 'var(--card)', stroke: w > 0 && w < 1 ? C.pitch : 'var(--line-strong)', strokeWidth: 1.4 }} />
+            <Icon name="agent" x={x} y={AY} s={1.2} tone="ink" />
+            {w > 0 && w < 1 && (
+              <circle cx={x} cy={AY} r={33} fill="none" strokeLinecap="round" style={{ stroke: C.pitch, strokeWidth: 2, strokeDasharray: `${w * 60} 300`, transform: `rotate(${w * 300 - 90}deg)`, transformOrigin: `${x}px ${AY}px` }} />
             )}
-            <Chip x={x} y={AY - 52} w={30} h={14} tone="pitch" a={done} />
-            <Label x={x} y={AY + 52} text={`Agent ${i + 1}`} tone="mute" />
+            <Label x={x} y={AY + 44} text={`Agent ${i + 1}`} tone="mute" />
+            <Chip x={x} y={AY + 66} tone="pitch" text="Same summary" a={done} />
           </g>
         );
       })}
 
-      {/* they reach for each other and never connect */}
       {tries.map((r, n) => {
         const u = seg(t, r.t0, r.t0 + 0.9);
         const back_ = seg(t, r.t0 + 1.1, r.t0 + 1.8);
         const f = 0.42 * inOut(u) * (1 - inOut(back_));
-        const x0 = AG[r.from] + (AG[r.to] > AG[r.from] ? 32 : -32), x1 = AG[r.to] + (AG[r.to] > AG[r.from] ? -32 : 32);
-        const mx = lerp(x0, x1, f);
+        const dir = AG[r.to] > AG[r.from] ? 1 : -1;
+        const x0 = AG[r.from] + dir * 30, x1 = AG[r.to] - dir * 30;
         const hit = tri(t, r.t0 + 0.75, r.t0 + 1.35);
         const wx = lerp(x0, x1, 0.5);
         return (
           <g key={n}>
             <line x1={x0} x2={x1} y1={AY} y2={AY} style={{ stroke: 'var(--ink-3)', strokeWidth: 1.3, strokeDasharray: '2 5', opacity: seg(t, r.t0 - 0.2, r.t0) * (1 - seg(t, r.t0 + 1.8, r.t0 + 2)) }} />
-            {u > 0 && back_ < 1 && <Chip x={mx} y={AY} w={22} h={11} tone="pitch" lines={false} />}
+            {u > 0 && back_ < 1 && <Chip x={lerp(x0, x1, f)} y={AY} w={18} h={9} tone="pitch" lines={false} />}
             {hit > 0 && (
               <g style={{ opacity: hit }}>
                 <circle cx={wx} cy={AY} r={9} style={{ fill: 'var(--card)', stroke: C.tango }} />
@@ -231,7 +255,7 @@ export const alone: Draw = (t) => {
           </g>
         );
       })}
-      <Tag x={240} y={286} text="The same work, three times" tone="ink" a={smooth(seg(t, 3.7, 4.2))} />
+      <Tag x={240} y={78} text="Can't see each other's work" tone="tango" a={window_(t, 4.4, 7.8, 0.3)} />
     </g>
   );
 };

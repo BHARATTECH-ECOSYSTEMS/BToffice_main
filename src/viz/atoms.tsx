@@ -29,13 +29,28 @@ export const SOFT: Record<Tone, string> = {
 
 const at = (x: number, y: number, s = 1): CSSProperties => ({ transform: `translate(${x}px, ${y}px) scale(${s})` });
 
-/** A small piece of information: a rounded chip that says what it is by its colour and lines. */
-export function Chip({ x, y, w = 30, h = 14, tone = 'violet', a = 1, s = 1, lines = true }: { x: number; y: number; w?: number; h?: number; tone?: Tone; a?: number; s?: number; lines?: boolean }) {
+/** Rough text width in px for the site font at a given size. */
+export const textW = (text: string, size = 10) => text.length * size * 0.56;
+
+/**
+ * A piece of information. With `text` it becomes a labelled note that says exactly what is moving;
+ * without it, a small token.
+ */
+export function Chip({ x, y, w, h, tone = 'violet', a = 1, s = 1, lines = true, text, size = 10 }: { x: number; y: number; w?: number; h?: number; tone?: Tone; a?: number; s?: number; lines?: boolean; text?: string; size?: number }) {
   if (a <= 0.01) return null;
+  const W = w ?? (text ? textW(text, size) + 16 : 30);
+  const H = h ?? (text ? size + 10 : 14);
+  const ink = tone === 'pitch' ? '#2a1a00' : tone === 'ink' ? 'var(--bg)' : '#ffffff';
   return (
     <g style={{ ...at(x, y, s), opacity: a }}>
-      <rect x={-w / 2} y={-h / 2} width={w} height={h} rx={4} style={{ fill: C[tone] }} />
-      {lines && <rect x={-w / 2 + 5} y={-1} width={w - 10} height={2} rx={1} style={{ fill: 'rgba(255,255,255,0.75)' }} />}
+      <rect x={-W / 2} y={-H / 2} width={W} height={H} rx={Math.min(6, H / 2)} style={{ fill: C[tone] }} />
+      {text ? (
+        <text y={size * 0.36} textAnchor="middle" style={{ fill: ink, fontSize: size, fontWeight: 600, fontFamily: 'var(--sans)', letterSpacing: '-0.01em' }}>
+          {text}
+        </text>
+      ) : (
+        lines && <rect x={-W / 2 + 5} y={-1} width={W - 10} height={2} rx={1} style={{ fill: 'rgba(255,255,255,0.75)' }} />
+      )}
     </g>
   );
 }
@@ -53,7 +68,7 @@ export function Label({ x, y, text, tone = 'mute', a = 1, anchor = 'middle', siz
 /** A label with a soft pill behind it. */
 export function Tag({ x, y, text, tone = 'ink', a = 1 }: { x: number; y: number; text: string; tone?: Tone; a?: number }) {
   if (a <= 0.01) return null;
-  const w = text.length * 5.9 + 16;
+  const w = textW(text, 10.5) + 18;
   return (
     <g style={{ opacity: a }}>
       <rect x={x - w / 2} y={y - 10} width={w} height={20} rx={10} style={{ fill: 'var(--card)', stroke: tone === 'ink' ? 'var(--line-strong)' : C[tone], strokeWidth: 1 }} />

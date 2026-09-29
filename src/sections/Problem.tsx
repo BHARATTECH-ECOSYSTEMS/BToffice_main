@@ -5,10 +5,10 @@ import { alone, forgets, fragmented, stops } from '../viz/problem';
 import { Fade, SectionHead } from '../components/Reveal';
 import { PROBLEMS } from '../content';
 
-const ART: { draw: Draw; period: number; hold?: number; still: number; label: string }[] = [
+const ART: { draw: Draw; period: number; still: number; label: string }[] = [
   { draw: forgets, period: 10, still: 4, label: 'A session fills with context, then ends and the next one starts empty' },
   { draw: fragmented, period: 10, still: 1.2, label: 'Six separate tools; information cannot cross between them' },
-  { draw: stops, period: 12, hold: 9, still: 9.5, label: 'The world keeps growing while a trained model stays where it was' },
+  { draw: stops, period: 12, still: 9.5, label: 'The world keeps growing while a trained model stays where it was' },
   { draw: alone, period: 10, still: 4.6, label: 'Three agents each repeat the same work and cannot reach each other' },
 ];
 
@@ -29,7 +29,7 @@ export function Problem() {
           {PROBLEMS.map((p, i) => (
             <Fade key={p.title} className="problem-card" delay={(i % 2) * 90}>
               <div className="problem-art">
-                <Diagram draw={ART[i].draw} period={ART[i].period} hold={ART[i].hold} still={ART[i].still} label={ART[i].label} />
+                <Diagram draw={ART[i].draw} period={ART[i].period} h={250} still={ART[i].still} label={ART[i].label} />
               </div>
               <div className="problem-text">
                 <span className="num">{String(i + 1).padStart(2, '0')}</span>

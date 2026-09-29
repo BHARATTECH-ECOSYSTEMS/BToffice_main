@@ -16,9 +16,9 @@ function Mark({ ok }: { ok: boolean }) {
 
 /** What the company is building, said plainly, then shown as one concrete scene. */
 const ART = [
-  { draw: remember, hold: 10.2, label: 'Notes from earlier sessions are kept in memory and recalled in a later one' },
-  { draw: connect, hold: undefined, label: 'Six separate systems share one memory: what one learns, all of them receive' },
-  { draw: learn, hold: 9.6, label: 'After deployment a frozen model stays flat while Origin keeps improving' },
+  { draw: remember, h: 280, still: 10.8, label: 'Notes from Monday and Thursday are kept in memory; next week a question is answered from them' },
+  { draw: connect, h: 300, still: 2.8, label: 'One system learns something and the shared memory hands it to the other five' },
+  { draw: learn, h: 270, still: 10, label: 'After deployment the same new data reaches both: Origin rises, a frozen model stays flat' },
 ];
 
 export function Intro() {
@@ -42,7 +42,7 @@ export function Intro() {
             return (
               <Fade key={p.title} className="bento plain-item" delay={i * 90}>
                 <div className="bento-art">
-                  <Diagram draw={ART[i].draw} period={12} hold={ART[i].hold} label={ART[i].label} still={[10.2, 2, 10][i]} />
+                  <Diagram draw={ART[i].draw} period={12} h={ART[i].h} label={ART[i].label} still={ART[i].still} />
                 </div>
                 <div className="bento-text">
                   <span className="num">{String(i + 1).padStart(2, '0')}</span>

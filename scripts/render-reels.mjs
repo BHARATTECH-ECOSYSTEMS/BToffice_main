@@ -21,8 +21,8 @@ const WIDTH = 1280;
 const FPS = 30;
 // name: [viewBox width, viewBox height, seconds per loop]; mirrors src/viz/registry.ts
 const DIAGRAMS = {
-  remember: [480, 300, 12], connect: [480, 300, 12], learn: [480, 300, 12],
-  forgets: [480, 300, 10], fragmented: [480, 300, 10], stops: [480, 300, 12], alone: [480, 300, 10],
+  remember: [480, 280, 12], connect: [480, 300, 12], learn: [480, 270, 12],
+  forgets: [480, 250, 10], fragmented: [480, 250, 10], stops: [480, 250, 12], alone: [480, 250, 10],
   network: [560, 380, 15],
 };
 const THEMES = ['dark', 'light'];
