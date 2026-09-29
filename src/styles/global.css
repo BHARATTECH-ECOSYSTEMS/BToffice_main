@@ -1911,49 +1911,12 @@ svg {
 }
 .aud-art {
   position: relative;
-  display: grid;
-  place-items: center;
-  height: 152px;
   overflow: hidden;
   border-bottom: 1px solid var(--line);
-  background-color: var(--card-2);
-  background-image: radial-gradient(var(--line-strong) 1px, transparent 1px);
-  background-size: 16px 16px;
+  background: var(--card-2);
 }
-.aud-icon {
-  position: relative;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  width: 64px;
-  height: 64px;
-  border-radius: 18px;
-  color: var(--accent);
-  background: var(--card);
-  box-shadow: inset 0 0 0 1px var(--line-strong);
-  transition: transform 0.4s var(--ease), color 0.25s ease, background-color 0.25s ease;
-}
-.aud-card:hover .aud-icon {
-  transform: translateY(-3px);
-  color: var(--on-accent);
-  background: var(--accent-fill);
-}
-.aud-ring {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 104px;
-  height: 104px;
-  margin: -52px 0 0 -52px;
-  border-radius: 50%;
-  box-shadow: inset 0 0 0 1px var(--accent-line);
-  opacity: 0.5;
-}
-.aud-ring-2 {
-  width: 148px;
-  height: 148px;
-  margin: -74px 0 0 -74px;
-  opacity: 0.25;
+.aud-art .dg {
+  overflow: hidden;
 }
 .aud-num {
   position: absolute;
