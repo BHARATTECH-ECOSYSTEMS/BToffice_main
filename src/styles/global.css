@@ -2518,7 +2518,7 @@ svg {
 /* ── Inner pages ────────────────────────────────────────────────────────── */
 
 .page-hero {
-  min-height: 86svh;
+  min-height: min(64svh, 560px);
   display: flex;
   align-items: flex-end;
   padding: calc(var(--nav-h) + 80px) 0 clamp(64px, 8vw, 112px);
@@ -3246,7 +3246,7 @@ svg {
 
   /* Inner pages */
   .page-hero {
-    min-height: 78svh;
+    min-height: 0;
   }
   .page-hero .wrap > *,
 .split > :first-child,

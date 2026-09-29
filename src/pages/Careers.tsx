@@ -22,7 +22,7 @@ export function Careers() {
         label="Join the builders"
         title={['Build the', 'foundation.']}
         lede="We hire researchers and engineers who would rather spend a decade on the right problem than a quarter on the easy one."
-        target={{ key: 'field' }}
+        target={{ key: 'field', params: { alpha: 0 } }}
       >
         <a href="#roles" className="btn btn-solid" style={{ marginTop: 36 }} onClick={(e) => { e.preventDefault(); document.getElementById('roles')?.scrollIntoView({ behavior: 'smooth' }); }}>
           {ROLES.length} open roles <Arrow dir="down" />

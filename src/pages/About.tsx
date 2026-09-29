@@ -69,10 +69,10 @@ export function About() {
         </div>
       </Zone>
 
-      <Zone target={{ key: 'globe', pose: { x: 1.6 } }} className="section">
+      <Zone target={{ key: 'field', params: { alpha: 0 } }} className="section">
         <div className="wrap">
           <Kicker index="05">Who we build for</Kicker>
-          <Fade as="p" className="inline-list" style={{ marginTop: 32, maxWidth: '18ch' }}>
+          <Fade as="p" className="inline-list" style={{ marginTop: 28 }}>
             {AUDIENCES.map((a, i) => (
               <span key={a}>
                 {a}
