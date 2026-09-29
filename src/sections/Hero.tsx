@@ -1,12 +1,13 @@
+import { CountUp } from '../components/Motion';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { attachTo, useFormation, useScene } from '../gl/Scene';
 import { Lines, Arrow } from '../components/Reveal';
 import { CAPABILITIES, DOMAINS, LAYERS } from '../content';
 
 const FACTS = [
-  { label: 'Research domains', value: String(DOMAINS.length).padStart(2, '0') },
-  { label: 'System layers', value: String(LAYERS.length).padStart(2, '0') },
-  { label: 'Capabilities', value: String(CAPABILITIES.length) },
+  { label: 'Research domains', value: <CountUp to={DOMAINS.length} pad={2} /> },
+  { label: 'System layers', value: <CountUp to={LAYERS.length} pad={2} /> },
+  { label: 'Capabilities', value: <CountUp to={CAPABILITIES.length} /> },
   { label: 'Headquarters', value: 'India' },
 ];
 
