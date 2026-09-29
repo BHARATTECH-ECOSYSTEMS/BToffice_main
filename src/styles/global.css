@@ -1235,217 +1235,108 @@ svg {
   color: var(--ink-2);
 }
 
-/* ── 03 Capabilities: horizontal gallery ────────────────────────────────── */
+/* ── 03 Capabilities ────────────────────────────────────────────────────── */
 
-.caps .pin-stage {
-  align-items: stretch;
-}
-.caps-inner {
+.caps-head {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: clamp(20px, 3.6vh, 40px);
-  width: 100%;
-  height: 100%;
-}
-.caps-top {
-  display: flex;
-  justify-content: space-between;
   align-items: flex-end;
-  gap: 20px 32px;
-  flex-wrap: wrap;
-}
-.caps-top .h2 {
-  margin-top: 14px;
-}
-.caps-nav {
-  display: flex;
-  align-items: center;
-  gap: 20px;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 20px;
 }
 .caps-groups {
   display: inline-flex;
   padding: 4px;
   border-radius: 999px;
-  background: var(--card);
+  background: var(--fill);
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .caps-groups button {
-  padding: 7px 15px;
+  padding: 8px 18px;
   border-radius: 999px;
-  font-size: 13.5px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ink-2);
-  white-space: nowrap;
-  transition: color 0.2s ease, background-color 0.2s ease;
-}
-.caps-groups button:hover {
-  color: var(--ink);
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 .caps-groups button[aria-selected='true'] {
+  background: var(--accent-fill);
   color: var(--on-accent);
-  background: var(--accent-fill);
 }
-.caps-count {
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+.caps-line {
+  max-width: 56ch;
+  margin-bottom: 28px;
 }
-.caps-count b {
-  font-size: 1.75rem;
-  font-weight: 500;
-  letter-spacing: -0.04em;
+.caps-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: var(--gap);
 }
-.caps-count span {
-  color: var(--ink-3);
-}
-.caps-viewport {
-  width: 100%;
-}
-.caps-track {
-  display: flex;
-  gap: 16px;
-  width: max-content;
-  padding: 12px max(calc((100vw - var(--max)) / 2 + var(--gutter)), var(--gutter));
-  will-change: transform;
-}
-.cap-intro,
 .cap-card {
-  position: relative;
-  flex: none;
-  height: clamp(340px, 48svh, 420px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 210px;
+  padding: 22px 20px 24px;
+  background: var(--card);
   border-radius: var(--r-lg);
-  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--line), var(--shadow);
+  animation: rise 0.5s var(--ease) both;
+  transition: box-shadow 0.25s ease, transform 0.25s var(--ease);
 }
-.cap-intro {
-  width: 320px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 12px;
-  padding: 28px;
-  color: var(--panel-ink);
-  background: var(--accent-fill);
-}
-.cap-intro-num {
-  position: absolute;
-  top: 24px;
-  left: 28px;
-  font-family: var(--mono);
-  font-size: 12px;
-  opacity: 0.7;
-}
-.cap-intro h3 {
-  font-size: 2.25rem;
-  font-weight: 500;
-  letter-spacing: -0.04em;
-  line-height: 1;
-}
-.cap-intro p {
-  font-size: 15px;
-  color: rgba(255, 255, 255, 0.82);
-}
-.cap-intro-count {
-  font-size: 13px;
-  font-weight: 500;
-  color: #fff;
-}
-.cap-card {
-  width: 288px;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  padding: 24px;
-  transition: transform 0.5s var(--ease), box-shadow 0.3s ease;
-}
-.cap-card.is-active {
-  transform: translateY(-8px);
+.cap-card:hover {
   box-shadow: inset 0 0 0 1px var(--accent-line), var(--shadow);
-}
-.cap-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
+  transform: translateY(-3px);
 }
 .cap-icon {
   display: grid;
   place-items: center;
-  width: 48px;
-  height: 48px;
-  border-radius: var(--r-md);
+  width: 42px;
+  height: 42px;
+  margin-bottom: 14px;
+  border-radius: 11px;
   color: var(--accent);
   background: var(--accent-soft);
-  transition: color 0.3s ease, background-color 0.3s ease;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
-.cap-card.is-active .cap-icon {
-  color: var(--on-accent);
+.cap-card:hover .cap-icon {
   background: var(--accent-fill);
-}
-.cap-card-num {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--ink-3);
-}
-.cap-watermark {
-  position: absolute;
-  right: -40px;
-  top: 64px;
-  color: var(--fill);
-  pointer-events: none;
-  transition: color 0.4s ease, transform 0.6s var(--ease);
-}
-.cap-card.is-active .cap-watermark {
-  color: var(--accent-soft);
-  transform: rotate(-6deg);
-}
-.cap-card-text {
-  position: relative;
-  display: grid;
-  gap: 8px;
-}
-.cap-card-group {
-  font-size: 12.5px;
-  color: var(--accent);
+  color: var(--on-accent);
 }
 .cap-card h4 {
-  margin: 0;
-  font-size: 1.4rem;
+  font-size: 1.0625rem;
   font-weight: 500;
-  letter-spacing: -0.03em;
-  line-height: 1.12;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 .cap-card p {
-  font-size: 14.5px;
+  font-size: 14px;
+  line-height: 1.5;
   color: var(--ink-2);
 }
-.cap-end {
-  flex: none;
-  width: 1px;
-}
-.caps-bottom {
+.caps-base {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 24px;
+  gap: 8px 10px;
+  margin-top: var(--gap);
+  padding: 14px 20px;
+  border-radius: var(--r-md);
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 14px;
+  color: var(--ink-2);
+  transition: box-shadow 0.3s ease;
 }
-.caps-rail {
-  flex: 1;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--line);
-  overflow: hidden;
+.caps-base b {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-weight: 500;
+  color: var(--brand-text);
+  background: var(--brand-soft);
 }
-.caps-rail i {
-  display: block;
-  height: 100%;
-  background: var(--accent);
-  transform-origin: left;
-  transition: transform 0.4s var(--ease);
-}
-.caps-hint {
-  font-size: 13px;
-  color: var(--ink-3);
+.caps-base.is-hot {
+  box-shadow: inset 0 0 0 1px var(--brand-text);
 }
 
 /* ── 04 How it works ────────────────────────────────────────────────────── */
@@ -3254,6 +3145,9 @@ svg {
    ═════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 1100px) {
+  .caps-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
   .hero-copy,
   .problem-head,
   .arch-copy {
@@ -3371,6 +3265,13 @@ svg {
   .stack-wrap,
   .net-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+  .caps-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .caps-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
   .problem-grid {
     grid-template-columns: minmax(0, 1fr);
@@ -3728,6 +3629,12 @@ svg {
    ═════════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 560px) {
+  .caps-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cap-card {
+    min-height: 0;
+  }
   .nav-menu-btn {
     padding: 0 12px;
   }

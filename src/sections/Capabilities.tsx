@@ -1,6 +1,6 @@
-import { Fragment, useEffect, useRef, useState } from 'react';
-import { isCompact, useFormation, useScene } from '../gl/Scene';
-import { Lines, Kicker } from '../components/Reveal';
+import { useRef, useState } from 'react';
+import { useFormation } from '../gl/Scene';
+import { Lines, Kicker, Fade } from '../components/Reveal';
 import { CAPABILITIES, CAPABILITY_GROUPS } from '../content';
 
 const PER_GROUP = CAPABILITIES.length / CAPABILITY_GROUPS.length;
@@ -29,184 +29,60 @@ const ICONS = [
   'M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z',
 ];
 
-const Icon = ({ i, size = 24 }: { i: number; size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={size > 40 ? 0.6 : 1.4} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+const Icon = ({ i, size = 22 }: { i: number; size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d={ICONS[i]} />
   </svg>
 );
 
-/**
- * Fifteen capabilities as a horizontal gallery in three chapters. Vertical scroll drives the
- * track; the orbit behind it lights whichever capability is in focus.
- */
+/** Fifteen capabilities in three groups, one group at a time. */
 export function Capabilities() {
   const ref = useRef<HTMLElement>(null);
-  const track = useRef<HTMLDivElement>(null);
-  const cards = useRef<(HTMLElement | null)[]>([]);
-  const [height, setHeight] = useState<number | null>(null);
-  const [active, setActive] = useState(0);
-  const activeRef = useRef(0);
-  const spin = useRef(0);
-  const { scrollTo } = useScene();
-
-  // The section is as tall as the track is wide, so one pixel of scroll moves the track one pixel.
-  useEffect(() => {
-    const measure = () => {
-      const t = track.current;
-      if (!t) return;
-      const wide = window.innerWidth > 900;
-      if (!wide) t.style.transform = '';
-      setHeight(wide ? t.scrollWidth - window.innerWidth + window.innerHeight * 1.15 : null);
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    if (track.current) ro.observe(track.current);
-    window.addEventListener('resize', measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', measure);
-    };
-  }, []);
-
-  useFormation(
-    ref,
-    () => ({
-      key: 'orbit15',
-      pose: { x: 0, y: 0.05, s: 0.95 },
-      params: { highlight: activeRef.current, spinY: spin.current, alpha: isCompact() ? 0 : 0.55 },
-    }),
-    (p) => {
-      spin.current = -0.8 + p * 1.6;
-      const t = track.current;
-      if (!t || window.innerWidth <= 900) return;
-      const travel = t.scrollWidth - window.innerWidth;
-      const x = -Math.max(0, Math.min(1, p)) * travel;
-      t.style.transform = `translate3d(${x}px, 0, 0)`;
-      // the capability nearest the centre of the screen is in focus
-      const mid = window.innerWidth * 0.5 - x;
-      let best = 0;
-      let bd = Infinity;
-      cards.current.forEach((c, i) => {
-        if (!c) return;
-        const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid);
-        if (d < bd) {
-          bd = d;
-          best = i;
-        }
-      });
-      if (best !== activeRef.current) {
-        activeRef.current = best;
-        setActive(best);
-      }
-    },
-  );
-
-  const group = Math.floor(active / PER_GROUP);
-  const viewport = useRef<HTMLDivElement>(null);
-
-  // Phones swipe the gallery natively; focus follows the swipe instead of the page.
-  const onSwipe = () => {
-    const v = viewport.current;
-    if (!v || window.innerWidth > 900) return;
-    const mid = v.scrollLeft + v.clientWidth / 2;
-    let best = 0;
-    let bd = Infinity;
-    cards.current.forEach((c, i) => {
-      if (!c) return;
-      const d = Math.abs(c.offsetLeft + c.offsetWidth / 2 - mid);
-      if (d < bd) {
-        bd = d;
-        best = i;
-      }
-    });
-    if (best !== activeRef.current) {
-      activeRef.current = best;
-      setActive(best);
-    }
-  };
-
-  const jumpToGroup = (g: number) => {
-    const el = ref.current;
-    const t = track.current;
-    const card = cards.current[g * PER_GROUP];
-    if (!el || !t || !card) return;
-    if (window.innerWidth <= 900) {
-      viewport.current?.scrollTo({ left: card.offsetLeft - 20, behavior: 'smooth' });
-      return;
-    }
-    const travel = t.scrollWidth - window.innerWidth;
-    const p = Math.max(0, (card.offsetLeft + card.offsetWidth / 2 - window.innerWidth / 2) / travel);
-    const top = el.getBoundingClientRect().top + window.scrollY;
-    scrollTo(top + p * (el.offsetHeight - window.innerHeight));
-  };
+  const [group, setGroup] = useState(0);
+  const [hot, setHot] = useState(false);
+  useFormation(ref, { key: 'field', params: { alpha: 0 } });
 
   return (
-    <section id="capabilities" ref={ref} className="pin caps" data-chapter="Capabilities" style={height ? { height } : undefined}>
-      <div className="pin-stage">
-        <div className="caps-inner">
-          <div className="wrap caps-top">
-            <div>
-              <Kicker index="03">Capabilities</Kicker>
-              <Lines className="h2" lines={['One intelligence.', <span className="accent">Infinite capabilities.</span>]} />
-            </div>
-            <div className="caps-nav">
-              <div className="caps-groups" role="tablist" aria-label="Capability groups">
-                {CAPABILITY_GROUPS.map((g, i) => (
-                  <button key={g} role="tab" aria-selected={i === group} onClick={() => jumpToGroup(i)}>
-                    {g}
-                  </button>
-                ))}
-              </div>
-              <p className="caps-count">
-                <b>{String(active + 1).padStart(2, '0')}</b>
-                <span>/ {CAPABILITIES.length}</span>
-              </p>
-            </div>
+    <section id="capabilities" ref={ref} className="section caps" data-chapter="Capabilities">
+      <div className="wrap">
+        <header className="caps-head">
+          <div>
+            <Kicker index="03">Capabilities</Kicker>
+            <Lines className="h2" lines={['One intelligence.', <span className="accent">Infinite capabilities.</span>]} />
           </div>
+          <div className="caps-groups" role="tablist" aria-label="Capability groups">
+            {CAPABILITY_GROUPS.map((g, i) => (
+              <button key={g} role="tab" aria-selected={i === group} onClick={() => setGroup(i)}>
+                {g}
+              </button>
+            ))}
+          </div>
+        </header>
 
-          <div ref={viewport} className="caps-viewport" onScroll={onSwipe}>
-            <div ref={track} className="caps-track">
-              {CAPABILITY_GROUPS.map((g, gi) => (
-                <Fragment key={g}>
-                  <article className="cap-intro">
-                    <span className="cap-intro-num">0{gi + 1}</span>
-                    <h3>{g}</h3>
-                    <p>{GROUP_LINES[gi]}</p>
-                    <span className="cap-intro-count">{PER_GROUP} capabilities →</span>
-                  </article>
-                  {CAPABILITIES.slice(gi * PER_GROUP, (gi + 1) * PER_GROUP).map((c, j) => {
-                    const i = gi * PER_GROUP + j;
-                    return (
-                      <article key={c.name} ref={(el) => (cards.current[i] = el)} className={`cap-card ${i === active ? 'is-active' : ''}`}>
-                        <div className="cap-card-top">
-                          <span className="cap-icon">
-                            <Icon i={i} />
-                          </span>
-                          <span className="cap-card-num">{String(i + 1).padStart(2, '0')}</span>
-                        </div>
-                        <span className="cap-watermark" aria-hidden="true">
-                          <Icon i={i} size={190} />
-                        </span>
-                        <div className="cap-card-text">
-                          <span className="cap-card-group">{g}</span>
-                          <h4>{c.name}</h4>
-                          <p>{c.body}</p>
-                        </div>
-                      </article>
-                    );
-                  })}
-                </Fragment>
-              ))}
-              <div className="cap-end" aria-hidden="true" />
-            </div>
-          </div>
+        <Fade as="p" className="caps-line lede" key={`l${group}`}>
+          {GROUP_LINES[group]}
+        </Fade>
 
-          <div className="wrap caps-bottom">
-            <span className="caps-rail">
-              <i style={{ transform: `scaleX(${(active + 1) / CAPABILITIES.length})` }} />
-            </span>
-            <span className="caps-hint">Every capability draws on the same memory, reasoning and security.</span>
-          </div>
+        <div className="caps-grid" role="tabpanel" key={group} onMouseEnter={() => setHot(true)} onMouseLeave={() => setHot(false)}>
+          {CAPABILITIES.slice(group * PER_GROUP, (group + 1) * PER_GROUP).map((c, j) => {
+            const i = group * PER_GROUP + j;
+            return (
+              <article key={c.name} className="cap-card" style={{ animationDelay: `${j * 60}ms` }}>
+                <span className="cap-icon">
+                  <Icon i={i} />
+                </span>
+                <h4>{c.name}</h4>
+                <p>{c.body}</p>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className={`caps-base ${hot ? 'is-hot' : ''}`}>
+          <span>Every capability draws on the same</span>
+          <b>memory</b>
+          <b>reasoning</b>
+          <b>security</b>
         </div>
       </div>
     </section>
