@@ -5,7 +5,7 @@ const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-
 
 /** Counts up to `to` the first time it scrolls into view. */
 export function CountUp({ to, pad = 0, ms = 1400 }: { to: number; pad?: number; ms?: number }) {
-  const [ref, inView] = useInView<HTMLSpanElement>();
+  const [ref, inView] = useInView<HTMLSpanElement>({ margin: '0px' });
   const [n, setN] = useState(reduced() ? to : 0);
   useEffect(() => {
     if (!inView || reduced()) return;

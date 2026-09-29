@@ -102,7 +102,7 @@
   --gap: clamp(14px, 1.8vw, 24px);
   --max: 1320px;
   --nav-h: 64px;
-  --section-y: clamp(96px, 11vw, 160px);
+  --section-y: clamp(64px, 7vw, 104px);
   --r-lg: 20px;
   --r-md: 14px;
   --r-sm: 8px;
@@ -1341,9 +1341,6 @@ svg {
 
 /* ── 04 How it works ────────────────────────────────────────────────────── */
 
-.how {
-  height: 460svh;
-}
 .how-stage {
   display: flex;
   flex-direction: column;
@@ -1873,9 +1870,6 @@ svg {
 
 /* ── 07 Laboratory ──────────────────────────────────────────────────────── */
 
-.lab {
-  padding-top: 360px;
-}
 .helix-tag {
   display: flex;
   gap: 6px;
@@ -1929,6 +1923,7 @@ svg {
 .lab-card-art {
   position: relative;
   aspect-ratio: 16 / 9;
+  overflow: hidden;
   border-bottom: 1px solid var(--line);
   background: var(--card-2);
 }
@@ -2970,6 +2965,7 @@ svg {
 }
 .article-cover {
   aspect-ratio: 16 / 9;
+  overflow: hidden;
   margin: 44px 0;
   overflow: hidden;
   border-radius: var(--r-md);
