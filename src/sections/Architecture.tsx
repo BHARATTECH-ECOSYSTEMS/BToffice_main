@@ -1,78 +1,90 @@
-import { useRef, useState } from 'react';
-import { attachTo, useFormation } from '../gl/Scene';
-import { useAnchors } from '../gl/useAnchors';
-import { Lines, Kicker, Fade } from '../components/Reveal';
+import { useEffect, useRef, useState } from 'react';
+import { useFormation } from '../gl/Scene';
+import { useInView, Fade, SectionHead } from '../components/Reveal';
 import { LAYERS } from '../content';
 
-/** The exploded stack. Scroll walks down the layers; the active one lifts out and is labelled in place. */
+const reduced = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+const ROW = 46;
+
+/** Nine layers as a real stack. A request travels down it and intelligence comes back up. */
 export function Architecture() {
   const ref = useRef<HTMLElement>(null);
-  const tag = useRef<HTMLDivElement>(null);
-  const [scrolled, setScrolled] = useState(0);
-  const [hovered, setHovered] = useState<number | null>(null);
-  const active = hovered ?? scrolled;
-  const activeRef = useRef(active);
-  activeRef.current = active;
-  const last = useRef(0);
+  const [stackRef, inView] = useInView<HTMLOListElement>({ once: false, margin: '0px 0px -10% 0px' });
+  const [step, setStep] = useState({ i: 0, dir: 1 as 1 | -1 });
+  const [hover, setHover] = useState<number | null>(null);
+  useFormation(ref, { key: 'field', params: { alpha: 0 } });
 
-  useFormation(
-    ref,
-    () => ({ key: 'layers', params: { highlight: activeRef.current, explode: 1 }, ...attachTo(ref.current, 0.3, 0.5) }),
-    (p) => {
-      const s = Math.min(LAYERS.length - 1, Math.floor(Math.max(0, p - 0.04) * 1.08 * LAYERS.length));
-      if (s !== last.current) {
-        last.current = s;
-        setScrolled(s);
-        setHovered(null); // scrolling always wins over a resting pointer
-      }
-    },
-  );
+  useEffect(() => {
+    if (!inView || hover !== null || reduced()) return;
+    const id = setInterval(() => {
+      setStep((s) => {
+        const next = s.i + s.dir;
+        if (next > LAYERS.length - 1) return { i: LAYERS.length - 1, dir: -1 };
+        if (next < 0) return { i: 0, dir: 1 };
+        return { i: next, dir: s.dir };
+      });
+    }, 950);
+    return () => clearInterval(id);
+  }, [inView, hover]);
 
-  useAnchors(['layers'], (pts, settle) => {
-    const el = tag.current;
-    if (!el) return;
-    if (!pts) {
-      el.style.opacity = '0';
-      return;
-    }
-    const a = pts[activeRef.current];
-    el.style.opacity = String(settle);
-    el.style.transform = `translate3d(${a.x}px, ${a.y}px, 0)`;
-  });
+  const active = hover ?? step.i;
+  const down = hover === null ? step.dir === 1 : true;
+  const L = LAYERS[active];
 
   return (
-    <section id="architecture" ref={ref} className="pin arch" data-chapter="Architecture">
-      <div className="pin-stage">
-        <div ref={tag} className="layer-tag" aria-hidden="true">
-          <span className="layer-tag-line" />
-          <span className="layer-tag-text" key={active}>
-            <b>{String(active + 1).padStart(2, '0')}</b> {LAYERS[active].name}
-          </span>
-        </div>
-        <div className="wrap arch-grid">
-          <div className="arch-copy">
-            <Kicker index="05">Architecture</Kicker>
-            <Lines className="h2" lines={['An operating system,', 'not an application.']} />
-            <Fade as="p" className="body" delay={150}>
-              Nine layers, one continuous system. Intelligence flows from sovereign compute at the base to the applications people
-              touch.
-            </Fade>
-            <ol className="layer-list" onMouseLeave={() => setHovered(null)}>
-              {LAYERS.map((l, i) => (
-                <li key={l.name} className={`layer-item ${i === active ? 'is-active' : ''}`}>
-                  <button className="layer-btn" onMouseEnter={() => setHovered(i)} onFocus={() => setHovered(i)} onBlur={() => setHovered(null)}>
-                    <span className="num">{String(i + 1).padStart(2, '0')}</span>
-                    <span className="name">{l.name}</span>
-                    <span className="desc">
-                      <span>{l.body}</span>
-                    </span>
-                  </button>
-                </li>
-              ))}
+    <section id="architecture" ref={ref} className="section arch" data-chapter="Architecture">
+      <div className="wrap">
+        <SectionHead
+          index="05"
+          label="Architecture"
+          title={['An operating system,', 'not an application.']}
+          lede="Nine layers, one continuous system. A request travels down to sovereign compute, and intelligence comes back up to the application."
+        />
+        <Fade className="stack-wrap">
+          <div className="stack">
+            <div className="stack-rail" aria-hidden="true">
+              <span className="stack-flow" data-dir={down ? 'down' : 'up'} style={{ transform: `translateY(${active * ROW + ROW / 2}px)` }}>
+                <i />
+                <b>{hover !== null ? 'Selected' : down ? 'Request' : 'Intelligence'}</b>
+              </span>
+            </div>
+            <ol ref={stackRef} className="stack-list" onMouseLeave={() => setHover(null)}>
+              {LAYERS.map((l, i) => {
+                const width = 64 + (i / (LAYERS.length - 1)) * 36;
+                return (
+                  <li key={l.name} style={{ height: ROW }}>
+                    <button
+                      className={`slab ${i === active ? 'is-active' : ''} ${i < active ? 'is-past' : ''}`}
+                      style={{ width: `${width}%` }}
+                      onMouseEnter={() => setHover(i)}
+                      onFocus={() => setHover(i)}
+                      onBlur={() => setHover(null)}
+                      onClick={() => setHover(i)}
+                    >
+                      <span className="num">{String(i + 1).padStart(2, '0')}</span>
+                      <span className="name">{l.name}</span>
+                    </button>
+                  </li>
+                );
+              })}
             </ol>
           </div>
-          <div className="arch-visual-space" aria-hidden="true" />
-        </div>
+          <div className="stack-detail" aria-live="polite">
+            <span className="num">Layer {String(active + 1).padStart(2, '0')} of {LAYERS.length}</span>
+            <h3 key={L.name}>{L.name}</h3>
+            <p key={L.body}>{L.body}</p>
+            <dl>
+              <div>
+                <dt>Serves</dt>
+                <dd>{active === 0 ? 'People and organisations' : LAYERS[active - 1].name}</dd>
+              </div>
+              <div>
+                <dt>Rests on</dt>
+                <dd>{active === LAYERS.length - 1 ? 'National infrastructure' : LAYERS[active + 1].name}</dd>
+              </div>
+            </dl>
+          </div>
+        </Fade>
       </div>
     </section>
   );
