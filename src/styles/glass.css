@@ -2,7 +2,7 @@
    Liquid glass & chapter palettes
    Loaded after global.css. Every chapter names a two-colour palette from the brand set
    (violet, tango, pitch on cultured): data-room is its lead, data-room2 its partner.
-   The page's aurora eases between palettes as you scroll (Rooms.tsx sets them on <html>),
+   The page's aurora eases between palettes as you scroll (Rooms.tsx sets them on <html> as data-page/data-page2),
    and the surfaces are frosted glass that the aurora and particles glow through.
    ───────────────────────────────────────────────────────────────────────── */
 
@@ -58,12 +58,33 @@
   --p2: var(--tango-fill);
   transition: --p1 1.2s ease, --p2 1.2s ease;
 }
-html[data-room='violet'] :is(.atmos, .nav-progress, .rail-track span) { --p1: var(--brand-fill); }
-html[data-room='tango'] :is(.atmos, .nav-progress, .rail-track span) { --p1: var(--tango-fill); }
-html[data-room='pitch'] :is(.atmos, .nav-progress, .rail-track span) { --p1: var(--pitch-fill); }
-html[data-room2='violet'] :is(.atmos, .nav-progress, .rail-track span) { --p2: var(--brand-fill); }
-html[data-room2='tango'] :is(.atmos, .nav-progress, .rail-track span) { --p2: var(--tango-fill); }
-html[data-room2='pitch'] :is(.atmos, .nav-progress, .rail-track span) { --p2: var(--pitch-fill); }
+html[data-page='violet'] :is(.atmos, .nav-progress, .rail-track span) { --p1: var(--brand-fill); }
+html[data-page='tango'] :is(.atmos, .nav-progress, .rail-track span) { --p1: var(--tango-fill); }
+html[data-page='pitch'] :is(.atmos, .nav-progress, .rail-track span) { --p1: var(--pitch-fill); }
+html[data-page2='violet'] :is(.atmos, .nav-progress, .rail-track span) { --p2: var(--brand-fill); }
+html[data-page2='tango'] :is(.atmos, .nav-progress, .rail-track span) { --p2: var(--tango-fill); }
+html[data-page2='pitch'] :is(.atmos, .nav-progress, .rail-track span) { --p2: var(--pitch-fill); }
+
+/* The chrome outside the sections (nav, rail, footer) takes the accent of the chapter in view. Scoped to those
+   elements: putting the accent on <html> would restyle the whole page at every chapter change and hitch the scroll. */
+html[data-page='tango'] :is(.nav, .rail, .footer) {
+  --s1: var(--tango-fill);
+  --s1t: var(--tango-text);
+  --accent: var(--tango-text);
+  --accent-fill: var(--tango-fill);
+  --accent-soft: var(--tango-soft);
+  --accent-line: var(--tango-line);
+  --on-accent: var(--on-tone);
+}
+html[data-page='pitch'] :is(.nav, .rail, .footer) {
+  --s1: var(--pitch-fill);
+  --s1t: var(--pitch-text);
+  --accent: var(--pitch-text);
+  --accent-fill: var(--pitch-fill);
+  --accent-soft: var(--pitch-soft);
+  --accent-line: var(--pitch-line);
+  --on-accent: var(--on-tone);
+}
 
 /* a chapter's own palette: fills (--s1, --s2) and readable text colours (--s1t, --s2t) */
 [data-room] {

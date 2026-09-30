@@ -28,11 +28,11 @@ export function useRooms() {
       const root = document.documentElement.dataset;
       const pick = here as HTMLElement | null;
       if (pick) {
-        root.room = pick.dataset.room;
-        root.room2 = pick.dataset.room2 ?? pick.dataset.room;
+        root.page = pick.dataset.room;
+        root.page2 = pick.dataset.room2 ?? pick.dataset.room;
       } else if (!document.querySelector('main [data-room]')) {
-        delete root.room;
-        delete root.room2;
+        delete root.page;
+        delete root.page2;
       }
 
       document.querySelectorAll<HTMLElement>('[data-scrub]').forEach((el) => {
@@ -56,8 +56,8 @@ export function useRooms() {
       cancelAnimationFrame(raf);
       window.removeEventListener('scroll', on);
       window.removeEventListener('resize', on);
-      delete document.documentElement.dataset.room;
-      delete document.documentElement.dataset.room2;
+      delete document.documentElement.dataset.page;
+      delete document.documentElement.dataset.page2;
     };
   }, [pathname]);
 }

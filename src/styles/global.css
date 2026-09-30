@@ -3722,13 +3722,13 @@ svg {
   opacity: 0.55;
   transition: --aura 0.8s ease, opacity 0.8s ease;
 }
-html[data-room='violet'] .atmos::before {
+html[data-page='violet'] .atmos::before {
   --aura: color-mix(in srgb, var(--brand-fill) 22%, transparent);
 }
-html[data-room='tango'] .atmos::before {
+html[data-page='tango'] .atmos::before {
   --aura: color-mix(in srgb, var(--tango-fill) 18%, transparent);
 }
-html[data-room='pitch'] .atmos::before {
+html[data-page='pitch'] .atmos::before {
   --aura: color-mix(in srgb, var(--pitch-fill) 16%, transparent);
 }
 @property --aura {
