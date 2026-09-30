@@ -32,9 +32,9 @@ export function Laboratory() {
               <Link to="/research" className="lab-card">
                 <div className="lab-card-art">
                   <Diagram draw={DOMAIN_DRAWS[i]} period={8} w={DOMAIN_W} h={DOMAIN_H} label={DOMAIN_LABELS[i]} still={DOMAIN_STILL[i]} />
-                  <span className="lab-card-num">{String(i + 1).padStart(2, '0')}</span>
                 </div>
                 <div className="lab-card-text">
+                  <span className="lab-card-num">{String(i + 1).padStart(2, '0')}</span>
                   <p className="lab-card-field">{d.field}</p>
                   <h3>{d.name}</h3>
                   <p className="lab-card-body">{d.body}</p>

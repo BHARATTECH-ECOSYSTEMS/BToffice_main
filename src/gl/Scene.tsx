@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Lenis from 'lenis';
-import { BASE_POSE, Engine, type FormationKey, type Pose, type Rect, type Target } from './Engine';
+import { BASE_POSE, DEFAULT_PARAMS, Engine, type FormationKey, type Pose, type Rect, type Target } from './Engine';
 import { getTheme, onTheme } from '../theme';
 
 export interface StageLabel {
@@ -259,8 +259,9 @@ export function SceneProvider({ children }: { children: ReactNode }) {
     raf = requestAnimationFrame(scrollLoop);
 
     // A stage takes over once its card's top passes START of the screen height; the morph completes at END.
-    const START = 0.96;
-    const END = 0.42;
+    // Late enough that the previous chapter's content has left the screen before its figure changes.
+    const START = 0.74;
+    const END = 0.34;
     const ease = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - (-2 * x + 2) ** 3 / 2);
     const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 
@@ -286,7 +287,12 @@ export function SceneProvider({ children }: { children: ReactNode }) {
       const pose = {} as Pose;
       for (const k of Object.keys(toPose) as (keyof Pose)[]) pose[k] = lerp(fromPose[k], toPose[k], t);
       const clip: Rect = { x: lerp(fromClip.x, toClip.x, t), y: lerp(fromClip.y, toClip.y, t), w: lerp(fromClip.w, toClip.w, t), h: lerp(fromClip.h, toClip.h, t) };
-      return { ...to, from: pt.key, mix, pose, snap: true, exact: true, clip };
+      // shape-specific settings (the globe's hidden far side, finer dots, sway) ease across the morph too
+      const fp = { ...DEFAULT_PARAMS, ...pt.params };
+      const tp = { ...DEFAULT_PARAMS, ...to.params };
+      const params = { ...to.params };
+      for (const k of ['cull', 'dot', 'dim', 'grow', 'orbit'] as const) params[k] = lerp(fp[k], tp[k], t);
+      return { ...to, params, from: pt.key, mix, pose, snap: true, exact: true, clip };
     };
 
     const pick = () => {

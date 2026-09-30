@@ -21,7 +21,7 @@ back up, something learned on a phone reaches the sovereign core and every other
 | Capabilities | Fifteen capabilities in three tabs, one group at a time |
 | How it works | One request through five stations; advances on its own and is clickable |
 | Architecture | Nine layers, each its own shape and glyph (capsule, arrow, disk, hexagon, page, shield, lanes, chip, dome) in three colour families; the panel's building prints every floor as a different structure |
-| Network | Learning travels device → data centre → sovereign core → everyone; the panel shows a dotted globe (continents, graticule, India lit, orbits, moving arcs) that sways on its own and turns when dragged |
+| Network | Learning travels device → data centre → sovereign core → everyone; the panel shows the Earth as one even honeycomb of printed dots (land in the accent, India in violet, dotted routes, two orbits, far side hidden) that sways on its own and turns when dragged |
 | Laboratory / Audiences | One diagram per research domain and per audience, each showing what it does |
 
 Every diagram is a pure function of time and cursor (`src/viz/`), so it can be painted at any moment,
@@ -59,6 +59,9 @@ Cards rotate violet, tango, pitch by re-pointing `--accent*` for the card.
 Every home section names a two-colour palette (`data-room` lead, `data-room2` partner). `Rooms.tsx` puts the one in view
 on `<html>`, and `src/styles/glass.css` eases the page aurora, headline accents, buttons, the panel and the particles
 (`Engine.setTone`) to it. Surfaces are liquid glass: frosted, rimmed, with a highlight that follows the cursor.
+Like the architecture layers, every repeated item has its own form and colour: cards take one of six silhouettes
+(squircle, bevel, scoop, scooped foot, leaf, chamfered plate) through CSS `corner-shape`, with rounded corners as the
+fallback; capability groups and How-it-works stations each have a colour family, and the stations each have a shape.
 The chapter rail on the right is one straight track of dots, one per chapter, in each chapter's colour.
 
 ## Video

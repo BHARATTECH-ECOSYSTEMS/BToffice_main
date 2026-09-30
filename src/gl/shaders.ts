@@ -28,6 +28,8 @@ export const particleVertex = /* glsl */ `
   uniform float uDotPx;
   uniform float uDim; // how bright the rest stays while one group is highlighted
   uniform float uGrow; // point size multiplier for soft points
+  uniform float uDotScale; // printed dot size, relative (the globe prints finer dots)
+  uniform float uCull; // 1 hides points on the far side of a sphere centred on the formation (the globe)
 
   varying float vAcc;
   varying float vCrisp;
@@ -82,6 +84,11 @@ export const particleVertex = /* glsl */ `
     vec4 mv = viewMatrix * world;
     gl_Position = projectionMatrix * mv;
 
+    // the far side of a sphere turns away: points whose outward direction faces from the camera fade out
+    vec3 centre = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+    float facing = dot(normalize(world.xyz - centre), normalize(cameraPosition - world.xyz));
+    float front = mix(1.0, smoothstep(-0.02, 0.22, facing), uCull);
+
     float grp = st < 0.5 ? aGrpFrom : aGrpTo;
     float hl = (uHighlight > -0.5 && abs(grp - uHighlight) < 0.5) ? uHighlightAmt : 0.0;
     vHl = hl;
@@ -89,7 +96,7 @@ export const particleVertex = /* glsl */ `
     // points shrink with the formation, so a small shape stays as fine-grained as a large one
     float grain = clamp(pow(uScale, 0.55), 0.55, 1.0);
     float soft = uGrow * uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.35) * (7.0 / -mv.z) * 2.2 * grain;
-    gl_PointSize = mix(soft, uDotPx * (1.0 + hl * 0.3), uCrisp);
+    gl_PointSize = mix(soft, uDotPx * uDotScale * (1.0 + hl * 0.3), uCrisp);
     vCrisp = uCrisp;
     vTint = step(0.9, fract(aRand.y * 7.31)) * (0.5 + 0.5 * sin(p.x * 1.3 + p.y * 0.9 + uTime * 0.4)) * (1.0 - uCrisp);
 
@@ -105,7 +112,7 @@ export const particleVertex = /* glsl */ `
     float forgotten = step(aRand.z, uDecay);
     float dim = (uHighlight > -0.5) ? mix(1.0, uDim, uHighlightAmt) : 1.0;
     float shown = mix(hideFrom ? 0.0 : 1.0, hideTo ? 0.0 : 1.0, st);
-    vAlpha = mix(mix(0.3, 1.0, depth), 1.0, uCrisp) * (1.0 - forgotten * 0.94) * mix(dim, 1.0, hl) * shown;
+    vAlpha = mix(mix(0.3, 1.0, depth), 1.0, uCrisp) * (1.0 - forgotten * 0.94) * mix(dim, 1.0, hl) * shown * front;
   }
 `;
 
@@ -152,7 +159,9 @@ export const trailVertex = /* glsl */ `
   uniform float uPixelRatio;
   uniform float uSize;
   uniform float uSpeed;
+  uniform float uCull;
   varying float vGlow;
+  varying float vFront;
 
   void main() {
     float head = fract(uTime * uSpeed + aSeed);
@@ -161,6 +170,9 @@ export const trailVertex = /* glsl */ `
     vGlow = exp(-behind * 9.0) + 0.1;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mv;
+    vec3 w = (modelMatrix * vec4(position, 1.0)).xyz;
+    vec3 c = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+    vFront = mix(1.0, smoothstep(-0.02, 0.22, dot(normalize(w - c), normalize(cameraPosition - w))), uCull);
     gl_PointSize = uSize * uPixelRatio * (0.55 + vGlow) * (7.0 / -mv.z);
   }
 `;
@@ -170,11 +182,12 @@ export const trailFragment = /* glsl */ `
   uniform vec3 uColor;
   uniform float uVisible;
   varying float vGlow;
+  varying float vFront;
 
   void main() {
     float d = length(gl_PointCoord - 0.5);
     if (d > 0.5) discard;
-    float a = smoothstep(0.5, 0.0, d) * vGlow * uVisible;
+    float a = smoothstep(0.5, 0.0, d) * vGlow * uVisible * vFront;
     gl_FragColor = vec4(uColor, a);
   }
 `;

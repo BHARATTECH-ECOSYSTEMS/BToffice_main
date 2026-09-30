@@ -5,6 +5,8 @@ import { useScrollSteps } from '../components/useScrollSteps';
 import { CAPABILITIES, CAPABILITY_GROUPS } from '../content';
 
 const PER_GROUP = CAPABILITIES.length / CAPABILITY_GROUPS.length;
+/** Each group of capabilities in its own colour family, like the architecture's three families of layers. */
+const GROUP_TONES = ['violet', 'tango', 'pitch'];
 
 const GROUP_LINES = [
   'Perceive and make sense of the world: language, images, sound and the open web.',
@@ -38,7 +40,7 @@ const Icon = ({ i, size = 22 }: { i: number; size?: number }) => (
 
 function Group({ g }: { g: number }) {
   return (
-    <div className="caps-grid" role="tabpanel" key={g}>
+    <div className="caps-grid" role="tabpanel" key={g} data-tone={GROUP_TONES[g]}>
       {CAPABILITIES.slice(g * PER_GROUP, (g + 1) * PER_GROUP).map((c, j) => {
         const i = g * PER_GROUP + j;
         return (
@@ -80,7 +82,7 @@ export function Capabilities() {
         {pinned && (
         <div className="caps-groups" role="tablist" aria-label="Capability groups">
           {CAPABILITY_GROUPS.map((g, i) => (
-            <button key={g} role="tab" aria-selected={i === active} onClick={() => jump(i)}>
+            <button key={g} role="tab" aria-selected={i === active} data-tone={GROUP_TONES[i]} onClick={() => jump(i)}>
               <span>{g}</span>
               <i style={{ transform: `scaleX(${local(i)})` }} />
             </button>
@@ -99,7 +101,7 @@ export function Capabilities() {
           {head}
           {pinned ? (
             <>
-              <div className="caps-line" key={`l${active}`}>
+              <div className="caps-line" key={`l${active}`} data-tone={GROUP_TONES[active]}>
                 <span className="caps-big">0{active + 1}</span>
                 <p className="lede">{GROUP_LINES[active]}</p>
               </div>
@@ -107,7 +109,7 @@ export function Capabilities() {
             </>
           ) : (
             CAPABILITY_GROUPS.map((g, i) => (
-              <div key={g} className="caps-block">
+              <div key={g} className="caps-block" data-tone={GROUP_TONES[i]}>
                 <div className="caps-line">
                   <span className="caps-big">0{i + 1}</span>
                   <div>

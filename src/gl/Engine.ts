@@ -30,6 +30,8 @@ export interface Params {
   orbit: number; // radians of slow side-to-side turning, for shapes that should feel alive (the globe)
   dim: number; // brightness of everything else while a group is highlighted
   grow: number; // soft point size, relative
+  cull: number; // 1 hides the far side of a sphere
+  dot: number; // printed dot size, relative
 }
 
 export interface Target {
@@ -95,7 +97,7 @@ export const BASE_POSE: Record<FormationKey, Pose> = {
 
 const MOBILE_POSE: Partial<Pose> = { x: 0, y: 0.7, s: 0.62 };
 
-const DEFAULT_PARAMS: Params = { decay: 0, drift: 1, dark: 1, alpha: 1, wave: 1, highlight: -1, spinX: 0, spinY: 0, explode: 0, drag: 0, orbit: 0, dim: 0.45, grow: 1 };
+export const DEFAULT_PARAMS: Params = { decay: 0, drift: 1, dark: 1, alpha: 1, wave: 1, highlight: -1, spinX: 0, spinY: 0, explode: 0, drag: 0, orbit: 0, dim: 0.45, grow: 1, cull: 0, dot: 1 };
 
 const THEME = {
   light: { ink: new THREE.Color('#2a2740'), inkAlpha: 0.55 },
@@ -114,7 +116,7 @@ const sw = (deep: string, bright: string, hot: string, trail: string): Swatch =>
 const TONES: Record<Tone, { light: Swatch; dark: Swatch }> = {
   violet: { light: sw('#3A1FA8', '#7B5CFF', '#4A1FFF', '#e2600f'), dark: sw('#5b3df5', '#b9a6ff', '#ffffff', '#ffa36b') },
   tango: { light: sw('#a8380a', '#ff7a33', '#5b3df5', '#5b3df5'), dark: sw('#ff5f1a', '#ffc4a0', '#c9bcff', '#b9a6ff') },
-  pitch: { light: sw('#8f5400', '#f0a000', '#d9480f', '#d9480f'), dark: sw('#f59e00', '#ffe2a3', '#ff8643', '#ff8643') },
+  pitch: { light: sw('#8f5400', '#f0a000', '#5b3df5', '#d9480f'), dark: sw('#f59e00', '#ffe2a3', '#b9a6ff', '#ff8643') },
 };
 
 const stagger = (m: number, th: number) => {
@@ -285,6 +287,8 @@ export class Engine {
         uHalo: { value: 0.35 },
         uDim: { value: 0.45 },
         uGrow: { value: 1 },
+        uDotScale: { value: 1 },
+        uCull: { value: 0 },
       },
     });
     this.group.add(new THREE.Points(this.geometry, this.material));
@@ -479,6 +483,7 @@ export class Engine {
         uSpeed: { value: speed },
         uColor: { value: this.swatch.trail },
         uVisible: { value: 0 },
+        uCull: { value: 1 }, // the arcs only ever wrap the globe
       },
     });
   }
@@ -524,7 +529,7 @@ export class Engine {
     this.warp = damp(this.warp, Math.min(1, Math.abs(this.velocity) / 60), 4, dt);
     this.velocity = damp(this.velocity, 0, 6, dt);
     for (const key of Object.keys(goal) as (keyof Pose)[]) this.pose[key] = t.snap ? goal[key] : damp(this.pose[key], goal[key], k, dt);
-    for (const key of ['decay', 'drift', 'dark', 'alpha', 'wave', 'spinX', 'spinY', 'explode', 'drag', 'orbit', 'dim', 'grow'] as const)
+    for (const key of ['decay', 'drift', 'dark', 'alpha', 'wave', 'spinX', 'spinY', 'explode', 'drag', 'orbit', 'dim', 'grow', 'cull', 'dot'] as const)
       this.params[key] = damp(this.params[key], want[key], key === 'dark' ? 3.5 : 3, dt);
 
     if (want.highlight !== this.hlGroup) {
@@ -563,6 +568,8 @@ export class Engine {
     u.uWave.value = this.params.wave;
     u.uExplode.value = this.params.explode;
     u.uDim.value = this.params.dim;
+    u.uCull.value = this.params.cull;
+    u.uDotScale.value = this.params.dot;
     u.uGrow.value = this.params.grow * (1 + (1 - d) * 0.35); // light theme: a touch larger, since nothing glows
     u.uAlpha.value = this.params.alpha;
     u.uWarp.value = this.reducedMotion ? 0 : this.warp;

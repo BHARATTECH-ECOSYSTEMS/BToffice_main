@@ -729,58 +729,55 @@ export function plates(n: number): Formation {
   return b.dust(r);
 }
 
-// ── 06 · Dot globe: the Earth on an even lattice, India in the accent, lines out to the world ──
+// ── 06 · Dot globe: the Earth printed as one even grid of dots ──────────────
+// Land in the accent, the sea as a sparse grain, India on the same grid in the highlight, dotted routes
+// out to each region and two thin orbits. Drawn as flat, even dots; the far side is hidden (see uCull).
+
+const GLOBE_STEP = 0.058; // a fine, even pitch along the surface; the dots are printed smaller to match (params.dot)
 
 export function dotGlobe(n: number): Formation {
   const r = rng(67);
   const b = new Builder(n);
-  // one golden-spiral lattice over the whole sphere: the sea as a faint grain, the land as solid dots
-  const M = Math.round(n * 0.2);
-  const golden = 180 * (3 - Math.sqrt(5));
-  for (let i = 0; i < M; i++) {
-    const lat = (Math.asin(1 - (2 * (i + 0.5)) / M) * 180) / Math.PI;
-    const lon = ((((i * golden) % 360) + 360) % 360) - 180;
-    if (inPolygon([lon, lat], INDIA)) continue; // India gets its own, finer grid below
-    const land = onLand([lon, lat]);
-    if (land) dot(b, r, lonLatToVec(lon, lat, GLOBE_R), 5, 1, -1, 0.034);
-    else if (i % 3 === 0) dot(b, r, lonLatToVec(lon, lat, GLOBE_R), 1, 0, -1, 0.004); // a thin grain, so the land stands out
-  }
-  // a faint graticule: parallels every 30° and meridians every 30°, so the sphere reads as a globe from any side
-  for (let lat = -60; lat <= 60; lat += 30)
-    for (let lon = -180; lon < 180; lon += 1.6) dot(b, r, lonLatToVec(lon, lat, GLOBE_R * 0.998), 1, 0.3, -1, 0.002);
-  for (let lon = -180; lon < 180; lon += 30)
-    for (let lat = -84; lat <= 84; lat += 1.6) dot(b, r, lonLatToVec(lon, lat, GLOBE_R * 0.998), 1, 0.3, -1, 0.002);
-  // India: the same kind of dots on a finer grid, raised a little, so the country reads as a shape
-  for (let lat = INDIA_BBOX.minLat; lat <= INDIA_BBOX.maxLat; lat += 1)
-    for (let lon = INDIA_BBOX.minLon; lon <= INDIA_BBOX.maxLon; lon += 1)
-      if (inPolygon([lon, lat], INDIA)) dot(b, r, lonLatToVec(lon, lat, GLOBE_R * 1.012), 4, 1, 0, 0.008);
-  // regional hubs: a bright knot at each end of the lines
-  GLOBE_LABELS.forEach((h, k) => dot(b, r, lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.015), 50, 1, k === 0 ? 0 : 1, 0.035));
-  // the lines themselves, faintly drawn; the moving light along them is the trail layer (Engine.buildArcTrails)
-  const arcs = b.i + Math.floor(n * 0.035);
-  while (b.i < arcs) {
-    const [a, c] = ARCS[Math.floor(r() * ARCS.length)];
-    const [x, y, z] = arcPoint(a, c, r());
-    b.push(x, y, z, 0.8, 1);
-  }
-  // two tilted orbits with a few satellites: the network around the planet
-  const rings: [number, number, number][] = [
-    [1.24, 0.42, -0.26],
-    [1.36, -0.3, 0.4],
-  ];
-  rings.forEach(([rad, tx, tz], k) => {
-    const end = b.i + Math.floor(n * 0.022);
-    while (b.i < end) {
-      const a = r() * Math.PI * 2;
-      const p = rotZ(rotX([Math.cos(a) * GLOBE_R * rad, 0, Math.sin(a) * GLOBE_R * rad], tx), tz);
-      b.push(p[0], p[1], p[2], 0.35, -1);
+  const dLat = (GLOBE_STEP / GLOBE_R) * (180 / Math.PI);
+  let row = 0;
+  for (let lat = -84; lat <= 84; lat += dLat, row++) {
+    const ring = Math.max(1, Math.round((360 * Math.cos((lat * Math.PI) / 180)) / dLat));
+    const shift = row % 2 ? 0.5 : 0; // rows interleave, so the dots sit in a honeycomb rather than columns
+    for (let k = 0; k < ring; k++) {
+      const lon = ((k + shift) / ring) * 360 - 180;
+      const p = lonLatToVec(lon, lat, GLOBE_R);
+      if (inPolygon([lon, lat], INDIA)) b.push(p[0], p[1], p[2], 1, 0);
+      else if (onLand([lon, lat])) b.push(p[0], p[1], p[2], 0.8, -1);
+      else if (row % 3 === 0 && k % 3 === 0) b.push(p[0], p[1], p[2], 0.22, -1); // a sparse sea grain keeps the sphere round
     }
-    for (let s = 0; s < 3; s++) {
-      const a = (s / 3) * Math.PI * 2 + k * 0.9;
-      dot(b, r, rotZ(rotX([Math.cos(a) * GLOBE_R * rad, 0, Math.sin(a) * GLOBE_R * rad], tx), tz), 36, 1, -1, 0.04);
+  }
+  // routes from India's hubs to each region, dotted at the same pitch
+  ARCS.forEach(([a, c]) => {
+    const [x0, y0, z0] = arcPoint(a, c, 0);
+    const [x1, y1, z1] = arcPoint(a, c, 1);
+    const steps = Math.max(6, Math.round((Math.hypot(x1 - x0, y1 - y0, z1 - z0) * 1.25) / (GLOBE_STEP * 1.4)));
+    for (let k = 1; k < steps; k++) {
+      const p = arcPoint(a, c, k / steps);
+      b.push(p[0], p[1], p[2], 0.9, 1);
+    }
+  });
+  // two thin orbits around the planet, each with a few satellites
+  const orbits: [number, number, number][] = [
+    [1.2, 0.42, -0.26],
+    [1.3, -0.3, 0.4],
+  ];
+  orbits.forEach(([rad, tx, tz], o) => {
+    const R = GLOBE_R * rad;
+    const count = Math.round((2 * Math.PI * R) / (GLOBE_STEP * 1.6));
+    for (let k = 0; k < count; k++) {
+      const a = (k / count) * Math.PI * 2;
+      const p = rotZ(rotX([Math.cos(a) * R, 0, Math.sin(a) * R], tx), tz);
+      const sat = k % Math.round(count / 3) === o * 4;
+      b.push(p[0], p[1], p[2], sat ? 1 : 0.35, sat ? 1 : -1);
     }
   });
   b.f.anchors = GLOBE_LABELS.map((h) => lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.02));
+  b.f.crisp = 1;
   return b.dust(r);
 }
 

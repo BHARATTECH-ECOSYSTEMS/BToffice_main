@@ -146,7 +146,7 @@ html[data-room2='pitch'] { --p2: var(--pitch-fill); }
 /* ── Glass ──────────────────────────────────────────────────────────────── */
 
 .glass,
-.folio-main :is(.bento, .problem-card, .cap-card, .stack, .stack-detail, .net-art, .net-list li, .lab-card, .aud-card, .jobs-summary, .jobs-board, .faq-item, .faq-contact, .scene-demo, .caps-base, .how-detail, .how-trace, .convo),
+.folio-main :is(.bento, .problem-card, .cap-card, .stack, .stack-detail, .net-art, .net-list li, .lab-card, .aud-card, .jobs-summary, .jobs-board, .faq-item, .faq-contact, .scene-demo, .caps-base, .convo),
 .story-cover {
   position: relative;
   isolation: isolate;
@@ -985,5 +985,510 @@ body:has(.finale-cta) .footer-cta {
   .glass,
   .folio-main :is(.bento, .problem-card, .cap-card, .stack, .stack-detail, .net-art, .net-list li, .lab-card, .aud-card, .jobs-summary, .jobs-board, .faq-item, .faq-contact) {
     background: var(--glass-fill), var(--card);
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Final pass: every repeated item in its own form and colour, the way the
+   architecture layers are. [data-tone] on an item sets --it (fill) and
+   --it-text (readable), and the facets below give each item its own silhouette.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+[data-tone='violet'] { --it: var(--brand-fill); --it-text: var(--brand-text); --it-soft: var(--brand-soft); --it-on: #fff; }
+[data-tone='tango'] { --it: var(--tango-fill); --it-text: var(--tango-text); --it-soft: var(--tango-soft); --it-on: var(--on-tone); }
+[data-tone='pitch'] { --it: var(--pitch-fill); --it-text: var(--pitch-text); --it-soft: var(--pitch-soft); --it-on: var(--on-tone); }
+
+/* ── 04 How it works: five stations, five forms ─────────────────────────── */
+
+.dg-node .dg-shape > * {
+  fill: var(--card);
+  stroke: color-mix(in srgb, var(--it) 45%, var(--line-strong));
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+  transition: fill 0.35s ease, stroke 0.35s ease, transform 0.5s var(--ease);
+}
+.dg-node .dg-icon {
+  fill: none;
+  stroke: var(--it-text);
+  stroke-width: 1.6;
+}
+.dg-node text {
+  fill: var(--ink-3);
+}
+.dg-node.is-done .dg-shape > * {
+  fill: color-mix(in srgb, var(--it) 16%, var(--card));
+  stroke: var(--it);
+}
+.dg-node.is-done text {
+  fill: var(--ink-2);
+}
+.dg-node.is-active .dg-shape > * {
+  fill: var(--it);
+  stroke: var(--it);
+  filter: drop-shadow(0 6px 14px color-mix(in srgb, var(--it) 60%, transparent));
+}
+.dg-node.is-active .dg-icon {
+  stroke: var(--it-on);
+}
+.dg-node.is-active text {
+  fill: var(--ink);
+  font-weight: 600;
+}
+.dg-node:hover .dg-shape > * {
+  stroke: var(--it);
+}
+.dg-rail-fill {
+  stroke: var(--pitch-fill);
+  stroke-width: 3;
+  stroke-linecap: round;
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--pitch-fill) 60%, transparent));
+}
+.dg-rail {
+  stroke-linecap: round;
+}
+.dg-packet circle:last-child {
+  fill: #fff;
+  stroke: var(--pitch-fill);
+  stroke-width: 3;
+}
+.dg-packet-ring {
+  stroke: var(--pitch-fill);
+  opacity: 0.6;
+  animation: packet-ping 1.6s ease-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes packet-ping {
+  from { transform: scale(0.6); opacity: 0.8; }
+  to { transform: scale(1.6); opacity: 0; }
+}
+
+/* the station in detail: a glass card with the station's badge, its words and a live trace */
+.how-detail {
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.6fr) minmax(0, 1.3fr);
+  gap: 18px 28px;
+  align-items: stretch;
+  padding: 24px 26px;
+  border-top: 0;
+  border-radius: 26px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, color-mix(in srgb, var(--it) 16%, transparent), transparent 55%),
+    var(--glass-fill),
+    var(--glass-tint);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px color-mix(in srgb, var(--it) 28%, var(--glass-rim)), var(--glass-shadow);
+}
+.folio-main .how-detail {
+  padding: 24px 26px;
+}
+.how-step,
+.how-body,
+.how-trace {
+  grid-column: auto !important;
+}
+.how-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+.how-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 14px;
+  color: var(--it-on);
+  background: linear-gradient(140deg, var(--it), color-mix(in srgb, var(--it) 55%, #ff8643));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 10px 22px -10px color-mix(in srgb, var(--it) 90%, transparent);
+}
+@supports (corner-shape: squircle) {
+  .how-badge {
+    border-radius: 18px;
+    corner-shape: squircle;
+  }
+}
+.how-count {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
+.how-count b {
+  color: var(--it-text);
+}
+.how-step .h3 {
+  margin-top: 4px;
+  font-size: clamp(1.4rem, 2vw, 1.8rem);
+  letter-spacing: -0.03em;
+}
+.how-body {
+  align-content: start;
+  gap: 14px;
+  font-size: 15px;
+  line-height: 1.55;
+}
+.how-body .tag {
+  color: var(--it-text);
+  background: color-mix(in srgb, var(--it) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--it) 35%, transparent);
+}
+.folio-main .how-trace,
+.how-trace {
+  align-self: stretch;
+  align-content: start;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  color: #f1eff8;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--it) 26%, transparent), transparent 40%),
+    linear-gradient(160deg, #1b1727, #121019);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), inset 0 0 0 1px rgba(255, 255, 255, 0.06), 0 14px 28px -18px rgba(0, 0, 0, 0.6);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.how-trace-head {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(241, 239, 248, 0.6);
+}
+.how-trace .console-pulse {
+  background: var(--it);
+  box-shadow: 0 0 8px var(--it);
+}
+.how-trace p {
+  color: #f1eff8;
+}
+@container folio (max-width: 860px) {
+  .how-detail {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr);
+  }
+  .how-trace {
+    grid-column: 1 / -1 !important;
+  }
+}
+.how-list-node {
+  color: var(--it-on);
+  background: var(--it);
+  box-shadow: 0 0 0 4px var(--it-soft);
+}
+
+/* ── Silhouettes ────────────────────────────────────────────────────────────
+   Six forms. Browsers with corner-shape get bevels, scoops and notches (the glass, its rim and its shadow
+   all follow the shape); others get the same rhythm as plain rounded corners. */
+
+.folio-main :is(
+    .plain > :nth-child(6n + 1), .problem-grid > :nth-child(6n + 4), .caps-grid > :nth-child(5n + 1),
+    .lab-grid > :nth-child(6n + 1) .lab-card, .aud-grid > :nth-child(6n + 5), .values > :nth-child(4n + 2),
+    .net-art, .jobs-board, .convo-origin, .journal-grid > :first-child .story-cover
+  ),
+.hero-facts > :nth-child(4n + 1),
+.finale-cta {
+  --f: 1;
+  border-radius: 40px;
+}
+.folio-main :is(
+    .plain > :nth-child(6n + 2), .problem-grid > :nth-child(6n + 1), .caps-grid > :nth-child(5n + 2),
+    .lab-grid > :nth-child(6n + 2) .lab-card, .aud-grid > :nth-child(6n + 1), .values > :nth-child(4n + 1),
+    .net-list li:nth-child(3n + 1), .convo-today
+  ),
+.hero-facts > :nth-child(4n + 2) {
+  --f: 2;
+  border-radius: 30px 12px 30px 12px;
+}
+.folio-main :is(
+    .plain > :nth-child(6n + 3), .problem-grid > :nth-child(6n + 2), .caps-grid > :nth-child(5n + 3),
+    .lab-grid > :nth-child(6n + 3) .lab-card, .aud-grid > :nth-child(6n + 2), .values > :nth-child(4n + 3),
+    .net-list li:nth-child(3n + 2), .stack-detail, .how-detail, .journal-side > :nth-child(1) .story-cover
+  ),
+.hero-facts > :nth-child(4n + 3) {
+  --f: 3;
+  border-radius: 28px;
+}
+.folio-main :is(
+    .problem-grid > :nth-child(6n + 3), .caps-grid > :nth-child(5n + 4), .lab-grid > :nth-child(6n + 4) .lab-card,
+    .aud-grid > :nth-child(6n + 3), .values > :nth-child(4n + 4), .net-list li:nth-child(3n), .jobs-summary
+  ),
+.hero-facts > :nth-child(4n + 4) {
+  --f: 4;
+  border-radius: 22px;
+}
+.folio-main :is(.caps-grid > :nth-child(5n + 5), .lab-grid > :nth-child(6n + 5) .lab-card, .aud-grid > :nth-child(6n + 4), .journal-side > :nth-child(2) .story-cover) {
+  --f: 5;
+  border-radius: 48px 14px 48px 14px;
+}
+.folio-main :is(.lab-grid > :nth-child(6n + 6) .lab-card, .aud-grid > :nth-child(6n + 6), .scene-demo) {
+  --f: 6;
+  border-radius: 32px;
+}
+
+@supports (corner-shape: bevel) {
+  /* 1 · squircle: soft and continuous, like an app icon */
+  .folio-main :is(
+      .plain > :nth-child(6n + 1), .problem-grid > :nth-child(6n + 4), .caps-grid > :nth-child(5n + 1),
+      .lab-grid > :nth-child(6n + 1) .lab-card, .aud-grid > :nth-child(6n + 5), .values > :nth-child(4n + 2),
+      .net-art, .jobs-board, .convo-origin, .journal-grid > :first-child .story-cover
+    ),
+  .hero-facts > :nth-child(4n + 1),
+  .finale-cta {
+    border-radius: 56px;
+    corner-shape: squircle;
+  }
+  /* 2 · bevel: two corners cut on the diagonal */
+  .folio-main :is(
+      .plain > :nth-child(6n + 2), .problem-grid > :nth-child(6n + 1), .caps-grid > :nth-child(5n + 2),
+      .lab-grid > :nth-child(6n + 2) .lab-card, .aud-grid > :nth-child(6n + 1), .values > :nth-child(4n + 1),
+      .net-list li:nth-child(3n + 1), .convo-today
+    ),
+  .hero-facts > :nth-child(4n + 2) {
+    border-radius: 26px 22px 26px 22px;
+    corner-shape: bevel round bevel round;
+  }
+  /* 3 · scoop: one corner curved inwards, like a ticket */
+  .folio-main :is(
+      .plain > :nth-child(6n + 3), .problem-grid > :nth-child(6n + 2), .caps-grid > :nth-child(5n + 3),
+      .lab-grid > :nth-child(6n + 3) .lab-card, .aud-grid > :nth-child(6n + 2), .values > :nth-child(4n + 3),
+      .net-list li:nth-child(3n + 2), .stack-detail, .how-detail, .journal-side > :nth-child(1) .story-cover
+    ),
+  .hero-facts > :nth-child(4n + 3) {
+    border-radius: 24px 24px 24px 24px;
+    corner-shape: round scoop round round;
+  }
+  /* 4 · scooped foot: one lower corner curved inwards, the rest softly squared */
+  .folio-main :is(
+      .problem-grid > :nth-child(6n + 3), .caps-grid > :nth-child(5n + 4), .lab-grid > :nth-child(6n + 4) .lab-card,
+      .aud-grid > :nth-child(6n + 3), .values > :nth-child(4n + 4), .net-list li:nth-child(3n), .jobs-summary
+    ),
+  .hero-facts > :nth-child(4n + 4) {
+    border-radius: 26px 26px 26px 22px;
+    corner-shape: superellipse(1.6) superellipse(1.6) superellipse(1.6) scoop;
+  }
+  /* 5 · leaf: two long curves and two tight ones */
+  .folio-main :is(.caps-grid > :nth-child(5n + 5), .lab-grid > :nth-child(6n + 5) .lab-card, .aud-grid > :nth-child(6n + 4), .journal-side > :nth-child(2) .story-cover) {
+    border-radius: 64px 18px 64px 18px;
+    corner-shape: squircle round squircle round;
+  }
+  /* 6 · chamfered plate: squarish, one corner bevelled */
+  .folio-main :is(.lab-grid > :nth-child(6n + 6) .lab-card, .aud-grid > :nth-child(6n + 6), .scene-demo) {
+    border-radius: 34px 34px 34px 30px;
+    corner-shape: superellipse(2.4) superellipse(2.4) superellipse(2.4) bevel;
+  }
+}
+
+/* numbers become badges in the item's colour */
+.folio-main :is(.bento-text .num, .problem-text .num, .lab-card-num, .aud-num) {
+  display: inline-grid;
+  place-items: center;
+  justify-self: start;
+  width: max-content;
+  min-width: 30px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--on-accent);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent-fill) 78%, #fff), var(--accent-fill));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 14px -6px color-mix(in srgb, var(--accent-fill) 80%, transparent);
+}
+@supports (corner-shape: squircle) {
+  .folio-main :is(.bento-text .num, .problem-text .num, .lab-card-num, .aud-num) {
+    border-radius: 10px;
+    corner-shape: squircle;
+  }
+}
+/* each card carries a thin line of its colour along its top */
+.folio-main :is(.bento, .problem-card, .cap-card, .lab-card, .aud-card, .value, .net-list li) {
+  background:
+    linear-gradient(90deg, transparent 8%, color-mix(in srgb, var(--accent-fill) 70%, transparent) 50%, transparent 92%) top / 100% 1.5px no-repeat,
+    radial-gradient(90% 60% at 100% 0%, color-mix(in srgb, var(--accent-fill) 9%, transparent), transparent 70%),
+    var(--glass-fill),
+    var(--glass-tint);
+}
+
+/* ── 03 Capabilities: one colour family per group ──────────────────────── */
+
+.caps-grid[data-tone] > .cap-card,
+.caps-block[data-tone] .cap-card {
+  --accent: var(--it-text);
+  --accent-fill: var(--it);
+  --accent-soft: var(--it-soft);
+  --accent-line: color-mix(in srgb, var(--it) 50%, transparent);
+  --on-accent: var(--it-on);
+}
+.cap-icon {
+  color: var(--on-accent);
+  background: linear-gradient(140deg, var(--accent-fill), color-mix(in srgb, var(--accent-fill) 55%, #ff8643));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 10px 20px -10px color-mix(in srgb, var(--accent-fill) 80%, transparent);
+}
+@supports (corner-shape: squircle) {
+  .cap-icon {
+    border-radius: 16px;
+    corner-shape: squircle;
+  }
+}
+.cap-card:hover .cap-icon {
+  transform: rotate(-6deg) scale(1.06);
+}
+.cap-icon {
+  transition: transform 0.5s var(--ease);
+}
+.caps-groups {
+  background: var(--glass-fill), var(--glass-tint);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px var(--glass-rim);
+}
+/* a group read so far is washed in its colour; the open one is solid, its progress a brighter sweep inside it */
+.caps-groups button i {
+  background: color-mix(in srgb, var(--it) 20%, transparent);
+}
+.caps-groups button[aria-selected='true'] {
+  color: var(--it-on);
+  background: linear-gradient(135deg, var(--it), color-mix(in srgb, var(--it) 60%, #ff8643));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 18px -10px var(--it);
+}
+.caps-groups button[aria-selected='true'] i {
+  background: rgba(255, 255, 255, 0.2);
+}
+.caps-big {
+  background: linear-gradient(160deg, var(--it, var(--accent-fill)), color-mix(in srgb, var(--it, var(--accent-fill)) 40%, transparent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.caps-base b {
+  color: var(--brand-text);
+  background: var(--brand-soft);
+}
+.caps-base b:nth-of-type(2) {
+  color: var(--tango-text);
+  background: var(--tango-soft);
+}
+.caps-base b:nth-of-type(3) {
+  color: var(--pitch-text);
+  background: var(--pitch-soft);
+}
+
+/* ── Hero: four facts as glass tiles ───────────────────────────────────── */
+
+.hero-facts {
+  gap: 12px;
+  border-top: 0;
+}
+.hero-facts > div {
+  position: relative;
+  padding: 16px 18px 18px;
+  border: 0;
+  background:
+    radial-gradient(100% 120% at 0% 0%, color-mix(in srgb, var(--it) 18%, transparent), transparent 60%),
+    var(--glass-fill),
+    var(--glass-tint);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px color-mix(in srgb, var(--it) 25%, var(--glass-rim)), var(--glass-shadow);
+}
+.hero-facts > :nth-child(4n + 1) { --it: var(--brand-fill); --it-text: var(--brand-text); }
+.hero-facts > :nth-child(4n + 2) { --it: var(--tango-fill); --it-text: var(--tango-text); }
+.hero-facts > :nth-child(4n + 3) { --it: var(--pitch-fill); --it-text: var(--pitch-text); }
+.hero-facts > :nth-child(4n + 4) { --it: var(--brand-fill); --it-text: var(--brand-text); }
+.hero-facts dd {
+  color: var(--it-text);
+}
+
+/* ── 09 Builders: values in their own forms ────────────────────────────── */
+
+.folio-main .value {
+  padding: 22px 22px 24px;
+  background:
+    radial-gradient(90% 70% at 100% 0%, color-mix(in srgb, var(--accent-fill) 12%, transparent), transparent 70%),
+    var(--glass-fill),
+    var(--glass-tint);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px var(--glass-rim), var(--glass-shadow);
+}
+.value-icon {
+  color: var(--on-accent);
+  background: linear-gradient(140deg, var(--accent-fill), color-mix(in srgb, var(--accent-fill) 55%, #ff8643));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 10px 20px -10px color-mix(in srgb, var(--accent-fill) 80%, transparent);
+}
+.segmented button[aria-pressed='true'] {
+  color: #fff;
+  background: linear-gradient(135deg, var(--pitch-fill), var(--tango-fill));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.folio-main .jobs-bar i::after {
+  background: linear-gradient(90deg, var(--pitch-fill), var(--tango-fill));
+}
+
+/* ── 11 Questions ──────────────────────────────────────────────────────── */
+
+.faq-item.is-open {
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px var(--accent-line), 0 0 0 4px color-mix(in srgb, var(--accent-fill) 10%, transparent), var(--glass-shadow);
+}
+.faq-toggle {
+  transition: background-color 0.3s ease, transform 0.5s var(--ease);
+}
+.faq-item.is-open .faq-toggle {
+  transform: rotate(180deg);
+}
+
+/* the card number sits with the words, clear of the drawing above it */
+.folio-main .aud-text .aud-num,
+.folio-main .lab-card-text .lab-card-num {
+  position: static;
+  margin-bottom: 4px;
+}
+
+/* the laboratory's cards sit inside their reveal wrappers, so their colours rotate by wrapper */
+.lab-grid > :nth-child(3n + 2) .lab-card {
+  --accent: var(--tango-text);
+  --accent-fill: var(--tango-fill);
+  --accent-soft: var(--tango-soft);
+  --accent-line: var(--tango-line);
+  --on-accent: var(--on-tone);
+}
+.lab-grid > :nth-child(3n) .lab-card {
+  --accent: var(--pitch-text);
+  --accent-fill: var(--pitch-fill);
+  --accent-soft: var(--pitch-soft);
+  --accent-line: var(--pitch-line);
+  --on-accent: var(--on-tone);
+}
+.lab-card-field {
+  color: var(--accent);
+}
+
+/* the pillar is the shaped glass; its button is only the hit area inside it */
+.folio-main .net-pillar,
+.folio-main .net-pillar.is-on {
+  border-radius: inherit;
+  background: none;
+  box-shadow: none;
+}
+.net-list li:has(.is-on) {
+  transform: translateX(4px);
+}
+
+/* thin rows take quieter forms: a squircle, or two small bevels */
+.folio-main .faq-item {
+  border-radius: 24px;
+}
+@supports (corner-shape: bevel) {
+  .folio-main .faq-item:nth-child(2n + 1) {
+    border-radius: 36px;
+    corner-shape: squircle;
+  }
+  .folio-main .faq-item:nth-child(2n) {
+    border-radius: 16px 20px 16px 20px;
+    corner-shape: bevel round bevel round;
+  }
+}
+
+/* four values read better as a two-by-two in the story column */
+@container folio (max-width: 900px) {
+  .values {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

@@ -25,9 +25,9 @@ export function Audiences() {
             <Fade key={a.name} delay={(i % 3) * 100} className="aud-card">
               <div className="aud-art">
                 <Diagram draw={AUDIENCE_DRAWS[i]} period={8} w={AUD_W} h={AUD_H} label={AUDIENCE_LABELS[i]} still={AUDIENCE_STILL[i]} />
-                <span className="aud-num">{String(i + 1).padStart(2, '0')}</span>
               </div>
               <div className="aud-text">
+                <span className="aud-num">{String(i + 1).padStart(2, '0')}</span>
                 <h3>{a.name}</h3>
                 <p>{a.line}</p>
                 <ul>

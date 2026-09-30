@@ -16,6 +16,17 @@ const NODE_ICONS = [
   'M0-8l8 4-8 4-8-4 8-4zM-8 0l8 4 8-4M-8 4l8 4 8-4',
 ];
 
+/** Each station has its own form and colour: a circle that listens, a card that is recalled, a diamond that
+ * decides, a hexagon that acts, and a store that keeps what was learned. */
+const NODE_SHAPES = [
+  <circle r={25} />,
+  <rect x={-23} y={-23} width={46} height={46} rx={10} />,
+  <path d="M0-29L29 0 0 29-29 0Z" />,
+  <path d="M0-27L23.4-13.5V13.5L0 27-23.4 13.5V-13.5Z" />,
+  <path d="M-24-12a24 9 0 0 1 48 0v24a24 9 0 0 1-48 0Z" />,
+];
+export const STATION_TONES = ['violet', 'tango', 'pitch', 'violet', 'tango'];
+
 /** Station vignettes, each drawn around its own centre (x, 0 = top of the vignette band). */
 function Understand({ x }: { x: number }) {
   const inputs = [
@@ -183,13 +194,14 @@ export function HowItWorks() {
               <g
                 key={x}
                 className={`dg-node ${i === active ? 'is-active' : ''} ${i < active ? 'is-done' : ''}`}
+                data-tone={STATION_TONES[i]}
                 transform={`translate(${x} ${Y})`}
                 onClick={() => pick(i)}
                 role="button"
                 aria-label={FLOW[i].step}
               >
-                <circle r={24} />
-                <path d={NODE_ICONS[i]} />
+                <g className="dg-shape">{NODE_SHAPES[i]}</g>
+                <path className="dg-icon" d={NODE_ICONS[i]} />
                 <text y={48} textAnchor="middle">
                   {FLOW[i].step}
                 </text>
@@ -206,7 +218,7 @@ export function HowItWorks() {
           <ol className="how-list">
             {FLOW.map((f, i) => (
               <li key={f.step}>
-                <span className="how-list-node">
+                <span className="how-list-node" data-tone={STATION_TONES[i]}>
                   <svg width="18" height="18" viewBox="-12 -12 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d={NODE_ICONS[i]} />
                   </svg>
@@ -221,12 +233,19 @@ export function HowItWorks() {
             ))}
           </ol>
 
-          <div className="how-detail" key={active}>
+          <div className="how-detail" key={active} data-tone={STATION_TONES[active]}>
             <div className="how-step">
-              <p className="how-count">
-                <b>{String(active + 1).padStart(2, '0')}</b> / 05
-              </p>
-              <h3 className="h3">{step.step}</h3>
+              <span className="how-badge" aria-hidden="true">
+                <svg width="22" height="22" viewBox="-12 -12 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <path d={NODE_ICONS[active]} />
+                </svg>
+              </span>
+              <div>
+                <p className="how-count">
+                  <b>{String(active + 1).padStart(2, '0')}</b> / {String(FLOW.length).padStart(2, '0')}
+                </p>
+                <h3 className="h3">{step.step}</h3>
+              </div>
             </div>
             <div className="how-body">
               <p>{step.body}</p>
