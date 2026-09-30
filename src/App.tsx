@@ -45,6 +45,31 @@ function Layout() {
     return () => window.removeEventListener('pointerover', onMove);
   }, []);
 
+  // Glass surfaces catch the light where the cursor is (see .glass::after in glass.css).
+  useEffect(() => {
+    const SURFACES = '.glass, .bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item, .stack-detail';
+    let raf = 0;
+    let last: PointerEvent | null = null;
+    const paint = () => {
+      raf = 0;
+      const e = last;
+      const el = e && ((e.target as HTMLElement).closest?.(SURFACES) as HTMLElement | null);
+      if (!e || !el) return;
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--gx', `${e.clientX - r.left}px`);
+      el.style.setProperty('--gy', `${e.clientY - r.top}px`);
+    };
+    const onMove = (e: PointerEvent) => {
+      last = e;
+      if (!raf) raf = requestAnimationFrame(paint);
+    };
+    window.addEventListener('pointermove', onMove, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('pointermove', onMove);
+    };
+  }, []);
+
   return (
     <div className="app">
       <div className="grain" aria-hidden="true" />

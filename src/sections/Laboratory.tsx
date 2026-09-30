@@ -13,7 +13,7 @@ export function Laboratory() {
   const cap = 'Six research domains, bonded to one core like atoms in a molecule';
   const stage = useStage(ref, 'molecule', { fig: '07', name: 'Molecule', caption: cap, labels: () => DOMAINS.map((d) => ({ text: d.name, side: 'below' as const })) });
   return (
-    <section id="laboratory" ref={ref} className="section lab" data-chapter="Laboratory">
+    <section id="laboratory" ref={ref} className="section lab" data-room="violet" data-room2="pitch" data-chapter="Laboratory">
       <div className="wrap">
         <SectionHead
           index="07"

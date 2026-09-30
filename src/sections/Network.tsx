@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useStage } from '../gl/Scene';
-import { REGIONS } from '../gl/figures';
+import { GLOBE_LABELS } from '../gl/geo';
 import { Stage } from '../components/Stage';
 import { Diagram } from '../viz/Diagram';
 import { network, type NetFocus } from '../viz/network';
@@ -33,23 +33,33 @@ const PILLARS: { key: NetFocus; title: string; body: string; icon: ReactNode }[]
   },
 ];
 
+const SIDE: Record<string, 'left' | 'right' | 'above' | 'below'> = {
+  India: 'below',
+  Europe: 'left',
+  Americas: 'left',
+  Africa: 'left',
+  'Middle East': 'left',
+  'Southeast Asia': 'below',
+  'East Asia': 'above',
+  Oceania: 'below',
+};
+
 /** One core, many places: what any node learns, every node receives. */
 export function Network() {
   const ref = useRef<HTMLElement>(null);
   const [focus, setFocus] = useState<NetFocus>(null);
-  const cap = 'Built and hosted in India, with lines out to every region of the world';
-  const stage = useStage(ref, 'india', {
+  const cap = 'A sovereign core in India, with live lines out to every region of the world. Drag to turn the globe';
+  const stage = useStage(ref, 'globe', {
     fig: '06',
-    name: 'Map',
+    name: 'Globe',
     caption: cap,
-    labels: () => [
-      { text: 'India', hot: true, side: 'right' as const },
-      // tags sit above the northern ends and below the southern ones, so none run off the panel
-      ...REGIONS.map((r) => ({ text: r.name, side: Math.sin((r.angle * Math.PI) / 180) >= 0 ? ('above' as const) : ('below' as const) })),
-    ],
+    // India's neighbours to the west take their tags to the left, the east to the right, so none cover India
+    labels: () => GLOBE_LABELS.map((g) => ({ text: g.name, hot: !!g.home, side: SIDE[g.name] ?? 'right' })),
+    // India glows in the accent, the planet turns slowly on its own and follows a drag
+    params: { highlight: 0, dim: 0.95, grow: 1.25, drag: 1, orbit: 0.45 },
   });
   return (
-    <section id="network" ref={ref} className="section net room room--pitch" data-room="pitch" data-chapter="Network">
+    <section id="network" ref={ref} className="section net room room--pitch" data-room="pitch" data-room2="tango" data-chapter="Network">
       <div className="wrap">
         <header className="sec-head has-stage">
           <Kicker index="06">Network</Kicker>
@@ -59,7 +69,7 @@ export function Network() {
               An intelligence network conceived in India and engineered to run anywhere. Every node shares what it learns with the rest.
             </Fade>
           </div>
-          <Stage stageRef={stage} fig="06" name="Map" caption={cap} />
+          <Stage stageRef={stage} fig="06" name="Globe" caption={cap} />
         </header>
         <Fade className="net-grid">
           <div className="net-art">

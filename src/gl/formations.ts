@@ -1,5 +1,5 @@
 import { distToThreads, THREAD_HALF_WIDTH } from './threads';
-import { INDIA, INDIA_BBOX, INDIA_HUBS, WORLD, GLOBE_LABELS, inPolygon, lonLatToVec, type LonLat } from './geo';
+import { INDIA, INDIA_BBOX, INDIA_HUBS, WORLD, GLOBE_LABELS, inPolygon, onLand, lonLatToVec, type LonLat } from './geo';
 
 /**
  * A formation is one arrangement of the same N particles.
@@ -729,37 +729,57 @@ export function plates(n: number): Formation {
   return b.dust(r);
 }
 
-// ── 06 · Dot globe: an even lattice, India in the accent on the same grid ────
+// ── 06 · Dot globe: the Earth on an even lattice, India in the accent, lines out to the world ──
 
 export function dotGlobe(n: number): Formation {
   const r = rng(67);
   const b = new Builder(n);
-  const M = Math.round(n / 14);
-  const per = Math.max(3, Math.floor((n * 0.66) / M));
+  // one golden-spiral lattice over the whole sphere: the sea as a faint grain, the land as solid dots
+  const M = Math.round(n * 0.2);
   const golden = 180 * (3 - Math.sqrt(5));
   for (let i = 0; i < M; i++) {
     const lat = (Math.asin(1 - (2 * (i + 0.5)) / M) * 180) / Math.PI;
     const lon = ((((i * golden) % 360) + 360) % 360) - 180;
     if (inPolygon([lon, lat], INDIA)) continue; // India gets its own, finer grid below
-    dot(b, r, lonLatToVec(lon, lat, GLOBE_R), per, 0.1, -1, 0.012);
+    const land = onLand([lon, lat]);
+    if (land) dot(b, r, lonLatToVec(lon, lat, GLOBE_R), 5, 1, -1, 0.034);
+    else if (i % 3 === 0) dot(b, r, lonLatToVec(lon, lat, GLOBE_R), 1, 0, -1, 0.004); // a thin grain, so the land stands out
   }
-  // India: the same kind of dots on a finer grid, in the accent, so the country reads as a shape
-  for (let lat = INDIA_BBOX.minLat; lat <= INDIA_BBOX.maxLat; lat += 1.25)
-    for (let lon = INDIA_BBOX.minLon; lon <= INDIA_BBOX.maxLon; lon += 1.25)
-      if (inPolygon([lon, lat], INDIA)) dot(b, r, lonLatToVec(lon, lat, GLOBE_R * 1.004), 5, 1, 0, 0.008);
-  // regional hubs: small bright dots, one ring each
-  GLOBE_LABELS.forEach((h, k) => {
-    const c = lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.01);
-    dot(b, r, c, 60, 1, k === 0 ? 0 : 1, 0.03);
+  // a faint graticule: parallels every 30° and meridians every 30°, so the sphere reads as a globe from any side
+  for (let lat = -60; lat <= 60; lat += 30)
+    for (let lon = -180; lon < 180; lon += 1.6) dot(b, r, lonLatToVec(lon, lat, GLOBE_R * 0.998), 1, 0.3, -1, 0.002);
+  for (let lon = -180; lon < 180; lon += 30)
+    for (let lat = -84; lat <= 84; lat += 1.6) dot(b, r, lonLatToVec(lon, lat, GLOBE_R * 0.998), 1, 0.3, -1, 0.002);
+  // India: the same kind of dots on a finer grid, raised a little, so the country reads as a shape
+  for (let lat = INDIA_BBOX.minLat; lat <= INDIA_BBOX.maxLat; lat += 1)
+    for (let lon = INDIA_BBOX.minLon; lon <= INDIA_BBOX.maxLon; lon += 1)
+      if (inPolygon([lon, lat], INDIA)) dot(b, r, lonLatToVec(lon, lat, GLOBE_R * 1.012), 4, 1, 0, 0.008);
+  // regional hubs: a bright knot at each end of the lines
+  GLOBE_LABELS.forEach((h, k) => dot(b, r, lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.015), 50, 1, k === 0 ? 0 : 1, 0.035));
+  // the lines themselves, faintly drawn; the moving light along them is the trail layer (Engine.buildArcTrails)
+  const arcs = b.i + Math.floor(n * 0.035);
+  while (b.i < arcs) {
+    const [a, c] = ARCS[Math.floor(r() * ARCS.length)];
+    const [x, y, z] = arcPoint(a, c, r());
+    b.push(x, y, z, 0.8, 1);
+  }
+  // two tilted orbits with a few satellites: the network around the planet
+  const rings: [number, number, number][] = [
+    [1.24, 0.42, -0.26],
+    [1.36, -0.3, 0.4],
+  ];
+  rings.forEach(([rad, tx, tz], k) => {
+    const end = b.i + Math.floor(n * 0.022);
+    while (b.i < end) {
+      const a = r() * Math.PI * 2;
+      const p = rotZ(rotX([Math.cos(a) * GLOBE_R * rad, 0, Math.sin(a) * GLOBE_R * rad], tx), tz);
+      b.push(p[0], p[1], p[2], 0.35, -1);
+    }
+    for (let s = 0; s < 3; s++) {
+      const a = (s / 3) * Math.PI * 2 + k * 0.9;
+      dot(b, r, rotZ(rotX([Math.cos(a) * GLOBE_R * rad, 0, Math.sin(a) * GLOBE_R * rad], tx), tz), 36, 1, -1, 0.04);
+    }
   });
-  // a single orbit ring around the whole: the network, drawn once
-  const ring = b.i + Math.floor(n * 0.05);
-  while (b.i < ring) {
-    const a = r() * Math.PI * 2;
-    const p: V3 = [Math.cos(a) * GLOBE_R * 1.22, 0, Math.sin(a) * GLOBE_R * 1.22];
-    const t = rotZ(rotX(p, 0.35), -0.22);
-    b.push(t[0], t[1], t[2], 0.3, -1);
-  }
   b.f.anchors = GLOBE_LABELS.map((h) => lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.02));
   return b.dust(r);
 }

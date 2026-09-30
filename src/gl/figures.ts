@@ -192,16 +192,69 @@ export function routeFigure(n: number) {
   return p.toFormation(n, 204);
 }
 
-// ── 05 · A building: nine floors, the foundation widest ────────────────────
+// ── 05 · A building of nine floors, each floor built in its own form ──────
+// Apps as tiles, reasoning as an arrow, memory as a disk, knowledge as a graph, research as text under a lens,
+// security as a shield, infrastructure as lanes, compute as a chip, and the sovereign foundation, domed.
 export const FLOOR_Y = Array.from({ length: 9 }, (_, i) => 1.76 - i * 0.44);
 export function floorsFigure(n: number) {
   const p = new Plot();
   const cx = -0.78;
+  const H = 0.17; // half-height of a floor
+  const widths = FLOOR_Y.map((_, i) => 1.3 + (i / 8) * 0.95);
   FLOOR_Y.forEach((y, i) => {
-    const w = 1.3 + (i / 8) * 0.95;
-    p.fill(cx - w / 2, y - 0.2, cx + w / 2, y + 0.2, (px, py) => inRoundRect(px, py, cx, y, w, 0.3, 0.13), 0.7, i);
+    const w = widths[i];
+    const x0 = cx - w / 2;
+    const x1 = cx + w / 2;
+    const A = 0.62; // the body of a floor
+    const B = 1; // its bright detail
+    switch (i) {
+      case 0: // applications: a row of app tiles
+        for (let k = 0; k < 4; k++) {
+          const tx = x0 + (w / 4) * (k + 0.5);
+          p.fill(tx - 0.16, y - H, tx + 0.16, y + H, (px, py) => inRoundRect(px, py, tx, y, 0.26, 0.3, 0.08), k === 0 ? B : A, i);
+        }
+        break;
+      case 1: // reasoning: an arrow pointing onward
+        p.fill(x0, y - H, x1, y + H, (px, py) => px < x1 - 0.3 ? Math.abs(py - y) <= 0.09 : Math.abs(py - y) <= (x1 - px) * 0.62, A, i);
+        p.dotted([x0 - 0.02, y + H], [x0 + w * 0.45, y + H], B, i);
+        break;
+      case 2: // memory: a flat disk
+        p.fill(x0, y - H, x1, y + H, (px, py) => ((px - cx) / (w / 2)) ** 2 + ((py - y) / 0.19) ** 2 <= 1, A, i);
+        p.stroke(Array.from({ length: 40 }, (_, k): Pt => [cx + Math.cos((k / 40) * Math.PI * 2) * (w / 2), y + Math.sin((k / 40) * Math.PI * 2) * 0.19]), true, B, i);
+        break;
+      case 3: { // knowledge: nodes joined into a graph
+        const nodes: Pt[] = [0.05, 0.27, 0.5, 0.73, 0.95].map((t, k) => [x0 + w * t, y + (k % 2 ? 0.1 : -0.1)]);
+        nodes.slice(1).forEach((q, k) => p.dotted(nodes[k], q, A, i, GRID));
+        nodes.forEach(([nx, ny], k) => p.disc(nx, ny, k === 2 ? 0.13 : 0.08, k === 2 ? B : A, i));
+        break;
+      }
+      case 4: // research: lines of text under a lens
+        [-0.1, 0, 0.1].forEach((dy, k) => p.dotted([x0, y + dy], [x0 + w * (0.68 - k * 0.12), y + dy], A, i, GRID));
+        p.ring(x1 - 0.26, y + 0.02, 0.13, B, i);
+        p.dotted([x1 - 0.17, y - 0.08], [x1 - 0.04, y - 0.19], B, i, GRID);
+        break;
+      case 5: // security: a boundary around a shield
+        p.stroke(roundRectPath(cx, y, w, 0.34, 0.16), true, A, i, GRID * 1.4);
+        p.fill(cx - 0.16, y - H, cx + 0.16, y + H, (px, py) => Math.abs(px - cx) <= 0.14 - Math.max(0, (y - py) - 0.02) * 0.9 && Math.abs(py - y) <= 0.15, B, i);
+        break;
+      case 6: // infrastructure: three lanes with work moving along them
+        [-0.11, 0, 0.11].forEach((dy, k) => {
+          p.dotted([x0, y + dy], [x1, y + dy], A, i, GRID * 1.6);
+          const at = x0 + w * (0.2 + k * 0.28);
+          p.fill(at - 0.1, y + dy - 0.04, at + 0.1, y + dy + 0.04, () => true, B, i);
+        });
+        break;
+      case 7: // compute: a processor with pins
+        p.fill(cx - 0.34, y - 0.12, cx + 0.34, y + 0.12, (px, py) => inRoundRect(px, py, cx, y, 0.66, 0.24, 0.05), A, i);
+        p.fill(cx - 0.14, y - 0.05, cx + 0.14, y + 0.05, () => true, B, i);
+        for (let x = x0; x <= x1; x += GRID * 2) if (Math.abs(x - cx) > 0.4) p.put(x, y, A, i);
+        break;
+      default: // the sovereign foundation: a solid base under a dome
+        p.fill(x0, y - H - 0.04, x1, y - 0.03, () => true, A, i);
+        p.stroke(Array.from({ length: 24 }, (_, k): Pt => [cx + Math.cos((k / 23) * Math.PI) * 0.46, y - 0.02 + Math.sin((k / 23) * Math.PI) * 0.2]), false, B, i);
+    }
   });
-  p.anchors = FLOOR_Y.map((y, i): V3 => [cx + (1.3 + (i / 8) * 0.95) / 2 + 0.06, y, 0]);
+  p.anchors = FLOOR_Y.map((y, i): V3 => [cx + widths[i] / 2 + 0.06, y, 0]);
   return p.toFormation(n, 205);
 }
 

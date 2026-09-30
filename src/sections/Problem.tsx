@@ -21,7 +21,7 @@ export function Problem() {
   const cap = 'Four pieces of today’s AI that do not fit together';
   const stage = useStage(ref, 'puzzle', { fig: '02', name: 'Puzzle', caption: cap, labels: () => GAPS.map((text) => ({ text, side: 'below' as const })) });
   return (
-    <section id="mission" ref={ref} className="section problem room room--tango" data-room="tango" data-chapter="The problem">
+    <section id="mission" ref={ref} className="section problem room room--tango" data-room="tango" data-room2="pitch" data-chapter="The problem">
       <div className="wrap">
         <SectionHead
           index="02"

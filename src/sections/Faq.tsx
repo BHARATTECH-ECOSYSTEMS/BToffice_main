@@ -17,7 +17,7 @@ export function Faq() {
     ],
   });
   return (
-    <section id="faq" ref={ref} className="section faq" data-chapter="Questions">
+    <section id="faq" ref={ref} className="section faq" data-room="tango" data-room2="pitch" data-chapter="Questions">
       <div className="wrap faq-grid">
         <div className="faq-side">
           <Kicker index="11">Questions</Kicker>

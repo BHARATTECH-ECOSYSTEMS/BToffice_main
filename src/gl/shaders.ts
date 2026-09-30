@@ -26,6 +26,8 @@ export const particleVertex = /* glsl */ `
   uniform float uScale;
   uniform float uCrisp; // 0 soft light … 1 flat, even dots (the panel illustrations)
   uniform float uDotPx;
+  uniform float uDim; // how bright the rest stays while one group is highlighted
+  uniform float uGrow; // point size multiplier for soft points
 
   varying float vAcc;
   varying float vCrisp;
@@ -86,7 +88,7 @@ export const particleVertex = /* glsl */ `
 
     // points shrink with the formation, so a small shape stays as fine-grained as a large one
     float grain = clamp(pow(uScale, 0.55), 0.55, 1.0);
-    float soft = uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.35) * (7.0 / -mv.z) * 2.2 * grain;
+    float soft = uGrow * uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.35) * (7.0 / -mv.z) * 2.2 * grain;
     gl_PointSize = mix(soft, uDotPx * (1.0 + hl * 0.3), uCrisp);
     vCrisp = uCrisp;
     vTint = step(0.9, fract(aRand.y * 7.31)) * (0.5 + 0.5 * sin(p.x * 1.3 + p.y * 0.9 + uTime * 0.4)) * (1.0 - uCrisp);
@@ -101,7 +103,7 @@ export const particleVertex = /* glsl */ `
 
     float depth = smoothstep(-10.5, -5.2, mv.z);
     float forgotten = step(aRand.z, uDecay);
-    float dim = (uHighlight > -0.5) ? mix(1.0, 0.45, uHighlightAmt) : 1.0;
+    float dim = (uHighlight > -0.5) ? mix(1.0, uDim, uHighlightAmt) : 1.0;
     float shown = mix(hideFrom ? 0.0 : 1.0, hideTo ? 0.0 : 1.0, st);
     vAlpha = mix(mix(0.3, 1.0, depth), 1.0, uCrisp) * (1.0 - forgotten * 0.94) * mix(dim, 1.0, hl) * shown;
   }

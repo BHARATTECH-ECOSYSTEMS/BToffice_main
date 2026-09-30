@@ -37,7 +37,7 @@ export function Journal() {
   });
   const [lead, ...rest] = POSTS;
   return (
-    <section id="journal" ref={ref} className="section journal" data-chapter="Journal">
+    <section id="journal" ref={ref} className="section journal" data-room="violet" data-room2="tango" data-chapter="Journal">
       <div className="wrap">
         <SectionHead
           index="10"

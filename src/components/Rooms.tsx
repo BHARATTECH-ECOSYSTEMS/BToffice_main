@@ -3,7 +3,7 @@ import { useLocation } from 'react-router';
 
 /**
  * Drives the rooms (see .room in global.css): each unfolds from an inset, rounded shape to full width as its top
- * travels from the bottom of the screen to 35% down, and the page's glow takes the colour of the room in view.
+ * travels from the bottom of the screen to 35% down. The page's aurora and accents take the palette of the section in view.
  * Statements marked [data-scrub] brighten word by word as they pass up the screen.
  */
 export function useRooms() {
@@ -14,15 +14,26 @@ export function useRooms() {
     const tick = () => {
       raf = 0;
       const vh = window.innerHeight;
-      let room: string | null = null;
       document.querySelectorAll<HTMLElement>('.room').forEach((el) => {
         const r = el.getBoundingClientRect();
         const p = reduced ? 1 : Math.min(1, Math.max(0, (vh - r.top) / (vh * 0.65)));
         el.style.setProperty('--room-p', p.toFixed(3));
-        if (r.top < vh * 0.7 && r.bottom > vh * 0.3) room = el.dataset.room ?? null;
       });
-      if (room) document.documentElement.dataset.room = room;
-      else delete document.documentElement.dataset.room;
+      // every section names a two-colour palette; the one across the middle of the screen tints the page
+      let here: HTMLElement | null = null;
+      document.querySelectorAll<HTMLElement>('main [data-room]').forEach((el) => {
+        const r = el.getBoundingClientRect();
+        if (r.top < vh * 0.55 && r.bottom > vh * 0.45) here = el;
+      });
+      const root = document.documentElement.dataset;
+      const pick = here as HTMLElement | null;
+      if (pick) {
+        root.room = pick.dataset.room;
+        root.room2 = pick.dataset.room2 ?? pick.dataset.room;
+      } else if (!document.querySelector('main [data-room]')) {
+        delete root.room;
+        delete root.room2;
+      }
 
       document.querySelectorAll<HTMLElement>('[data-scrub]').forEach((el) => {
         const r = el.getBoundingClientRect();
@@ -46,6 +57,7 @@ export function useRooms() {
       window.removeEventListener('scroll', on);
       window.removeEventListener('resize', on);
       delete document.documentElement.dataset.room;
+      delete document.documentElement.dataset.room2;
     };
   }, [pathname]);
 }

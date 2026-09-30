@@ -144,7 +144,7 @@ export function HowItWorks() {
   }, []);
 
   return (
-    <section id="how" ref={ref} className={`section how room ${pinned ? 'is-pinned' : ''}`} data-room="violet" data-chapter="How it works" style={style}>
+    <section id="how" ref={ref} className={`section how room ${pinned ? 'is-pinned' : ''}`} data-room="pitch" data-room2="violet" data-chapter="How it works" style={style}>
       <div className={pinned ? 'steps-stage' : ''}>
         <div ref={stageRef} className={`wrap how-stage ${narrow ? 'is-narrow' : ''}`}>
           <header className="sec-head has-stage how-head">

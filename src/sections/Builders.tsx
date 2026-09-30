@@ -38,7 +38,7 @@ export function Builders() {
   const byPlace = count('location');
 
   return (
-    <section id="builders" ref={ref} className="section builders" data-chapter="Builders">
+    <section id="builders" ref={ref} className="section builders" data-room="pitch" data-room2="violet" data-chapter="Builders">
       <div className="wrap">
         <SectionHead
           index="09"

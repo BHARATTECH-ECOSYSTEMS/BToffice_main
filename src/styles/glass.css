@@ -1,0 +1,989 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Liquid glass & chapter palettes
+   Loaded after global.css. Every chapter names a two-colour palette from the brand set
+   (violet, tango, pitch on cultured): data-room is its lead, data-room2 its partner.
+   The page's aurora eases between palettes as you scroll (Rooms.tsx sets them on <html>),
+   and the surfaces are frosted glass that the aurora and particles glow through.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@property --p1 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #6d4bff;
+}
+@property --p2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ff8643;
+}
+
+/* ── Tokens ─────────────────────────────────────────────────────────────── */
+
+:root,
+:root[data-theme='dark'] {
+  --glass-fill: linear-gradient(150deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035) 42%, rgba(255, 255, 255, 0.06));
+  --glass-tint: rgba(16, 14, 26, 0.5);
+  --glass-rim: rgba(255, 255, 255, 0.12);
+  --glass-hi: rgba(255, 255, 255, 0.26);
+  --glass-lo: rgba(255, 255, 255, 0.05);
+  --glass-shadow: 0 30px 60px -34px rgba(0, 0, 0, 0.9), 0 2px 10px -4px rgba(0, 0, 0, 0.5);
+  --glass-sheen: rgba(255, 255, 255, 0.14);
+  --glass-blur: blur(24px) saturate(175%);
+  --aurora-a: 0.42;
+  --aurora-b: 0.34;
+}
+:root[data-theme='light'] {
+  --glass-fill: linear-gradient(150deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.5) 46%, rgba(255, 255, 255, 0.66));
+  --glass-tint: rgba(255, 255, 255, 0.34);
+  --glass-rim: rgba(255, 255, 255, 0.95);
+  --glass-hi: #ffffff;
+  --glass-lo: rgba(40, 24, 110, 0.07);
+  --glass-shadow: 0 26px 54px -30px rgba(52, 30, 140, 0.32), 0 2px 8px -3px rgba(52, 30, 140, 0.1);
+  --glass-sheen: rgba(255, 255, 255, 0.7);
+  --glass-blur: blur(22px) saturate(160%);
+  --aurora-a: 0.34;
+  --aurora-b: 0.3;
+}
+
+/* the page palette: eased as chapters change */
+:root {
+  --p1: var(--brand-fill);
+  --p2: var(--tango-fill);
+  transition: --p1 1.2s ease, --p2 1.2s ease;
+}
+html[data-room='violet'] { --p1: var(--brand-fill); }
+html[data-room='tango'] { --p1: var(--tango-fill); }
+html[data-room='pitch'] { --p1: var(--pitch-fill); }
+html[data-room2='violet'] { --p2: var(--brand-fill); }
+html[data-room2='tango'] { --p2: var(--tango-fill); }
+html[data-room2='pitch'] { --p2: var(--pitch-fill); }
+
+/* a chapter's own palette: fills (--s1, --s2) and readable text colours (--s1t, --s2t) */
+[data-room] {
+  --s1: var(--brand-fill);
+  --s1t: var(--brand-text);
+  --s2: var(--tango-fill);
+  --s2t: var(--tango-text);
+}
+[data-room='tango'] {
+  --s1: var(--tango-fill);
+  --s1t: var(--tango-text);
+  --accent: var(--tango-text);
+  --accent-fill: var(--tango-fill);
+  --accent-soft: var(--tango-soft);
+  --accent-line: var(--tango-line);
+  --on-accent: var(--on-tone);
+}
+[data-room='pitch'] {
+  --s1: var(--pitch-fill);
+  --s1t: var(--pitch-text);
+  --accent: var(--pitch-text);
+  --accent-fill: var(--pitch-fill);
+  --accent-soft: var(--pitch-soft);
+  --accent-line: var(--pitch-line);
+  --on-accent: var(--on-tone);
+}
+[data-room2='violet'] {
+  --s2: var(--brand-fill);
+  --s2t: var(--brand-text);
+}
+[data-room2='pitch'] {
+  --s2: var(--pitch-fill);
+  --s2t: var(--pitch-text);
+}
+.room[data-room='violet'] { --room-c: var(--brand-fill); }
+.room[data-room='tango'] { --room-c: var(--tango-fill); }
+.room[data-room='pitch'] { --room-c: var(--pitch-fill); }
+
+/* ── Aurora: two slow blooms in the chapter's colours behind everything ─── */
+
+.atmos {
+  overflow: hidden;
+  background:
+    radial-gradient(60% 50% at 50% 110%, color-mix(in srgb, var(--p2) 10%, transparent), transparent 70%),
+    var(--bg);
+}
+.atmos::before,
+.atmos::after {
+  content: '';
+  position: absolute;
+  inset: auto;
+  z-index: 0;
+  width: 78vmax;
+  height: 78vmax;
+  border-radius: 50%;
+  pointer-events: none;
+  will-change: transform;
+}
+.atmos::before {
+  left: -30vmax;
+  top: -34vmax;
+  opacity: var(--aurora-a);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--p1) 70%, transparent), color-mix(in srgb, var(--p1) 22%, transparent) 55%, transparent);
+  animation: aurora-a 28s ease-in-out infinite alternate;
+}
+.atmos::after {
+  right: -34vmax;
+  bottom: -40vmax;
+  opacity: var(--aurora-b);
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--p2) 70%, transparent), color-mix(in srgb, var(--p2) 20%, transparent) 55%, transparent);
+  animation: aurora-b 34s ease-in-out infinite alternate;
+}
+@keyframes aurora-a {
+  to {
+    transform: translate(26vw, 22vh) scale(1.18);
+  }
+}
+@keyframes aurora-b {
+  to {
+    transform: translate(-30vw, -26vh) scale(0.9);
+  }
+}
+.panel-backdrop {
+  z-index: 1;
+}
+
+/* ── Glass ──────────────────────────────────────────────────────────────── */
+
+.glass,
+.folio-main :is(.bento, .problem-card, .cap-card, .stack, .stack-detail, .net-art, .net-list li, .lab-card, .aud-card, .jobs-summary, .jobs-board, .faq-item, .faq-contact, .scene-demo, .caps-base, .how-detail, .how-trace, .convo),
+.story-cover {
+  position: relative;
+  isolation: isolate;
+  background: var(--glass-fill), var(--glass-tint);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow:
+    inset 0 1px 0 var(--glass-hi),
+    inset 0 -1px 0 var(--glass-lo),
+    inset 0 0 0 1px var(--glass-rim),
+    var(--glass-shadow);
+  transition:
+    box-shadow 0.45s var(--ease),
+    transform 0.6s var(--ease),
+    background-color 0.4s ease;
+}
+/* the liquid highlight: a soft specular that follows the cursor across the surface (App.tsx sets --gx/--gy) */
+.glass::after,
+.folio-main :is(.bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item, .stack-detail)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(240px circle at var(--gx, 30%) var(--gy, -20%), var(--glass-sheen), transparent 60%),
+    linear-gradient(115deg, transparent 38%, color-mix(in srgb, var(--glass-sheen) 45%, transparent) 50%, transparent 62%) 0 0 / 250% 100% no-repeat;
+  background-position: 0 0, 120% 0;
+  opacity: 0;
+  mix-blend-mode: soft-light;
+  transition: opacity 0.4s ease, background-position 1.1s var(--ease);
+}
+:root[data-theme='light'] .glass::after,
+:root[data-theme='light'] .folio-main :is(.bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item, .stack-detail)::after {
+  mix-blend-mode: normal;
+  opacity: 0;
+}
+.glass:hover::after,
+.folio-main :is(.bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item, .stack-detail):hover::after {
+  opacity: 1;
+  background-position: 0 0, -20% 0;
+}
+:root[data-theme='light'] .glass:hover::after,
+:root[data-theme='light'] .folio-main :is(.bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item, .stack-detail):hover::after {
+  opacity: 0.55;
+}
+.folio-main :is(.bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item):hover {
+  transform: translateY(-3px);
+  box-shadow:
+    inset 0 1px 0 var(--glass-hi),
+    inset 0 -1px 0 var(--glass-lo),
+    inset 0 0 0 1px color-mix(in srgb, var(--accent-fill) 55%, var(--glass-rim)),
+    0 0 0 4px color-mix(in srgb, var(--accent-fill) 10%, transparent),
+    0 34px 70px -34px color-mix(in srgb, var(--accent-fill) 55%, transparent);
+}
+
+/* art areas: the chapter's colour glows through a dotted, frosted face */
+.folio-main :is(.bento-art, .problem-art, .lab-card-art, .aud-art),
+.folio-main .net-art,
+.stack-art {
+  background:
+    var(--dotgrid, radial-gradient(circle, var(--line) 1px, transparent 1.3px) 0 0 / 22px 22px),
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--accent-fill) 16%, transparent), transparent 60%),
+    radial-gradient(120% 90% at 100% 100%, color-mix(in srgb, var(--s2, var(--accent-fill)) 12%, transparent), transparent 60%);
+  border-bottom-color: var(--glass-rim);
+}
+
+/* ── Type in colour ─────────────────────────────────────────────────────── */
+
+/* accents in headlines are a slow-moving gradient of the chapter's two colours */
+:is(.h1, .h2, .display, .footer-title) .accent {
+  color: var(--s1t, var(--accent));
+  background: linear-gradient(100deg, var(--s1t, var(--accent)) 0%, var(--s2t, var(--tango-text)) 45%, var(--s1t, var(--accent)) 90%) 0 0 / 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: accent-flow 9s ease-in-out infinite alternate;
+}
+@keyframes accent-flow {
+  to {
+    background-position: 100% 0;
+  }
+}
+.kicker-num {
+  color: var(--on-accent);
+  background: linear-gradient(135deg, var(--s1, var(--accent-fill)), var(--s2, var(--accent-fill)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 6px 16px -6px color-mix(in srgb, var(--s1, var(--accent-fill)) 70%, transparent);
+}
+.sec-head .kicker::before {
+  background: linear-gradient(90deg, var(--s1, var(--line-strong)), color-mix(in srgb, var(--s2, var(--line-strong)) 60%, transparent) 40%, var(--line) 80%);
+}
+
+/* ── Buttons: glossy capsules ───────────────────────────────────────────── */
+
+.btn-solid {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  background: linear-gradient(135deg, var(--s1, var(--brand-fill)), var(--s2, var(--tango-fill)));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.12),
+    0 10px 24px -12px color-mix(in srgb, var(--s1, var(--brand-fill)) 80%, transparent);
+  transition: transform 0.35s var(--ease), box-shadow 0.35s var(--ease), filter 0.3s ease;
+}
+.btn-solid::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 50%;
+  border-radius: inherit;
+  background: linear-gradient(rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0));
+  pointer-events: none;
+}
+.btn-solid:hover {
+  color: #fff;
+  background: linear-gradient(135deg, var(--s1, var(--brand-fill)), var(--s2, var(--tango-fill)));
+  transform: translateY(-1px) scale(1.02);
+  filter: saturate(1.15) brightness(1.05);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.5),
+    0 16px 34px -12px color-mix(in srgb, var(--s1, var(--brand-fill)) 90%, transparent);
+}
+.btn-ghost {
+  background: var(--glass-fill), var(--glass-tint);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px var(--glass-rim), 0 8px 20px -14px rgba(0, 0, 0, 0.5);
+}
+.btn-ghost:hover {
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px var(--accent-line), 0 10px 24px -14px color-mix(in srgb, var(--accent-fill) 60%, transparent);
+}
+
+/* ── Navigation: a floating glass capsule ───────────────────────────────── */
+
+.nav.is-scrolled .nav-inner {
+  background: var(--glass-fill), var(--glass-tint);
+  -webkit-backdrop-filter: blur(26px) saturate(180%);
+  backdrop-filter: blur(26px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 var(--glass-lo), inset 0 0 0 1px var(--glass-rim), 0 18px 40px -22px rgba(0, 0, 0, 0.55);
+}
+.nav-progress {
+  background: linear-gradient(90deg, var(--p1), var(--p2));
+  box-shadow: 0 0 12px color-mix(in srgb, var(--p1) 70%, transparent);
+}
+.nav-pill {
+  background: var(--glass-fill);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px var(--glass-rim);
+}
+
+/* ── Chapter rail: dots on one straight track in a glass capsule ─────────── */
+
+.rail {
+  position: fixed;
+  right: clamp(8px, 1.1vw, 18px);
+  top: 50%;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: 26px;
+  padding: 10px 0;
+  border-radius: 999px;
+  transform: translateY(-50%);
+  background: var(--glass-fill), var(--glass-tint);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 -1px 0 var(--glass-lo), inset 0 0 0 1px var(--glass-rim), 0 16px 34px -18px rgba(0, 0, 0, 0.55);
+  --step: clamp(16px, 2.4vh, 24px);
+}
+.rail ol {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.rail li {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: var(--step);
+}
+/* the track runs through every dot centre, from the first to the last */
+.rail .rail-track {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--step) / 2);
+  bottom: calc(var(--step) / 2);
+  width: 2px;
+  height: auto;
+  margin-left: -1px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  pointer-events: none;
+}
+.rail .rail-track span {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(var(--brand-fill), var(--p1) 60%, var(--p2));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--p1) 60%, transparent);
+  transform: scaleY(0);
+  transform-origin: top;
+  transition: transform 0.25s linear;
+}
+.rail button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  justify-content: center;
+  gap: 0;
+  width: 26px;
+  height: var(--step);
+}
+.rail li[data-tone='violet'] { --dot: var(--brand-fill); }
+.rail li[data-tone='tango'] { --dot: var(--tango-fill); }
+.rail li[data-tone='pitch'] { --dot: var(--pitch-fill); }
+.rail-dot {
+  position: relative;
+  z-index: 1;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1.5px var(--line-strong);
+  transform: none;
+  transition: transform 0.4s var(--ease), background-color 0.3s ease, box-shadow 0.3s ease;
+}
+.rail .is-past .rail-dot {
+  background: var(--dot);
+  box-shadow: none;
+  transform: scale(0.75);
+}
+.rail .is-active .rail-dot {
+  background: var(--dot);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--dot) 25%, transparent), 0 0 14px 2px color-mix(in srgb, var(--dot) 60%, transparent);
+  transform: scale(1.35);
+}
+.rail-label {
+  position: absolute;
+  right: calc(100% + 12px);
+  top: 50%;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--ink);
+  background: var(--glass-fill), var(--glass-tint);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px var(--glass-rim), 0 10px 24px -14px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: translate(6px, -50%);
+  transition: opacity 0.25s ease, transform 0.3s var(--ease);
+  pointer-events: none;
+}
+.rail button:hover .rail-label,
+.rail button:focus-visible .rail-label {
+  opacity: 1;
+  transform: translate(0, -50%);
+}
+.rail button:hover .rail-dot {
+  transform: scale(1.5);
+}
+.rail-count {
+  font-size: 9.5px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+}
+.rail-total {
+  color: var(--ink-3);
+}
+@media (min-width: 901px) {
+  body:has(.folio) .rail {
+    display: flex;
+  }
+}
+@media (max-width: 1400px) {
+  .rail {
+    display: flex;
+  }
+}
+@media (max-width: 900px) {
+  .rail,
+  body:has(.folio) .rail {
+    display: none;
+  }
+}
+/* the split layout leaves the rail a lane of its own beside the panel */
+@media (min-width: 901px) and (max-width: 1440px) {
+  .folio {
+    padding-right: calc(var(--gutter) + 22px);
+  }
+}
+
+/* ── The panel: a pane of tinted glass the figures float in ─────────────── */
+
+.panel {
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px var(--glass-rim);
+  background:
+    radial-gradient(70% 38% at 50% 0%, color-mix(in srgb, var(--tone) 18%, transparent), transparent 70%),
+    radial-gradient(circle, var(--line) 1px, transparent 1.3px) 0 0 / 22px 22px;
+}
+.panel[data-tone='violet'] {
+  --tone: var(--brand-text);
+}
+.panel-backdrop {
+  --t1: var(--brand-fill);
+  --t2: var(--tango-fill);
+  background:
+    radial-gradient(80% 55% at 15% 105%, color-mix(in srgb, var(--t2) 22%, transparent), transparent 70%),
+    radial-gradient(90% 60% at 90% -5%, color-mix(in srgb, var(--t1) 26%, transparent), transparent 70%),
+    var(--glass-fill),
+    var(--glass-tint);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  backdrop-filter: blur(30px) saturate(180%);
+  box-shadow: var(--glass-shadow);
+  transition: --t1 0.9s ease, --t2 0.9s ease;
+}
+:root[data-theme='dark'] .panel-backdrop,
+:root:not([data-theme]) .panel-backdrop {
+  background:
+    radial-gradient(80% 55% at 15% 105%, color-mix(in srgb, var(--t2) 20%, transparent), transparent 70%),
+    radial-gradient(90% 60% at 90% -5%, color-mix(in srgb, var(--t1) 24%, transparent), transparent 70%),
+    var(--glass-fill),
+    rgba(14, 12, 22, 0.62);
+  box-shadow: var(--glass-shadow);
+}
+.panel-backdrop[data-tone='tango'] { --t1: var(--tango-fill); }
+.panel-backdrop[data-tone='pitch'] { --t1: var(--pitch-fill); }
+.panel-backdrop[data-tone2='violet'] { --t2: var(--brand-fill); }
+.panel-backdrop[data-tone2='tango'] { --t2: var(--tango-fill); }
+.panel-backdrop[data-tone2='pitch'] { --t2: var(--pitch-fill); }
+@property --t1 {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: #6d4bff;
+}
+@property --t2 {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: #ff8643;
+}
+.panel-top,
+.panel-foot {
+  border-color: var(--glass-rim);
+}
+.panel-top {
+  background: linear-gradient(rgba(255, 255, 255, 0.05), transparent);
+}
+.panel-fig {
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--on-accent, #fff);
+  background: var(--tone);
+}
+.panel[data-tone='pitch'] .panel-fig,
+.panel[data-tone='tango'] .panel-fig {
+  color: var(--on-tone);
+}
+.panel[data-tone='violet'] .panel-fig {
+  color: #fff;
+}
+.plabel b {
+  background: var(--glass-fill), var(--glass-tint);
+  -webkit-backdrop-filter: blur(10px) saturate(170%);
+  backdrop-filter: blur(10px) saturate(170%);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px var(--glass-rim);
+}
+.plabel.is-hot b {
+  color: #fff;
+  background: linear-gradient(135deg, var(--tone), color-mix(in srgb, var(--tone) 60%, #ff8643));
+}
+.plabel.is-hot i {
+  background: var(--tone);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 30%, transparent);
+}
+
+/* ── 05 Architecture: nine layers, nine shapes ──────────────────────────── */
+
+@container folio (min-width: 621px) {
+  .stack-wrap {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+}
+.folio-main .stack {
+  grid-template-columns: 64px minmax(0, 1fr);
+  padding-right: 18px;
+}
+.folio-main .stack-rail {
+  margin-left: 22px;
+}
+.stack-flow b {
+  display: none; /* the moving light says it; the word crowded the slabs */
+}
+
+.slab[data-tone='violet'] { --lt: var(--brand-fill); --lt-text: var(--brand-text); }
+.slab[data-tone='tango'] { --lt: var(--tango-fill); --lt-text: var(--tango-text); }
+.slab[data-tone='pitch'] { --lt: var(--pitch-fill); --lt-text: var(--pitch-text); }
+.stack-detail[data-tone='violet'] { --lt: var(--brand-fill); --lt-text: var(--brand-text); }
+.stack-detail[data-tone='tango'] { --lt: var(--tango-fill); --lt-text: var(--tango-text); }
+.stack-detail[data-tone='pitch'] { --lt: var(--pitch-fill); --lt-text: var(--pitch-text); }
+
+.stack-list li {
+  padding: 3px 0;
+}
+.slab {
+  position: relative;
+  gap: 12px;
+  height: 100%;
+  padding: 0 14px 0 16px;
+  overflow: hidden;
+  color: var(--ink-2);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--lt) 13%, transparent), color-mix(in srgb, var(--lt) 4%, transparent)),
+    var(--glass-tint);
+  box-shadow: inset 0 1px 0 var(--glass-lo), inset 0 0 0 1px color-mix(in srgb, var(--lt) 26%, var(--glass-rim));
+  transition: transform 0.5s var(--ease), background 0.4s ease, box-shadow 0.4s ease, color 0.3s ease, width 0.6s var(--ease);
+}
+.slab .name {
+  flex: 1;
+  font-size: 13.5px;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slab .num {
+  color: var(--lt-text);
+}
+.slab:hover {
+  transform: translateX(4px);
+  color: var(--ink);
+}
+.slab.is-past {
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 var(--glass-lo), inset 0 0 0 1px color-mix(in srgb, var(--lt) 45%, transparent);
+}
+.slab.is-active {
+  color: #fff;
+  background: linear-gradient(110deg, var(--lt), color-mix(in srgb, var(--lt) 55%, #ff8643));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 12px 26px -12px color-mix(in srgb, var(--lt) 90%, transparent);
+  transform: scale(1.035);
+}
+.slab[data-tone='pitch'].is-active {
+  background: linear-gradient(110deg, var(--pitch-fill), var(--tango-fill));
+}
+.slab[data-tone='tango'].is-active {
+  background: linear-gradient(110deg, var(--tango-fill), color-mix(in srgb, var(--tango-fill) 50%, var(--brand-fill)));
+}
+.slab.is-active .num {
+  color: rgba(255, 255, 255, 0.8);
+}
+.slab.is-active::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 55%;
+  background: linear-gradient(rgba(255, 255, 255, 0.28), transparent);
+  pointer-events: none;
+}
+
+/* each layer has its own silhouette */
+.slab--1 { border-radius: 999px; }                                           /* a capsule, like an app dock */
+.slab--2 { border-radius: 10px; clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 50%, calc(100% - 16px) 100%, 0 100%); padding-right: 26px; } /* an arrow: reasoning moves forward */
+.slab--3 { border-radius: 50% / 38%; }                                        /* a disk: stored memory */
+.slab--4 { clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 50%, calc(100% - 14px) 100%, 14px 100%, 0 50%); border-radius: 0; padding-left: 24px; padding-right: 24px; } /* a hexagon cell: a node in a graph */
+.slab--5 { border-radius: 4px 20px 4px 20px; }                                /* a folded page: sources */
+.slab--6 { border-radius: 14px; outline: 1px dashed color-mix(in srgb, var(--lt) 45%, transparent); outline-offset: 2px; } /* a boundary around a boundary */
+.slab--7 { border-radius: 6px; background-image: repeating-linear-gradient(90deg, transparent 0 10px, color-mix(in srgb, var(--lt) 10%, transparent) 10px 11px), linear-gradient(90deg, color-mix(in srgb, var(--lt) 13%, transparent), color-mix(in srgb, var(--lt) 4%, transparent)); } /* lanes */
+.slab--8 { border-radius: 4px; clip-path: polygon(0 5px, 5px 0, calc(100% - 5px) 0, 100% 5px, 100% calc(100% - 5px), calc(100% - 5px) 100%, 5px 100%, 0 calc(100% - 5px)); } /* a chip */
+.slab--9 { border-radius: 22px 22px 6px 6px; }                                /* the foundation, domed */
+.slab--6.is-active { outline-color: color-mix(in srgb, var(--lt) 80%, transparent); }
+
+.glyph {
+  flex: none;
+  width: 46px;
+  height: 21px;
+  overflow: visible;
+  fill: none;
+  stroke: var(--lt-text);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0.75;
+  transition: opacity 0.3s ease;
+}
+.glyph .g-fill {
+  fill: color-mix(in srgb, var(--lt) 45%, transparent);
+}
+.glyph .g-dash {
+  stroke-dasharray: 2 3;
+}
+.slab.is-active .glyph {
+  stroke: #fff;
+  opacity: 1;
+}
+.slab.is-active .glyph .g-fill {
+  fill: rgba(255, 255, 255, 0.9);
+}
+.slab.is-active .g-pop {
+  animation: g-pop 1.6s var(--ease) infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.slab.is-active .g-draw {
+  stroke-dasharray: 80;
+  animation: g-draw 2.2s var(--ease-io) infinite;
+}
+.slab.is-active .g-dash {
+  animation: g-march 1s linear infinite;
+}
+.slab.is-active .g-bob {
+  animation: g-bob 1.8s ease-in-out infinite;
+}
+.slab.is-active .g-pulse {
+  animation: g-pulse 1.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.slab.is-active .g-scan {
+  animation: g-scan 2.4s ease-in-out infinite alternate;
+}
+.slab.is-active .g-run {
+  animation: g-run 1.6s var(--ease-io) infinite;
+}
+@keyframes g-pop {
+  0%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-2.5px); }
+}
+@keyframes g-draw {
+  from { stroke-dashoffset: 80; }
+  60%, to { stroke-dashoffset: 0; }
+}
+@keyframes g-march {
+  to { stroke-dashoffset: -10; }
+}
+@keyframes g-bob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-1.8px); }
+}
+@keyframes g-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+@keyframes g-scan {
+  from { transform: translateX(-30px); }
+  to { transform: translateX(0); }
+}
+@keyframes g-run {
+  from { transform: translateX(0); }
+  to { transform: translateX(47px); }
+}
+@container folio (max-width: 620px) {
+  .glyph {
+    width: 44px;
+  }
+}
+
+.stack-rail::before {
+  width: 2px;
+  margin-left: -0.5px;
+  border-radius: 2px;
+  background: linear-gradient(var(--brand-fill), var(--tango-fill), var(--pitch-fill));
+  opacity: 0.25;
+}
+.stack-rail-fill {
+  width: 2px;
+  margin-left: -0.5px;
+  border-radius: 2px;
+  background: linear-gradient(var(--brand-fill), var(--tango-fill) 55%, var(--pitch-fill));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--tango-fill) 60%, transparent);
+}
+.stack-flow i {
+  background: #fff;
+  box-shadow: 0 0 0 4px var(--tango-fill), 0 0 18px 4px color-mix(in srgb, var(--tango-fill) 70%, transparent);
+}
+.stack-detail {
+  overflow: hidden;
+}
+.stack-art {
+  position: relative;
+  border-bottom: 1px solid var(--glass-rim);
+  --accent-fill: var(--lt);
+}
+.stack-copy .num {
+  justify-self: start;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: #fff;
+  background: var(--lt);
+}
+.stack-detail[data-tone='pitch'] .stack-copy .num,
+.stack-detail[data-tone='tango'] .stack-copy .num {
+  color: var(--on-tone);
+}
+
+/* ── 06 Network ─────────────────────────────────────────────────────────── */
+
+.net-pillar.is-on,
+.net-list li:has(.is-on) {
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px var(--accent-line), 0 0 0 4px color-mix(in srgb, var(--accent-fill) 12%, transparent);
+}
+.net-icon {
+  color: var(--on-accent);
+  background: linear-gradient(135deg, var(--accent-fill), color-mix(in srgb, var(--accent-fill) 50%, var(--s2, #ff8643)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 8px 18px -8px color-mix(in srgb, var(--accent-fill) 80%, transparent);
+}
+
+/* ── Card entrances: glass condenses out of a blur ──────────────────────── */
+
+.folio-main .fade:is(.bento, .problem-card, .cap-card, .lab-card, .aud-card, .stack-wrap, .net-grid) ,
+.folio-main .fade > :is(.bento, .problem-card, .cap-card, .lab-card, .aud-card) {
+  transition:
+    opacity 1s var(--ease),
+    transform 1s var(--ease),
+    filter 1s var(--ease),
+    box-shadow 0.45s var(--ease);
+}
+.folio-main .fade:not(.is-in):is(.stack-wrap, .net-grid, .problem-grid, .caps-grid, .lab-grid, .aud-grid) {
+  transform: translate3d(0, 26px, 0) scale(0.975);
+  filter: blur(14px) saturate(0.6);
+}
+
+/* ── 12 Finale: the invitation on the left, the planet on the right ─────── */
+
+.finale {
+  padding: var(--section-y) 0 calc(var(--section-y) * 0.9);
+}
+.finale-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  align-items: center;
+  gap: 28px clamp(24px, 4vw, 64px);
+}
+.finale-head {
+  display: grid;
+  gap: 24px;
+  grid-column: 1 / -1;
+}
+.finale-cta {
+  grid-column: 1;
+  grid-row: 2;
+}
+.finale .kicker {
+  margin-bottom: 0;
+}
+.finale .display {
+  font-size: clamp(2.6rem, 5.2vw, 5.25rem);
+}
+.finale-cta {
+  display: grid;
+  gap: 18px;
+  width: 100%;
+  max-width: 620px;
+  padding: clamp(24px, 3vw, 40px);
+  border-radius: 28px;
+  overflow: hidden;
+}
+.finale-cta::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--brand-fill) 26%, transparent), transparent 55%),
+    radial-gradient(90% 120% at 0% 100%, color-mix(in srgb, var(--tango-fill) 22%, transparent), transparent 60%);
+}
+.finale-cta .footer-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+.live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tango-fill);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--tango-fill) 60%, transparent);
+  animation: live 2s ease-out infinite;
+}
+@keyframes live {
+  to {
+    box-shadow: 0 0 0 9px transparent;
+  }
+}
+.finale-cta .footer-title {
+  max-width: 14ch;
+}
+.finale-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px 22px;
+  margin-top: 4px;
+}
+/* on the home page the invitation lives in the finale, beside the mark */
+body:has(.finale-cta) .footer-cta {
+  display: none;
+}
+
+.finale-orb {
+  position: relative;
+  grid-column: 2;
+  grid-row: 2;
+  align-self: center; /* level with the invitation beside it */
+  margin-block: -80px;
+  aspect-ratio: 1;
+  width: 100%;
+  max-width: 480px;
+  justify-self: center;
+  pointer-events: none;
+}
+.orb-glow,
+.orb-ring {
+  position: absolute;
+  border-radius: 50%;
+}
+.orb-glow {
+  inset: 6%;
+  background:
+    radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--brand-fill) 40%, transparent), transparent 55%),
+    radial-gradient(circle at 70% 75%, color-mix(in srgb, var(--tango-fill) 30%, transparent), transparent 55%);
+  filter: blur(30px);
+  opacity: 0.8;
+  animation: orb-breathe 7s ease-in-out infinite alternate;
+}
+.orb-ring {
+  inset: 0;
+  border: 1px solid transparent;
+  background:
+    conic-gradient(from var(--a, 0deg), transparent 0 55%, color-mix(in srgb, var(--brand-fill) 80%, transparent) 72%, var(--tango-fill) 86%, transparent 100%) border-box;
+  -webkit-mask: linear-gradient(#000 0 0) padding-box exclude, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) padding-box exclude, linear-gradient(#000 0 0);
+  animation: orb-spin 14s linear infinite;
+}
+.orb-ring--b {
+  inset: 9%;
+  opacity: 0.7;
+  animation-duration: 20s;
+  animation-direction: reverse;
+}
+.orb-ring--c {
+  inset: -5%;
+  opacity: 0.35;
+  border-style: dashed;
+  border-color: var(--line-strong);
+  background: none;
+  -webkit-mask: none;
+  mask: none;
+  animation-duration: 60s;
+}
+@property --a {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes orb-spin {
+  to {
+    --a: 360deg;
+    transform: rotate(0.001deg);
+  }
+}
+@keyframes orb-breathe {
+  to {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+@media (max-width: 900px) {
+  .finale-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .finale-cta,
+  .finale-orb {
+    grid-column: 1;
+    grid-row: auto;
+  }
+  .finale-orb {
+    max-width: min(420px, 86vw);
+    margin-block: 0;
+  }
+}
+
+/* ── Journal & footer ───────────────────────────────────────────────────── */
+
+.story-cover {
+  border-radius: 20px;
+}
+.story:hover .story-cover {
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px var(--accent-line), 0 30px 60px -30px color-mix(in srgb, var(--accent-fill) 55%, transparent);
+}
+.footer {
+  background: linear-gradient(transparent, color-mix(in srgb, var(--bg) 70%, transparent) 30%), transparent;
+  border-top-color: var(--glass-rim);
+}
+.footer-cta {
+  background:
+    radial-gradient(120% 140% at 100% 0%, color-mix(in srgb, var(--brand-fill) 24%, transparent), transparent 55%),
+    radial-gradient(80% 120% at 0% 100%, color-mix(in srgb, var(--tango-fill) 20%, transparent), transparent 60%),
+    var(--glass-fill),
+    var(--glass-tint);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: inset 0 1px 0 var(--glass-hi), inset 0 0 0 1px var(--glass-rim), var(--glass-shadow);
+}
+.footer-word {
+  background: linear-gradient(100deg, color-mix(in srgb, var(--brand-fill) 30%, transparent), color-mix(in srgb, var(--tango-fill) 26%, transparent), color-mix(in srgb, var(--pitch-fill) 22%, transparent));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Reduced motion & fallbacks ─────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .atmos::before,
+  .atmos::after,
+  .orb-ring,
+  .orb-glow,
+  :is(.h1, .h2, .display, .footer-title) .accent {
+    animation: none;
+  }
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass,
+  .folio-main :is(.bento, .problem-card, .cap-card, .stack, .stack-detail, .net-art, .net-list li, .lab-card, .aud-card, .jobs-summary, .jobs-board, .faq-item, .faq-contact) {
+    background: var(--glass-fill), var(--card);
+  }
+}

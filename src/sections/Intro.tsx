@@ -35,7 +35,7 @@ export function Intro() {
   const d = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties;
 
   return (
-    <section id="intro" ref={ref} className="section intro" data-chapter="What we build">
+    <section id="intro" ref={ref} className="section intro" data-room="violet" data-room2="tango" data-chapter="What we build">
       <div className="wrap">
         <SectionHead
           index="01"

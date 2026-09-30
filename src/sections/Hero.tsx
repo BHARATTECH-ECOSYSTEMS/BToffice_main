@@ -25,7 +25,7 @@ export function Hero() {
   const d = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties;
 
   return (
-    <section id="top" ref={ref} className="hero" data-chapter="Origin">
+    <section id="top" ref={ref} className="hero" data-room="violet" data-room2="tango" data-chapter="Origin">
       <div className="wrap hero-grid">
         <div className="hero-copy">
           <p className={`eyebrow fade ${ready ? 'is-in' : ''}`}>

@@ -20,8 +20,8 @@ back up, something learned on a phone reaches the sovereign core and every other
 | The problem | Four diagrams: a session that ends and leaves the next one empty, tools blocked by walls, a world that outgrows a frozen model, agents repeating the same work |
 | Capabilities | Fifteen capabilities in three tabs, one group at a time |
 | How it works | One request through five stations; advances on its own and is clickable |
-| Architecture | Nine-layer stack; a request travels down and intelligence comes back up |
-| Network | Learning travels device → data centre → sovereign core → everyone; hover a pillar to highlight its part |
+| Architecture | Nine layers, each its own shape and glyph (capsule, arrow, disk, hexagon, page, shield, lanes, chip, dome) in three colour families; the panel's building prints every floor as a different structure |
+| Network | Learning travels device → data centre → sovereign core → everyone; the panel shows a dotted globe (continents, graticule, India lit, orbits, moving arcs) that sways on its own and turns when dragged |
 | Laboratory / Audiences | One diagram per research domain and per audience, each showing what it does |
 
 Every diagram is a pure function of time and cursor (`src/viz/`), so it can be painted at any moment,
@@ -45,6 +45,7 @@ npm run build
   and in its `<Stage>` card on phones);
   sections that do not want particles declare `{ key: 'field', params: { alpha: 0 } }`
 - `src/content.ts`: all copy and data in one place
+- `src/styles/glass.css`: chapter palettes, aurora, liquid-glass surfaces, the chapter rail, the finale and the architecture shapes (loaded after `global.css`)
 - `src/sections/*`, `src/pages/*`: layout; `src/styles/global.css`: the design system (Geist, 12-column grid,
   brand palette tokens, one section-header pattern)
 - `reel.html` + `src/reel/`: a deterministic export page for one diagram
@@ -54,6 +55,11 @@ npm run build
 Violet leads (`--brand-*`, fixed so tone rotation never recolours Origin). Tango `#FF8643` and pitch `#F59E00`
 are the supporting accents (`--tango-*`, `--pitch-*`); cultured `#F8F7F3` is the light background and the ink on dark.
 Cards rotate violet, tango, pitch by re-pointing `--accent*` for the card.
+
+Every home section names a two-colour palette (`data-room` lead, `data-room2` partner). `Rooms.tsx` puts the one in view
+on `<html>`, and `src/styles/glass.css` eases the page aurora, headline accents, buttons, the panel and the particles
+(`Engine.setTone`) to it. Surfaces are liquid glass: frosted, rimmed, with a highlight that follows the cursor.
+The chapter rail on the right is one straight track of dots, one per chapter, in each chapter's colour.
 
 ## Video
 

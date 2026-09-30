@@ -11,7 +11,7 @@ export function Audiences() {
   const cap = 'Six kinds of people, one intelligence in the middle';
   const stage = useStage(ref, 'people', { fig: '08', name: 'People', caption: cap, labels: () => AUDIENCE_DETAIL.map((a) => ({ text: a.name, side: 'below' as const })) });
   return (
-    <section id="audiences" ref={ref} className="section audiences room" data-room="violet" data-chapter="Who it’s for">
+    <section id="audiences" ref={ref} className="section audiences room" data-room="tango" data-room2="violet" data-chapter="Who it’s for">
       <div className="wrap">
         <SectionHead
           index="08"

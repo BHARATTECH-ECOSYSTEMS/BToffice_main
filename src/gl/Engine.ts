@@ -27,6 +27,9 @@ export interface Params {
   spinY: number;
   explode: number; // separates the highlighted layer from its neighbours
   drag: number; // 1 lets the visitor spin the formation by dragging
+  orbit: number; // radians of slow side-to-side turning, for shapes that should feel alive (the globe)
+  dim: number; // brightness of everything else while a group is highlighted
+  grow: number; // soft point size, relative
 }
 
 export interface Target {
@@ -92,11 +95,26 @@ export const BASE_POSE: Record<FormationKey, Pose> = {
 
 const MOBILE_POSE: Partial<Pose> = { x: 0, y: 0.7, s: 0.62 };
 
-const DEFAULT_PARAMS: Params = { decay: 0, drift: 1, dark: 1, alpha: 1, wave: 1, highlight: -1, spinX: 0, spinY: 0, explode: 0, drag: 0 };
+const DEFAULT_PARAMS: Params = { decay: 0, drift: 1, dark: 1, alpha: 1, wave: 1, highlight: -1, spinX: 0, spinY: 0, explode: 0, drag: 0, orbit: 0, dim: 0.45, grow: 1 };
 
 const THEME = {
-  light: { ink: new THREE.Color('#2a2740'), inkAlpha: 0.55, deep: new THREE.Color('#3A1FA8'), bright: new THREE.Color('#7B5CFF'), hot: new THREE.Color('#4A1FFF'), trail: new THREE.Color('#6A35FF') },
-  dark: { ink: new THREE.Color('#7d76a8'), inkAlpha: 0.3, deep: new THREE.Color('#5b3df5'), bright: new THREE.Color('#b9a6ff'), hot: new THREE.Color('#ffffff'), trail: new THREE.Color('#c9bcff') },
+  light: { ink: new THREE.Color('#2a2740'), inkAlpha: 0.55 },
+  dark: { ink: new THREE.Color('#7d76a8'), inkAlpha: 0.3 },
+};
+
+export type Tone = 'violet' | 'tango' | 'pitch';
+type Swatch = Record<'deep' | 'bright' | 'hot' | 'trail', THREE.Color>;
+const sw = (deep: string, bright: string, hot: string, trail: string): Swatch => ({
+  deep: new THREE.Color(deep),
+  bright: new THREE.Color(bright),
+  hot: new THREE.Color(hot),
+  trail: new THREE.Color(trail),
+});
+/** Each chapter's palette for the particles: its lead colour, and a highlight and trail in the colour it pairs with. */
+const TONES: Record<Tone, { light: Swatch; dark: Swatch }> = {
+  violet: { light: sw('#3A1FA8', '#7B5CFF', '#4A1FFF', '#e2600f'), dark: sw('#5b3df5', '#b9a6ff', '#ffffff', '#ffa36b') },
+  tango: { light: sw('#a8380a', '#ff7a33', '#5b3df5', '#5b3df5'), dark: sw('#ff5f1a', '#ffc4a0', '#c9bcff', '#b9a6ff') },
+  pitch: { light: sw('#8f5400', '#f0a000', '#d9480f', '#d9480f'), dark: sw('#f59e00', '#ffe2a3', '#ff8643', '#ff8643') },
 };
 
 const stagger = (m: number, th: number) => {
@@ -156,6 +174,10 @@ export class Engine {
   private velocity = 0;
   private dark = true;
   private warp = 0;
+  private tone: Tone = 'violet';
+  private swatch: Swatch = sw('#5b3df5', '#b9a6ff', '#ffffff', '#ffa36b');
+  private goal: Swatch = sw('#5b3df5', '#b9a6ff', '#ffffff', '#ffa36b');
+  private toneReady = false;
 
   constructor(canvas: HTMLCanvasElement) {
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -249,9 +271,9 @@ export class Engine {
         uWave: { value: 1 },
         uExplode: { value: 0 },
         uInk: { value: THEME.light.ink.clone() },
-        uDeep: { value: THEME.light.deep.clone() },
-        uBright: { value: THEME.light.bright.clone() },
-        uHot: { value: THEME.light.hot.clone() },
+        uDeep: { value: this.swatch.deep },
+        uBright: { value: this.swatch.bright },
+        uHot: { value: this.swatch.hot },
         uAlpha: { value: 1 },
         uInkAlpha: { value: THEME.light.inkAlpha },
         uCyan: { value: new THREE.Color('#ff8643') },
@@ -261,6 +283,8 @@ export class Engine {
         uCrisp: { value: 0 },
         uDotPx: { value: 3 },
         uHalo: { value: 0.35 },
+        uDim: { value: 0.45 },
+        uGrow: { value: 1 },
       },
     });
     this.group.add(new THREE.Points(this.geometry, this.material));
@@ -319,6 +343,11 @@ export class Engine {
       m.blending = blending;
       m.needsUpdate = true;
     }
+  }
+
+  /** The particles take the palette of the chapter in view; colours ease across rather than switch. */
+  setTone(t: string) {
+    this.tone = t in TONES ? (t as Tone) : 'violet';
   }
 
   setVelocity(v: number) {
@@ -448,7 +477,7 @@ export class Engine {
         uPixelRatio: { value: 1 },
         uSize: { value: size },
         uSpeed: { value: speed },
-        uColor: { value: THEME.light.trail.clone() },
+        uColor: { value: this.swatch.trail },
         uVisible: { value: 0 },
       },
     });
@@ -495,7 +524,7 @@ export class Engine {
     this.warp = damp(this.warp, Math.min(1, Math.abs(this.velocity) / 60), 4, dt);
     this.velocity = damp(this.velocity, 0, 6, dt);
     for (const key of Object.keys(goal) as (keyof Pose)[]) this.pose[key] = t.snap ? goal[key] : damp(this.pose[key], goal[key], k, dt);
-    for (const key of ['decay', 'drift', 'dark', 'alpha', 'wave', 'spinX', 'spinY', 'explode', 'drag'] as const)
+    for (const key of ['decay', 'drift', 'dark', 'alpha', 'wave', 'spinX', 'spinY', 'explode', 'drag', 'orbit', 'dim', 'grow'] as const)
       this.params[key] = damp(this.params[key], want[key], key === 'dark' ? 3.5 : 3, dt);
 
     if (want.highlight !== this.hlGroup) {
@@ -509,7 +538,7 @@ export class Engine {
     const onPage = Math.abs(this.mouse.x) < 2 && Math.abs(this.mouse.y) < 2;
     this.tilt.x = damp(this.tilt.x, onPage ? this.mouse.y * 0.1 : 0, 2, dt);
     this.tilt.y = damp(this.tilt.y, onPage ? this.mouse.x * 0.16 : 0, 2, dt);
-    const sway = this.reducedMotion ? 0 : Math.sin(this.time * 0.21) * 0.035;
+    const sway = this.reducedMotion ? 0 : Math.sin(this.time * 0.21) * 0.035 + Math.sin(this.time * 0.16) * this.params.orbit;
     const p = this.pose;
     this.group.position.set(p.x, p.y, p.z);
     this.group.scale.setScalar(p.s);
@@ -533,6 +562,8 @@ export class Engine {
     u.uHighlightAmt.value = this.hlAmt;
     u.uWave.value = this.params.wave;
     u.uExplode.value = this.params.explode;
+    u.uDim.value = this.params.dim;
+    u.uGrow.value = this.params.grow * (1 + (1 - d) * 0.35); // light theme: a touch larger, since nothing glows
     u.uAlpha.value = this.params.alpha;
     u.uWarp.value = this.reducedMotion ? 0 : this.warp;
     u.uHalo.value = 0.04 + 0.2 * d; // a soft glow in the dark, crisp points in the light
@@ -545,15 +576,18 @@ export class Engine {
     const worldPerPx = (2 * this.camera.position.z * Math.tan((35 / 2) * (Math.PI / 180))) / this.height;
     u.uDotPx.value = Math.max(2, (DOT * this.pose.s) / worldPerPx) * this.renderer.getPixelRatio();
     (u.uInk.value as THREE.Color).lerpColors(THEME.light.ink, THEME.dark.ink, d);
-    (u.uDeep.value as THREE.Color).lerpColors(THEME.light.deep, THEME.dark.deep, d);
-    (u.uBright.value as THREE.Color).lerpColors(THEME.light.bright, THEME.dark.bright, d);
-    (u.uHot.value as THREE.Color).lerpColors(THEME.light.hot, THEME.dark.hot, d);
+    const tone = TONES[this.tone];
+    const ease = this.toneReady ? 1 - Math.exp(-3 * dt) : 1;
+    this.toneReady = true;
+    for (const k of ['deep', 'bright', 'hot', 'trail'] as const) {
+      this.goal[k].lerpColors(tone.light[k], tone.dark[k], d);
+      this.swatch[k].lerp(this.goal[k], ease);
+    }
     u.uInkAlpha.value = THEME.light.inkAlpha + (THEME.dark.inkAlpha - THEME.light.inkAlpha) * d;
 
     const arc = this.arcMat.uniforms;
     arc.uTime.value = this.time;
-    arc.uVisible.value = this.presence('globe') * this.params.alpha * 0.45;
-    (arc.uColor.value as THREE.Color).lerpColors(THEME.light.trail, THEME.dark.trail, d);
+    arc.uVisible.value = this.presence('globe') * this.params.alpha * 0.9;
 
     // Clear the whole canvas, then draw only inside the clip (a stage card) when there is one.
     const r = this.renderer;
@@ -606,7 +640,10 @@ export class Engine {
   private onPointerDown = (e: PointerEvent) => {
     const el = e.target as HTMLElement;
     if (el.closest('a, button, input, textarea, select, label, [data-no-pulse]')) return;
-    if (this.target.params?.drag) {
+    // only a press on the drawing itself spins it, not one anywhere on the page
+    const c = this.target.clip;
+    const inside = !c || (e.clientX >= c.x && e.clientX <= c.x + c.w && e.clientY >= c.y && e.clientY <= c.y + c.h);
+    if (this.target.params?.drag && inside) {
       this.dragging = true;
       this.dragX = e.clientX;
       this.dragVel = 0;

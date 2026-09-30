@@ -6,8 +6,11 @@ import { useScrollSteps } from '../components/useScrollSteps';
 import { Diagram } from '../viz/Diagram';
 import { LAYER_DRAWS, LAYER_H, LAYER_LABELS, LAYER_W } from '../viz/layers';
 import { LAYERS } from '../content';
+import { LayerGlyph } from '../viz/glyphs';
 
-const ROW = 40;
+const ROW = 48;
+/** Three families of layers, each in its own colour: intelligence, knowledge and trust, foundation. */
+const TONE = ['violet', 'violet', 'violet', 'tango', 'tango', 'tango', 'pitch', 'pitch', 'pitch'];
 
 /** Nine layers. Scrolling takes a request down the stack; each layer shows what it does. */
 export function Architecture() {
@@ -26,7 +29,7 @@ export function Architecture() {
   const flowY = pinned ? progress * (LAYERS.length - 0.001) * ROW : active * ROW + ROW / 2;
 
   return (
-    <section id="architecture" ref={ref} className={`section arch ${pinned ? 'is-pinned' : ''}`} data-chapter="Architecture" style={style}>
+    <section id="architecture" ref={ref} className={`section arch ${pinned ? 'is-pinned' : ''}`} data-room="violet" data-room2="tango" data-chapter="Architecture" style={style}>
       <div className={pinned ? 'steps-stage' : ''}>
         <div className="wrap">
           <SectionHead
@@ -47,23 +50,25 @@ export function Architecture() {
               </div>
               <ol className="stack-list">
                 {LAYERS.map((l, i) => {
-                  const width = 64 + (i / (LAYERS.length - 1)) * 36;
+                  const width = 84 + (i / (LAYERS.length - 1)) * 16;
                   return (
                     <li key={l.name} style={{ height: ROW }}>
                       <button
-                        className={`slab ${i === active ? 'is-active' : ''} ${i < active ? 'is-past' : ''}`}
+                        className={`slab slab--${i + 1} ${i === active ? 'is-active' : ''} ${i < active ? 'is-past' : ''}`}
+                        data-tone={TONE[i]}
                         style={{ width: `${width}%` }}
                         onClick={() => (pinned ? jump(i) : setPicked(i))}
                       >
                         <span className="num">{String(i + 1).padStart(2, '0')}</span>
                         <span className="name">{l.name}</span>
+                        <LayerGlyph i={i} />
                       </button>
                     </li>
                   );
                 })}
               </ol>
             </div>
-            <div className="stack-detail" aria-live="polite">
+            <div className="stack-detail" data-tone={TONE[active]} aria-live="polite">
               <div className="stack-art" key={active}>
                 <Diagram draw={LAYER_DRAWS[active]} period={6} w={LAYER_W} h={LAYER_H} label={LAYER_LABELS[active]} still={4.5} />
               </div>

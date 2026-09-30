@@ -86,7 +86,7 @@ const EXTENT: Partial<Record<FormationKey, [number, number]>> = {
   orbit15: [2.25, 1.8],
   orbit6: [2.05, 1.6],
   layers: [1.4, 1.9],
-  globe: [1.8, 1.8],
+  globe: [1.62, 1.62], // the orbits may run a little into the margin
   helix: [3.45, 0.9],
   flow: [2.2, 1.0],
   shatter: [1.9, 1.9],

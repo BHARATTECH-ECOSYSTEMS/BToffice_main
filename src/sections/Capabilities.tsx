@@ -93,7 +93,7 @@ export function Capabilities() {
   );
 
   return (
-    <section id="capabilities" ref={ref} className={`section caps ${pinned ? 'is-pinned' : ''}`} data-chapter="Capabilities" style={style}>
+    <section id="capabilities" ref={ref} className={`section caps ${pinned ? 'is-pinned' : ''}`} data-room="violet" data-room2="pitch" data-chapter="Capabilities" style={style}>
       <div className={pinned ? 'steps-stage' : ''}>
         <div className="wrap">
           {head}

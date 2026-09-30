@@ -7,10 +7,10 @@ const POOL = 16; // enough labels for the busiest formation (15 capabilities)
 /**
  * The right-hand half of the split layout: one sticky panel the particle mark lives in for the whole page.
  * Each section registers its formation with useStage; the panel names it, labels its parts on the live
- * particles and shows where you are among the chapters. Everything per-frame is written straight to the DOM.
+ * particles, and hands the chapter's palette to the particles. Everything per-frame is written straight to the DOM.
  */
 export function StagePanel() {
-  const { engine, setPanel, current, staged, scrollTo } = useScene();
+  const { engine, setPanel, current, staged } = useScene();
   const box = useRef<HTMLDivElement>(null);
   const fig = useRef<HTMLSpanElement>(null);
   const chapter = useRef<HTMLSpanElement>(null);
@@ -20,7 +20,6 @@ export function StagePanel() {
   const backdrop = useRef<HTMLDivElement>(null);
   const [atmos, setAtmos] = useState<HTMLElement | null>(null);
   const [chapters, setChapters] = useState<Entry[]>([]);
-  const [active, setActive] = useState(-1);
 
   useEffect(() => {
     setPanel(box.current);
@@ -36,7 +35,6 @@ export function StagePanel() {
     if (!engine || !chapters.length) return;
     const pool = [...layer.current!.children] as HTMLElement[];
     let shownEntry: Entry | null | undefined;
-    let shownIdx = -2;
     let shownCap = '';
     return engine.onFrame(() => {
       const b = box.current;
@@ -51,19 +49,20 @@ export function StagePanel() {
       }
       const e = current();
       const here = e?.meta && e.stage?.() === b ? e : null;
-      const idx = here ? chapters.indexOf(here) : -1;
-      if (idx !== shownIdx) {
-        shownIdx = idx;
-        setActive(idx);
-      }
+      engine.setTone((e?.meta && e.el.dataset.room) || 'violet'); // outside the chapters the mark is always violet
       if (here !== shownEntry && here?.meta) {
         shownEntry = here;
         fig.current!.textContent = `Fig. ${here.meta.fig}`;
         chapter.current!.textContent = here.el.dataset.chapter ?? '';
         name.current!.textContent = here.meta.name;
         const tone = here.el.dataset.room ?? 'violet';
+        const tone2 = here.el.dataset.room2 ?? tone;
         b.dataset.tone = tone;
-        if (bd) bd.dataset.tone = tone;
+        b.dataset.tone2 = tone2;
+        if (bd) {
+          bd.dataset.tone = tone;
+          bd.dataset.tone2 = tone2;
+        }
       }
       const c = here?.meta ? (here.meta.caption as () => string)() : shownCap;
       if (c !== shownCap) {
@@ -97,7 +96,10 @@ export function StagePanel() {
         el.dataset.side = side;
         el.classList.toggle('is-hot', !!l.hot);
         el.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
-        el.style.opacity = (settle * (p.depth < -0.3 ? 0.55 : 1)).toFixed(2);
+        // on the globe a place turning away takes its tag with it
+        const away = here!.key === 'globe' ? Math.min(1, Math.max(0, (p.depth + 0.12) / 0.12)) : p.depth < -0.3 ? 0.55 : 1;
+        el.style.opacity = (settle * away).toFixed(2);
+        if (away < 0.01) return;
         const [x0, x1] = side === 'left' ? [x - 10 - w, x - 10] : side === 'right' ? [x + 10, x + 10 + w] : [x - w / 2, x + w / 2];
         placed.push({ el, x0, x1, y: side === 'below' ? y + 20 : side === 'above' ? y - 20 : y, dy: 0 });
       });
@@ -133,20 +135,6 @@ export function StagePanel() {
         </div>
         <footer className="panel-foot">
           <p ref={cap} className="panel-cap" aria-live="polite" />
-          <ol className="panel-index" aria-label="Figures">
-            {chapters.map((c, i) => (
-              <li key={c.meta!.fig}>
-                <button
-                  className={`${i === active ? 'is-active' : ''} ${i < active ? 'is-past' : ''}`}
-                  onClick={() => scrollTo(c.el)}
-                  aria-label={`${c.meta!.name}: ${c.el.dataset.chapter ?? ''}`}
-                  aria-current={i === active ? 'step' : undefined}
-                >
-                  <span>{c.meta!.fig}</span>
-                </button>
-              </li>
-            ))}
-          </ol>
         </footer>
       </div>
     </aside>
