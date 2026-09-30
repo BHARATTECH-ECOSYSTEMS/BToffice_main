@@ -116,7 +116,8 @@ const sw = (deep: string, bright: string, hot: string, trail: string): Swatch =>
 const TONES: Record<Tone, { light: Swatch; dark: Swatch }> = {
   violet: { light: sw('#3A1FA8', '#7B5CFF', '#4A1FFF', '#e2600f'), dark: sw('#5b3df5', '#b9a6ff', '#ffffff', '#ffa36b') },
   tango: { light: sw('#a8380a', '#ff7a33', '#5b3df5', '#5b3df5'), dark: sw('#ff5f1a', '#ffc4a0', '#c9bcff', '#b9a6ff') },
-  pitch: { light: sw('#8f5400', '#f0a000', '#5b3df5', '#d9480f'), dark: sw('#f59e00', '#ffe2a3', '#b9a6ff', '#ff8643') },
+  // pitch chapters (the globe) light their highlight white-hot in the dark and a vivid vermilion in the light
+  pitch: { light: sw('#8f5400', '#f0a000', '#e03a0c', '#d9480f'), dark: sw('#f59e00', '#ffe2a3', '#fff6e8', '#ff8643') },
 };
 
 const stagger = (m: number, th: number) => {

@@ -56,7 +56,7 @@ export function Network() {
     // India's neighbours to the west take their tags to the left, the east to the right, so none cover India
     labels: () => GLOBE_LABELS.map((g) => ({ text: g.name, hot: !!g.home, side: SIDE[g.name] ?? 'right' })),
     // India glows in the accent, the planet turns slowly on its own and follows a drag
-    params: { highlight: 0, dim: 1, cull: 1, dot: 0.62, drag: 1, orbit: 0.4 },
+    params: { highlight: 0, dim: 0.72, cull: 1, dot: 0.62, drag: 1, orbit: 0.4 },
   });
   return (
     <section id="network" ref={ref} className="section net room room--pitch" data-room="pitch" data-room2="tango" data-chapter="Network">

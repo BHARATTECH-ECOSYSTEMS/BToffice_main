@@ -48,7 +48,7 @@ export const WORLD: { name: string; at: LonLat }[] = [
 
 /** Labelled on the globe: India, and the regions its links reach. */
 export const GLOBE_LABELS: { name: string; at: LonLat; home?: boolean }[] = [
-  { name: 'India', at: [79, 22.5], home: true },
+  { name: 'India', at: [77.6, 7.4], home: true }, // the southern tip, so its tag sits below the country, not on it
   { name: 'Europe', at: [13.4, 52.52] },
   { name: 'Americas', at: [-74.0, 40.71] },
   { name: 'Africa', at: [36.82, -1.29] },

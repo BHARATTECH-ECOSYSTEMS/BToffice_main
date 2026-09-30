@@ -746,11 +746,33 @@ export function dotGlobe(n: number): Formation {
     for (let k = 0; k < ring; k++) {
       const lon = ((k + shift) / ring) * 360 - 180;
       const p = lonLatToVec(lon, lat, GLOBE_R);
-      if (inPolygon([lon, lat], INDIA)) b.push(p[0], p[1], p[2], 1, 0);
+      if (inPolygon([lon, lat], INDIA)) continue; // India is drawn on its own below
       else if (onLand([lon, lat])) b.push(p[0], p[1], p[2], 0.8, -1);
       else if (row % 3 === 0 && k % 3 === 0) b.push(p[0], p[1], p[2], 0.22, -1); // a sparse sea grain keeps the sphere round
     }
   }
+  // India, designed to be found at a glance: a finer fill, a traced border and a bright dot at each hub city
+  const R = GLOBE_R * 1.008;
+  const fine = dLat * 0.62;
+  for (let lat = INDIA_BBOX.minLat; lat <= INDIA_BBOX.maxLat; lat += fine)
+    for (let lon = INDIA_BBOX.minLon; lon <= INDIA_BBOX.maxLon; lon += fine / Math.cos((lat * Math.PI) / 180))
+      if (inPolygon([lon, lat], INDIA)) {
+        const p = lonLatToVec(lon, lat, R);
+        b.push(p[0], p[1], p[2], 0.9, 0);
+      }
+  for (let i = 0; i < INDIA.length; i++) {
+    const [a0, a1] = INDIA[i];
+    const [c0, c1] = INDIA[(i + 1) % INDIA.length];
+    const steps = Math.max(1, Math.round(Math.hypot(c0 - a0, c1 - a1) / (fine * 0.55)));
+    for (let k = 0; k < steps; k++) {
+      const p = lonLatToVec(a0 + ((c0 - a0) * k) / steps, a1 + ((c1 - a1) * k) / steps, R * 1.002);
+      b.push(p[0], p[1], p[2], 1, 0);
+    }
+  }
+  INDIA_HUBS.forEach((h) => {
+    const p = lonLatToVec(h.at[0], h.at[1], R * 1.004);
+    for (let k = 0; k < 3; k++) b.push(p[0], p[1], p[2], 1, 0); // stacked, so the hubs print brightest
+  });
   // routes from India's hubs to each region, dotted at the same pitch
   ARCS.forEach(([a, c]) => {
     const [x0, y0, z0] = arcPoint(a, c, 0);
