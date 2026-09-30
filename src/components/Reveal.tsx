@@ -80,9 +80,26 @@ export function Kicker({ index, children }: { index?: string; children: ReactNod
 }
 
 /** The one header every content section uses: label on the left, statement on a 12-column grid. */
-export function SectionHead({ index, label, title, lede, aside, scrub }: { index: string; label: string; title: ReactNode[]; lede?: ReactNode; aside?: ReactNode; scrub?: boolean }) {
+export function SectionHead({
+  index,
+  label,
+  title,
+  lede,
+  aside,
+  scrub,
+  stage,
+}: {
+  index: string;
+  label: string;
+  title: ReactNode[];
+  lede?: ReactNode;
+  aside?: ReactNode;
+  scrub?: boolean;
+  /** A <Stage> card: the section's particle figure, beside the title. */
+  stage?: ReactNode;
+}) {
   return (
-    <header className="sec-head">
+    <header className={`sec-head ${stage ? 'has-stage' : ''}`}>
       <Kicker index={index}>{label}</Kicker>
       <div className="sec-head-main">
         <Lines className="h2" lines={title} />
@@ -96,6 +113,7 @@ export function SectionHead({ index, label, title, lede, aside, scrub }: { index
           )
         )}
       </div>
+      {stage}
       {aside && (
         <Fade className="sec-head-aside" delay={160}>
           {aside}

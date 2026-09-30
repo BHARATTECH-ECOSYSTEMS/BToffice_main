@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useFormation } from '../gl/Scene';
+import { useStage } from '../gl/Scene';
+import { Stage } from '../components/Stage';
 import { Fade, SectionHead } from '../components/Reveal';
 import { useScrollSteps } from '../components/useScrollSteps';
 import { Diagram } from '../viz/Diagram';
@@ -13,7 +14,14 @@ export function Architecture() {
   const { ref, active: scrolled, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(LAYERS.length, 28);
   const [picked, setPicked] = useState<number | null>(null);
   const active = pinned ? scrolled : (picked ?? 0);
-  useFormation(ref, { key: 'field', params: { alpha: 0 } });
+  const cap = `Nine floors of one building, apps at the top, compute at the foundation. Floor ${active + 1}: ${LAYERS[active].name}`;
+  const stage = useStage(ref, 'floors', {
+    fig: '05',
+    name: 'Floors',
+    caption: cap,
+    labels: () => LAYERS.map((l, i) => ({ text: l.name, hot: i === active, side: 'right' as const })),
+    params: () => ({ highlight: active }),
+  });
   const L = LAYERS[active];
   const flowY = pinned ? progress * (LAYERS.length - 0.001) * ROW : active * ROW + ROW / 2;
 
@@ -26,6 +34,7 @@ export function Architecture() {
             label="Architecture"
             title={['An operating system,', 'not an application.']}
             lede="Nine layers, one continuous system. Follow a request from the app you use down to sovereign compute."
+            stage={<Stage stageRef={stage} fig="05" name="Floors" caption={cap} />}
           />
           <Fade className="stack-wrap">
             <div className="stack">

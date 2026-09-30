@@ -1,5 +1,6 @@
 import { useRef, type CSSProperties } from 'react';
-import { useFormation } from '../gl/Scene';
+import { useStage } from '../gl/Scene';
+import { Stage } from '../components/Stage';
 import { Fade, SectionHead, useInView } from '../components/Reveal';
 import { Diagram } from '../viz/Diagram';
 import { connect, learn, remember } from '../viz/intro';
@@ -23,7 +24,13 @@ const ART = [
 
 export function Intro() {
   const ref = useRef<HTMLElement>(null);
-  useFormation(ref, { key: 'logo', pose: { x: 1.65, s: 0.92 }, params: { alpha: 0 } });
+  const cap = 'The Origin mark: three threads that meet in one place, the way one memory serves every tool';
+  const stage = useStage(ref, 'markFig', {
+    fig: '01',
+    name: 'The mark',
+    caption: cap,
+    labels: () => ['Remembers', 'Connects', 'Keeps learning'].map((text) => ({ text, side: 'right' as const })),
+  });
   const [sceneRef, sceneIn] = useInView<HTMLDivElement>({ margin: '0px 0px -25% 0px' });
   const d = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties;
 
@@ -36,6 +43,7 @@ export function Intro() {
           title={['AI that remembers, connects', 'and keeps learning.']}
           scrub
           lede="Most AI tools start from zero every time, work alone and stop learning once they are trained. We are building the layer underneath them: one shared intelligence that every application can draw on."
+          stage={<Stage stageRef={stage} fig="01" name="The mark" caption={cap} />}
         />
 
         <div className="plain">

@@ -1,5 +1,7 @@
 import { useRef, useState, type ReactNode } from 'react';
-import { useFormation } from '../gl/Scene';
+import { useStage } from '../gl/Scene';
+import { REGIONS } from '../gl/figures';
+import { Stage } from '../components/Stage';
 import { Diagram } from '../viz/Diagram';
 import { network, type NetFocus } from '../viz/network';
 import { Fade, Lines, Kicker } from '../components/Reveal';
@@ -35,11 +37,21 @@ const PILLARS: { key: NetFocus; title: string; body: string; icon: ReactNode }[]
 export function Network() {
   const ref = useRef<HTMLElement>(null);
   const [focus, setFocus] = useState<NetFocus>(null);
-  useFormation(ref, { key: 'field', params: { alpha: 0 } });
+  const cap = 'Built and hosted in India, with lines out to every region of the world';
+  const stage = useStage(ref, 'india', {
+    fig: '06',
+    name: 'Map',
+    caption: cap,
+    labels: () => [
+      { text: 'India', hot: true, side: 'right' as const },
+      // tags sit above the northern ends and below the southern ones, so none run off the panel
+      ...REGIONS.map((r) => ({ text: r.name, side: Math.sin((r.angle * Math.PI) / 180) >= 0 ? ('above' as const) : ('below' as const) })),
+    ],
+  });
   return (
     <section id="network" ref={ref} className="section net room room--pitch" data-room="pitch" data-chapter="Network">
       <div className="wrap">
-        <header className="sec-head">
+        <header className="sec-head has-stage">
           <Kicker index="06">Network</Kicker>
           <div className="sec-head-main">
             <Lines className="h2" lines={['Built in Bharat.', <span className="accent">For the world.</span>]} />
@@ -47,6 +59,7 @@ export function Network() {
               An intelligence network conceived in India and engineered to run anywhere. Every node shares what it learns with the rest.
             </Fade>
           </div>
+          <Stage stageRef={stage} fig="06" name="Map" caption={cap} />
         </header>
         <Fade className="net-grid">
           <div className="net-art">

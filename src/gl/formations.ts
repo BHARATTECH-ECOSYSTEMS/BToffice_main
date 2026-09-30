@@ -12,6 +12,8 @@ export interface Formation {
   acc: Float32Array;
   grp: Float32Array;
   anchors: [number, number, number][];
+  /** 1 draws this formation as flat, even dots (see uCrisp) */
+  crisp?: number;
 }
 
 export type V3 = [number, number, number];
@@ -75,7 +77,7 @@ export function park(f: Formation, r: () => number) {
   return f;
 }
 
-function onSphere(r: () => number): V3 {
+export function onSphere(r: () => number): V3 {
   const u = r() * 2 - 1;
   const t = r() * Math.PI * 2;
   const s = Math.sqrt(1 - u * u);
@@ -87,7 +89,7 @@ function onSphere(r: () => number): V3 {
 
 const MASK_RES = 320;
 let threadMask: Uint8Array | null = null;
-function isThread(u: number, v: number): boolean {
+export function isThread(u: number, v: number): boolean {
   if (!threadMask) {
     threadMask = new Uint8Array(MASK_RES * MASK_RES);
     for (let y = 0; y < MASK_RES; y++)
@@ -456,6 +458,41 @@ export function field(n: number): Formation {
   return b.dust(r);
 }
 
+// ── 8. The flow ────────────────────────────────────────────────────────────
+// One request through five stations, each wired down to the same memory.
+
+export function flow(n: number, stations = 5): Formation {
+  const r = rng(71);
+  const b = new Builder(n);
+  const span = 1.9;
+  const xs = Array.from({ length: stations }, (_, i) => -span + (i * 2 * span) / (stations - 1));
+  const yOf = (x: number) => 0.3 - 0.12 * (x / span) ** 2;
+  const MEM = -0.62;
+  const per = Math.floor((n * 0.42) / stations);
+  xs.forEach((x, i) => {
+    for (let k = 0; k < per; k++) {
+      const [a, c, d] = onSphere(r);
+      const rad = 0.21 * (k % 3 === 0 ? Math.cbrt(r()) : 1);
+      b.push(x + a * rad, yOf(x) + c * rad, d * rad, 1, i);
+    }
+  });
+  const line = b.i + Math.floor(n * 0.12);
+  while (b.i < line) {
+    const x = -span + r() * 2 * span;
+    b.push(x, yOf(x) + (r() - 0.5) * 0.012, (r() - 0.5) * 0.012, 0.55, -1);
+  }
+  const plate = b.i + Math.floor(n * 0.24);
+  while (b.i < plate) b.push((r() * 2 - 1) * (span + 0.25), MEM, (r() * 2 - 1) * 0.4, 0.14, -1);
+  const threads = b.i + Math.floor(n * 0.08);
+  while (b.i < threads) {
+    const i = Math.floor(r() * stations);
+    const top = yOf(xs[i]) - 0.21;
+    b.push(xs[i], top - r() * (top - MEM), 0, 0.45, i);
+  }
+  b.f.anchors = xs.map((x): V3 => [x, yOf(x), 0]);
+  return b.dust(r);
+}
+
 // ── Silos: today's AI, as six tools that never talk ───────────────────────
 
 export const SILO_CENTERS: V3[] = [
@@ -552,4 +589,304 @@ export function frozen(n: number, source: Formation, stubs = false): Formation {
   }
   b.f.anchors = siloAnchors();
   return park(b.f, r);
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Second generation: every figure is drawn as a dot matrix. Each visible "dot"
+// is a small cluster of particles on an even grid, so shapes read as clean,
+// printed diagrams instead of clouds.
+// ═════════════════════════════════════════════════════════════════════════
+
+/** A crisp dot at p: `k` particles within `j` of it. */
+function dot(b: Builder, r: () => number, p: V3, k: number, acc: number, grp = -1, j = 0.006) {
+  for (let i = 0; i < k && !b.full; i++) b.push(p[0] + (r() - 0.5) * j, p[1] + (r() - 0.5) * j, p[2] + (r() - 0.5) * j, acc, grp);
+}
+
+/** The point a share `t` of the way along a polyline, by length (closed when `loop`). */
+const lengths = new WeakMap<V3[], number[]>();
+function along(pts: V3[], t: number, loop = false): V3 {
+  const segs = loop ? pts.length : pts.length - 1;
+  let acc = lengths.get(pts);
+  if (!acc) {
+    acc = [0];
+    for (let i = 0; i < segs; i++) {
+      const a = pts[i];
+      const c = pts[(i + 1) % pts.length];
+      acc.push(acc[i] + Math.hypot(c[0] - a[0], c[1] - a[1], c[2] - a[2]));
+    }
+    lengths.set(pts, acc);
+  }
+  const d = t * acc[segs];
+  let i = 0;
+  while (i < segs - 1 && acc[i + 1] < d) i++;
+  const a = pts[i];
+  const c = pts[(i + 1) % pts.length];
+  const u = (d - acc[i]) / Math.max(1e-9, acc[i + 1] - acc[i]);
+  return [a[0] + (c[0] - a[0]) * u, a[1] + (c[1] - a[1]) * u, a[2] + (c[2] - a[2]) * u];
+}
+
+/** A rounded rectangle outline in the xy plane, as a closed polyline. */
+function roundRect(w: number, h: number, rad: number, steps = 6): V3[] {
+  const out: V3[] = [];
+  const cs: [number, number, number][] = [
+    [w / 2 - rad, h / 2 - rad, 0],
+    [-w / 2 + rad, h / 2 - rad, Math.PI / 2],
+    [-w / 2 + rad, -h / 2 + rad, Math.PI],
+    [w / 2 - rad, -h / 2 + rad, (3 * Math.PI) / 2],
+  ];
+  cs.forEach(([cx, cy, a0]) => {
+    for (let s = 0; s <= steps; s++) {
+      const a = a0 + (s / steps) * (Math.PI / 2);
+      out.push([cx + Math.cos(a) * rad, cy + Math.sin(a) * rad, 0]);
+    }
+  });
+  return out;
+}
+
+// ── 02 · Shatter: the mark itself, broken into six pieces that no longer meet ──
+
+export const SHARDS = 6;
+
+export function shatter(n: number, source: Formation): Formation {
+  const r = rng(131);
+  const f: Formation = { pos: new Float32Array(n * 3), acc: new Float32Array(n), grp: new Float32Array(n).fill(-1), anchors: [] };
+  const dir = (k: number): V3 => {
+    const a = (k / SHARDS) * Math.PI * 2 + Math.PI / 2;
+    return [Math.cos(a), Math.sin(a), 0];
+  };
+  const push = 0.58;
+  const spare: number[] = [];
+  for (let i = 0; i < n; i++) {
+    const x = source.pos[i * 3];
+    const y = source.pos[i * 3 + 1];
+    const z = source.pos[i * 3 + 2];
+    if (source.acc[i] <= HIDDEN) {
+      spare.push(i);
+      f.acc[i] = HIDDEN;
+      continue;
+    }
+    let a = Math.atan2(y, x) - Math.PI / 2;
+    a = ((a % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    const k = Math.round((a / (Math.PI * 2)) * SHARDS) % SHARDS;
+    const d = dir(k);
+    f.pos[i * 3] = x * 0.9 + d[0] * push;
+    f.pos[i * 3 + 1] = y * 0.9 + d[1] * push;
+    f.pos[i * 3 + 2] = z * 0.9 - 0.15;
+    f.acc[i] = 0.62;
+    f.grp[i] = k;
+  }
+  // between neighbours, a thread reaches out and stops short
+  spare.slice(0, Math.floor(spare.length * 0.45)).forEach((i, s) => {
+    const k = s % SHARDS;
+    const a = dir(k);
+    const c = dir((k + 1) % SHARDS);
+    const from: V3 = [a[0] * (LOGO_R * 0.95 + push), a[1] * (LOGO_R * 0.95 + push), 0];
+    const to: V3 = [c[0] * (LOGO_R * 0.95 + push), c[1] * (LOGO_R * 0.95 + push), 0];
+    const t = Math.pow(r(), 0.8) * 0.3;
+    f.pos[i * 3] = from[0] + (to[0] - from[0]) * t;
+    f.pos[i * 3 + 1] = from[1] + (to[1] - from[1]) * t;
+    f.pos[i * 3 + 2] = (r() - 0.5) * 0.01;
+    f.acc[i] = 0.35;
+    f.grp[i] = k;
+  });
+  f.anchors = Array.from({ length: SHARDS }, (_, k): V3 => {
+    const d = dir(k);
+    return [d[0] * (LOGO_R * 0.62 + push), d[1] * (LOGO_R * 0.62 + push), 0.4];
+  });
+  return park(f, r);
+}
+
+// ── 05 · Plates: nine dot-matrix layers, stacked ─────────────────────────────
+
+export function plates(n: number): Formation {
+  const r = rng(43);
+  const b = new Builder(n);
+  const H = 0.95;
+  const top = ((LAYER_COUNT - 1) / 2) * LAYER_GAP;
+  const per = Math.floor((n * 0.9) / LAYER_COUNT);
+  const edge = roundRect(2 * H, 2 * H, 0.16, 5);
+  const cells = 9;
+  for (let l = 0; l < LAYER_COUNT; l++) {
+    const y = top - l * LAYER_GAP;
+    const start = b.i;
+    // outline
+    while (b.i < start + per * 0.4) {
+      const p = along(edge, r(), true);
+      b.push(p[0], y, p[1], 0.85, l);
+    }
+    // an even field of dots
+    const k = Math.max(3, Math.floor((per * 0.55) / (cells * cells)));
+    for (let gx = 0; gx < cells; gx++)
+      for (let gz = 0; gz < cells; gz++) {
+        const x = ((gx + 0.5) / cells) * 2 * H * 0.86 - H * 0.86;
+        const z = ((gz + 0.5) / cells) * 2 * H * 0.86 - H * 0.86;
+        dot(b, r, [x, y, z], k, 0.45, l, 0.012);
+      }
+    b.f.anchors.push([-H, y, H]);
+  }
+  const spine = b.i + Math.floor(n * 0.04);
+  while (b.i < spine) b.push(0, (r() - 0.5) * (top * 2 + 0.6), 0, 1, -1);
+  return b.dust(r);
+}
+
+// ── 06 · Dot globe: an even lattice, India in the accent on the same grid ────
+
+export function dotGlobe(n: number): Formation {
+  const r = rng(67);
+  const b = new Builder(n);
+  const M = Math.round(n / 14);
+  const per = Math.max(3, Math.floor((n * 0.66) / M));
+  const golden = 180 * (3 - Math.sqrt(5));
+  for (let i = 0; i < M; i++) {
+    const lat = (Math.asin(1 - (2 * (i + 0.5)) / M) * 180) / Math.PI;
+    const lon = ((((i * golden) % 360) + 360) % 360) - 180;
+    if (inPolygon([lon, lat], INDIA)) continue; // India gets its own, finer grid below
+    dot(b, r, lonLatToVec(lon, lat, GLOBE_R), per, 0.1, -1, 0.012);
+  }
+  // India: the same kind of dots on a finer grid, in the accent, so the country reads as a shape
+  for (let lat = INDIA_BBOX.minLat; lat <= INDIA_BBOX.maxLat; lat += 1.25)
+    for (let lon = INDIA_BBOX.minLon; lon <= INDIA_BBOX.maxLon; lon += 1.25)
+      if (inPolygon([lon, lat], INDIA)) dot(b, r, lonLatToVec(lon, lat, GLOBE_R * 1.004), 5, 1, 0, 0.008);
+  // regional hubs: small bright dots, one ring each
+  GLOBE_LABELS.forEach((h, k) => {
+    const c = lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.01);
+    dot(b, r, c, 60, 1, k === 0 ? 0 : 1, 0.03);
+  });
+  // a single orbit ring around the whole: the network, drawn once
+  const ring = b.i + Math.floor(n * 0.05);
+  while (b.i < ring) {
+    const a = r() * Math.PI * 2;
+    const p: V3 = [Math.cos(a) * GLOBE_R * 1.22, 0, Math.sin(a) * GLOBE_R * 1.22];
+    const t = rotZ(rotX(p, 0.35), -0.22);
+    b.push(t[0], t[1], t[2], 0.3, -1);
+  }
+  b.f.anchors = GLOBE_LABELS.map((h) => lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.02));
+  return b.dust(r);
+}
+
+// ── 09 · Build: half the mark finished, half still scaffolding ───────────────
+
+export function build(n: number): Formation {
+  const r = rng(151);
+  const b = new Builder(n);
+  const R = LOGO_R;
+  // the finished lower half: a dense shell
+  const shell = Math.floor(n * 0.5);
+  while (b.i < shell) {
+    const [x, y, z] = onSphere(r);
+    if (y > 0.02) continue;
+    b.push(x * R, y * R, z * R, 1, -1);
+  }
+  // the upper half: latitude rings and meridians, as a wire frame
+  const lats = [0.18, 0.38, 0.58, 0.78, 0.94];
+  const wire = b.i + Math.floor(n * 0.3);
+  while (b.i < wire) {
+    if (r() < 0.55) {
+      const s = lats[Math.floor(r() * lats.length)];
+      const a = r() * Math.PI * 2;
+      const c = Math.sqrt(1 - s * s);
+      b.push(Math.cos(a) * c * R, s * R, Math.sin(a) * c * R, 0.35, -1);
+    } else {
+      const m = (Math.floor(r() * 10) / 10) * Math.PI * 2;
+      const t = r() * (Math.PI / 2);
+      b.push(Math.cos(m) * Math.cos(t) * R, Math.sin(t) * R, Math.sin(m) * Math.cos(t) * R, 0.35, -1);
+    }
+  }
+  // three joints where work is happening: research, engineering, operations
+  const joints: V3[] = [
+    [Math.cos(0.5) * 0.92 * R, 0.38 * R, Math.sin(0.5) * 0.92 * R],
+    [Math.cos(2.4) * 0.8 * R, 0.58 * R, Math.sin(2.4) * 0.8 * R],
+    [Math.cos(4.2) * 0.98 * R, 0.18 * R, Math.sin(4.2) * 0.98 * R],
+  ];
+  joints.forEach((j, k) => dot(b, r, j, 90, 1, k, 0.05));
+  b.f.anchors = joints;
+  return b.dust(r);
+}
+
+// ── 10 · Pages: three sheets of notes, fanned ────────────────────────────────
+
+export function pages(n: number): Formation {
+  const r = rng(173);
+  const b = new Builder(n);
+  const W = 1.3;
+  const Hh = 1.7;
+  const edge = roundRect(W, Hh, 0.08, 4);
+  const sheets = 3;
+  const per = Math.floor((n * 0.92) / sheets);
+  const place = (s: number, p: V3): V3 => {
+    // fanned like cards in a hand: each sheet steps right, down and back, turning a little
+    const a = -s * 0.22;
+    const x = p[0] * Math.cos(a) - p[2] * Math.sin(a) + (s - 1) * 0.95;
+    const z = p[0] * Math.sin(a) + p[2] * Math.cos(a) - s * 0.35;
+    return [x, p[1] + (s - 1) * -0.38, z];
+  };
+  for (let s = 0; s < sheets; s++) {
+    const start = b.i;
+    const acc = s === 0 ? 1 : 0.5;
+    while (b.i < start + per * 0.35) {
+      const p = along(edge, r(), true);
+      b.push(...place(s, p), acc * 0.9, s);
+    }
+    // a heading, then lines of text of varying length
+    const lines = [0.62, 0.9, 0.84, 0.7, 0.88, 0.5, 0.86, 0.66];
+    const rows = b.i;
+    while (b.i < start + per) {
+      const li = Math.floor(r() * lines.length);
+      const y = Hh / 2 - 0.3 - li * 0.2;
+      const len = (W - 0.36) * lines[li];
+      const x = -W / 2 + 0.18 + r() * len;
+      const thick = li === 0 ? 0.035 : 0.012;
+      b.push(...place(s, [x, y + (r() - 0.5) * thick, 0]), li === 0 ? acc : acc * 0.55, s);
+    }
+    void rows;
+    b.f.anchors.push(place(s, [-W / 2, Hh / 2, 0]));
+  }
+  return b.dust(r);
+}
+
+// ── 11 · Conversation: a question, and an answer on its way ──────────────────
+
+export function bubble(n: number): Formation {
+  const r = rng(191);
+  const b = new Builder(n);
+  const ask = roundRect(2.0, 1.1, 0.5, 8).map((p): V3 => [p[0] - 0.45, p[1] + 0.62, 0]);
+  const reply = roundRect(2.3, 1.25, 0.56, 8).map((p): V3 => [p[0] + 0.35, p[1] - 0.72, -0.2]);
+  const outline = (pts: V3[], count: number, acc: number, g: number) => {
+    const end = b.i + count;
+    while (b.i < end) {
+      const p = along(pts, r(), true);
+      b.push(p[0], p[1], p[2], acc, g);
+    }
+  };
+  outline(ask, Math.floor(n * 0.2), 0.45, 0);
+  outline(reply, Math.floor(n * 0.26), 1, 1);
+  // tails
+  const tail = (from: V3, to: V3, count: number, acc: number, g: number) => {
+    for (let i = 0; i < count; i++) {
+      const t = r();
+      b.push(from[0] + (to[0] - from[0]) * t, from[1] + (to[1] - from[1]) * t, from[2], acc, g);
+    }
+  };
+  tail([-1.1, 0.12, 0], [-1.35, -0.12, 0], Math.floor(n * 0.015), 0.45, 0);
+  tail([1.25, -1.3, -0.2], [1.55, -1.55, -0.2], Math.floor(n * 0.015), 1, 1);
+  // the question: two short lines of text
+  const qa = b.i + Math.floor(n * 0.07);
+  while (b.i < qa) {
+    const row = r() < 0.5 ? 0 : 1;
+    const len = row ? 0.9 : 1.3;
+    b.push(-0.45 - 0.65 + r() * len, 0.74 - row * 0.24, 0, 0.35, 0);
+  }
+  // the answer being written: three dots
+  [-0.2, 0.35, 0.9].forEach((x, k) => {
+    for (let i = 0; i < Math.floor(n * 0.035); i++) {
+      const [a, c, d] = onSphere(r);
+      const rad = 0.1 * Math.cbrt(r());
+      b.push(x + a * rad, -0.72 + c * rad, -0.2 + d * rad, 1, 2 + k);
+    }
+  });
+  b.f.anchors = [
+    [-1.45, 1.2, 0],
+    [1.5, -0.1, -0.2],
+  ];
+  return b.dust(r);
 }

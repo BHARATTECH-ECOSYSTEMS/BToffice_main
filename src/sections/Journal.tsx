@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { Link } from 'react-router';
-import { useFormation } from '../gl/Scene';
+import { useStage } from '../gl/Scene';
 import { Fade, Arrow, SectionHead } from '../components/Reveal';
 import { Cover } from '../components/Cover';
 import { POSTS } from '../content';
@@ -28,7 +28,13 @@ export function Story({ post, index }: { post: (typeof POSTS)[number]; index: nu
 
 export function Journal() {
   const ref = useRef<HTMLElement>(null);
-  useFormation(ref, { key: 'field', params: { alpha: 0 } });
+  // no card of its own: on wide screens the mark rests in the panel, on phones it stays out of sight
+  useStage(ref, 'notes', {
+    fig: '10',
+    name: 'Notes',
+    caption: 'Notes from the people building it, newest on top',
+    labels: () => POSTS.slice(0, 3).map((p, i) => ({ text: `0${i + 1} · ${p.category}`, hot: i === 0, side: 'above' as const })),
+  });
   const [lead, ...rest] = POSTS;
   return (
     <section id="journal" ref={ref} className="section journal" data-chapter="Journal">

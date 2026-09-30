@@ -23,8 +23,12 @@ export const particleVertex = /* glsl */ `
   uniform float uWave;
   uniform float uExplode;
   uniform float uWarp;
+  uniform float uScale;
+  uniform float uCrisp; // 0 soft light … 1 flat, even dots (the panel illustrations)
+  uniform float uDotPx;
 
   varying float vAcc;
+  varying float vCrisp;
   varying float vAlpha;
   varying float vShade;
   varying float vHl;
@@ -50,7 +54,7 @@ export const particleVertex = /* glsl */ `
       sin(t * 0.7 + aRand.y * 6.2831),
       cos(t * 0.6 + aRand.y * 4.7),
       sin(t * 0.5 + aRand.y * 3.1)
-    ) * 0.008 * uDrift;
+    ) * 0.008 * uDrift * (1.0 - uCrisp);
 
     // terrain breathes
     float waveW = (aGrpTo < -1.5 ? st : 0.0) + (aGrpFrom < -1.5 ? 1.0 - st : 0.0);
@@ -80,8 +84,12 @@ export const particleVertex = /* glsl */ `
     float hl = (uHighlight > -0.5 && abs(grp - uHighlight) < 0.5) ? uHighlightAmt : 0.0;
     vHl = hl;
 
-    gl_PointSize = uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.3) * (7.0 / -mv.z) * 2.2;
-    vTint = step(0.82, fract(aRand.y * 7.31)) * (0.5 + 0.5 * sin(p.x * 1.3 + p.y * 0.9 + uTime * 0.4));
+    // points shrink with the formation, so a small shape stays as fine-grained as a large one
+    float grain = clamp(pow(uScale, 0.55), 0.55, 1.0);
+    float soft = uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.35) * (7.0 / -mv.z) * 2.2 * grain;
+    gl_PointSize = mix(soft, uDotPx * (1.0 + hl * 0.3), uCrisp);
+    vCrisp = uCrisp;
+    vTint = step(0.9, fract(aRand.y * 7.31)) * (0.5 + 0.5 * sin(p.x * 1.3 + p.y * 0.9 + uTime * 0.4)) * (1.0 - uCrisp);
 
     // Parked particles (acc -1) only fade; they borrow the colour of the other side.
     bool hideFrom = aAccFrom < -0.5;
@@ -95,7 +103,7 @@ export const particleVertex = /* glsl */ `
     float forgotten = step(aRand.z, uDecay);
     float dim = (uHighlight > -0.5) ? mix(1.0, 0.45, uHighlightAmt) : 1.0;
     float shown = mix(hideFrom ? 0.0 : 1.0, hideTo ? 0.0 : 1.0, st);
-    vAlpha = mix(0.3, 1.0, depth) * (1.0 - forgotten * 0.94) * mix(dim, 1.0, hl) * shown;
+    vAlpha = mix(mix(0.3, 1.0, depth), 1.0, uCrisp) * (1.0 - forgotten * 0.94) * mix(dim, 1.0, hl) * shown;
   }
 `;
 
@@ -116,6 +124,7 @@ export const particleFragment = /* glsl */ `
   varying float vShade;
   varying float vHl;
   varying float vTint;
+  varying float vCrisp;
 
   void main() {
     // a crisp core inside a soft halo: points read as light, not dots
@@ -125,10 +134,11 @@ export const particleFragment = /* glsl */ `
     float halo = exp(-d * d * 5.0) * uHalo;
     vec3 accent = mix(uDeep, uBright, pow(vShade, 1.4));
     vec3 warm = mix(uCyan, uYellow, step(0.5, fract(vAcc * 9.3 + vShade * 5.1)));
-    accent = mix(accent, warm, vTint * 0.75);
+    accent = mix(accent, warm, vTint * 0.55);
     vec3 col = mix(uInk, accent, smoothstep(0.0, 1.0, vAcc));
     col = mix(col, uHot, vHl * 0.6);
-    float a = (core + halo) * vAlpha * uAlpha * mix(uInkAlpha, 1.0, vAcc) * 0.85;
+    float flat_ = smoothstep(1.0, 0.78, d); // an even, printed dot
+    float a = mix((core + halo) * mix(uInkAlpha, 1.0, vAcc) * 0.85, flat_ * mix(0.55, 1.0, vAcc), vCrisp) * vAlpha * uAlpha;
     gl_FragColor = vec4(col, a);
   }
 `;

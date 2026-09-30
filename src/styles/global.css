@@ -693,13 +693,14 @@ svg {
   transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 .nav-cta {
-  background: var(--ink);
-  color: var(--bg);
+  /* the one call to action in the nav carries the warm accent */
+  background: var(--tango-fill);
+  color: var(--on-tone);
   box-shadow: none;
 }
 .nav-cta:hover {
-  background: var(--brand-fill);
-  color: #fff;
+  background: color-mix(in srgb, var(--tango-fill) 86%, #000);
+  color: var(--on-tone);
 }
 .nav-mobile {
   display: none;
@@ -2630,7 +2631,8 @@ svg {
 /* ── 12 Finale ──────────────────────────────────────────────────────────── */
 
 .finale {
-  padding: var(--section-y) 0 clamp(260px, 42vh, 460px);
+  /* room for the whole mark to sit on the footer's edge (see Finale.tsx) */
+  padding: var(--section-y) 0 calc(min(50vh, 80vw) + 96px);
 }
 .finale .kicker {
   margin-bottom: 24px;
@@ -3696,7 +3698,7 @@ svg {
   --room-c: var(--brand-fill);
   margin-inline: 10px;
   border-radius: 34px;
-  background: color-mix(in srgb, var(--room-c) 7%, var(--bg));
+  background: color-mix(in srgb, var(--room-c) 7%, transparent); /* a tint, not a fill: the particle mark shows through */
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--room-c) 16%, transparent);
   clip-path: inset(calc((1 - var(--room-p, 1)) * 4%) calc((1 - var(--room-p, 1)) * 4.5%) 0 calc((1 - var(--room-p, 1)) * 4.5%) round calc(34px + (1 - var(--room-p, 1)) * 30px));
 }
@@ -3710,7 +3712,7 @@ svg {
   --room-c: var(--pitch-fill);
 }
 :root[data-theme='light'] .room {
-  background: color-mix(in srgb, var(--room-c) 9%, var(--bg));
+  background: color-mix(in srgb, var(--room-c) 9%, transparent);
 }
 .atmos::before {
   content: '';
@@ -3777,4 +3779,486 @@ html[data-room='pitch'] .atmos::before {
   line-height: 1.35;
   letter-spacing: -0.02em;
   color: var(--ink);
+}
+
+/* ── Stage: the particle mark's place in each chapter ───────────────────────
+   A frame only. The card is transparent so the particle canvas behind it shows through,
+   and the engine clips the particles to the card, so they never cross the content. */
+
+.sec-head.has-stage {
+  align-items: stretch;
+}
+.sec-head.has-stage .sec-head-main {
+  grid-column: 1 / span 8;
+  grid-row: 2;
+  align-self: center;
+}
+.sec-head.has-stage .stage {
+  grid-column: 9 / -1;
+  grid-row: 2;
+}
+.sec-head.has-stage .sec-head-aside {
+  grid-column: 9 / -1;
+  grid-row: 3;
+}
+.sec-head.caps-head {
+  display: grid;
+  margin-bottom: 20px;
+}
+.sec-head-main .caps-groups {
+  justify-self: start;
+  margin-top: 6px;
+}
+.how-head.sec-head {
+  margin-bottom: 0; /* .how-stage already spaces its rows */
+}
+.how-head.sec-head .h2 {
+  margin-top: 0;
+}
+.how-head.sec-head .lede {
+  max-width: 56ch;
+  font-size: 15px;
+}
+
+.stage {
+  position: relative;
+  margin: 0;
+  min-height: clamp(230px, 28vh, 300px);
+  border-radius: var(--r-lg);
+  box-shadow: inset 0 0 0 1px var(--line);
+  background:
+    radial-gradient(55% 60% at 50% 50%, var(--brand-soft), transparent 75%),
+    radial-gradient(circle, var(--line-strong) 0.8px, transparent 1.2px) 0 0 / 16px 16px;
+}
+.stage::before {
+  display: none; /* the figures are drawn flat; guide lines behind them only add noise */
+  content: '';
+  position: absolute;
+  inset: 38px 20px;
+  background:
+    linear-gradient(var(--line), var(--line)) 50% 0 / 1px 100% no-repeat,
+    linear-gradient(var(--line), var(--line)) 0 50% / 100% 1px no-repeat;
+  pointer-events: none;
+}
+.stage-fig,
+.stage-name {
+  position: absolute;
+  top: 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.stage-fig {
+  left: 16px;
+}
+.stage-name {
+  right: 16px;
+}
+.stage-cap {
+  position: absolute;
+  left: 16px;
+  right: 16px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.3;
+  color: var(--ink-2);
+}
+.stage-cap::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.steps-stage .stage {
+  /* pinned sections have one screen for everything */
+  min-height: clamp(150px, 18vh, 210px);
+}
+
+@media (max-width: 900px) {
+  .sec-head.has-stage .sec-head-main,
+  .sec-head.has-stage .stage,
+  .sec-head.has-stage .sec-head-aside {
+    grid-column: 1 / -1;
+    grid-row: auto;
+  }
+  .sec-head.has-stage .stage {
+    min-height: 340px; /* the figures are drawn upright */
+    margin-top: 8px;
+  }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Split layout (home, > 900px): the story on the left, one sticky panel on the
+   right where the particle mark lives and changes shape chapter by chapter.
+   The left column is a size container, so every section reflows to the width
+   it actually has rather than to the viewport.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+.folio-main {
+  min-width: 0;
+  container: folio / inline-size;
+}
+.folio-side {
+  display: none;
+}
+
+@media (min-width: 901px) {
+  .folio {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(330px, 33vw, 500px);
+    column-gap: clamp(28px, 3vw, 52px);
+    max-width: var(--max);
+    margin: 0 auto;
+    padding: 0 var(--gutter);
+  }
+  .folio-side {
+    display: block;
+    position: relative;
+  }
+  .folio .wrap {
+    max-width: none;
+    padding-inline: 0;
+  }
+  /* one calm surface on the left: the panel carries each chapter's tone instead of tinted rooms */
+  .folio .room,
+  :root[data-theme] .folio .room {
+    margin-inline: 0;
+    background: none;
+    box-shadow: none;
+    clip-path: none;
+    border-radius: 0;
+  }
+  /* the panel replaces the inline figure cards */
+  .folio .stage {
+    display: none;
+  }
+  .folio .sec-head.has-stage .sec-head-main,
+  .folio .sec-head-main {
+    grid-column: 1 / -1;
+  }
+  .folio .sec-head-aside,
+  .folio .sec-head.has-stage .sec-head-aside {
+    grid-column: 1 / -1;
+    grid-row: 3;
+    justify-self: start;
+  }
+  /* the panel keeps its own index of figures; the edge rail would repeat it */
+  body:has(.folio) .rail {
+    display: none;
+  }
+}
+
+/* ── The panel ──────────────────────────────────────────────────────────── */
+
+.panel {
+  position: sticky;
+  top: calc(var(--nav-h) + 18px);
+  height: calc(100svh - var(--nav-h) - 36px);
+  min-height: 440px;
+  margin-top: 18px;
+  border-radius: 28px;
+  overflow: hidden;
+  box-shadow: inset 0 0 0 1px var(--line);
+  /* transparent: the card surface (.panel-backdrop) sits under the particle canvas, the frame and text above it */
+  --tone: var(--accent);
+  --tone-soft: var(--accent-soft);
+  background:
+    radial-gradient(70% 40% at 50% 0%, var(--tone-soft), transparent 70%),
+    radial-gradient(circle, var(--line) 1px, transparent 1.3px) 0 0 / 22px 22px;
+  transition: --tone 0.4s ease;
+}
+.panel[data-tone='tango'] {
+  --tone: var(--tango-text);
+  --tone-soft: var(--tango-soft);
+}
+.panel[data-tone='pitch'] {
+  --tone: var(--pitch-text);
+  --tone-soft: var(--pitch-soft);
+}
+.panel-backdrop {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  border-radius: 28px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgba(12, 12, 16, 0.04), 0 30px 60px -30px rgba(24, 16, 64, 0.22);
+  will-change: transform;
+}
+:root[data-theme='dark'] .panel-backdrop,
+:root:not([data-theme]) .panel-backdrop {
+  background: #0e0e14;
+  box-shadow: 0 30px 60px -30px rgba(0, 0, 0, 0.8);
+}
+.panel-rings {
+  display: none; /* the figures are drawn flat now; guide lines behind them only add noise */
+  position: absolute;
+  inset: 64px 0 150px;
+  background:
+    linear-gradient(var(--line), var(--line)) 50% 0 / 1px 100% no-repeat,
+    linear-gradient(var(--line), var(--line)) 0 50% / 100% 1px no-repeat,
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 63px, var(--line-strong) 63px 64px);
+  -webkit-mask-image: radial-gradient(closest-side, #000 55%, transparent);
+  mask-image: radial-gradient(closest-side, #000 55%, transparent);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.panel-top {
+  position: absolute;
+  inset: 0 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--line);
+}
+.panel-fig,
+.panel-name {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.panel-fig {
+  color: var(--tone);
+}
+.panel-chapter {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.panel-name {
+  margin-left: auto;
+  color: var(--ink-3);
+}
+.panel-labels {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.plabel {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  transition: opacity 0.35s ease;
+  will-change: transform, opacity;
+}
+.plabel i {
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-2);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--bg) 70%, transparent);
+}
+.plabel b {
+  position: absolute;
+  top: -11px;
+  left: 10px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  white-space: nowrap;
+  color: var(--ink-2);
+  background: var(--glass);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+.plabel[data-side='left'] b {
+  left: auto;
+  right: 10px;
+}
+.plabel[data-side='below'] b,
+.plabel[data-side='above'] b {
+  left: 0;
+  transform: translateX(-50%);
+}
+.plabel[data-side='below'] b {
+  top: 9px;
+}
+.plabel[data-side='above'] b {
+  top: -33px;
+}
+.plabel[data-side='below'] i,
+.plabel[data-side='above'] i {
+  display: none; /* the tag names the shape above or below it; no dot needed */
+}
+.plabel.is-hot i {
+  background: var(--accent);
+}
+.plabel.is-hot b {
+  color: var(--on-accent);
+  background: var(--accent-fill);
+  box-shadow: none;
+}
+.panel-foot {
+  position: absolute;
+  inset: auto 0 0;
+  display: grid;
+  gap: 16px;
+  padding: 18px 24px 20px;
+  border-top: 1px solid var(--line);
+}
+.panel-cap {
+  min-height: 2.7em;
+  font-size: 15px;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.panel-index {
+  display: flex;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.panel-index li {
+  flex: 1;
+}
+.panel-index button {
+  display: grid;
+  gap: 7px;
+  width: 100%;
+  padding-top: 2px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--ink-3);
+  transition: color 0.25s ease;
+}
+.panel-index button::before {
+  content: '';
+  height: 2px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  transition: background-color 0.25s ease;
+}
+.panel-index button:hover {
+  color: var(--ink);
+}
+.panel-index .is-past::before {
+  background: var(--ink-3);
+}
+.panel-index .is-active {
+  color: var(--tone);
+}
+.panel-index .is-active::before {
+  background: var(--tone);
+}
+
+/* ── Sections in the story column ───────────────────────────────────────── */
+
+@container folio (min-width: 600px) and (max-width: 860px) {
+  .plain {
+    grid-template-columns: 1fr;
+  }
+  .plain .bento {
+    flex-direction: row;
+  }
+  .plain .bento-art {
+    flex: 1.3;
+    border-bottom: 0;
+    border-right: 1px solid var(--line);
+  }
+  .plain .bento-text {
+    flex: 1;
+    align-content: center;
+  }
+  .caps-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .cap-card {
+    min-height: 0;
+    padding: 18px 18px 20px;
+  }
+  .cap-icon {
+    width: 36px;
+    height: 36px;
+    margin-bottom: 8px;
+  }
+  .net-grid,
+  .journal-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .journal-grid > :first-child,
+  .journal-grid > :last-child {
+    grid-column: 1 / -1;
+  }
+  .lab-grid,
+  .aud-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .jobs-summary,
+  .jobs-board {
+    grid-column: 1 / -1;
+  }
+  .jobs-summary {
+    display: grid;
+    grid-template-columns: auto 1fr 1fr;
+    align-items: start;
+    gap: 24px 32px;
+  }
+  .jobs-summary .btn {
+    grid-column: 1 / -1;
+    margin-top: 0;
+  }
+  .faq-side,
+  .faq-list {
+    grid-column: 1 / -1;
+  }
+  .faq-side {
+    position: static;
+  }
+  .how-step {
+    grid-column: 1 / span 4;
+  }
+  .how-body {
+    grid-column: 5 / span 8;
+  }
+  .how-trace {
+    grid-column: 1 / -1;
+  }
+
+}
+
+@container folio (max-width: 620px) {
+  .compare,
+  .problem-grid,
+  .stack-wrap {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* How it works in a narrow column: the line and its stations only, with words at a readable size */
+.how-stage.is-narrow .dg-station {
+  display: none;
+}
+.how-stage.is-narrow .dg-node text {
+  font-size: 24px;
+}
+.how-stage.is-narrow .dg-loop-label {
+  font-size: 21px;
+}
+
+@media (min-width: 901px) {
+  /* pinned chapters start under the nav, level with the panel, instead of floating mid-screen */
+  .folio .steps-stage {
+    justify-content: flex-start;
+    padding-top: calc(var(--nav-h) + 40px);
+  }
 }

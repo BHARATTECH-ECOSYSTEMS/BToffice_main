@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { useFormation } from '../gl/Scene';
+import { useEffect, useRef, useState } from 'react';
+import { useStage } from '../gl/Scene';
+import { Stage } from '../components/Stage';
 import { Kicker, Lines, Fade } from '../components/Reveal';
 import { useScrollSteps } from '../components/useScrollSteps';
 import { FLOW } from '../content';
@@ -113,7 +114,14 @@ export function HowItWorks() {
   const { ref, active: scrolled, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(FLOW.length, 40);
   const [picked, setPicked] = useState(0);
   const active = pinned ? scrolled : picked;
-  useFormation(ref, { key: 'field', params: { alpha: 0 } });
+  const cap = `Station ${active + 1} of 5 · ${FLOW[active].step}, over one shared memory`;
+  const stage = useStage(ref, 'route', {
+    fig: '04',
+    name: 'Route',
+    caption: cap,
+    labels: () => [...FLOW.map((f, i) => ({ text: f.step, hot: i === active, side: 'right' as const })), { text: 'Shared memory', side: 'above' as const }],
+    params: () => ({ highlight: active }),
+  });
   // the request glides continuously between stations while scrolling
   const pos = pinned ? Math.min(FLOW.length - 1, progress * FLOW.length - 0.5) : active;
   const seg0 = Math.max(0, Math.min(FLOW.length - 2, Math.floor(pos)));
@@ -123,21 +131,34 @@ export function HowItWorks() {
 
   const step = FLOW[active];
 
+  // In a narrow column the station vignettes would shrink to unreadable text; the panel shows the
+  // stations instead, so the diagram keeps only the line, the nodes and the loop, at a readable size.
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setNarrow(e.contentRect.width < 900));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <section id="how" ref={ref} className={`section how room ${pinned ? 'is-pinned' : ''}`} data-room="violet" data-chapter="How it works" style={style}>
       <div className={pinned ? 'steps-stage' : ''}>
-        <div className="wrap how-stage">
-          <header className="how-head">
-            <div>
-              <Kicker index="04">How it works</Kicker>
+        <div ref={stageRef} className={`wrap how-stage ${narrow ? 'is-narrow' : ''}`}>
+          <header className="sec-head has-stage how-head">
+            <Kicker index="04">How it works</Kicker>
+            <div className="sec-head-main">
               <Lines className="h2" lines={['From a question to an answer.']} />
+              <Fade as="p" className="lede" delay={120}>
+                The request from the scenario above, followed through the system: five stations, one shared memory underneath. Keep scrolling to follow it.
+              </Fade>
             </div>
-            <Fade as="p" className="body" delay={120}>
-              The request from the scenario above, followed through the system: five stations, one shared memory underneath. Keep scrolling to follow it.
-            </Fade>
+            <Stage stageRef={stage} fig="04" name="Route" caption={cap} />
           </header>
 
-          <svg className="diagram" viewBox="0 0 1200 330" preserveAspectRatio="xMidYMid meet" role="img" aria-label="A request travelling through five stages: understand, recall, reason, act, learn.">
+          <svg className="diagram" viewBox={narrow ? '0 150 1200 175' : '0 0 1200 330'} preserveAspectRatio="xMidYMid meet" role="img" aria-label="A request travelling through five stages: understand, recall, reason, act, learn.">
             <defs>
               <marker id="dg-arrow" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M1 1l5 3-5 3" fill="none" stroke="currentColor" strokeWidth="1.3" />

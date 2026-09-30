@@ -1,5 +1,6 @@
 import { useRef } from 'react';
-import { useFormation } from '../gl/Scene';
+import { useStage } from '../gl/Scene';
+import { Stage } from '../components/Stage';
 import { Fade, SectionHead } from '../components/Reveal';
 import { AUDIENCE_DETAIL } from '../content';
 import { Diagram } from '../viz/Diagram';
@@ -7,7 +8,8 @@ import { AUDIENCE_DRAWS, AUDIENCE_LABELS, AUDIENCE_STILL, AUD_H, AUD_W } from '.
 
 export function Audiences() {
   const ref = useRef<HTMLElement>(null);
-  useFormation(ref, { key: 'orbit6', params: { alpha: 0 } });
+  const cap = 'Six kinds of people, one intelligence in the middle';
+  const stage = useStage(ref, 'people', { fig: '08', name: 'People', caption: cap, labels: () => AUDIENCE_DETAIL.map((a) => ({ text: a.name, side: 'below' as const })) });
   return (
     <section id="audiences" ref={ref} className="section audiences room" data-room="violet" data-chapter="Who it’s for">
       <div className="wrap">
@@ -16,6 +18,7 @@ export function Audiences() {
           label="Who it’s for"
           title={['One intelligence,', 'shaped for your work.']}
           lede="The same memory and reasoning underneath, for people with very different jobs to do."
+          stage={<Stage stageRef={stage} fig="08" name="People" caption={cap} />}
         />
         <div className="aud-grid">
           {AUDIENCE_DETAIL.map((a, i) => (

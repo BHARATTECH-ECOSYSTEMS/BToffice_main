@@ -46,7 +46,7 @@ export function Diagram({ draw, period, w = 480, h = 300, label, className = '',
     const still_ = reduced();
 
     const frame = (now: number) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); // rAF time can precede performance.now()
       last = now;
       const phase = clock % period;
       const held = hold !== undefined && target.on > 0.5 && phase >= hold && phase < hold + 0.6;

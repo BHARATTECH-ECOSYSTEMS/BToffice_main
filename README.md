@@ -3,8 +3,13 @@
 A redesign of `CinematicLandingPageDesign(Community)`, built around one idea from the logo:
 **three white threads converging on a single point: the origin.**
 
-The **mark** is the one particle moment: a purple sphere whose threads are literal voids, resolving on
-arrival and again in the finale. Everything in between is quiet and explains itself: each section has a
+The **mark** is a purple sphere whose threads are literal voids. It resolves on arrival, then travels with you.
+On wide screens the page splits: the story on the left, and on the right one sticky panel where the same particles
+re-form, section by section, into a flat dot-matrix figure of something familiar (`src/gl/figures.ts`): the mark,
+four puzzle pieces that do not fit, an app grid, a route of five stations, a building of nine floors, India with
+lines out to the world, a molecule of six domains, six people around one core, tables with empty seats for the open
+roles, a stack of notes, a conversation. Labels are pinned to each figure, the caption follows the section, and on
+phones each section carries its own figure card. The mark rises again in the finale. Everything else is quiet and explains itself: each section has a
 small flat diagram whose **motion is the explanation**. Notes drop into memory and are recalled, six
 tools try to pass information and hit walls, a request travels down nine layers and intelligence comes
 back up, something learned on a phone reaches the sovereign core and every other node.
@@ -36,7 +41,9 @@ npm run build
 - `src/viz/`: the diagram kit. `Diagram.tsx` (clock, cursor, visibility), `atoms.tsx` (chips, labels, panels, icons),
   `math.ts` (easing and windows), then one file per set: `intro`, `problem`, `network`, `domains`, `audiences`
 - `src/gl/`: the particle mark. `threads.ts` (logo geometry), `formations.ts`, `Engine.ts` + `shaders.ts`, `Scene.tsx`
-  (`useFormation(ref, target)`); sections that do not want particles declare `{ key: 'field', params: { alpha: 0 } }`
+  (`useFormation(ref, target)`; `useStage(ref, key, meta)` gives a section its figure, drawn in `StagePanel` on wide screens
+  and in its `<Stage>` card on phones);
+  sections that do not want particles declare `{ key: 'field', params: { alpha: 0 } }`
 - `src/content.ts`: all copy and data in one place
 - `src/sections/*`, `src/pages/*`: layout; `src/styles/global.css`: the design system (Geist, 12-column grid,
   brand palette tokens, one section-header pattern)

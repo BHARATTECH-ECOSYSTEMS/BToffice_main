@@ -1,4 +1,5 @@
-import { useFormation } from '../gl/Scene';
+import { useStage } from '../gl/Scene';
+import { Stage } from '../components/Stage';
 import { Lines, Kicker } from '../components/Reveal';
 import { useScrollSteps } from '../components/useScrollSteps';
 import { CAPABILITIES, CAPABILITY_GROUPS } from '../content';
@@ -57,16 +58,26 @@ function Group({ g }: { g: number }) {
 /** Fifteen capabilities in three groups. Scrolling turns the page from one group to the next. */
 export function Capabilities() {
   const { ref, active, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(CAPABILITY_GROUPS.length, 45);
-  useFormation(ref, { key: 'field', params: { alpha: 0 } });
+  const cap = `Fifteen capabilities, like apps on one device. Showing ${CAPABILITY_GROUPS[active]}.`;
+  // one column of icons per group; the column in view lights up and its five apps are named
+  const stage = useStage(ref, 'apps', {
+    fig: '03',
+    name: 'Apps',
+    caption: cap,
+    labels: () => [
+      ...CAPABILITY_GROUPS.map((text, g) => (g === active ? { text, hot: true, side: 'above' as const } : null)),
+      ...CAPABILITIES.slice(active * PER_GROUP, (active + 1) * PER_GROUP).map((c) => ({ text: c.name, side: 'right' as const })),
+    ],
+    params: () => ({ highlight: active }),
+  });
   const local = (i: number) => Math.min(1, Math.max(0, progress * CAPABILITY_GROUPS.length - i));
 
   const head = (
-    <header className="caps-head">
-      <div>
-        <Kicker index="03">Capabilities</Kicker>
+    <header className="sec-head has-stage caps-head">
+      <Kicker index="03">Capabilities</Kicker>
+      <div className="sec-head-main">
         <Lines className="h2" lines={['One intelligence.', <span className="accent">Infinite capabilities.</span>]} />
-      </div>
-      {pinned && (
+        {pinned && (
         <div className="caps-groups" role="tablist" aria-label="Capability groups">
           {CAPABILITY_GROUPS.map((g, i) => (
             <button key={g} role="tab" aria-selected={i === active} onClick={() => jump(i)}>
@@ -75,7 +86,9 @@ export function Capabilities() {
             </button>
           ))}
         </div>
-      )}
+        )}
+      </div>
+      <Stage stageRef={stage} fig="03" name="Apps" caption={cap} />
     </header>
   );
 
