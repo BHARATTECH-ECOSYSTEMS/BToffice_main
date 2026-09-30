@@ -16,6 +16,12 @@
   inherits: true;
   initial-value: #ff8643;
 }
+/* scrubbed every scroll frame; only .room itself reads it, so don't restyle its whole subtree */
+@property --room-p {
+  syntax: '<number>';
+  inherits: false;
+  initial-value: 1;
+}
 
 /* ── Tokens ─────────────────────────────────────────────────────────────── */
 
@@ -45,18 +51,19 @@
   --aurora-b: 0.3;
 }
 
-/* the page palette: eased as chapters change */
-:root {
+/* the page palette: eased as chapters change. Set only on the few leaf elements that paint with it, never on
+   :root — easing an inherited property there restyles every element on the page each frame and makes scrolling stutter. */
+:is(.atmos, .nav-progress, .rail-track span) {
   --p1: var(--brand-fill);
   --p2: var(--tango-fill);
   transition: --p1 1.2s ease, --p2 1.2s ease;
 }
-html[data-room='violet'] { --p1: var(--brand-fill); }
-html[data-room='tango'] { --p1: var(--tango-fill); }
-html[data-room='pitch'] { --p1: var(--pitch-fill); }
-html[data-room2='violet'] { --p2: var(--brand-fill); }
-html[data-room2='tango'] { --p2: var(--tango-fill); }
-html[data-room2='pitch'] { --p2: var(--pitch-fill); }
+html[data-room='violet'] :is(.atmos, .nav-progress, .rail-track span) { --p1: var(--brand-fill); }
+html[data-room='tango'] :is(.atmos, .nav-progress, .rail-track span) { --p1: var(--tango-fill); }
+html[data-room='pitch'] :is(.atmos, .nav-progress, .rail-track span) { --p1: var(--pitch-fill); }
+html[data-room2='violet'] :is(.atmos, .nav-progress, .rail-track span) { --p2: var(--brand-fill); }
+html[data-room2='tango'] :is(.atmos, .nav-progress, .rail-track span) { --p2: var(--tango-fill); }
+html[data-room2='pitch'] :is(.atmos, .nav-progress, .rail-track span) { --p2: var(--pitch-fill); }
 
 /* a chapter's own palette: fills (--s1, --s2) and readable text colours (--s1t, --s2t) */
 [data-room] {
@@ -356,7 +363,7 @@ html[data-room2='pitch'] { --p2: var(--pitch-fill); }
   box-shadow: 0 0 8px color-mix(in srgb, var(--p1) 60%, transparent);
   transform: scaleY(0);
   transform-origin: top;
-  transition: transform 0.25s linear;
+  transition: transform 0.25s linear, --p1 1.2s ease, --p2 1.2s ease;
 }
 .rail button {
   position: relative;
