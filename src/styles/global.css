@@ -4163,7 +4163,7 @@ html[data-room='pitch'] .atmos::before {
 
 /* ── Sections in the story column ───────────────────────────────────────── */
 
-@container folio (min-width: 600px) and (max-width: 860px) {
+@container folio (min-width: 440px) and (max-width: 860px) {
   .plain {
     grid-template-columns: 1fr;
   }
@@ -4261,4 +4261,88 @@ html[data-room='pitch'] .atmos::before {
     justify-content: flex-start;
     padding-top: calc(var(--nav-h) + 40px);
   }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════
+   Left-column cards in the panel's language (home): the same surface, radius,
+   hairline and shadow as the figure panel, dot-grid art areas like its face,
+   and small mono labels like its "FIG." header.
+   ═════════════════════════════════════════════════════════════════════════ */
+
+.folio-main {
+  --card-r: 24px;
+  --card-shadow: 0 1px 2px rgba(12, 12, 16, 0.04), 0 24px 48px -32px rgba(24, 16, 64, 0.2);
+  --dotgrid: radial-gradient(circle, var(--line) 1px, transparent 1.3px) 0 0 / 22px 22px;
+}
+:root[data-theme='dark'] .folio-main,
+:root:not([data-theme]) .folio-main {
+  --card-shadow: 0 24px 48px -32px rgba(0, 0, 0, 0.8);
+}
+
+/* one surface */
+.folio-main :is(.bento, .problem-card, .cap-card, .stack, .stack-detail, .net-art, .net-list li, .lab-card, .aud-card, .jobs-summary, .jobs-board, .faq-item, .faq-contact, .scene-demo, .caps-base) {
+  border-radius: var(--card-r);
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--line), var(--card-shadow);
+}
+.folio-main :is(.bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item):hover {
+  box-shadow: inset 0 0 0 1px var(--accent-line), var(--card-shadow);
+}
+
+/* art areas share the panel's dotted face and its hairline divider */
+.folio-main :is(.bento-art, .problem-art, .lab-card-art, .aud-art) {
+  background: var(--dotgrid), var(--card);
+  border-bottom: 1px solid var(--line);
+}
+.folio-main .plain .bento-art {
+  border-bottom: 0;
+}
+.folio-main .net-art {
+  background: var(--dotgrid), var(--card);
+}
+
+/* numbers read like the panel's figure labels */
+.folio-main :is(.bento-text .num, .problem-text .num, .lab-card-num, .aud-num) {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.folio-main :is(.bento-text, .problem-text, .lab-card-text, .aud-text) {
+  padding: 22px 24px 24px;
+}
+
+/* the open-roles summary joins the light surfaces instead of a dark block */
+.folio-main .jobs-summary {
+  --panel-ink: var(--ink);
+  --panel-ink-2: var(--ink-2);
+  color: var(--ink);
+}
+.folio-main .jobs-summary .btn {
+  background: var(--ink);
+  color: var(--bg);
+}
+.folio-main .jobs-bar i {
+  background: var(--fill);
+}
+.folio-main .jobs-bar i::after {
+  background: var(--brand-fill);
+}
+.folio-main .jobs-places span {
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--line);
+  color: var(--ink-2);
+}
+.folio-main .jobs-places b {
+  color: var(--brand-text);
+}
+
+/* supporting strips: a quiet version of the same surface */
+.folio-main .caps-base {
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.folio-main .how-trace {
+  border-radius: 16px;
 }
