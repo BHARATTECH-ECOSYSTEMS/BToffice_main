@@ -2,10 +2,9 @@ import { useEffect } from 'react';
 import { createHashRouter, Outlet, RouterProvider, useLocation } from 'react-router';
 import { SceneProvider, useScene } from './gl/Scene';
 import { Nav } from './components/Nav';
+import { Rail } from './components/Rail';
 import { Footer } from './components/Footer';
-import { ChapterRail } from './components/ChapterRail';
 import { Opening } from './components/Opening';
-import { useRooms } from './components/Rooms';
 import { Home } from './pages/Home';
 import { About } from './pages/About';
 import { Research } from './pages/Research';
@@ -19,7 +18,6 @@ import { NotFound } from './pages/NotFound';
 function Layout() {
   const { pathname, state } = useLocation();
   const { scrollTo } = useScene();
-  useRooms();
 
   useEffect(() => {
     const target = (state as { scrollTo?: string } | null)?.scrollTo;
@@ -46,28 +44,33 @@ function Layout() {
     return () => window.removeEventListener('pointerover', onMove);
   }, []);
 
-  // Glass surfaces catch the light where the cursor is (see .glass::after in glass.css).
+  // Card cursor spotlight & sheen tracking (--gx, --gy) across all cards
   useEffect(() => {
-    const SURFACES = '.glass, .bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item, .stack-detail';
-    let raf = 0;
-    let last: PointerEvent | null = null;
-    const paint = () => {
-      raf = 0;
-      const e = last;
-      const el = e && ((e.target as HTMLElement).closest?.(SURFACES) as HTMLElement | null);
-      if (!e || !el) return;
-      const r = el.getBoundingClientRect();
-      el.style.setProperty('--gx', `${e.clientX - r.left}px`);
-      el.style.setProperty('--gy', `${e.clientY - r.top}px`);
+    const selector =
+      '.bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item, .stack-detail, .jobs-summary, .jobs-board, .scene-demo';
+    let rafId = 0;
+    let lastEvent: PointerEvent | null = null;
+    const update = () => {
+      rafId = 0;
+      const e = lastEvent;
+      const card = e?.target
+        ? ((e.target as HTMLElement).closest?.(selector) as HTMLElement | null)
+        : null;
+      if (!e || !card) return;
+      const rect = card.getBoundingClientRect();
+      card.style.setProperty('--gx', `${e.clientX - rect.left}px`);
+      card.style.setProperty('--gy', `${e.clientY - rect.top}px`);
     };
-    const onMove = (e: PointerEvent) => {
-      last = e;
-      if (!raf) raf = requestAnimationFrame(paint);
+    const onPointerMove = (e: PointerEvent) => {
+      lastEvent = e;
+      if (!rafId) {
+        rafId = requestAnimationFrame(update);
+      }
     };
-    window.addEventListener('pointermove', onMove, { passive: true });
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
     return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('pointermove', onMove);
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('pointermove', onPointerMove);
     };
   }, []);
 
@@ -78,8 +81,8 @@ function Layout() {
         Skip to content
       </a>
       <Nav />
-      <ChapterRail />
-      <main id="main" tabIndex={-1} key={pathname} style={{ outline: 'none' }}>
+      <Rail />
+      <main id="main" className="folio-main" tabIndex={-1} key={pathname} style={{ outline: 'none' }}>
         <Outlet />
       </main>
       <Footer />

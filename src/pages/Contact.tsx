@@ -25,7 +25,7 @@ export function Contact() {
         label="Start a conversation"
         title={['Let’s build', 'what comes next.']}
         lede="Research collaborations, partnerships, press, or simply a good question. Every message is read by a person."
-        target={{ key: 'field', params: { alpha: 0 } }}
+        target={{ key: 'globe', pose: { x: 1.6 } }}
       />
       <Zone target={{ key: 'globe', pose: { x: 2.2, s: 1.15 }, params: { alpha: 0 } }} className="section" id="write">
         <div className="wrap contact-grid">

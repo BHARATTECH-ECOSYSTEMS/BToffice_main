@@ -1,6 +1,5 @@
 import { useRef } from 'react';
-import { useStage } from '../gl/Scene';
-import { Stage } from '../components/Stage';
+import { useFormation } from '../gl/Scene';
 import { Fade, SectionHead } from '../components/Reveal';
 import { AUDIENCE_DETAIL } from '../content';
 import { Diagram } from '../components/BentoDiagrams';
@@ -8,27 +7,34 @@ import { AUDIENCE_DIAGRAMS } from '../components/AudienceDiagrams';
 
 export function Audiences() {
   const ref = useRef<HTMLElement>(null);
-  const cap = 'Six kinds of people, one intelligence in the middle';
-  const stage = useStage(ref, 'people', { fig: '08', name: 'People', caption: cap, labels: () => AUDIENCE_DETAIL.map((a) => ({ text: a.name, side: 'below' as const })) });
+  useFormation(ref, { key: 'orbit6', params: { alpha: 0 } });
   return (
-    <section id="audiences" ref={ref} className="section audiences room" data-room="tango" data-room2="violet" data-chapter="Who it’s for">
+    <section id="audiences" ref={ref} className="section audiences" data-chapter="Who it’s for">
       <div className="wrap">
         <SectionHead
           index="08"
           label="Who it’s for"
           title={['One intelligence,', 'shaped for your work.']}
           lede="The same memory and reasoning underneath, for people with very different jobs to do."
-          stage={<Stage stageRef={stage} fig="08" name="People" caption={cap} />}
         />
         <div className="aud-grid">
           {AUDIENCE_DETAIL.map((a, i) => (
-            <Fade key={a.name} delay={(i % 3) * 100} className="aud-card">
+            <Fade key={a.name} delay={(i % 3) * 80} className="aud-card">
               <div className="aud-art">
-                <Diagram {...AUDIENCE_DIAGRAMS[i]} />
+                <Diagram
+                  draw={AUDIENCE_DIAGRAMS[i].draw}
+                  period={AUDIENCE_DIAGRAMS[i].period}
+                  w={AUDIENCE_DIAGRAMS[i].w}
+                  h={AUDIENCE_DIAGRAMS[i].h}
+                  label={AUDIENCE_DIAGRAMS[i].label}
+                  still={AUDIENCE_DIAGRAMS[i].still}
+                />
               </div>
               <div className="aud-text">
-                <span className="aud-num">{String(i + 1).padStart(2, '0')}</span>
-                <h3>{a.name}</h3>
+                <h3>
+                  <span className="aud-num">{String(i + 1).padStart(2, '0')}</span>
+                  {a.name}
+                </h3>
                 <p>{a.line}</p>
                 <ul>
                   {a.uses.map((u) => (

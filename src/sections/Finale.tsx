@@ -1,50 +1,56 @@
-import { useLayoutEffect, useRef } from 'react';
+import { useRef, useLayoutEffect, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { useFormation } from '../gl/Scene';
-import type { Target } from '../gl/Engine';
+import { Lines, Kicker, Fade, Arrow } from '../components/Reveal';
 import { EMAIL } from '../content';
-import { Arrow, Fade, Lines, Kicker } from '../components/Reveal';
+import type { Target } from '../gl/Engine';
 
-/** Half-height of the logo formation in its own units (see EXTENT in Scene). */
-const LOGO_R = 1.38;
+const Nw = 1.38;
 
-/**
- * The mark sits in the orb frame on the right of the finale and scrolls with it, so it rises into view
- * beside the invitation. Its size follows the frame so it always fits.
- */
-function markTarget(orb: HTMLElement | null): Target {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
-  // world units per px at z = 0; mirrors the camera set-up in Engine
-  const z = w / h < 1 ? 7 / Math.max(0.62, w / h) ** 0.55 : 7;
-  const perPx = (2 * z * Math.tan((35 / 2) * (Math.PI / 180))) / h;
-  const r = orb?.getBoundingClientRect();
-  if (!r) return { key: 'logo', pose: { x: 0, y: -99, s: 0.5 }, exact: true };
-  const rPx = Math.min(r.width, r.height) * 0.4;
-  const x = (r.left + r.width / 2 - w / 2) * perPx;
-  const y = (h / 2 - (r.top + r.height / 2)) * perPx;
-  return { key: 'logo', pose: { x, y, s: (rPx * perPx) / LOGO_R }, exact: true, follow: 16 };
+function getOrbTarget(el: HTMLElement | null): Target {
+  const s = window.innerWidth;
+  const r = window.innerHeight;
+  const l =
+    (2 * (s / r < 1 ? 7 / Math.max(0.62, s / r) ** 0.55 : 7) * Math.tan((35 / 2) * (Math.PI / 180))) /
+    r;
+  const u = el?.getBoundingClientRect();
+  if (!u) return { key: 'logo', pose: { x: 0, y: -99, s: 0.5 }, exact: true };
+  const d = Math.min(u.width, u.height) * 0.4;
+  const p = (u.left + u.width / 2 - s / 2) * l;
+  const h = (r / 2 - (u.top + u.height / 2)) * l;
+  return { key: 'logo', pose: { x: p, y: h, s: (d * l) / Nw }, exact: true, follow: 16 };
 }
 
-/** Everything returns to the mark: the invitation on the left, the planet rising on the right. */
+/** Section 12: What comes next - The next era of intelligence begins here */
 export function Finale() {
-  const ref = useRef<HTMLElement>(null);
-  const orb = useRef<HTMLDivElement>(null);
-  // The footer keeps the mark in charge once it covers the middle of the screen.
-  const footer = useRef<HTMLElement | null>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const orbRef = useRef<HTMLDivElement>(null);
+  const footerRef = useRef<HTMLElement | null>(null);
+
   useLayoutEffect(() => {
-    footer.current = document.querySelector<HTMLElement>('footer.footer');
+    footerRef.current = document.querySelector('footer.footer');
   }, []);
-  const target = () => markTarget(orb.current);
-  useFormation(ref, target);
-  useFormation(footer, target);
+
+  const getTarget = () => getOrbTarget(orbRef.current);
+
+  useFormation(sectionRef, getTarget);
+  useFormation(footerRef as unknown as RefObject<HTMLElement>, getTarget);
+
   return (
-    <section id="next" ref={ref} className="section finale" data-room="violet" data-room2="tango" data-chapter="Next era">
+    <section
+      id="next"
+      ref={sectionRef}
+      className="section finale"
+      data-room="violet"
+      data-room2="tango"
+      data-chapter="Next era"
+    >
       <div className="wrap finale-grid">
         <div className="finale-head">
           <Kicker index="12">What comes next</Kicker>
           <Lines className="display" lines={['The next era of', 'intelligence', 'begins here.']} />
         </div>
+
         <Fade className="finale-cta glass" delay={160}>
           <p className="footer-kicker mono">
             <span className="live-dot" aria-hidden="true" /> Start a conversation
@@ -61,7 +67,8 @@ export function Finale() {
             </a>
           </div>
         </Fade>
-        <div className="finale-orb" ref={orb} aria-hidden="true">
+
+        <div className="finale-orb" ref={orbRef} aria-hidden="true">
           <span className="orb-glow" />
           <span className="orb-ring orb-ring--a" />
           <span className="orb-ring orb-ring--b" />

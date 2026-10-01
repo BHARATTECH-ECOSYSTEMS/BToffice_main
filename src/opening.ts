@@ -1,4 +1,4 @@
-// The opening plays once a visit, on the first page (index.html decides, before the first paint, by setting
+// The opening plays once a session, on the first page (index.html decides, before the first paint, by setting
 // html.intro-on). `opening` resolves as the page is uncovered: entrances and the particle mark wait for it.
 
 let uncover!: () => void;

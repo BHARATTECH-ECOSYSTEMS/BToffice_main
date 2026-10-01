@@ -281,10 +281,10 @@ export function About() {
               <Link to="/research" className="btn btn-solid">
                 Enter the lab <Arrow />
               </Link>
-              <Link to="/#capabilities" className="btn btn-ghost">
+              <Link to="/#capabilities" className="btn btn-outline">
                 Explore capabilities
               </Link>
-              <Link to="/careers" className="btn btn-ghost">
+              <Link to="/careers" className="btn btn-outline">
                 Join the builders
               </Link>
             </div>

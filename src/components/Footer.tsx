@@ -1,10 +1,10 @@
 import { Link } from 'react-router';
 import { Brand } from './LogoMark';
+import { Arrow } from './Reveal';
 import { EMAIL, EMPLOYEE_LOGIN_URL } from '../content';
 import { useScene } from '../gl/Scene';
-import { Arrow } from './Reveal';
 
-const COLS: { title: string; links: { label: string; to?: string; href?: string }[] }[] = [
+const COLS: { title: string; links: { label: string; to?: string; href?: string; external?: boolean }[] }[] = [
   {
     title: 'Company',
     links: [
@@ -28,7 +28,7 @@ const COLS: { title: string; links: { label: string; to?: string; href?: string 
     links: [
       { label: 'Privacy', to: '/privacy' },
       { label: 'Terms', to: '/terms' },
-      { label: 'Employee login', href: EMPLOYEE_LOGIN_URL },
+      { label: 'Employee login', href: EMPLOYEE_LOGIN_URL, external: true },
     ],
   },
 ];
@@ -46,7 +46,7 @@ export function Footer() {
             </h2>
           </div>
           <div className="footer-cta-actions">
-            <Link to="/contact" className="btn btn-solid">
+            <Link className="btn btn-solid" to="/contact">
               Get in touch <Arrow size={13} />
             </Link>
             <a className="footer-mail" href={`mailto:${EMAIL}`}>
@@ -71,7 +71,10 @@ export function Footer() {
                     {l.to ? (
                       <Link to={l.to}>{l.label}</Link>
                     ) : (
-                      <a href={l.href} {...(l.href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                      <a
+                        href={l.href}
+                        {...(l.external || l.href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                      >
                         {l.label}
                       </a>
                     )}
@@ -83,15 +86,13 @@ export function Footer() {
         </div>
 
         <div className="footer-base">
-          <span>© {new Date().getFullYear()} Bharattech Origin</span>
+          <span>© 2026 Bharattech Origin</span>
           <button className="to-origin" onClick={() => scrollTo(0)}>
             Back to top <Arrow dir="up" size={12} />
           </button>
         </div>
       </div>
-      <p className="footer-word" aria-hidden="true">
-        ORIGIN
-      </p>
+      <p className="footer-word" aria-hidden="true">ORIGIN</p>
     </footer>
   );
 }

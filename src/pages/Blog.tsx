@@ -15,7 +15,7 @@ export function Blog() {
         label="Ideas · Research · Impact"
         title={['Notes from', 'the frontier.']}
         lede="Essays on memory, reasoning and the architecture of intelligence, written by the people building it."
-        target={{ key: 'field', params: { alpha: 0 } }}
+        target={{ key: 'orbit6', pose: { x: 1.7, s: 0.9 } }}
       />
       <Zone target={{ key: 'field', params: { alpha: 0 } }} className="section" id="posts">
         <div className="wrap">

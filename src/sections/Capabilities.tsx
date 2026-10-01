@@ -1,12 +1,9 @@
-import { useStage } from '../gl/Scene';
-import { Stage } from '../components/Stage';
+import { useEffect, useRef, useState, Fragment } from 'react';
+import { useFormation, useScene } from '../gl/Scene';
 import { Lines, Kicker } from '../components/Reveal';
-import { useScrollSteps } from '../components/useScrollSteps';
 import { CAPABILITIES, CAPABILITY_GROUPS } from '../content';
 
-const PER_GROUP = CAPABILITIES.length / CAPABILITY_GROUPS.length;
-/** Each group of capabilities in its own colour family, like the architecture's three families of layers. */
-const GROUP_TONES = ['violet', 'tango', 'pitch'];
+const PER_GROUP = 5;
 
 const GROUP_LINES = [
   'Perceive and make sense of the world: language, images, sound and the open web.',
@@ -38,15 +35,16 @@ const Icon = ({ i, size = 22 }: { i: number; size?: number }) => (
   </svg>
 );
 
-function Group({ g }: { g: number }) {
+function CapabilityGrid({ group }: { group: number }) {
+  const items = CAPABILITIES.slice(group * PER_GROUP, (group + 1) * PER_GROUP);
   return (
-    <div className="caps-grid" role="tabpanel" key={g} data-tone={GROUP_TONES[g]}>
-      {CAPABILITIES.slice(g * PER_GROUP, (g + 1) * PER_GROUP).map((c, j) => {
-        const i = g * PER_GROUP + j;
+    <div className="caps-grid" role="tabpanel" key={`caps-grid-${group}`}>
+      {items.map((c, i) => {
+        const idx = group * PER_GROUP + i;
         return (
-          <article key={c.name} className="cap-card" style={{ animationDelay: `${j * 70}ms` }}>
+          <article className="cap-card" key={c.name} style={{ animationDelay: `${i * 70}ms` }}>
             <span className="cap-icon">
-              <Icon i={i} />
+              <Icon i={idx} />
             </span>
             <h4>{c.name}</h4>
             <p>{c.body}</p>
@@ -57,59 +55,101 @@ function Group({ g }: { g: number }) {
   );
 }
 
-/** Fifteen capabilities in three groups. Scrolling turns the page from one group to the next. */
 export function Capabilities() {
-  const { ref, active, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(CAPABILITY_GROUPS.length, 45);
-  const cap = `Fifteen capabilities, like apps on one device. Showing ${CAPABILITY_GROUPS[active]}.`;
-  // one column of icons per group; the column in view lights up and its five apps are named
-  const stage = useStage(ref, 'apps', {
-    fig: '03',
-    name: 'Apps',
-    caption: cap,
-    labels: () => [
-      ...CAPABILITY_GROUPS.map((text, g) => (g === active ? { text, hot: true, side: 'above' as const } : null)),
-      ...CAPABILITIES.slice(active * PER_GROUP, (active + 1) * PER_GROUP).map((c) => ({ text: c.name, side: 'right' as const })),
-    ],
-    params: () => ({ highlight: active }),
-  });
-  const local = (i: number) => Math.min(1, Math.max(0, progress * CAPABILITY_GROUPS.length - i));
+  const ref = useRef<HTMLElement>(null);
+  const { scrollTo } = useScene();
+  const [pinned, setPinned] = useState(true);
+  const [group, setGroup] = useState(0);
+  const [progress, setProgress] = useState(0);
 
-  const head = (
-    <header className="sec-head has-stage caps-head">
-      <Kicker index="03">Capabilities</Kicker>
-      <div className="sec-head-main">
-        <Lines className="h2" lines={['One intelligence.', <span className="accent">Infinite capabilities.</span>]} />
-        {pinned && (
-        <div className="caps-groups" role="tablist" aria-label="Capability groups">
-          {CAPABILITY_GROUPS.map((g, i) => (
-            <button key={g} role="tab" aria-selected={i === active} data-tone={GROUP_TONES[i]} onClick={() => jump(i)}>
-              <span>{g}</span>
-              <i style={{ transform: `scaleX(${local(i)})` }} />
-            </button>
-          ))}
-        </div>
-        )}
-      </div>
-      <Stage stageRef={stage} fig="03" name="Apps" caption={cap} />
-    </header>
-  );
+  useFormation(ref, { key: 'field', params: { alpha: 0 } });
+
+  useEffect(() => {
+    const check = () => setPinned(window.innerWidth > 900);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
+  useEffect(() => {
+    if (!pinned) return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const el = ref.current;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const total = Math.max(1, r.height - window.innerHeight);
+        const p = Math.min(1, Math.max(0, -r.top / total));
+        const g = Math.min(CAPABILITY_GROUPS.length - 1, Math.floor(p * CAPABILITY_GROUPS.length));
+        setGroup(g);
+        setProgress(p);
+      });
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [pinned]);
+
+  const jump = (g: number) => {
+    setGroup(g);
+    const el = ref.current;
+    if (!el || !pinned) return;
+    const total = el.offsetHeight - window.innerHeight;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    scrollTo(top + ((g + 0.3) / CAPABILITY_GROUPS.length) * total);
+  };
+
+  const progressFor = (i: number) => Math.min(1, Math.max(0, progress * CAPABILITY_GROUPS.length - i));
 
   return (
-    <section id="capabilities" ref={ref} className={`section caps ${pinned ? 'is-pinned' : ''}`} data-room="violet" data-room2="pitch" data-chapter="Capabilities" style={style}>
+    <section
+      id="capabilities"
+      ref={ref}
+      className={`section caps ${pinned ? 'is-pinned' : ''}`}
+      data-chapter="Capabilities"
+      style={pinned ? { height: `calc(100svh + ${CAPABILITY_GROUPS.length * 35}svh)` } : undefined}
+    >
       <div className={pinned ? 'steps-stage' : ''}>
         <div className="wrap">
-          {head}
-          {pinned ? (
-            <>
-              <div className="caps-line" key={`l${active}`} data-tone={GROUP_TONES[active]}>
-                <span className="caps-big">0{active + 1}</span>
-                <p className="lede">{GROUP_LINES[active]}</p>
+          <header className="caps-head">
+            <div>
+              <Kicker index="03">Capabilities</Kicker>
+              <Lines className="h2" lines={['One intelligence.', <span className="accent">Infinite capabilities.</span>]} />
+            </div>
+            {pinned && (
+              <div className="caps-groups" role="tablist" aria-label="Capability groups">
+                {CAPABILITY_GROUPS.map((g, i) => (
+                  <button
+                    key={g}
+                    role="tab"
+                    aria-selected={i === group}
+                    onClick={() => jump(i)}
+                  >
+                    <span>{g}</span>
+                    <i style={{ transform: `scaleX(${progressFor(i)})` }} />
+                  </button>
+                ))}
               </div>
-              <Group g={active} />
-            </>
+            )}
+          </header>
+
+          {pinned ? (
+            <Fragment key={`group-view-${group}`}>
+              <div className="caps-line">
+                <span className="caps-big">0{group + 1}</span>
+                <p className="lede">{GROUP_LINES[group]}</p>
+              </div>
+              <CapabilityGrid group={group} />
+            </Fragment>
           ) : (
             CAPABILITY_GROUPS.map((g, i) => (
-              <div key={g} className="caps-block" data-tone={GROUP_TONES[i]}>
+              <div key={g} className="caps-block">
                 <div className="caps-line">
                   <span className="caps-big">0{i + 1}</span>
                   <div>
@@ -117,10 +157,11 @@ export function Capabilities() {
                     <p className="lede">{GROUP_LINES[i]}</p>
                   </div>
                 </div>
-                <Group g={i} />
+                <CapabilityGrid group={i} />
               </div>
             ))
           )}
+
           <div className="caps-base">
             <span>Every capability draws on the same</span>
             <b>memory</b>

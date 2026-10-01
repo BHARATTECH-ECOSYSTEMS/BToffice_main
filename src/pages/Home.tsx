@@ -11,29 +11,22 @@ import { Laboratory } from '../sections/Laboratory';
 import { Builders } from '../sections/Builders';
 import { Journal } from '../sections/Journal';
 import { Finale } from '../sections/Finale';
-import { StagePanel } from '../components/StagePanel';
 
 export function Home() {
   return (
     <>
       <Hero />
-      {/* Wide screens: the story on the left, the mark on the right, changing shape chapter by chapter. */}
-      <div className="folio">
-        <div className="folio-main">
-          <Intro />
-          <Problem />
-          <Capabilities />
-          <HowItWorks />
-          <Architecture />
-          <Network />
-          <Laboratory />
-          <Audiences />
-          <Builders />
-          <Journal />
-          <Faq />
-        </div>
-        <StagePanel />
-      </div>
+      <Intro />
+      <Problem />
+      <Capabilities />
+      <HowItWorks />
+      <Architecture />
+      <Network />
+      <Laboratory />
+      <Audiences />
+      <Builders />
+      <Journal />
+      <Faq />
       <Finale />
     </>
   );

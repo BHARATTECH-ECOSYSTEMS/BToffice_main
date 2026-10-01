@@ -22,7 +22,7 @@ export function Research() {
         label="The laboratory"
         title={['Six domains.', 'One intelligence.']}
         lede="Our research spans six interconnected domains. They are not separate products. Each one strengthens every other."
-        target={{ key: 'field', params: { alpha: 0 } }}
+        target={{ key: 'helix', pose: { y: 0.9, s: 0.9 } }}
       />
 
       <Zone target={() => ({ key: 'orbit6', params: { dark: 1, highlight: selRef.current, alpha: 0 } })} className="section">

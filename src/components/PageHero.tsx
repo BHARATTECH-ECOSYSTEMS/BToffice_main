@@ -16,8 +16,8 @@ export function PageHero({ index, label, title, lede, target, children }: {
   const [ready, setReady] = useState(false);
   useFormation(ref, target);
   useEffect(() => {
-    let t = 0;
     let live = true;
+    let t = 0;
     opening.then(() => {
       if (live) t = window.setTimeout(() => setReady(true), introPlanned ? 120 : 200);
     });

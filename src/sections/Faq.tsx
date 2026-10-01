@@ -1,23 +1,15 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { useStage } from '../gl/Scene';
+import { useFormation } from '../gl/Scene';
 import { Arrow, Fade, Kicker, Lines } from '../components/Reveal';
 import { EMAIL, FAQ } from '../content';
 
 export function Faq() {
   const ref = useRef<HTMLElement>(null);
   const [open, setOpen] = useState<number | null>(0);
-  useStage(ref, 'dialogue', {
-    fig: '11',
-    name: 'Dialogue',
-    caption: 'Ask anything; a person on the team writes back',
-    labels: () => [
-      { text: 'Your question', side: 'above' as const },
-      { text: 'A person answers', hot: true, side: 'below' as const },
-    ],
-  });
+  useFormation(ref, { key: 'field', params: { alpha: 0 } });
   return (
-    <section id="faq" ref={ref} className="section faq" data-room="tango" data-room2="pitch" data-chapter="Questions">
+    <section id="faq" ref={ref} className="section faq" data-chapter="Questions">
       <div className="wrap faq-grid">
         <div className="faq-side">
           <Kicker index="11">Questions</Kicker>

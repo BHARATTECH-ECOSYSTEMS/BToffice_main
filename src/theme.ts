@@ -7,14 +7,14 @@ const listeners = new Set<(t: Theme) => void>();
 function read(): Theme {
   try {
     const saved = localStorage.getItem(KEY);
-    if (saved === 'light' || saved === 'dark') return saved;
+    if (saved === 'dark' || saved === 'light') return saved;
   } catch {
-    /* storage unavailable: fall back to the system preference */
+    /* storage unavailable */
   }
-  return 'dark'; // the signature look; visitors can switch and the choice is remembered
+  return 'light';
 }
 
-let current: Theme = typeof window === 'undefined' ? 'dark' : read();
+let current: Theme = typeof window === 'undefined' ? 'light' : read();
 if (typeof document !== 'undefined') document.documentElement.dataset.theme = current;
 
 export const getTheme = () => current;
@@ -22,7 +22,7 @@ export const getTheme = () => current;
 export function setTheme(t: Theme) {
   current = t;
   document.documentElement.dataset.theme = t;
-  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'dark' ? '#08080C' : '#F8F7F3');
+  document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t === 'dark' ? '#09090B' : '#FAFAFA');
   try {
     localStorage.setItem(KEY, t);
   } catch {
