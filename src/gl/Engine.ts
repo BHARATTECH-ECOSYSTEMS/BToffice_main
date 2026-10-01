@@ -34,6 +34,7 @@ export interface Target {
   params?: Partial<Params>;
   /** How tightly the pose tracks its goal; high values pin a formation to the page while scrolling. */
   follow?: number;
+  exact?: boolean;
 }
 
 export interface ScreenAnchor {
@@ -50,19 +51,33 @@ const BASE_POSE: Record<FormationKey, Pose> = {
   alone: { x: 1.75, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
   orbit15: { x: 0, y: -0.1, z: 0, s: 1, rx: 0.1, ry: 0, rz: 0 },
   orbit6: { x: 1.5, y: 0, z: 0, s: 1, rx: 0.1, ry: 0, rz: 0 },
-  layers: { x: 1.55, y: -0.12, z: 0, s: 0.86, rx: 0.52, ry: -0.78, rz: 0 },
+  layers: { x: 1.55, y: -0.06, z: 0, s: 0.86, rx: 0.65, ry: -0.68, rz: 0 },
   globe: { x: 1.35, y: -0.1, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
-  helix: { x: 0, y: -0.3, z: -0.5, s: 1, rx: 0.25, ry: 0, rz: -0.1 },
+  helix: { x: 0, y: -0.3, z: -0.5, s: 1, rx: 0.25, ry: 0, rz: 0 },
   field: { x: 0, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
 };
 
 const MOBILE_POSE: Partial<Pose> = { x: 0, y: 0.7, s: 0.62 };
 
-const DEFAULT_PARAMS: Params = { decay: 0, drift: 1, dark: 1, alpha: 1, wave: 1, highlight: -1, spinX: 0, spinY: 0, explode: 0, drag: 0 };
+const DEFAULT_PARAMS: Params = { decay: 0, drift: 1, dark: 0, alpha: 1, wave: 1, highlight: -1, spinX: 0, spinY: 0, explode: 0, drag: 0 };
 
 const THEME = {
-  light: { ink: new THREE.Color('#2a2740'), inkAlpha: 0.55, deep: new THREE.Color('#3A1FA8'), bright: new THREE.Color('#7B5CFF'), hot: new THREE.Color('#4A1FFF'), trail: new THREE.Color('#6A35FF') },
-  dark: { ink: new THREE.Color('#7d76a8'), inkAlpha: 0.3, deep: new THREE.Color('#5b3df5'), bright: new THREE.Color('#b9a6ff'), hot: new THREE.Color('#ffffff'), trail: new THREE.Color('#c9bcff') },
+  light: {
+    ink: new THREE.Color('#2a2740'),
+    inkAlpha: 0.55,
+    deep: new THREE.Color('#3A1FA8'),
+    bright: new THREE.Color('#7B5CFF'),
+    hot: new THREE.Color('#4A1FFF'),
+    trail: new THREE.Color('#e2600f'),
+  },
+  dark: {
+    ink: new THREE.Color('#7d76a8'),
+    inkAlpha: 0.3,
+    deep: new THREE.Color('#5b3df5'),
+    bright: new THREE.Color('#b9a6ff'),
+    hot: new THREE.Color('#ffffff'),
+    trail: new THREE.Color('#ffa36b'),
+  },
 };
 
 const stagger = (m: number, th: number) => {
@@ -89,7 +104,7 @@ export class Engine {
   private fromKey: FormationKey = 'logo';
   private toKey: FormationKey = 'logo';
   private progress = 0;
-  private duration = 1.9;
+  private duration = 0.85;
   private target: Target = { key: 'logo' };
   private pose: Pose = { ...BASE_POSE.logo };
   private params: Params = { ...DEFAULT_PARAMS };
@@ -115,7 +130,7 @@ export class Engine {
   private listeners = new Set<() => void>();
   private tmp = new THREE.Vector3();
   private velocity = 0;
-  private dark = true;
+  private dark = false;
   private warp = 0;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -133,7 +148,7 @@ export class Engine {
     f.fragments = fragments(n, f.logo);
     f.silos = silos(n, f.logo);
     f.frozen = frozen(n, f.logo);
-    f.alone = frozen(n, f.logo, true);
+    f.alone = frozen(n, f.logo, false);
     f.orbit15 = orbit(n, 15);
     f.orbit6 = orbit(n, 6, 9);
     f.layers = layers(n);
@@ -198,8 +213,7 @@ export class Engine {
         uHot: { value: THEME.light.hot.clone() },
         uAlpha: { value: 1 },
         uInkAlpha: { value: THEME.light.inkAlpha },
-        uCyan: { value: new THREE.Color('#ff8643') },
-        uYellow: { value: new THREE.Color('#f59e00') },
+        uCyan: { value: new THREE.Color('#FF8643') },
         uWarp: { value: 0 },
         uHalo: { value: 0.35 },
       },
@@ -386,7 +400,7 @@ export class Engine {
     const mobile = this.width <= 900;
     const t = this.target;
     const goal: Pose = { ...BASE_POSE[t.key], ...t.pose, ...(mobile ? { ...MOBILE_POSE, ...t.mobilePose } : {}) };
-    if (!mobile) {
+    if (!mobile && !t.exact) {
       // Compositions are authored for a 16:10 screen; narrower ones pull side visuals in and scale them down.
       const fit = Math.min(1, this.width / this.height / 1.6);
       goal.x *= fit;
@@ -395,12 +409,14 @@ export class Engine {
     const want: Params = { ...DEFAULT_PARAMS, ...t.params, dark: this.dark ? 1 : 0 };
     if (this.reducedMotion) want.drift = 0;
 
-    const k = t.follow ?? 2.4;
+    const k = t.follow ?? 5.5;
     this.warp = damp(this.warp, Math.min(1, Math.abs(this.velocity) / 60), 4, dt);
     this.velocity = damp(this.velocity, 0, 6, dt);
     for (const key of Object.keys(goal) as (keyof Pose)[]) this.pose[key] = damp(this.pose[key], goal[key], k, dt);
-    for (const key of ['decay', 'drift', 'dark', 'alpha', 'wave', 'spinX', 'spinY', 'explode', 'drag'] as const)
-      this.params[key] = damp(this.params[key], want[key], key === 'dark' ? 3.5 : 3, dt);
+    for (const key of ['decay', 'drift', 'dark', 'alpha', 'wave', 'spinX', 'spinY', 'explode', 'drag'] as const) {
+      const rate = key === 'dark' ? 3.5 : (key === 'alpha' ? (want.alpha === 0 ? 8.5 : 5.0) : 4.5);
+      this.params[key] = damp(this.params[key], want[key], rate, dt);
+    }
 
     if (want.highlight !== this.hlGroup) {
       this.hlAmt = damp(this.hlAmt, 0, 14, dt);
@@ -424,7 +440,7 @@ export class Engine {
     }
     this.mouseAmt = damp(this.mouseAmt, this.mouse.x < 5 && !this.reducedMotion ? 1 : 0, 3, dt);
 
-    const d = this.params.dark;
+    const d = this.dark ? 1 : 0;
     const u = this.material.uniforms;
     u.uMix.value = Math.min(1, this.progress);
     u.uTime.value = this.time;

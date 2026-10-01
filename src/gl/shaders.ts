@@ -56,9 +56,23 @@ export const particleVertex = /* glsl */ `
     float waveW = (aGrpTo < -1.5 ? st : 0.0) + (aGrpFrom < -1.5 ? 1.0 - st : 0.0);
     p.y += sin(p.x * 1.1 + uTime * 0.45) * cos(p.z * 0.9 + uTime * 0.32) * 0.22 * waveW * uWave;
 
-    // exploded view: layers above the highlighted one lift, layers below drop
+    // exploded view: layers separate with progressive clearance around the active layer
     float g = st < 0.5 ? aGrpFrom : aGrpTo;
-    if (uExplode > 0.001 && uHighlight > -0.5 && g > -0.5) p.y += clamp(uHighlight - g, -1.0, 1.0) * uExplode * 0.24;
+    if (uExplode > 0.001 && uHighlight > -0.5 && g > -0.5) {
+      float diff = g - uHighlight;
+      if (abs(diff) < 0.5) {
+        // Active layer lifts out prominently and steps slightly toward the viewer
+        p.y += 0.08 * uExplode;
+        p.x -= 0.12 * uExplode;
+        p.z += 0.16 * uExplode;
+      } else if (diff < 0.0) {
+        // Layers above (lower index = higher y) lift upward with progressive spacing
+        p.y += (0.22 - diff * 0.04) * uExplode;
+      } else {
+        // Layers below (higher index = lower y) drop downward with progressive spacing
+        p.y += (-0.22 - diff * 0.04) * uExplode;
+      }
+    }
 
     vec4 world = modelMatrix * vec4(p, 1.0);
 
@@ -80,7 +94,7 @@ export const particleVertex = /* glsl */ `
     float hl = (uHighlight > -0.5 && abs(grp - uHighlight) < 0.5) ? uHighlightAmt : 0.0;
     vHl = hl;
 
-    gl_PointSize = uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.3) * (7.0 / -mv.z) * 2.2;
+    gl_PointSize = uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.65) * (7.0 / -mv.z) * 2.2;
     vTint = step(0.82, fract(aRand.y * 7.31)) * (0.5 + 0.5 * sin(p.x * 1.3 + p.y * 0.9 + uTime * 0.4));
 
     // Parked particles (acc -1) only fade; they borrow the colour of the other side.
@@ -93,9 +107,9 @@ export const particleVertex = /* glsl */ `
 
     float depth = smoothstep(-10.5, -5.2, mv.z);
     float forgotten = step(aRand.z, uDecay);
-    float dim = (uHighlight > -0.5) ? mix(1.0, 0.45, uHighlightAmt) : 1.0;
+    float dim = (uHighlight > -0.5) ? mix(1.0, 0.40, uHighlightAmt) : 1.0;
     float shown = mix(hideFrom ? 0.0 : 1.0, hideTo ? 0.0 : 1.0, st);
-    vAlpha = mix(0.3, 1.0, depth) * (1.0 - forgotten * 0.94) * mix(dim, 1.0, hl) * shown;
+    vAlpha = mix(0.35, 1.0, depth) * (1.0 - forgotten * 0.94) * mix(dim, 1.25, hl) * shown;
   }
 `;
 
@@ -108,7 +122,6 @@ export const particleFragment = /* glsl */ `
   uniform float uAlpha;
   uniform float uInkAlpha;
   uniform vec3 uCyan;
-  uniform vec3 uYellow;
   uniform float uHalo;
 
   varying float vAcc;
@@ -124,8 +137,7 @@ export const particleFragment = /* glsl */ `
     float core = smoothstep(0.42, 0.18, d);
     float halo = exp(-d * d * 5.0) * uHalo;
     vec3 accent = mix(uDeep, uBright, pow(vShade, 1.4));
-    vec3 warm = mix(uCyan, uYellow, step(0.5, fract(vAcc * 9.3 + vShade * 5.1)));
-    accent = mix(accent, warm, vTint * 0.75);
+    accent = mix(accent, uCyan, vTint * 0.75);
     vec3 col = mix(uInk, accent, smoothstep(0.0, 1.0, vAcc));
     col = mix(col, uHot, vHl * 0.6);
     float a = (core + halo) * vAlpha * uAlpha * mix(uInkAlpha, 1.0, vAcc) * 0.85;

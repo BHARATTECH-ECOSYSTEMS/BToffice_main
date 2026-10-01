@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import { Brand } from './LogoMark';
 import { Arrow } from './Reveal';
@@ -35,16 +35,51 @@ const LINKS = [
 export function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [activeSection, setActiveSection] = useState<string | null>(null);
+  const [pill, setPill] = useState({ x: 0, w: 0, on: false });
+  const navRef = useRef<HTMLElement>(null);
   const { pathname } = useLocation();
   const navigate = useNavigate();
   const { scrollTo } = useScene();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    let raf = 0;
+    const onScroll = () => {
+      raf = 0;
+      const scrollY = window.scrollY;
+      setScrolled(scrollY > 20);
+
+      // Compute scroll progress (0 to 1) and set --p property on header
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = maxScroll > 0 ? Math.min(1, Math.max(0, scrollY / maxScroll)) : 0;
+      if (navRef.current) {
+        navRef.current.style.setProperty('--p', String(progress));
+      }
+
+      const mid = window.innerHeight / 2;
+      const active = LINKS.find((l) => {
+        if (!l.section) return false;
+        const el = document.getElementById(l.section);
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        return r.top <= mid && r.bottom >= mid;
+      });
+      setActiveSection(active?.section ?? null);
+    };
+
+    const handleScroll = () => {
+      if (!raf) raf = requestAnimationFrame(onScroll);
+    };
+
     onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, [pathname]);
 
   useEffect(() => setOpen(false), [pathname]);
   useEffect(() => {
@@ -53,6 +88,11 @@ export function Nav() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
+
+  const onHover = (e: React.MouseEvent<HTMLElement>) => {
+    const el = e.currentTarget;
+    setPill({ x: el.offsetLeft, w: el.offsetWidth, on: true });
+  };
 
   const go = (l: (typeof LINKS)[number]) => (e: React.MouseEvent) => {
     if (!l.section) return;
@@ -64,19 +104,47 @@ export function Nav() {
   };
 
   return (
-    <header className={`nav ${scrolled ? 'is-scrolled' : ''} ${open ? 'menu-open' : ''}`}>
+    <header
+      ref={navRef}
+      className={`nav ${scrolled ? 'is-scrolled' : ''} ${open ? 'menu-open' : ''}`}
+      style={{ '--p': 0 } as CSSProperties}
+    >
       <div className="nav-inner">
         <Link to="/" className="brand" aria-label="Bharattech Origin home">
           <Brand />
         </Link>
-        <nav className="nav-links" aria-label="Primary">
+        <nav
+          className="nav-links"
+          aria-label="Primary"
+          onMouseLeave={() => setPill((p) => ({ ...p, on: false }))}
+        >
+          <span
+            className="nav-pill"
+            aria-hidden="true"
+            style={{
+              transform: `translateX(${pill.x}px)`,
+              width: `${pill.w}px`,
+              opacity: pill.on ? 1 : 0,
+            }}
+          />
           {LINKS.map((l) =>
             l.section ? (
-              <a key={l.label} href={`#/`} onClick={go(l)} className="nav-link">
+              <a
+                key={l.label}
+                href={`#/`}
+                onClick={go(l)}
+                onMouseEnter={onHover}
+                className={`nav-link ${pathname === '/' && activeSection === l.section ? 'is-current' : ''}`}
+              >
                 {l.label}
               </a>
             ) : (
-              <NavLink key={l.label} to={l.to} className="nav-link">
+              <NavLink
+                key={l.label}
+                to={l.to}
+                onMouseEnter={onHover}
+                className="nav-link"
+              >
                 {l.label}
               </NavLink>
             ),
@@ -89,9 +157,10 @@ export function Nav() {
         <div className="nav-mobile">
           <ThemeToggle />
           <button className="nav-menu-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="sheet">
-          {open ? 'Close' : 'Menu'} <span className="burger" />
+            {open ? 'Close' : 'Menu'} <span className="burger" />
           </button>
         </div>
+        <span className="nav-progress" aria-hidden="true" />
       </div>
 
       <div className="sheet" id="sheet" aria-hidden={!open}>

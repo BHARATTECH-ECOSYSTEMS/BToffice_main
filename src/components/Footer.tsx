@@ -1,9 +1,10 @@
 import { Link } from 'react-router';
 import { Brand } from './LogoMark';
+import { Arrow } from './Reveal';
 import { EMAIL, EMPLOYEE_LOGIN_URL } from '../content';
 import { useScene } from '../gl/Scene';
 
-const COLS: { title: string; links: { label: string; to?: string; href?: string }[] }[] = [
+const COLS: { title: string; links: { label: string; to?: string; href?: string; external?: boolean }[] }[] = [
   {
     title: 'Company',
     links: [
@@ -27,7 +28,7 @@ const COLS: { title: string; links: { label: string; to?: string; href?: string 
     links: [
       { label: 'Privacy', to: '/privacy' },
       { label: 'Terms', to: '/terms' },
-      { label: 'Employee login', href: EMPLOYEE_LOGIN_URL },
+      { label: 'Employee login', href: EMPLOYEE_LOGIN_URL, external: true },
     ],
   },
 ];
@@ -37,26 +38,43 @@ export function Footer() {
   return (
     <footer className="footer">
       <div className="wrap">
+        <div className="footer-cta">
+          <div>
+            <p className="footer-kicker mono">Start a conversation</p>
+            <h2 className="footer-title">
+              Build what comes next <span className="accent">with us.</span>
+            </h2>
+          </div>
+          <div className="footer-cta-actions">
+            <Link className="btn btn-solid" to="/contact">
+              Get in touch <Arrow size={13} />
+            </Link>
+            <a className="footer-mail" href={`mailto:${EMAIL}`}>
+              {EMAIL}
+            </a>
+          </div>
+        </div>
+
         <div className="footer-grid">
           <div className="footer-lead">
             <Link to="/" className="brand" style={{ paddingLeft: 0 }} aria-label="Bharattech Origin home">
               <Brand />
             </Link>
-            <p className="footer-statement">Building the operating system for intelligence.</p>
-            <a className="link" href={`mailto:${EMAIL}`}>
-              {EMAIL}
-            </a>
+            <p className="footer-statement">Building the operating system for intelligence. Made in Bharat.</p>
           </div>
           {COLS.map((c) => (
             <div className="footer-col" key={c.title}>
-              <h4 className="mono">{c.title}</h4>
+              <h4>{c.title}</h4>
               <ul>
                 {c.links.map((l) => (
                   <li key={l.label}>
                     {l.to ? (
                       <Link to={l.to}>{l.label}</Link>
                     ) : (
-                      <a href={l.href} {...(l.href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
+                      <a
+                        href={l.href}
+                        {...(l.external || l.href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                      >
                         {l.label}
                       </a>
                     )}
@@ -66,17 +84,15 @@ export function Footer() {
             </div>
           ))}
         </div>
-        <div className="footer-base mono">
-          <span>© {new Date().getFullYear()} Bharattech Origin · Built in Bharat</span>
-          <button className="to-origin mono" onClick={() => scrollTo(0)}>
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <circle cx="8" cy="8" r="6.5" stroke="currentColor" />
-              <circle cx="8" cy="8" r="1.6" fill="currentColor" />
-            </svg>
-            Return to origin
+
+        <div className="footer-base">
+          <span>© 2026 Bharattech Origin</span>
+          <button className="to-origin" onClick={() => scrollTo(0)}>
+            Back to top <Arrow dir="up" size={12} />
           </button>
         </div>
       </div>
+      <p className="footer-word" aria-hidden="true">ORIGIN</p>
     </footer>
   );
 }

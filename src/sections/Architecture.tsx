@@ -1,77 +1,127 @@
-import { useRef, useState } from 'react';
-import { attachTo, useFormation } from '../gl/Scene';
-import { useAnchors } from '../gl/useAnchors';
+import { useEffect, useRef, useState } from 'react';
 import { Lines, Kicker, Fade } from '../components/Reveal';
 import { LAYERS } from '../content';
+import { LAYER_GLYPHS, LayerAnimatedDiagram } from '../components/ArchitectureDiagrams';
+import { useFormation, useScene } from '../gl/Scene';
 
-/** The exploded stack. Scroll walks down the layers; the active one lifts out and is labelled in place. */
+const TONES = ['violet', 'violet', 'violet', 'tango', 'tango', 'tango', 'pitch', 'pitch', 'pitch'] as const;
+const STEP_HEIGHT = 40;
+
 export function Architecture() {
-  const ref = useRef<HTMLElement>(null);
-  const tag = useRef<HTMLDivElement>(null);
-  const [scrolled, setScrolled] = useState(0);
-  const [hovered, setHovered] = useState<number | null>(null);
-  const active = hovered ?? scrolled;
-  const activeRef = useRef(active);
-  activeRef.current = active;
-  const last = useRef(0);
+  const sectionRef = useRef<HTMLElement>(null);
+  const [scrolledIndex, setScrolledIndex] = useState(0);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+
+  const { scrollTo } = useScene();
 
   useFormation(
-    ref,
-    () => ({ key: 'layers', params: { highlight: activeRef.current, explode: 1 }, ...attachTo(ref.current, 0.3, 0.5) }),
-    (p) => {
-      const s = Math.min(LAYERS.length - 1, Math.floor(Math.max(0, p - 0.04) * 1.08 * LAYERS.length));
-      if (s !== last.current) {
-        last.current = s;
-        setScrolled(s);
-        setHovered(null); // scrolling always wins over a resting pointer
-      }
-    },
+    sectionRef,
+    () => ({ key: 'field', params: { alpha: 0 } }),
+    (p, active) => {
+      if (!active) return;
+      const idx = Math.min(LAYERS.length - 1, Math.floor(p * LAYERS.length));
+      setScrolledIndex(idx);
+    }
   );
 
-  useAnchors(['layers'], (pts, settle) => {
-    const el = tag.current;
+  const active = hoveredIndex ?? scrolledIndex;
+  const tracerY = active * STEP_HEIGHT + STEP_HEIGHT / 2;
+
+  useEffect(() => {
+    const el = sectionRef.current;
     if (!el) return;
-    if (!pts) {
-      el.style.opacity = '0';
-      return;
-    }
-    const a = pts[activeRef.current];
-    el.style.opacity = String(settle);
-    el.style.transform = `translate3d(${a.x}px, ${a.y}px, 0)`;
-  });
+
+    const onScroll = () => {
+      const rect = el.getBoundingClientRect();
+      const totalScrollable = el.offsetHeight - window.innerHeight;
+      if (totalScrollable <= 0) return;
+
+      const currentScrolled = -rect.top;
+      const progress = Math.min(1, Math.max(0, currentScrolled / totalScrollable));
+      const idx = Math.min(LAYERS.length - 1, Math.floor(progress * LAYERS.length));
+      setScrolledIndex(idx);
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    onScroll();
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
+
+  const scrollToLayer = (idx: number) => {
+    setScrolledIndex(idx);
+    const el = sectionRef.current;
+    if (!el) return;
+    const totalScrollable = el.offsetHeight - window.innerHeight;
+    const target = el.offsetTop + (idx / (LAYERS.length - 1)) * totalScrollable;
+    scrollTo(target);
+  };
 
   return (
-    <section id="architecture" ref={ref} className="pin arch" data-chapter="Architecture">
-      <div className="pin-stage">
-        <div ref={tag} className="layer-tag" aria-hidden="true">
-          <span className="layer-tag-line" />
-          <span className="layer-tag-text" key={active}>
-            <b>{String(active + 1).padStart(2, '0')}</b> {LAYERS[active].name}
-          </span>
-        </div>
-        <div className="wrap arch-grid">
-          <div className="arch-copy">
+    <section id="architecture" ref={sectionRef} className="arch" data-chapter="Architecture">
+      <div className="steps-stage">
+        <div className="wrap">
+          <header className="sec-head">
             <Kicker index="05">Architecture</Kicker>
-            <Lines className="h2" lines={['An operating system,', 'not an application.']} />
-            <Fade as="p" className="body" delay={150}>
-              Nine layers, one continuous system. Intelligence flows from sovereign compute at the base to the applications people
-              touch.
-            </Fade>
-            <ol className="layer-list" onMouseLeave={() => setHovered(null)}>
-              {LAYERS.map((l, i) => (
-                <li key={l.name} className={`layer-item ${i === active ? 'is-active' : ''}`}>
-                  <button className="layer-btn" onMouseEnter={() => setHovered(i)} onFocus={() => setHovered(i)} onBlur={() => setHovered(null)}>
-                    <span className="num">{String(i + 1).padStart(2, '0')}</span>
-                    <span className="name">{l.name}</span>
-                    <span className="desc">
-                      <span>{l.body}</span>
-                    </span>
-                  </button>
-                </li>
-              ))}
-            </ol>
+            <div className="sec-head-main">
+              <Lines className="h2" lines={['An operating system,', 'not an application.']} />
+              <Fade as="p" className="lede" delay={120}>
+                Nine layers, one continuous system. Follow a request from the app you use down to sovereign compute.
+              </Fade>
+            </div>
+          </header>
+
+          <div className="stack-wrap">
+            <div className="stack">
+              <div className="stack-rail" aria-hidden="true">
+                <span className="stack-rail-fill" style={{ height: tracerY }} />
+                <span className="stack-flow" style={{ transform: `translateY(${tracerY}px)` }}>
+                  <i />
+                  <b>Request</b>
+                </span>
+              </div>
+              <ol className="stack-list" onMouseLeave={() => setHoveredIndex(null)}>
+                {LAYERS.map((layer, idx) => {
+                  const widthPercent = 84 + (idx / (LAYERS.length - 1)) * 16;
+                  const tone = TONES[idx];
+                  const isActive = idx === active;
+                  const isPast = idx < active;
+                  return (
+                    <li key={layer.name} style={{ height: STEP_HEIGHT }}>
+                      <button
+                        type="button"
+                        className={`slab slab--${idx + 1} ${isActive ? 'is-active' : ''} ${isPast ? 'is-past' : ''}`}
+                        data-tone={tone}
+                        style={{ width: `${widthPercent}%` }}
+                        onClick={() => scrollToLayer(idx)}
+                        onMouseEnter={() => setHoveredIndex(idx)}
+                        onFocus={() => setHoveredIndex(idx)}
+                        aria-label={`Layer ${idx + 1}: ${layer.name}`}
+                      >
+                        <span className="num">{String(idx + 1).padStart(2, '0')}</span>
+                        <span className="name">{layer.name}</span>
+                        {LAYER_GLYPHS[idx]}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </div>
+
+            <div className="stack-detail" data-tone={TONES[active]} aria-live="polite">
+              <div className="stack-art" key={active}>
+                <LayerAnimatedDiagram index={active} />
+              </div>
+              <div className="stack-copy" key={`copy-${active}`}>
+                <span className="num">Layer {String(active + 1).padStart(2, '0')} of 9</span>
+                <h3>{LAYERS[active].name}</h3>
+                <p>{LAYERS[active].body}</p>
+              </div>
+            </div>
           </div>
-          <div className="arch-visual-space" aria-hidden="true" />
         </div>
       </div>
     </section>

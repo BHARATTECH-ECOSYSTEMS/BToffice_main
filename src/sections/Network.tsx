@@ -48,16 +48,18 @@ export function Network() {
   const cards = useRef<(HTMLDivElement | null)[]>([]);
   const leaders = useRef<(SVGPathElement | null)[]>([]);
   const pins = useRef<(SVGCircleElement | null)[]>([]);
+  const owns = useRef(false);
 
   useFormation(
     ref,
     () => ({
       key: 'globe',
-      pose: { x: 0.2, y: -0.15, s: 0.98 },
-      params: { drag: 1, spinY: spin.current },
+      pose: { x: 0.22, y: -0.06, s: 0.72 },
+      params: { highlight: 0, dim: 0.72, cull: 1, dot: 0.62, drag: 1, orbit: 0.4, spinY: spin.current },
       ...attachTo(ref.current, 0.28, 0.56),
     }),
-    (p) => {
+    (p, isActive) => {
+      owns.current = isActive;
       spin.current = -0.15 + p * 1.1;
       const ph = Math.min(2, Math.floor(Math.max(0, p - 0.08) * 3.4));
       if (ph !== phaseRef.current) {
@@ -71,7 +73,7 @@ export function Network() {
     labels.current.forEach((el, i) => {
       if (!el) return;
       const p = pts?.[i];
-      if (!p) {
+      if (!p || !owns.current) {
         el.style.opacity = '0';
         return;
       }
@@ -84,7 +86,7 @@ export function Network() {
       const pin = pins.current[i];
       const card = cards.current[i];
       const a = pts?.[pl.anchor];
-      const on = !!a && i <= phaseRef.current && a.depth > 0 && window.innerWidth > 900;
+      const on = !!a && owns.current && i <= phaseRef.current && a.depth > 0 && window.innerWidth > 900;
       if (!path || !pin || !card) return;
       path.style.opacity = pin.style.opacity = on ? String(settle * (i === phaseRef.current ? 1 : 0.45)) : '0';
       if (!on || !a) return;

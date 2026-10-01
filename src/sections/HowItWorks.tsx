@@ -27,7 +27,7 @@ function Understand({ x }: { x: number }) {
     <g>
       {inputs.map((c) => (
         <g key={c.label}>
-          <path className="dg-wire dg-flow" d={`M${x + c.dx} 70 C${x + c.dx} 120, ${x} 120, ${x} ${Y - 26}`} />
+          <path className="dg-wire dg-flow" d={`M${x + c.dx} 68 C${x + c.dx} 120, ${x} 120, ${x} 172`} />
           <rect className="dg-chip" x={x + c.dx - 18} y={40} width={36} height={28} rx={8} />
           {c.label === 'Aa' && <text className="dg-chip-text" x={x + c.dx} y={58} textAnchor="middle">Aa</text>}
           {c.label === 'mic' && <path className="dg-glyph" d={`M${x + c.dx} 47v8m-4-3a4 4 0 0 0 8 0M${x + c.dx} 59v3`} />}
@@ -48,7 +48,7 @@ function Recall({ x }: { x: number }) {
           <text x={x - 58} y={60 + i * 30}>{['Survey notes', 'Groundwater study', 'Satellite data'][i]}</text>
         </g>
       ))}
-      <path className="dg-wire" d={`M${x} 140 V${Y - 26}`} />
+      <path className="dg-wire" d={`M${x} 128 V172`} />
     </g>
   );
 }
@@ -59,7 +59,7 @@ function Reason({ x }: { x: number }) {
     <g>
       {leaves.map((dx, i) => (
         <g key={dx} className={i === 2 ? 'dg-branch dg-branch-pick' : 'dg-branch'}>
-          <path d={`M${x} ${Y - 26} C${x} 120, ${x + dx} 110, ${x + dx} 72`} />
+          <path d={`M${x} 172 C${x} 120, ${x + dx} 110, ${x + dx} 72`} />
           <circle cx={x + dx} cy={60} r={12} />
           {i === 2 ? <path className="dg-check" d={`M${x + dx - 5} 60l3 3 6-6`} /> : <path className="dg-cross" d={`M${x + dx - 4} 56l8 8m0-8l-8 8`} />}
         </g>
@@ -73,14 +73,15 @@ function Act({ x }: { x: number }) {
   const agents = ['Draft brief', 'Link sources', 'Share'];
   return (
     <g>
+      <path className="dg-wire dg-flow" d={`M${x} 136 V172`} />
+      <path className="dg-wire" d={`M${x - 38} 56 V124`} />
       {agents.map((a, i) => {
         const y = 44 + i * 34;
         return (
           <g key={a} className="dg-agent" style={{ animationDelay: `${i * 0.25}s` }}>
-            <path className="dg-wire dg-flow" d={`M${x} ${Y - 26} C${x} ${y + 30}, ${x - 40} ${y + 12}, ${x - 30} ${y + 12}`} />
-            <rect x={x - 30} y={y} width={108} height={24} rx={12} />
-            <circle cx={x - 16} cy={y + 12} r={4} />
-            <text x={x - 6} y={y + 16}>{a}</text>
+            <rect x={x - 54} y={y} width={108} height={24} rx={12} />
+            <circle cx={x - 38} cy={y + 12} r={4} />
+            <text x={x - 26} y={y + 16}>{a}</text>
           </g>
         );
       })}
@@ -97,8 +98,8 @@ function Learn({ x }: { x: number }) {
       <rect className="dg-store-fill" x={x - 40} y={40} width={80} height={90} clipPath="url(#dg-store-clip)" />
       <path className="dg-store-body" d={`M${x - 40} 50v60a40 12 0 0 0 80 0v-60`} />
       <ellipse className="dg-store-top" cx={x} cy={50} rx={40} ry={12} />
-      <path className="dg-wire" d={`M${x} 124 V${Y - 26}`} />
-      <text className="dg-note" x={x + 52} y={92}>+ new findings</text>
+      <path className="dg-wire" d={`M${x} 122 V172`} />
+      <text className="dg-note" x={x + 50} y={92}>+ new findings</text>
     </g>
   );
 }
@@ -121,11 +122,11 @@ export function HowItWorks() {
     ref,
     { key: 'logo', params: { alpha: 0 } },
     (p) => {
-      const t = Math.min(4, Math.max(0, p * 4.7 - 0.3)); // 0…4 along the stations
+      const t = Math.min(4, Math.max(0, p * 4.4 - 0.2)); // 0…4 along the stations
       const x = X[0] + (t / 4) * SPAN;
       packet.current?.setAttribute('transform', `translate(${x} ${Y})`);
       fill.current?.setAttribute('x2', String(x));
-      const s = Math.min(4, Math.floor(t + 0.35));
+      const s = Math.min(4, Math.max(0, Math.round(t)));
       if (s !== last.current) {
         last.current = s;
         setActive(s);
@@ -137,7 +138,7 @@ export function HowItWorks() {
     const el = ref.current;
     if (!el) return;
     const top = el.getBoundingClientRect().top + window.scrollY;
-    scrollTo(top + ((i + 0.3) / 4.7) * (el.offsetHeight - window.innerHeight));
+    scrollTo(top + ((i + 0.25) / 4.4) * (el.offsetHeight - window.innerHeight));
   };
 
   const step = FLOW[active];
@@ -159,8 +160,8 @@ export function HowItWorks() {
 
           <svg className="diagram" viewBox="0 0 1200 330" preserveAspectRatio="xMidYMid meet" role="img" aria-label="A request travelling through five stages: understand, recall, reason, act, learn.">
             <defs>
-              <marker id="dg-arrow" viewBox="0 0 8 8" refX="4" refY="4" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-                <path d="M1 1l5 3-5 3" fill="none" stroke="currentColor" strokeWidth="1.3" />
+              <marker id="dg-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+                <path d="M2 2l5 3-5 3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
               </marker>
             </defs>
 
@@ -170,7 +171,7 @@ export function HowItWorks() {
               </g>
             ))}
 
-            <path className="dg-loop" d={`M${X[4]} ${Y + 58} C${X[4]} 318, ${X[1]} 318, ${X[1]} ${Y + 58}`} markerEnd="url(#dg-arrow)" />
+            <path className={`dg-loop ${active === 4 ? 'is-on' : ''}`} d={`M${X[4]} 256 C${X[4]} 316, ${X[1]} 316, ${X[1]} 262`} markerEnd="url(#dg-arrow)" />
             <text className={`dg-loop-label ${active === 4 ? 'is-on' : ''}`} x={(X[1] + X[4]) / 2} y={306} textAnchor="middle">
               What it learns flows back into memory
             </text>

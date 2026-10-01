@@ -93,45 +93,81 @@ export function SceneProvider({ children }: { children: ReactNode }) {
     engine?.setDark(getTheme() === 'dark');
     const offTheme = onTheme((t) => engine?.setDark(t === 'dark'));
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const lenis = reduced ? null : new Lenis({ duration: 1.15, smoothWheel: true });
+    const lenis = reduced ? null : new Lenis({ duration: 0.85, smoothWheel: true });
     let raf = 0;
     let lastY = window.scrollY;
+    let needPick = true;
+    let lastPickY = -9999;
+    let lastVh = -1;
+
+    const pick = () => {
+      const vh = window.innerHeight;
+      const y = window.scrollY;
+      if (!needPick && Math.abs(y - lastPickY) < 0.2 && vh === lastVh) {
+        return;
+      }
+      needPick = false;
+      lastPickY = y;
+      lastVh = vh;
+
+      const mid = vh * 0.5;
+      let best: Entry | null = null;
+      let bestH = Infinity;
+
+      const currentEntries = Array.from(entries.current);
+      const len = currentEntries.length;
+      if (len === 0) return;
+
+      const rects = new Array(len);
+      for (let i = 0; i < len; i++) {
+        rects[i] = currentEntries[i].el.getBoundingClientRect();
+      }
+
+      for (let i = 0; i < len; i++) {
+        const r = rects[i];
+        const active = r.top <= mid && r.bottom >= mid;
+        if (active && r.height < bestH) {
+          best = currentEntries[i];
+          bestH = r.height;
+        }
+      }
+
+      for (let i = 0; i < len; i++) {
+        const r = rects[i];
+        const raw = r.height > vh * 1.2 ? -r.top / (r.height - vh) : (mid - r.top) / r.height;
+        const p = Math.min(1, Math.max(0, raw));
+        currentEntries[i].onProgress?.(p, currentEntries[i] === best);
+      }
+
+      if (best) engine?.setTarget(best.target());
+    };
+
+    const onResize = () => {
+      needPick = true;
+    };
+    window.addEventListener('resize', onResize, { passive: true });
+
     const scrollLoop = (time: number) => {
       lenis?.raf(time);
       const y = window.scrollY;
-      engine?.setVelocity(y - lastY);
+      const deltaY = y - lastY;
+      if (Math.abs(deltaY) > 0.05) {
+        needPick = true;
+      }
+      engine?.setVelocity(deltaY);
       lastY = y;
       raf = requestAnimationFrame(scrollLoop);
     };
     raf = requestAnimationFrame(scrollLoop);
 
-    const pick = () => {
-      const mid = window.innerHeight * 0.5;
-      let best: Entry | null = null;
-      let bestH = Infinity;
-      for (const e of entries.current) {
-        const r = e.el.getBoundingClientRect();
-        const active = r.top <= mid && r.bottom >= mid;
-        if (active && r.height < bestH) {
-          best = e;
-          bestH = r.height;
-        }
-      }
-      for (const e of entries.current) {
-        const r = e.el.getBoundingClientRect();
-        // tall (sticky) sections report progress through their scroll length
-        const vh = window.innerHeight;
-        const raw = r.height > vh * 1.2 ? -r.top / (r.height - vh) : (mid - r.top) / r.height;
-        const p = Math.min(1, Math.max(0, raw));
-        e.onProgress?.(p, e === best);
-      }
-      if (best) engine?.setTarget(best.target());
-    };
     // Drive section logic from the render loop when we have one, else from rAF.
     let stop: () => void;
     if (engine) {
       const off = engine.onFrame(pick);
-      stop = () => off();
+      stop = () => {
+        off();
+        window.removeEventListener('resize', onResize);
+      };
     } else {
       let id = 0;
       const tick = () => {
@@ -139,7 +175,10 @@ export function SceneProvider({ children }: { children: ReactNode }) {
         id = requestAnimationFrame(tick);
       };
       id = requestAnimationFrame(tick);
-      stop = () => cancelAnimationFrame(id);
+      stop = () => {
+        cancelAnimationFrame(id);
+        window.removeEventListener('resize', onResize);
+      };
     }
 
     setApi((prev) => ({
@@ -147,7 +186,7 @@ export function SceneProvider({ children }: { children: ReactNode }) {
       engine,
       lenis,
       scrollTo: (t, immediate) => {
-        if (lenis) lenis.scrollTo(t, { immediate, offset: 0, duration: 1.6 });
+        if (lenis) lenis.scrollTo(t, { immediate, offset: 0, duration: 0.85 });
         else if (typeof t === 'number') window.scrollTo(0, t);
         else t.scrollIntoView({ behavior: immediate ? 'auto' : 'smooth' });
       },

@@ -3,7 +3,8 @@ import { Link } from 'react-router';
 import { useAnchors } from '../gl/useAnchors';
 import { Fade, Arrow, SectionHead } from '../components/Reveal';
 import { DOMAINS } from '../content';
-import { DomainArt } from '../components/DomainArt';
+import { Diagram } from '../components/BentoDiagrams';
+import { LAB_DIAGRAMS } from '../components/LabDiagrams';
 import { useFormation, worldYOf } from '../gl/Scene';
 
 const HELIX_BAND = 200; // px from the top of the section to the helix axis
@@ -15,15 +16,18 @@ export function Laboratory() {
   const lit = hover;
   const litRef = useRef(lit);
   litRef.current = lit;
+  const owns = useRef(false);
 
   const tags = useRef<(HTMLSpanElement | null)[]>([]);
   useAnchors(['helix'], (pts, settle) => {
+    if (!pts || !owns.current) {
+      tags.current.forEach((el) => {
+        if (el && el.style.opacity !== '0') el.style.opacity = '0';
+      });
+      return;
+    }
     tags.current.forEach((el, i) => {
       if (!el) return;
-      if (!pts) {
-        el.style.opacity = '0';
-        return;
-      }
       const focus = litRef.current === null || litRef.current === i ? 1 : 0.35;
       el.style.opacity = String(settle * focus);
       el.style.transform = `translate3d(${pts[i].x}px, ${pts[i].y}px, 0) translate(-50%, -100%)`;
@@ -31,16 +35,22 @@ export function Laboratory() {
   });
 
   // The helix is part of the page: it scrolls with its band at the top of the section.
-  useFormation(ref, () => {
-    const y = worldYOf(ref.current, HELIX_BAND);
-    return {
-      key: 'helix',
-      params: { dark: 1, highlight: litRef.current ?? -1, alpha: 0.95 },
-      pose: { y, s: 0.76, rz: 0 },
-      mobilePose: { y, s: 0.5, rz: 0 },
-      follow: 16,
-    };
-  });
+  useFormation(
+    ref,
+    () => {
+      const y = worldYOf(ref.current, HELIX_BAND);
+      return {
+        key: 'helix',
+        params: { dark: 1, highlight: litRef.current ?? -1, alpha: 0.95 },
+        pose: { y, s: 0.76, rz: 0 },
+        mobilePose: { y, s: 0.5, rz: 0 },
+        follow: 16,
+      };
+    },
+    (_, isActive) => {
+      owns.current = isActive;
+    },
+  );
 
   return (
     <section id="laboratory" ref={ref} className="section lab" data-chapter="Laboratory">
@@ -74,7 +84,14 @@ export function Laboratory() {
                 onBlur={() => setHover(null)}
               >
                 <div className="lab-card-art">
-                  <DomainArt index={i} />
+                  <Diagram
+                    draw={LAB_DIAGRAMS[i].draw}
+                    period={LAB_DIAGRAMS[i].period}
+                    w={LAB_DIAGRAMS[i].w}
+                    h={LAB_DIAGRAMS[i].h}
+                    label={LAB_DIAGRAMS[i].label}
+                    still={LAB_DIAGRAMS[i].still}
+                  />
                   <span className="lab-card-num">{String(i + 1).padStart(2, '0')}</span>
                 </div>
                 <div className="lab-card-text">

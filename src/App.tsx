@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { createHashRouter, Outlet, RouterProvider, useLocation } from 'react-router';
 import { SceneProvider, useScene } from './gl/Scene';
 import { Nav } from './components/Nav';
+import { Rail } from './components/Rail';
 import { Footer } from './components/Footer';
 import { Home } from './pages/Home';
 import { About } from './pages/About';
@@ -42,6 +43,36 @@ function Layout() {
     return () => window.removeEventListener('pointerover', onMove);
   }, []);
 
+  // Card cursor spotlight & sheen tracking (--gx, --gy) across all cards
+  useEffect(() => {
+    const selector =
+      '.bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item, .stack-detail, .jobs-summary, .jobs-board, .scene-demo';
+    let rafId = 0;
+    let lastEvent: PointerEvent | null = null;
+    const update = () => {
+      rafId = 0;
+      const e = lastEvent;
+      const card = e?.target
+        ? ((e.target as HTMLElement).closest?.(selector) as HTMLElement | null)
+        : null;
+      if (!e || !card) return;
+      const rect = card.getBoundingClientRect();
+      card.style.setProperty('--gx', `${e.clientX - rect.left}px`);
+      card.style.setProperty('--gy', `${e.clientY - rect.top}px`);
+    };
+    const onPointerMove = (e: PointerEvent) => {
+      lastEvent = e;
+      if (!rafId) {
+        rafId = requestAnimationFrame(update);
+      }
+    };
+    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('pointermove', onPointerMove);
+    };
+  }, []);
+
   return (
     <div className="app">
       <div className="grain" aria-hidden="true" />
@@ -49,7 +80,8 @@ function Layout() {
         Skip to content
       </a>
       <Nav />
-      <main id="main" tabIndex={-1} key={pathname} style={{ outline: 'none' }}>
+      <Rail />
+      <main id="main" className="folio-main" tabIndex={-1} key={pathname} style={{ outline: 'none' }}>
         <Outlet />
       </main>
       <Footer />

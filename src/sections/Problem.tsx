@@ -9,16 +9,64 @@ const STEP_KEYS: FormationKey[] = ['logo', 'silos', 'frozen', 'alone'];
 // the seven neighbouring pairs in the 3 × 2 grid
 const LINKS: [number, number][] = [[0, 1], [1, 2], [3, 4], [4, 5], [0, 3], [1, 4], [2, 5]];
 
-const Snow = () => (
-  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-    <path d="M6 1v10M1.7 3.5l8.6 5M1.7 8.5l8.6-5M4.5 1.8L6 3l1.5-1.2M4.5 10.2L6 9l1.5 1.2" />
+const ChatIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    <circle cx="8.5" cy="11.5" r="1" fill="currentColor" stroke="none" />
+    <circle cx="12" cy="11.5" r="1" fill="currentColor" stroke="none" />
+    <circle cx="15.5" cy="11.5" r="1" fill="currentColor" stroke="none" />
   </svg>
 );
-const Unlinked = () => (
-  <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round">
-    <path d="M5 3.5l1-1a2.1 2.1 0 0 1 3 3l-1 1M7 8.5l-1 1a2.1 2.1 0 0 1-3-3l1-1M2 2l1.2 1.2M10 10l-1.2-1.2" />
+
+const SearchIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="10.5" cy="10.5" r="7" />
+    <path d="M15.5 15.5L21 21" />
   </svg>
 );
+
+const DocsIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="8" y1="13" x2="16" y2="13" />
+    <line x1="8" y1="17" x2="14" y2="17" />
+  </svg>
+);
+
+const CodeIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="7 8 3 12 7 16" />
+    <line x1="14" y1="5" x2="10" y2="19" />
+    <polyline points="17 8 21 12 17 16" />
+  </svg>
+);
+
+const VisionIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7z" />
+    <circle cx="12" cy="12" r="3.5" />
+    <circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none" />
+  </svg>
+);
+
+const VoiceIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="2" width="6" height="10" rx="3" />
+    <path d="M19 10v1a7 7 0 0 1-14 0v-1" />
+    <line x1="12" y1="18" x2="12" y2="22" />
+    <line x1="8" y1="22" x2="16" y2="22" />
+  </svg>
+);
+
+const TOOL_ICONS: Record<string, () => JSX.Element> = {
+  Chat: ChatIcon,
+  Search: SearchIcon,
+  Docs: DocsIcon,
+  Code: CodeIcon,
+  Vision: VisionIcon,
+  Voice: VoiceIcon,
+};
 
 /**
  * Four problems, pinned. One visual acts each of them out:
@@ -29,10 +77,14 @@ export function Problem() {
   const ref = useRef<HTMLElement>(null);
   const { scrollTo } = useScene();
   const [step, setStep] = useState(0);
+  const [hoveredSilo, setHoveredSilo] = useState<number | null>(null);
   const stepRef = useRef(0);
   const local = useRef(0);
   const bars = useRef<(HTMLElement | null)[]>([]);
-  const labels = useRef<(HTMLSpanElement | null)[]>([]);
+  const labels = useRef<(HTMLElement | null)[]>([]);
+  const symbols = useRef<(HTMLElement | null)[]>([]);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const overlaySvgRef = useRef<SVGSVGElement>(null);
   const owns = useRef(false);
   const retainedAmt = useRef(1);
   const ov = {
@@ -55,20 +107,27 @@ export function Problem() {
       const s = stepRef.current;
       return {
         key: STEP_KEYS[s],
-        pose: { x: 1.6, s: s === 0 ? 0.84 : 0.92 },
+        pose: { x: 1.60, y: -0.08, s: s === 0 ? 0.82 : 0.86 },
         mobilePose: { y: 0.72, s: s === 0 ? 0.46 : 0.54 },
-        params: { decay: s === 0 ? local.current * 0.85 : 0, drift: s >= 2 ? 0 : 1 },
+        params: {
+          decay: s === 0 ? local.current * 0.85 : 0,
+          drift: s >= 2 ? 0 : 1,
+          alpha: 1,
+        },
       };
     },
     (p, isActive) => {
       owns.current = isActive;
-      const t = Math.min(0.9999, p) * PROBLEMS.length;
-      const s = Math.floor(t);
+
+      // Evenly distribute 4 problem steps across the full scroll progress (0..1)
+      const t = Math.min(0.9999, Math.max(0, p)) * PROBLEMS.length;
+      const s = Math.min(PROBLEMS.length - 1, Math.floor(t));
       local.current = t - s;
       if (s !== stepRef.current) {
         stepRef.current = s;
         setStep(s);
       }
+
       bars.current.forEach((b, i) => b?.style.setProperty('--p', String(i < s ? 1 : i === s ? local.current : 0)));
       retainedAmt.current = s === 0 ? 1 - local.current * 0.85 : 0.15;
       const pct = `${Math.round(retainedAmt.current * 100)}%`;
@@ -78,29 +137,104 @@ export function Problem() {
   );
 
   useAnchors(['silos', 'frozen', 'alone'], (pts, settle) => {
+    const r = ref.current?.getBoundingClientRect();
+    const onScreen = r ? r.bottom > 0 && r.top < window.innerHeight : false;
+
+    let unpinY = 0;
+    let fade = 1;
+    if (r && r.bottom < window.innerHeight) {
+      unpinY = r.bottom - window.innerHeight;
+      fade = Math.max(0, Math.min(1, (r.bottom - window.innerHeight * 0.1) / (window.innerHeight * 0.35)));
+    }
+    const finalOpacity = settle * fade;
+
+    if (!onScreen || !pts || finalOpacity <= 0.01) {
+      labels.current.forEach((el) => { if (el) { el.style.opacity = '0'; el.style.visibility = 'hidden'; } });
+      symbols.current.forEach((el) => { if (el) { el.style.opacity = '0'; el.style.visibility = 'hidden'; } });
+      return;
+    }
+
     labels.current.forEach((el, i) => {
       if (!el) return;
-      if (!pts) {
+      el.style.visibility = 'visible';
+      el.style.opacity = String(finalOpacity);
+      el.style.transform = `translate3d(${pts[i].x}px, ${pts[i].y + unpinY}px, 0) translate(-50%, -50%)`;
+    });
+
+    const C = pts && pts.length >= 12 ? pts.slice(6) : null;
+    symbols.current.forEach((el, i) => {
+      if (!el) return;
+      if (!C || !C[i]) {
         el.style.opacity = '0';
+        el.style.visibility = 'hidden';
         return;
       }
-      el.style.opacity = String(settle);
-      el.style.transform = `translate3d(${pts[i].x}px, ${pts[i].y}px, 0) translate(-50%, -50%)`;
+      el.style.visibility = 'visible';
+      el.style.opacity = String(finalOpacity);
+      el.style.transform = `translate3d(${C[i].x}px, ${C[i].y + unpinY}px, 0) translate(-50%, -50%)`;
     });
   });
 
   // Annotations drawn on top of the particles, so each shape says what it means.
   useAnchors(['logo', 'silos', 'frozen', 'alone'], (pts, settle) => {
+    const r = ref.current?.getBoundingClientRect();
+    const onScreen = r ? r.bottom > 0 && r.top < window.innerHeight : false;
+
+    const hideAll = () => {
+      [ov.gauge.current, ov.gaugeLabel.current, ov.walls.current, ov.wallTag.current, ov.time.current, ov.links.current].forEach((el) => {
+        if (el) {
+          (el as HTMLElement).style.opacity = '0';
+          (el as HTMLElement).style.visibility = 'hidden';
+        }
+      });
+      if (overlaySvgRef.current) {
+        overlaySvgRef.current.style.visibility = 'hidden';
+      }
+    };
+
+    let unpinY = 0;
+    let fade = 1;
+    if (r && r.bottom < window.innerHeight) {
+      unpinY = r.bottom - window.innerHeight;
+      fade = Math.max(0, Math.min(1, (r.bottom - window.innerHeight * 0.1) / (window.innerHeight * 0.35)));
+    }
+    const finalOpacity = settle * fade;
+
+    if (!onScreen || !pts || finalOpacity <= 0.01) {
+      hideAll();
+      return;
+    }
+
+    if (overlaySvgRef.current) {
+      overlaySvgRef.current.style.visibility = 'visible';
+      overlaySvgRef.current.style.transform = unpinY !== 0 ? `translate3d(0, ${unpinY}px, 0)` : '';
+    }
+
     const st = stepRef.current;
-    const show = (el: Element | null, on: boolean) => el && ((el as HTMLElement).style.opacity = on ? String(settle) : '0');
-    const live = owns.current && !!pts;
-    show(ov.gauge.current, live && st === 0);
-    show(ov.gaugeLabel.current, live && st === 0);
-    show(ov.walls.current, live && st === 1);
-    show(ov.wallTag.current, live && st === 1);
-    show(ov.time.current, live && st === 2);
-    show(ov.links.current, live && st === 3);
-    if (!live || !pts) return;
+    const show = (el: Element | null, on: boolean) => {
+      if (!el) return;
+      const htmlEl = el as HTMLElement;
+      if (on && finalOpacity > 0.01) {
+        htmlEl.style.visibility = 'visible';
+        htmlEl.style.opacity = String(finalOpacity);
+        if (unpinY !== 0 && htmlEl.tagName === 'DIV') {
+          htmlEl.style.transform = `translate3d(0, ${unpinY}px, 0)`;
+        } else if (htmlEl.tagName === 'DIV') {
+          htmlEl.style.transform = '';
+        }
+      } else {
+        htmlEl.style.opacity = '0';
+        htmlEl.style.visibility = 'hidden';
+      }
+    };
+
+    show(ov.gauge.current, st === 0);
+    show(ov.gaugeLabel.current, st === 0);
+    show(ov.walls.current, st === 1);
+    show(ov.wallTag.current, st === 1);
+    show(ov.time.current, st === 2);
+    show(ov.links.current, st === 3);
+    if (finalOpacity <= 0.01 || !pts) return;
 
     if (st === 0 && pts.length === 2) {
       const [c, rim] = pts;
@@ -122,11 +256,14 @@ export function Problem() {
 
     if (st === 1) {
       // walls between every tool
-      const top = L[0].y - 14;
-      const bottom = L[3].y + 14;
+      const top = L[0].y - 24;
+      const bottom = C[3].y + 60;
       const left = C[0].x - (C[1].x - C[0].x) * 0.62;
       const right = C[2].x + (C[2].x - C[1].x) * 0.62;
-      const midY = (C[0].y + C[3].y) / 2;
+      // Position the horizontal dividing wall cleanly in the open channel between Row 0 symbols and Row 1 badges
+      const row0Bottom = C[0].y + 38;
+      const row1Top = L[3].y - 18;
+      const midY = (row0Bottom + row1Top) / 2;
       const xs = [(C[0].x + C[1].x) / 2, (C[1].x + C[2].x) / 2];
       const lines = ov.wallLines.current;
       xs.forEach((x, i) => {
@@ -139,12 +276,12 @@ export function Problem() {
       lines[2]?.setAttribute('x2', String(right));
       lines[2]?.setAttribute('y1', String(midY));
       lines[2]?.setAttribute('y2', String(midY));
-      if (ov.wallTag.current) ov.wallTag.current.style.transform = `translate3d(${xs[0]}px, ${midY}px, 0) translate(-50%, -50%)`;
+      if (ov.wallTag.current) ov.wallTag.current.style.transform = `translate3d(${C[1].x}px, ${midY}px, 0) translate(-50%, -50%)`;
     }
 
     if (st === 2 && ov.time.current) {
       // a timeline: knowledge stops at training, the world keeps going
-      const y = L[3].y + 56;
+      const y = C[3].y + 54;
       const x0 = C[0].x - (C[1].x - C[0].x) * 0.5;
       const x1 = C[2].x + (C[2].x - C[1].x) * 0.5;
       ov.time.current.setAttribute('transform', `translate(${x0} ${y}) scale(${(x1 - x0) / 600} 1)`);
@@ -152,16 +289,40 @@ export function Problem() {
 
     if (st === 3) {
       LINKS.forEach(([a, b], i) => {
-        const A = C[a];
-        const B = C[b];
-        const dx = B.x - A.x;
-        const dy = B.y - A.y;
         const line = ov.linkLines.current[i];
-        line?.setAttribute('x1', String(A.x + dx * 0.24));
-        line?.setAttribute('y1', String(A.y + dy * 0.24));
-        line?.setAttribute('x2', String(A.x + dx * 0.76));
-        line?.setAttribute('y2', String(A.y + dy * 0.76));
-        ov.linkMarks.current[i]?.setAttribute('transform', `translate(${A.x + dx / 2} ${A.y + dy / 2})`);
+        const mark = ov.linkMarks.current[i];
+        const isVertical = i >= 4; // [0,3], [1,4], [2,5]
+
+        if (isVertical) {
+          // Vertical connection: between Row 0 symbol bottom and Row 1 badge top
+          // This avoids overlapping or cutting through Code, Vision, or Voice badges!
+          const topSym = C[a];
+          const btmBadge = L[b];
+          const startY = topSym.y + 40;
+          const endY = btmBadge.y - 18;
+          const midY = (startY + endY) / 2;
+          const x = topSym.x;
+
+          line?.setAttribute('x1', String(x));
+          line?.setAttribute('y1', String(startY));
+          line?.setAttribute('x2', String(x));
+          line?.setAttribute('y2', String(endY));
+          mark?.setAttribute('transform', `translate(${x} ${midY})`);
+        } else {
+          // Horizontal connection: between neighbouring symbols in the same row
+          const A = C[a];
+          const B = C[b];
+          const startX = A.x + 48;
+          const endX = B.x - 48;
+          const midX = (A.x + B.x) / 2;
+          const y = A.y;
+
+          line?.setAttribute('x1', String(startX));
+          line?.setAttribute('y1', String(y));
+          line?.setAttribute('x2', String(endX));
+          line?.setAttribute('y2', String(y));
+          mark?.setAttribute('transform', `translate(${midX} ${y})`);
+        }
       });
     }
   });
@@ -170,13 +331,14 @@ export function Problem() {
     const el = ref.current;
     if (!el) return;
     const top = el.getBoundingClientRect().top + window.scrollY;
-    scrollTo(top + ((i + 0.35) / PROBLEMS.length) * (el.offsetHeight - window.innerHeight));
+    const targetP = (i + 0.35) / PROBLEMS.length;
+    scrollTo(top + targetP * (el.offsetHeight - window.innerHeight));
   };
 
   return (
-    <section id="mission" ref={ref} className="pin problem" data-chapter="The problem">
+    <section id="mission" ref={ref} className={`pin problem step-${step}`} data-chapter="The problem">
       <div className="pin-stage">
-        <svg className="problem-overlay" aria-hidden="true">
+        <svg ref={overlaySvgRef} className="problem-overlay" aria-hidden="true">
           <g ref={ov.gauge} className="ov-gauge">
             <circle ref={ov.track} className="ov-track" fill="none" />
             <circle ref={ov.arc} className="ov-arc" fill="none" />
@@ -212,13 +374,45 @@ export function Problem() {
           No shared memory
         </div>
         <div className="silo-labels" aria-hidden="true">
-          {SILOS.map((s, i) => (
-            <span key={s} ref={(el) => (labels.current[i] = el)} className={`silo-label step-${step}`}>
-              {step === 2 && <Snow />}
-              {step === 3 && <Unlinked />}
-              {s}
-            </span>
-          ))}
+          {SILOS.map((s, i) => {
+            const Icon = TOOL_ICONS[s];
+            const isHov = hoveredSilo === i;
+            return (
+              <span
+                key={s}
+                ref={(el) => (labels.current[i] = el)}
+                className={`silo-label step-${step} ${isHov ? 'is-hovered' : ''}`}
+                onMouseEnter={() => setHoveredSilo(i)}
+                onMouseLeave={() => setHoveredSilo(null)}
+              >
+                <span className="silo-label-inner" style={{ animationDelay: `${i * 0.18}s` }}>
+                  {Icon && <Icon />}
+                  <span>{s}</span>
+                </span>
+              </span>
+            );
+          })}
+        </div>
+        <div className="silo-symbols" aria-hidden="true">
+          {SILOS.map((s, i) => {
+            const isHov = hoveredSilo === i;
+            return (
+              <div
+                key={s}
+                ref={(el) => (symbols.current[i] = el)}
+                className={`silo-symbol step-${step} ${isHov ? 'is-hovered' : ''}`}
+                onMouseEnter={() => setHoveredSilo(i)}
+                onMouseLeave={() => setHoveredSilo(null)}
+              >
+                <img
+                  src={`/symbol_${s.toLowerCase()}_alpha.png?v=2`}
+                  alt={s}
+                  className="silo-symbol-img"
+                  style={{ animationDelay: `${i * 0.18}s` }}
+                />
+              </div>
+            );
+          })}
         </div>
         <div className={`ov-legend ${step === 2 ? 'is-on' : ''}`} aria-hidden="true">
           <span>
@@ -230,7 +424,7 @@ export function Problem() {
             The world after: never learned
           </span>
         </div>
-        <div className="wrap problem-stage">
+        <div ref={stageRef} className="wrap problem-stage">
           <header className="problem-head">
             <Kicker index="02">The problem with AI today</Kicker>
             <Lines className="h2" lines={['Powerful, but incomplete.']} />

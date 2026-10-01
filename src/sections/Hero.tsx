@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { attachTo, useFormation, useScene } from '../gl/Scene';
+import { useFormation, useScene, worldYOf } from '../gl/Scene';
 import { Lines, Arrow } from '../components/Reveal';
 import { CAPABILITIES, DOMAINS, LAYERS } from '../content';
 
@@ -12,9 +12,26 @@ const FACTS = [
 
 export function Hero() {
   const ref = useRef<HTMLElement>(null);
+  const copyRef = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
   const { scrollTo } = useScene();
-  useFormation(ref, () => ({ key: 'logo', pose: { x: 1.65, s: 0.92 }, ...attachTo(ref.current, 0.25, 0.56) }));
+
+  useFormation(ref, () => {
+    const el = copyRef.current ?? ref.current;
+    const y = worldYOf(el, el ? el.offsetHeight * 0.48 : window.innerHeight * 0.45);
+    const scrollY = window.scrollY;
+    // Fade out smoothly and subtly as hero copy scrolls up, avoiding overlap with facts
+    const fadeDist = Math.max(240, window.innerHeight * 0.52);
+    const progress = Math.min(1, Math.max(0, scrollY / fadeDist));
+    const alpha = Math.max(0, 1 - progress * 1.15);
+    return {
+      key: 'logo',
+      pose: { x: 1.65, y, s: 0.92 },
+      mobilePose: { x: 0, y, s: 0.56 },
+      params: { alpha },
+      follow: 18,
+    };
+  });
 
   useEffect(() => {
     const t = setTimeout(() => setReady(true), 250);
@@ -26,7 +43,7 @@ export function Hero() {
   return (
     <section id="top" ref={ref} className="hero" data-chapter="Origin">
       <div className="wrap hero-grid">
-        <div className="hero-copy">
+        <div ref={copyRef} className="hero-copy">
           <p className={`eyebrow fade ${ready ? 'is-in' : ''}`}>
             <span className="eyebrow-dot" />
             Generative Intelligence Infrastructure

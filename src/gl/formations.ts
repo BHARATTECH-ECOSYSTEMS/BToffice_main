@@ -1,5 +1,5 @@
 import { distToThreads, THREAD_HALF_WIDTH } from './threads';
-import { INDIA, INDIA_BBOX, INDIA_HUBS, WORLD, GLOBE_LABELS, inPolygon, lonLatToVec, type LonLat } from './geo';
+import { INDIA, INDIA_BBOX, INDIA_HUBS, WORLD, GLOBE_LABELS, inPolygon, lonLatToVec, isLandmass, type LonLat } from './geo';
 
 /**
  * A formation is one arrangement of the same N particles.
@@ -12,6 +12,7 @@ export interface Formation {
   acc: Float32Array;
   grp: Float32Array;
   anchors: [number, number, number][];
+  crisp?: number;
 }
 
 export type V3 = [number, number, number];
@@ -244,87 +245,218 @@ export function orbit(n: number, satellites: number, seed = 5): Formation {
 }
 
 // ── 4. Exploded architecture ───────────────────────────────────────────────
-// Nine layers, each drawn with its own pattern: a metaphor per layer.
+// Nine structured operating system layers.
+// Each layer is rendered as an architectural wafer slab with a crisp perimeter boundary,
+// precision bevel, corner alignment pads, and dedicated technological subsystem circuitry.
 
 export const LAYER_COUNT = 9;
-const LAYER_GAP = 0.4;
-const HALF = 0.95;
+const LAYER_GAP = 0.35;
+const HALF = 0.92;
 
-type Pattern = (r: () => number) => [number, number];
-const grid = (cells: number, r: () => number, span = HALF): [number, number] => {
-  const gx = Math.floor(r() * cells);
-  const gz = Math.floor(r() * cells);
-  return [(gx / (cells - 1)) * 2 * span - span, (gz / (cells - 1)) * 2 * span - span];
-};
-const PATTERNS: Pattern[] = [
-  // Applications: a 3×3 field of tiles
-  (r) => {
-    const tx = Math.floor(r() * 3);
-    const tz = Math.floor(r() * 3);
-    const [x, z] = grid(6, r, 0.22);
-    return [(tx - 1) * 0.64 + x, (tz - 1) * 0.64 + z];
+/** Generates points along a rounded square boundary in the X-Z plane */
+function roundedRectEdge(w: number, h: number, cr: number, t: number): [number, number] {
+  const sw = Math.max(0.01, w - 2 * cr);
+  const sh = Math.max(0.01, h - 2 * cr);
+  const corner = (Math.PI / 2) * cr;
+  const perim = 2 * sw + 2 * sh + 4 * corner;
+  let d = ((t % 1) + 1) % 1 * perim;
+
+  if (d < sw) return [-w / 2 + cr + d, -h / 2];
+  d -= sw;
+  if (d < corner) {
+    const a = -Math.PI / 2 + (d / corner) * (Math.PI / 2);
+    return [w / 2 - cr + Math.cos(a) * cr, -h / 2 + cr + Math.sin(a) * cr];
+  }
+  d -= corner;
+  if (d < sh) return [w / 2, -h / 2 + cr + d];
+  d -= sh;
+  if (d < corner) {
+    const a = (d / corner) * (Math.PI / 2);
+    return [w / 2 - cr + Math.cos(a) * cr, h / 2 - cr + Math.sin(a) * cr];
+  }
+  d -= corner;
+  if (d < sw) return [w / 2 - cr - d, h / 2];
+  d -= sw;
+  if (d < corner) {
+    const a = Math.PI / 2 + (d / corner) * (Math.PI / 2);
+    return [-w / 2 + cr + Math.cos(a) * cr, h / 2 - cr + Math.sin(a) * cr];
+  }
+  d -= corner;
+  if (d < sh) return [-w / 2, h / 2 - cr - d];
+  d -= sh;
+  const a = Math.PI + (d / corner) * (Math.PI / 2);
+  return [-w / 2 + cr + Math.cos(a) * cr, -h / 2 + cr + Math.sin(a) * cr];
+}
+
+type LayerGen = (index: number, total: number, r: () => number) => [number, number];
+
+const LAYER_SUB_SYSTEMS: LayerGen[] = [
+  // 0. Applications: 3x3 organized grid of app modules with frames & active cores
+  (i, total, r) => {
+    const tile = i % 9;
+    const tx = (tile % 3 - 1) * 0.52;
+    const tz = (Math.floor(tile / 3) - 1) * 0.52;
+    const within = Math.floor(i / 9);
+    const subTotal = Math.floor(total / 9);
+    if (within < subTotal * 0.65) {
+      const [ex, ez] = roundedRectEdge(0.38, 0.38, 0.04, within / (subTotal * 0.65));
+      return [tx + ex, tz + ez];
+    }
+    // Active core point with subtle jitter
+    return [tx + (r() - 0.5) * 0.12, tz + (r() - 0.5) * 0.12];
   },
-  // Reasoning: concentric orbits of thought
-  (r) => {
-    const ring = 1 + Math.floor(r() * 5);
+
+  // 1. Reasoning Engine: Concentric neural inference rings with radial synaptic rays & nodes
+  (i, total, r) => {
+    const phase = i / total;
+    if (phase < 0.6) {
+      // 3 concentric inference orbits
+      const ringIdx = i % 3;
+      const radius = 0.22 + ringIdx * 0.23;
+      const a = (Math.floor(i / 3) / (total * 0.2)) * Math.PI * 2;
+      return [Math.cos(a) * radius, Math.sin(a) * radius];
+    }
+    if (phase < 0.85) {
+      // 8 radial synaptic interconnect lines
+      const ray = (i % 8) * (Math.PI / 4);
+      const dist = 0.15 + r() * 0.55;
+      return [Math.cos(ray) * dist, Math.sin(ray) * dist];
+    }
+    // Satellite reasoning nodes
     const a = r() * Math.PI * 2;
-    return [Math.cos(a) * ring * 0.19, Math.sin(a) * ring * 0.19];
+    const d = 0.35 + (i % 2) * 0.3;
+    return [Math.cos(a) * d + (r() - 0.5) * 0.05, Math.sin(a) * d + (r() - 0.5) * 0.05];
   },
-  // Memory: dense, even lattice
-  (r) => grid(26, r),
-  // Knowledge: nodes and the edges between them
+
+  // 2. Memory Engine: Ultra-clean crossbar memory lattice (address bus & word/bit lines)
+  (i, total) => {
+    const isHorizontal = i % 2 === 0;
+    const line = Math.floor(i / 2) % 18;
+    const span = 0.72;
+    const offset = (line / 17) * 2 * span - span;
+    const t = ((Math.floor(i / 36)) / (total / 36)) * 2 * span - span;
+    return isHorizontal ? [t, offset] : [offset, t];
+  },
+
+  // 3. Knowledge Engine: Semantic graph with 16 prominent nodes & connecting relationship vectors
   (() => {
-    const nr = rng(77);
-    const nodes = Array.from({ length: 22 }, () => [(nr() - 0.5) * 1.8, (nr() - 0.5) * 1.8] as [number, number]);
+    const nr = rng(101);
+    const nodes: [number, number][] = Array.from({ length: 16 }, () => [
+      (nr() - 0.5) * 1.3,
+      (nr() - 0.5) * 1.3,
+    ]);
     const edges: [number, number][] = [];
-    nodes.forEach((a, i) =>
-      nodes.forEach((c, j) => {
-        if (j > i && Math.hypot(a[0] - c[0], a[1] - c[1]) < 0.55) edges.push([i, j]);
-      }),
-    );
-    return (r: () => number): [number, number] => {
-      if (r() < 0.45) {
-        const p = nodes[Math.floor(r() * nodes.length)];
-        const a = r() * Math.PI * 2;
-        const d = r() * 0.05;
-        return [p[0] + Math.cos(a) * d, p[1] + Math.sin(a) * d];
+    for (let a = 0; a < nodes.length; a++) {
+      for (let c = a + 1; c < nodes.length; c++) {
+        if (Math.hypot(nodes[a][0] - nodes[c][0], nodes[a][1] - nodes[c][1]) < 0.65) {
+          edges.push([a, c]);
+        }
       }
-      const [i, j] = edges[Math.floor(r() * edges.length)];
+    }
+    return (i: number, total: number, r: () => number): [number, number] => {
+      if (i < total * 0.35) {
+        // Node clusters
+        const node = nodes[i % nodes.length];
+        const a = r() * Math.PI * 2;
+        const d = r() * 0.06;
+        return [node[0] + Math.cos(a) * d, node[1] + Math.sin(a) * d];
+      }
+      // Edge connections
+      const edge = edges[i % edges.length];
       const t = r();
-      return [nodes[i][0] + (nodes[j][0] - nodes[i][0]) * t, nodes[i][1] + (nodes[j][1] - nodes[i][1]) * t];
+      return [
+        nodes[edge[0]][0] + (nodes[edge[1]][0] - nodes[edge[0]][0]) * t,
+        nodes[edge[0]][1] + (nodes[edge[1]][1] - nodes[edge[0]][1]) * t,
+      ];
     };
   })(),
-  // Research: an expanding spiral of inquiry
-  (r) => {
-    const t = r();
-    const a = t * Math.PI * 9;
-    return [Math.cos(a) * t * 0.95, Math.sin(a) * t * 0.95];
-  },
-  // Security: nested perimeters
-  (r) => {
-    const s = [0.95, 0.66, 0.37][Math.floor(r() * 3)];
-    const e = r() * 4;
-    const t = (e % 1) * 2 - 1;
-    const side = Math.floor(e);
-    return side === 0 ? [t * s, -s] : side === 1 ? [s, t * s] : side === 2 ? [-t * s, s] : [-s, -t * s];
-  },
-  // Infrastructure: parallel rails
-  (r) => [(r() * 2 - 1) * HALF, (Math.floor(r() * 12) / 11) * 2 * HALF - HALF],
-  // Compute: a die of dense blocks
-  (r) => {
-    const bx = Math.floor(r() * 4);
-    const bz = Math.floor(r() * 4);
-    const [x, z] = grid(7, r, 0.17);
-    return [(bx - 1.5) * 0.47 + x, (bz - 1.5) * 0.47 + z];
-  },
-  // Sovereign cloud: a bounded disc of distributed nodes
-  (r) => {
-    if (r() < 0.25) {
-      const a = r() * Math.PI * 2;
-      return [Math.cos(a) * 0.98, Math.sin(a) * 0.98];
+
+  // 4. Research Engine: Archimedean golden spiral of deep inquiry with cardinal radar crosshairs
+  (i, total) => {
+    if (i < total * 0.7) {
+      const t = i / (total * 0.7);
+      const angle = t * Math.PI * 8;
+      const rad = 0.08 + t * 0.64;
+      return [Math.cos(angle) * rad, Math.sin(angle) * rad];
     }
+    // Cardinal crosshairs
+    const axis = i % 4;
+    const dist = ((i - total * 0.7) / (total * 0.3)) * 0.72;
+    if (axis === 0) return [dist, 0];
+    if (axis === 1) return [-dist, 0];
+    if (axis === 2) return [0, dist];
+    return [0, -dist];
+  },
+
+  // 5. Security Layer: Concentric cryptographic shields & perimeter firewall barriers
+  (i, total) => {
+    const phase = i / total;
+    if (phase < 0.38) {
+      // 45-degree rotated diamond shield
+      const t = i / (total * 0.38);
+      const s = 0.68;
+      const e = (t * 4) % 4;
+      const d = (e % 1);
+      if (e < 1) return [d * s, (1 - d) * s];
+      if (e < 2) return [(1 - d) * s, -d * s];
+      if (e < 3) return [-d * s, -(1 - d) * s];
+      return [-(1 - d) * s, d * s];
+    }
+    if (phase < 0.72) {
+      // Inner octagonal shield
+      const a = (i / (total * 0.34)) * Math.PI * 2;
+      const rad = 0.42;
+      return [Math.cos(a) * rad, Math.sin(a) * rad];
+    }
+    // Inner secure cryptographic vault core
+    const a = (i / (total * 0.28)) * Math.PI * 2;
+    const rad = 0.2;
+    return [Math.cos(a) * rad, Math.sin(a) * rad];
+  },
+
+  // 6. Infrastructure Layer: High-speed parallel optical data buses with cross-switching junctions
+  (i, total) => {
+    const rails = 10;
+    const railIdx = i % rails;
+    const yRail = (railIdx / (rails - 1)) * 1.3 - 0.65;
+    const progress = Math.floor(i / rails) / (total / rails);
+    const xRail = progress * 1.4 - 0.7;
+    // Periodic switching junctions
+    const junction = Math.sin(progress * Math.PI * 6) > 0.85 ? Math.sin(xRail * 20) * 0.05 : 0;
+    return [xRail, yRail + junction];
+  },
+
+  // 7. Compute Layer: 4x4 matrix of dense neural processor cores & interconnect channels
+  (i, total, r) => {
+    const core = i % 16;
+    const cx = (core % 4 - 1.5) * 0.38;
+    const cz = (Math.floor(core / 4) - 1.5) * 0.38;
+    const within = Math.floor(i / 16);
+    const subTotal = Math.floor(total / 16);
+    if (within < subTotal * 0.6) {
+      const [ex, ez] = roundedRectEdge(0.26, 0.26, 0.03, within / (subTotal * 0.6));
+      return [cx + ex, cz + ez];
+    }
+    // Internal core density
+    return [cx + (r() - 0.5) * 0.16, cz + (r() - 0.5) * 0.16];
+  },
+
+  // 8. Sovereign Cloud: Bounded sovereign foundation disc with radial sector partitions
+  (i, total, r) => {
+    const phase = i / total;
+    if (phase < 0.45) {
+      // Outer sovereign boundary ring
+      const a = (i / (total * 0.45)) * Math.PI * 2;
+      return [Math.cos(a) * 0.72, Math.sin(a) * 0.72];
+    }
+    if (phase < 0.75) {
+      // Intermediate security ring
+      const a = (i / (total * 0.3)) * Math.PI * 2;
+      return [Math.cos(a) * 0.48, Math.sin(a) * 0.48];
+    }
+    // Dense sovereign national hub core
     const a = r() * Math.PI * 2;
-    const d = Math.sqrt(r()) * 0.9;
+    const d = Math.sqrt(r()) * 0.25;
     return [Math.cos(a) * d, Math.sin(a) * d];
   },
 ];
@@ -332,21 +464,83 @@ const PATTERNS: Pattern[] = [
 export function layers(n: number): Formation {
   const r = rng(41);
   const b = new Builder(n);
-  const per = Math.floor((n * 0.88) / LAYER_COUNT);
+
+  // Reserve particles for the vertical central data spine
+  const spineCount = Math.floor(n * 0.06);
+  const perLayer = Math.floor((n - spineCount) / LAYER_COUNT);
   const top = ((LAYER_COUNT - 1) / 2) * LAYER_GAP;
+
   for (let l = 0; l < LAYER_COUNT; l++) {
     const y = top - l * LAYER_GAP;
-    for (let k = 0; k < per; k++) {
-      const [x, z] = PATTERNS[l](r);
-      b.push(x + (r() - 0.5) * 0.006, y, z + (r() - 0.5) * 0.006, 0.7, l);
+    const layerStart = b.i;
+    const layerTarget = layerStart + perLayer;
+
+    // 1. Crisp Outer Perimeter Wafer Border (rounded square)
+    const outerCount = 280;
+    for (let k = 0; k < outerCount; k++) {
+      const [px, pz] = roundedRectEdge(HALF * 2, HALF * 2, 0.16, k / outerCount);
+      b.push(px, y, pz, 0.85, l);
     }
-    b.f.anchors.push([-HALF, y, HALF]); // left corner: the tag reaches back toward the list
+
+    // 2. Inner Beveled Wafer Rim
+    const innerCount = 180;
+    for (let k = 0; k < innerCount; k++) {
+      const [px, pz] = roundedRectEdge(HALF * 1.72, HALF * 1.72, 0.1, k / innerCount);
+      b.push(px, y, pz, 0.5, l);
+    }
+
+    // 3. Corner Alignment Fiducials & Edge Connectors
+    const corners: [number, number][] = [
+      [-HALF * 0.9, -HALF * 0.9],
+      [HALF * 0.9, -HALF * 0.9],
+      [HALF * 0.9, HALF * 0.9],
+      [-HALF * 0.9, HALF * 0.9],
+      [0, -HALF * 0.96],
+      [0, HALF * 0.96],
+      [-HALF * 0.96, 0],
+      [HALF * 0.96, 0],
+    ];
+    corners.forEach(([cx, cz]) => {
+      for (let k = 0; k < 6; k++) {
+        b.push(cx + (r() - 0.5) * 0.04, y, cz + (r() - 0.5) * 0.04, 1.0, l);
+      }
+    });
+
+    // 4. Specialized Technological Subsystem Circuitry
+    const gen = LAYER_SUB_SYSTEMS[l];
+    const remaining = layerTarget - b.i;
+    for (let k = 0; k < remaining; k++) {
+      const [cx, cz] = gen(k, remaining, r);
+      b.push(cx + (r() - 0.5) * 0.005, y, cz + (r() - 0.5) * 0.005, 0.9, l);
+    }
+
+    // Anchor positioned cleanly at the front-left edge of the wafer slab
+    b.f.anchors.push([-HALF * 1.02, y, 0]);
   }
-  const conduit = b.i + Math.floor(n * 0.04);
-  while (b.i < conduit) {
-    const a = r() * Math.PI * 2;
-    b.push(Math.cos(a) * 0.025, (r() - 0.5) * (top * 2 + 0.9), Math.sin(a) * 0.025, 1, -1);
+
+  // 5. Central Vertical Data Spine / High-Speed Inter-Layer Bus
+  const spineHeight = top * 2 + 0.8;
+  while (b.i < n - 8) {
+    const t = r();
+    const sy = top + 0.4 - t * spineHeight;
+    // 4 pillar conduits and 1 dense optical fiber core
+    const col = Math.floor(r() * 5);
+    let sx = 0;
+    let sz = 0;
+    if (col === 0) { sx = -0.05; sz = -0.05; }
+    else if (col === 1) { sx = 0.05; sz = -0.05; }
+    else if (col === 2) { sx = 0.05; sz = 0.05; }
+    else if (col === 3) { sx = -0.05; sz = 0.05; }
+    else {
+      // Center fiber with subtle scatter
+      const a = r() * Math.PI * 2;
+      const d = r() * 0.025;
+      sx = Math.cos(a) * d;
+      sz = Math.sin(a) * d;
+    }
+    b.push(sx, sy, sz, 1.0, -1);
   }
+
   return b.dust(r);
 }
 
@@ -373,39 +567,90 @@ export function arcPoint(a: LonLat, c: LonLat, t: number): V3 {
 export const ARCS: [LonLat, LonLat][] = WORLD.map((w, i) => [INDIA_HUBS[i % INDIA_HUBS.length].at, w.at]);
 
 export function globe(n: number): Formation {
-  const r = rng(61);
+  const r = rng(67);
   const b = new Builder(n);
-  const lattice = Math.floor(n * 0.5);
-  while (b.i < lattice) {
-    const lat = Math.round((r() * 180 - 90) / 4) * 4;
-    const ringCount = Math.max(1, Math.round(90 * Math.cos((lat * Math.PI) / 180)));
-    const lon = (Math.floor(r() * ringCount) / ringCount) * 360 - 180;
-    const [x, y, z] = lonLatToVec(lon, lat, GLOBE_R);
-    b.push(x, y, z, 0.08, -1);
+  const dotSpacing = 0.058;
+  const a = (dotSpacing / GLOBE_R) * (180 / Math.PI);
+  let l = 0;
+
+  // 1. Continental landmasses and global coordinate grid
+  for (let lat = -84; lat <= 84; lat += a, l++) {
+    const ringCount = Math.max(1, Math.round((360 * Math.cos((lat * Math.PI) / 180)) / a));
+    const offset = l % 2 ? 0.5 : 0;
+    for (let g = 0; g < ringCount; g++) {
+      const lon = ((g + offset) / ringCount) * 360 - 180;
+      const pt: LonLat = [lon, lat];
+      const vec = lonLatToVec(lon, lat, GLOBE_R);
+      if (!inPolygon(pt, INDIA)) {
+        if (isLandmass(pt)) {
+          b.push(vec[0], vec[1], vec[2], 0.8, -1);
+        } else if (l % 3 === 0 && g % 3 === 0) {
+          b.push(vec[0], vec[1], vec[2], 0.22, -1);
+        }
+      }
+    }
   }
-  const india = b.i + Math.floor(n * 0.3);
-  while (b.i < india) {
-    const lon = INDIA_BBOX.minLon + r() * (INDIA_BBOX.maxLon - INDIA_BBOX.minLon);
-    const lat = INDIA_BBOX.minLat + r() * (INDIA_BBOX.maxLat - INDIA_BBOX.minLat);
-    if (!inPolygon([lon, lat], INDIA)) continue;
-    const [x, y, z] = lonLatToVec(lon, lat, GLOBE_R * 1.004);
-    b.push(x, y, z, 1, 0);
+
+  // 2. High-Density India Sovereign Core
+  const indiaR = GLOBE_R * 1.008;
+  const dIndia = a * 0.62;
+  for (let lat = INDIA_BBOX.minLat; lat <= INDIA_BBOX.maxLat; lat += dIndia) {
+    for (let lon = INDIA_BBOX.minLon; lon <= INDIA_BBOX.maxLon; lon += dIndia / Math.cos((lat * Math.PI) / 180)) {
+      if (inPolygon([lon, lat], INDIA)) {
+        const v = lonLatToVec(lon, lat, indiaR);
+        b.push(v[0], v[1], v[2], 0.9, 0);
+      }
+    }
   }
-  const hubs = b.i + Math.floor(n * 0.04);
-  while (b.i < hubs) {
-    const h = INDIA_HUBS[Math.floor(r() * INDIA_HUBS.length)];
-    const a = r() * Math.PI * 2;
-    const d = r() * 0.5;
-    const [x, y, z] = lonLatToVec(h.at[0] + Math.cos(a) * d, h.at[1] + Math.sin(a) * d, GLOBE_R * 1.02);
-    b.push(x, y, z, 1, 0);
+
+  // 3. Crisp Outline Perimeter Border of India
+  for (let i = 0; i < INDIA.length; i++) {
+    const [lon1, lat1] = INDIA[i];
+    const [lon2, lat2] = INDIA[(i + 1) % INDIA.length];
+    const segCount = Math.max(1, Math.round(Math.hypot(lon2 - lon1, lat2 - lat1) / (dIndia * 0.55)));
+    for (let k = 0; k < segCount; k++) {
+      const interLon = lon1 + ((lon2 - lon1) * k) / segCount;
+      const interLat = lat1 + ((lat2 - lat1) * k) / segCount;
+      const v = lonLatToVec(interLon, interLat, indiaR * 1.002);
+      b.push(v[0], v[1], v[2], 1.0, 0);
+    }
   }
-  const arcs = b.i + Math.floor(n * 0.1);
-  while (b.i < arcs) {
-    const [a, c] = ARCS[Math.floor(r() * ARCS.length)];
-    const [x, y, z] = arcPoint(a, c, r());
-    b.push(x, y, z, 0.7, 1);
-  }
-  b.f.anchors = GLOBE_LABELS.map((h) => lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.03));
+
+  // 4. India National Hub Clusters
+  INDIA_HUBS.forEach((hub) => {
+    const v = lonLatToVec(hub.at[0], hub.at[1], indiaR * 1.004);
+    for (let k = 0; k < 3; k++) b.push(v[0], v[1], v[2], 1.0, 0);
+  });
+
+  // 5. Global Arcs between India Hubs and Worldwide Partner Nodes
+  ARCS.forEach(([h1, h2]) => {
+    const p1 = arcPoint(h1, h2, 0);
+    const p2 = arcPoint(h1, h2, 1);
+    const count = Math.max(6, Math.round((Math.hypot(p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]) * 1.25) / (dotSpacing * 1.4)));
+    for (let c = 1; c < count; c++) {
+      const p = arcPoint(h1, h2, c / count);
+      b.push(p[0], p[1], p[2], 0.9, 1);
+    }
+  });
+
+  // 6. Tilted Cosmic Orbital Rings with Active Satellite Beads
+  const orbits: [number, number, number][] = [
+    [1.2, 0.42, -0.26],
+    [1.3, -0.3, 0.4],
+  ];
+  orbits.forEach(([scale, tiltX, tiltZ], g) => {
+    const rad = GLOBE_R * scale;
+    const ringDots = Math.round((2 * Math.PI * rad) / (dotSpacing * 1.6));
+    for (let k = 0; k < ringDots; k++) {
+      const theta = (k / ringDots) * Math.PI * 2;
+      const p = rotZ(rotX([Math.cos(theta) * rad, 0, Math.sin(theta) * rad], tiltX), tiltZ);
+      const isSatellite = k % Math.round(ringDots / 3) === g * 4;
+      b.push(p[0], p[1], p[2], isSatellite ? 1.0 : 0.35, isSatellite ? 1 : -1);
+    }
+  });
+
+  b.f.anchors = GLOBE_LABELS.map((h) => lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.02));
+  b.f.crisp = 1;
   return b.dust(r);
 }
 
@@ -415,13 +660,13 @@ export function globe(n: number): Formation {
 export function helix(n: number, segments = 6): Formation {
   const r = rng(83);
   const b = new Builder(n);
-  const L = 3.4;
+  const L = 4.85;
   const rad = 0.55;
   const strands = Math.floor(n * 0.62);
   while (b.i < strands) {
     const t = r();
     const x = -L + t * 2 * L;
-    const phase = x * 2.1 + (b.i % 2) * Math.PI;
+    const phase = x * 1.55 + (b.i % 2) * Math.PI;
     const jitter = (r() - 0.5) * 0.03;
     const seg = Math.min(segments - 1, Math.floor(t * segments));
     b.push(x, Math.cos(phase) * (rad + jitter), Math.sin(phase) * (rad + jitter), b.i % 2 ? 1 : 0.45, seg);
@@ -430,7 +675,7 @@ export function helix(n: number, segments = 6): Formation {
   while (b.i < rungs) {
     const k = Math.floor(r() * 64);
     const x = -L + (k / 63) * 2 * L;
-    const phase = x * 2.1;
+    const phase = x * 1.55;
     const t = r() * 2 - 1;
     const seg = Math.min(segments - 1, Math.floor(((x + L) / (2 * L)) * segments));
     b.push(x, Math.cos(phase) * rad * t, Math.sin(phase) * rad * t, 0.25, seg);
@@ -459,11 +704,9 @@ export function field(n: number): Formation {
 // ── Silos: today's AI, as six tools that never talk ───────────────────────
 
 export const SILO_CENTERS: V3[] = [
-  [-1.15, 0.62, 0], [0, 0.62, 0], [1.15, 0.62, 0],
-  [-1.15, -0.62, 0], [0, -0.62, 0], [1.15, -0.62, 0],
+  [-1.52, 0.84, 0], [0, 0.84, 0], [1.52, 0.84, 0],
+  [-1.52, -0.84, 0], [0, -0.84, 0], [1.52, -0.84, 0],
 ];
-const SILO_R = 0.26;
-const CUBE = 0.23;
 
 /** Which silo each particle belongs to, chosen by where it sat in the mark. */
 function siloMembership(n: number, source: Formation) {
@@ -486,69 +729,42 @@ function siloMembership(n: number, source: Formation) {
   return member;
 }
 
-// labels sit on the outside of the grid so the gaps between rows stay clear
-// anchors 0–5: label positions; 6–11: silo centres
-const siloAnchors = (): V3[] => [...SILO_CENTERS.map(([x, y]): V3 => [x, y > 0 ? y + 0.46 : y - 0.46, 0]), ...SILO_CENTERS];
+// Badges sit cleanly above each symbol in both rows (matching the reference photo)
+// anchors 0–5: badge positions; 6–11: symbol centres
+const siloAnchors = (): V3[] => [...SILO_CENTERS.map(([x, y]): V3 => [x, y + 0.60, 0]), ...SILO_CENTERS];
 
-/** Step 2: soft, living spheres, each alone. */
-export function silos(n: number, source: Formation): Formation {
+/** Step 2: 6 distinct symbolic living particle formations */
+export function silos(n: number, _source: Formation): Formation {
   const r = rng(101);
   const b = new Builder(n);
-  const member = siloMembership(n, source);
   for (let i = 0; i < n; i++) {
-    const k = member[i];
-    if (k < 0) {
-      b.push(0, 0, 0, HIDDEN);
-      continue;
-    }
-    const [x, y, z] = onSphere(r);
-    const d = SILO_R * (i % 3 === 0 ? Math.cbrt(r()) : 1);
-    const c = SILO_CENTERS[k];
-    b.push(c[0] + x * d, c[1] + y * d, c[2] + z * d, k === 1 ? 0.7 : 0.35, k);
+    b.push(0, 0, 0, HIDDEN);
   }
   b.f.anchors = siloAnchors();
   return park(b.f, r);
 }
 
-function cubeLattice(steps: number): V3[] {
-  const pts: V3[] = [];
-  for (let a = 0; a < steps; a++)
-    for (let bb = 0; bb < steps; bb++)
-      for (let c = 0; c < steps; c++) {
-        const edge = [a, bb, c].filter((v) => v === 0 || v === steps - 1).length;
-        if (edge >= 1) pts.push([(a / (steps - 1)) * 2 - 1, (bb / (steps - 1)) * 2 - 1, (c / (steps - 1)) * 2 - 1]);
-      }
-  return pts;
-}
-
-/** Step 3: the same silos, crystallised into rigid cubes: trained, then frozen. */
+/** Step 3: the 6 distinct symbolic formations frozen and crystallised */
 export function frozen(n: number, source: Formation, stubs = false): Formation {
   const r = rng(103);
   const b = new Builder(n);
   const member = siloMembership(n, source);
-  const lattice = cubeLattice(7);
   const adjacent = [[1, 3], [0, 2, 4], [1, 5], [0, 4], [3, 5, 1], [4, 2]];
-  const rot = (p: V3, k: number): V3 => {
-    const a = 0.5 + k * 0.35;
-    return [p[0] * Math.cos(a) - p[2] * Math.sin(a), p[1], p[0] * Math.sin(a) + p[2] * Math.cos(a)];
-  };
   for (let i = 0; i < n; i++) {
     const k = member[i];
     if (k < 0) {
       b.push(0, 0, 0, HIDDEN);
       continue;
     }
-    const c = SILO_CENTERS[k];
     if (stubs && i % 5 === 0) {
       // reaching for a neighbour, stopping short: connections that never land
       const a = SILO_CENTERS[k];
       const o = SILO_CENTERS[adjacent[k][(i >> 3) % adjacent[k].length]];
       const t = 0.24 + Math.pow(r(), 1.6) * 0.16;
-      b.push(a[0] + (o[0] - a[0]) * t, a[1] + (o[1] - a[1]) * t, 0, 0.5, k);
+      b.push(a[0] + (o[0] - a[0]) * t, a[1] + (o[1] - a[1]) * t, 0, 0.9, k);
       continue;
     }
-    const p = rot(lattice[(i * 7919) % lattice.length], k);
-    b.push(c[0] + p[0] * CUBE, c[1] + p[1] * CUBE, c[2] + p[2] * CUBE, 0.1, k);
+    b.push(0, 0, 0, HIDDEN);
   }
   b.f.anchors = siloAnchors();
   return park(b.f, r);

@@ -78,17 +78,78 @@ export function Kicker({ index, children }: { index?: string; children: ReactNod
   );
 }
 
+export function ScrubText({ text, className, as: Component = 'p' }: { text: string; className?: string; as?: ElementType }) {
+  const ref = useRef<HTMLElement>(null);
+  const words = text.split(' ');
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const rect = el.getBoundingClientRect();
+      const h = window.innerHeight;
+      const p = Math.min(1, Math.max(0, (h * 0.85 - rect.top) / (h * 0.85 - h * 0.45 + rect.height)));
+      const spans = el.querySelectorAll<HTMLElement>('.sw');
+      spans.forEach((span, i) => {
+        const s = Math.min(1, Math.max(0, p * spans.length * 1.15 - i));
+        span.style.setProperty('--o', (0.18 + 0.82 * s).toFixed(2));
+      });
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    };
+  }, []);
+
+  return (
+    <Component ref={ref} className={`${className || ''} lede-scrub`} data-scrub="" aria-label={text}>
+      {words.map((w, i) => (
+        <span key={i} className="sw" aria-hidden="true" style={{ '--o': '0.18' } as CSSProperties}>
+          {w}{' '}
+        </span>
+      ))}
+    </Component>
+  );
+}
+
 /** The one header every content section uses: label on the left, statement on a 12-column grid. */
-export function SectionHead({ index, label, title, lede, aside }: { index: string; label: string; title: ReactNode[]; lede?: ReactNode; aside?: ReactNode }) {
+export function SectionHead({
+  index,
+  label,
+  title,
+  lede,
+  aside,
+  scrub,
+}: {
+  index: string;
+  label: string;
+  title: ReactNode[];
+  lede?: ReactNode;
+  aside?: ReactNode;
+  scrub?: boolean;
+}) {
   return (
     <header className="sec-head">
       <Kicker index={index}>{label}</Kicker>
       <div className="sec-head-main">
         <Lines className="h2" lines={title} />
         {lede && (
-          <Fade as="p" className="lede" delay={120}>
-            {lede}
-          </Fade>
+          typeof lede === 'string' && scrub ? (
+            <ScrubText className="lede" text={lede} />
+          ) : (
+            <Fade as="p" className="lede" delay={120}>
+              {lede}
+            </Fade>
+          )
         )}
       </div>
       {aside && (
@@ -103,7 +164,15 @@ export function SectionHead({ index, label, title, lede, aside }: { index: strin
 export function Arrow({ dir = 'right', size = 14 }: { dir?: 'right' | 'down' | 'up-right' | 'up'; size?: number }) {
   const rot = { right: 0, down: 90, 'up-right': -45, up: -90 }[dir];
   return (
-    <svg className="arrow" width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ transform: `rotate(${rot}deg)` }}>
+    <svg
+      className={`arrow arrow-${dir}`}
+      width={size}
+      height={size}
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      style={{ transform: `rotate(${rot}deg)`, '--rot': `${rot}deg` } as React.CSSProperties}
+    >
       <path d="M1 8h13M9 3l5 5-5 5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
