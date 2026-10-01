@@ -43,12 +43,25 @@ export function Architecture() {
       // on compact screens the layer card sits under the stack, so its height comes off too
       const compact = window.innerWidth <= 900;
       const below = compact ? (detailRef.current?.offsetHeight ?? 150) + 12 : 0;
-      const free = stage.getBoundingClientRect().bottom - wrap.getBoundingClientRect().top - below - (compact ? 16 : 24) - (compact ? 24 : 32);
+      // measured from the stage's own padding and the heading's height, not from where the stack currently sits:
+      // the stage centres its content, so the stack's position itself depends on the row height
+      const content = wrap.parentElement!;
+      const headH = wrap.getBoundingClientRect().top - content.getBoundingClientRect().top;
+      const cs = getComputedStyle(stage);
+      const inner = stage.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
+      const free = inner - headH - below - (compact ? 16 : 24) - (compact ? 24 : 32);
       setStepH(Math.max(MIN_STEP, Math.min(MAX_STEP, Math.floor(free / LAYERS.length))));
     };
     fit();
     window.addEventListener('resize', fit);
-    return () => window.removeEventListener('resize', fit);
+    // the heading settles after the web font loads (and wraps differently per platform): re-measure when it does
+    const head = stageRef.current?.querySelector('.sec-head');
+    const ro = new ResizeObserver(fit);
+    if (head) ro.observe(head);
+    return () => {
+      window.removeEventListener('resize', fit);
+      ro.disconnect();
+    };
   }, []);
 
   useEffect(() => {

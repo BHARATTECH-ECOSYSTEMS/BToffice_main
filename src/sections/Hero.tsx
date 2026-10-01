@@ -12,6 +12,15 @@ const FACTS = [
   { label: 'Headquarters', value: 'India' },
 ];
 
+const TONES = ['violet', 'tango', 'sky', 'teal', 'pitch', 'rose'] as const;
+
+const ORBIT = [
+  { label: 'Persistent memory', note: 'Context that carries over', tone: 'violet' },
+  { label: 'Shared reasoning', note: 'Every tool, one mind', tone: 'sky' },
+  { label: 'Keeps learning', note: 'Improves after deployment', tone: 'tango' },
+  { label: 'Sovereign', note: 'Built in Bharat', tone: 'teal' },
+];
+
 export function Hero() {
   const ref = useRef<HTMLElement>(null);
   const copyRef = useRef<HTMLDivElement>(null);
@@ -81,6 +90,16 @@ export function Hero() {
             </button>
           </div>
         </div>
+        {/* Glass chips that float around the mark: what the one layer gives every application */}
+        <div className={`hero-orbit fade ${ready ? 'is-in' : ''}`} style={d(900)} aria-hidden="true">
+          {ORBIT.map((o, i) => (
+            <span key={o.label} className={`orbit-chip orbit-chip--${i + 1}`} data-tone={o.tone}>
+              <i />
+              <b>{o.label}</b>
+              <small>{o.note}</small>
+            </span>
+          ))}
+        </div>
       </div>
       <div className="wrap">
         <dl className={`hero-facts fade ${ready ? 'is-in' : ''}`} style={d(800)}>
@@ -91,6 +110,19 @@ export function Hero() {
             </div>
           ))}
         </dl>
+      </div>
+      <div className={`hero-marquee fade ${ready ? 'is-in' : ''}`} style={d(960)} aria-hidden="true">
+        <div className="hero-marquee-track">
+          {[0, 1].map((k) => (
+            <span key={k} className="hero-marquee-set">
+              {CAPABILITIES.map((c, i) => (
+                <span key={c.name} className="marquee-pill" data-tone={TONES[i % TONES.length]}>
+                  {c.name}
+                </span>
+              ))}
+            </span>
+          ))}
+        </div>
       </div>
     </section>
   );

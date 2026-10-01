@@ -94,6 +94,14 @@ export function Nav() {
     setPill({ x: el.offsetLeft, w: el.offsetWidth, on: true });
   };
 
+  // Already home: a link to "/" changes nothing, so the brand and "Home" scroll back to the top themselves.
+  const home = (e: React.MouseEvent) => {
+    setOpen(false);
+    if (pathname !== '/') return;
+    e.preventDefault();
+    scrollTo(0);
+  };
+
   const go = (l: (typeof LINKS)[number]) => (e: React.MouseEvent) => {
     if (!l.section) return;
     e.preventDefault();
@@ -110,7 +118,7 @@ export function Nav() {
       style={{ '--p': 0 } as CSSProperties}
     >
       <div className="nav-inner">
-        <Link to="/" className="brand" aria-label="Bharattech Origin home">
+        <Link to="/" className="brand" aria-label="Bharattech Origin home" onClick={home}>
           <Brand />
         </Link>
         <nav
@@ -165,7 +173,7 @@ export function Nav() {
 
       <div className="sheet" id="sheet" aria-hidden={!open}>
         <nav className="sheet-links" aria-label="Mobile">
-          <Link to="/" className="sheet-link" tabIndex={open ? 0 : -1}>
+          <Link to="/" className="sheet-link" onClick={home} tabIndex={open ? 0 : -1}>
             <span className="mono">00</span>Home
           </Link>
           {LINKS.map((l, i) => (

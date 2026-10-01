@@ -2714,6 +2714,9 @@ svg {
 
 .stack-art {
   position: relative;
+  /* the illustration takes whatever height the stack beside it leaves, never sets it */
+  flex: 1 1 0;
+  min-height: 120px;
   background: var(--card-2);
   border-bottom: 1px solid var(--line);
   animation: swap-in 0.55s var(--ease) both;
@@ -5777,7 +5780,7 @@ html.intro-on .opening {
   gap: calc(var(--m) * 0.55);
   --m: clamp(52px, 10vh, 88px);
   /* the sheet follows the theme: cultured paper in light mode, near-black in dark */
-  --op-bg: #fafafa;
+  --op-bg: #f6f6f9;
   --op-ink: #0c0c10;
   --op-thread: #3a1fa8;
   --op-dots: rgba(12, 12, 16, 0.08);
@@ -5793,7 +5796,7 @@ html.intro-on .opening {
   animation: opening-bail 0.5s ease 5.5s forwards;
 }
 html.intro-on[data-theme='dark'] .opening {
-  --op-bg: #09090b;
+  --op-bg: #07070c;
   --op-ink: #f8f7f3;
   --op-thread: #ffffff;
   --op-dots: rgba(248, 247, 243, 0.07);

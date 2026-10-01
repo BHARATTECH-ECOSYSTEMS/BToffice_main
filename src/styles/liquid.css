@@ -1,0 +1,896 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Liquid glass: the site's visual language, loaded after global.css.
+   Clean neutral base · six-colour brand palette that follows the chapter · frosted glass surfaces with a
+   specular rim and a cursor-following highlight · quiet, purposeful motion.
+   html.lite (set in index.html on modest machines) keeps the look but drops the live backdrop blur.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@property --p1 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #6b4dff;
+}
+@property --p2 {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #ff7a3d;
+}
+@property --sweep {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* ── Tokens ─────────────────────────────────────────────────────────────── */
+
+:root,
+:root[data-theme='light'] {
+  --c-violet: #6b4dff;
+  --c-tango: #ff7a3d;
+  --c-pitch: #f5a300;
+  --c-sky: #2f8cff;
+  --c-teal: #10b3a3;
+  --c-rose: #f2457f;
+
+  --bg: #f6f6f9;
+  --card: #ffffff;
+  --card-2: #f1f1f6;
+  --ink: #0b0b12;
+  --ink-2: #4f4f5c;
+  --ink-3: #85858f;
+  --line: rgba(11, 11, 18, 0.08);
+  --line-strong: rgba(11, 11, 18, 0.16);
+  --fill: rgba(11, 11, 18, 0.04);
+  --accent: #5b3df5;
+  --accent-fill: #6b4dff;
+  --brand-fill: #6b4dff;
+  --brand-text: #5b3df5;
+  --accent-soft: rgba(107, 77, 255, 0.09);
+  --accent-line: rgba(107, 77, 255, 0.38);
+  --tango: #ff7a3d;
+  --tango-text: #d4520f;
+  --tango-fill: #ff7a3d;
+  --tango-soft: rgba(255, 122, 61, 0.12);
+  --tango-line: rgba(212, 82, 15, 0.4);
+  --pitch: #f5a300;
+  --pitch-text: #b77a00;
+  --pitch-fill: #f5a300;
+  --pitch-soft: rgba(245, 163, 0, 0.13);
+  --pitch-line: rgba(183, 122, 0, 0.42);
+  --danger: #e5484d;
+  --ok: #12a594;
+  --panel: #0e0d16;
+  --nav-bg: rgba(255, 255, 255, 0.62);
+
+  /* glass */
+  --lg-fill: linear-gradient(150deg, rgba(255, 255, 255, 0.82), rgba(255, 255, 255, 0.5) 55%, rgba(255, 255, 255, 0.64));
+  --lg-solid: rgba(255, 255, 255, 0.92);
+  --lg-rim: rgba(255, 255, 255, 0.95);
+  --lg-edge: rgba(26, 18, 70, 0.09);
+  --lg-under: rgba(26, 18, 70, 0.05);
+  --lg-shadow: 0 1px 2px rgba(26, 18, 70, 0.05), 0 16px 40px -24px rgba(40, 24, 120, 0.32);
+  --lg-shadow-hover: 0 2px 4px rgba(26, 18, 70, 0.06), 0 26px 56px -26px rgba(40, 24, 120, 0.42);
+  --lg-spec: rgba(255, 255, 255, 0.85);
+  --lg-blur: blur(20px) saturate(180%);
+  --aurora: 0.42;
+
+  --r-lg: 18px;
+  --r-md: 12px;
+  --r-sm: 8px;
+}
+
+:root[data-theme='dark'] {
+  --c-violet: #8a73ff;
+  --c-tango: #ff8a52;
+  --c-pitch: #ffb020;
+  --c-sky: #4da3ff;
+  --c-teal: #2dd4bf;
+  --c-rose: #ff5c93;
+
+  --bg: #07070c;
+  --card: #111119;
+  --card-2: #171722;
+  --ink: #f5f5fa;
+  --ink-2: #a9a9b8;
+  --ink-3: #6f6f80;
+  --line: rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.15);
+  --fill: rgba(255, 255, 255, 0.05);
+  --accent: #9a86ff;
+  --accent-fill: #7458ff;
+  --brand-fill: #7458ff;
+  --brand-text: #9a86ff;
+  --accent-soft: rgba(154, 134, 255, 0.13);
+  --accent-line: rgba(154, 134, 255, 0.42);
+  --tango: #ff8a52;
+  --tango-text: #ff9a66;
+  --tango-fill: #ff8a52;
+  --tango-soft: rgba(255, 138, 82, 0.14);
+  --tango-line: rgba(255, 138, 82, 0.45);
+  --pitch: #ffb020;
+  --pitch-text: #ffbf47;
+  --pitch-fill: #ffb020;
+  --pitch-soft: rgba(255, 176, 32, 0.14);
+  --pitch-line: rgba(255, 176, 32, 0.45);
+  --on-tone: #160c02;
+  --danger: #ff6369;
+  --ok: #2dd4bf;
+  --panel: #14131d;
+  --nav-bg: rgba(14, 14, 22, 0.55);
+
+  --lg-fill: linear-gradient(150deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03) 55%, rgba(255, 255, 255, 0.05));
+  --lg-solid: rgba(22, 22, 32, 0.94);
+  --lg-rim: rgba(255, 255, 255, 0.16);
+  --lg-edge: rgba(255, 255, 255, 0.07);
+  --lg-under: rgba(0, 0, 0, 0.3);
+  --lg-shadow: 0 24px 50px -30px rgba(0, 0, 0, 0.9);
+  --lg-shadow-hover: 0 30px 60px -30px rgba(0, 0, 0, 0.95);
+  --lg-spec: rgba(255, 255, 255, 0.12);
+  --lg-blur: blur(22px) saturate(160%);
+  --aurora: 0.5;
+}
+
+:root {
+  --nav-h: 72px;
+  --t-display: clamp(2.7rem, 5.6vw, 5.25rem);
+  --t-h2: clamp(1.9rem, 3.1vw, 2.85rem);
+  --t-h3: clamp(1.25rem, 1.6vw, 1.5rem);
+  --t-lede: clamp(1rem, 1.1vw, 1.125rem);
+}
+
+/* Per-section tone: kickers, numbers and accents pick up their chapter's colour */
+#top,
+#intro,
+#capabilities,
+#architecture,
+#builders,
+#next {
+  --tone: var(--c-violet);
+}
+#mission,
+#journal {
+  --tone: var(--c-tango);
+}
+#how {
+  --tone: var(--c-sky);
+}
+#network,
+#faq {
+  --tone: var(--c-teal);
+}
+#laboratory {
+  --tone: var(--c-pitch);
+}
+#audiences {
+  --tone: var(--c-rose);
+}
+
+/* ── Canvas: soft colour fields that follow the chapter, a faint grid ───── */
+
+.atmos {
+  background: var(--bg);
+  transition: --p1 1.4s ease, --p2 1.4s ease, background-color 0.4s ease;
+}
+.atmos::before,
+.atmos::after {
+  opacity: var(--aurora);
+  animation: none;
+}
+.atmos::before {
+  left: -22vmax;
+  top: -30vmax;
+  width: 70vmax;
+  height: 70vmax;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--p1) 60%, transparent), color-mix(in srgb, var(--p1) 16%, transparent) 55%, transparent);
+}
+.atmos::after {
+  right: -26vmax;
+  bottom: -34vmax;
+  width: 72vmax;
+  height: 72vmax;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--p2) 52%, transparent), color-mix(in srgb, var(--p2) 14%, transparent) 55%, transparent);
+}
+/* a slow drift on capable machines only: it sits under the glass, so every frame of drift is re-blurred */
+html:not(.lite) .atmos::before {
+  animation: aurora-a 48s ease-in-out infinite alternate;
+}
+html:not(.lite) .atmos::after {
+  animation: aurora-b 56s ease-in-out infinite alternate;
+}
+.grain {
+  display: none;
+}
+.app::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image: linear-gradient(var(--line) 1px, transparent 1px), linear-gradient(90deg, var(--line) 1px, transparent 1px);
+  background-size: 64px 64px;
+  -webkit-mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, #000 0%, transparent 75%);
+  mask-image: radial-gradient(ellipse 70% 55% at 50% 0%, #000 0%, transparent 75%);
+  opacity: 0.55;
+}
+
+/* ── Type ───────────────────────────────────────────────────────────────── */
+
+.display,
+.h1,
+.h2 {
+  font-weight: 600;
+}
+.display {
+  letter-spacing: -0.045em;
+  line-height: 1;
+}
+.h2 {
+  letter-spacing: -0.035em;
+  line-height: 1.08;
+}
+.h3 {
+  font-weight: 600;
+}
+.accent {
+  color: var(--tone, var(--accent));
+}
+/* the hero's last word: a slow shimmer through the brand colours */
+.hero .accent {
+  background: linear-gradient(100deg, var(--c-violet) 0%, var(--c-rose) 30%, var(--c-tango) 50%, var(--c-violet) 80%) 0 0 / 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer 8s ease-in-out infinite alternate;
+}
+@keyframes shimmer {
+  to {
+    background-position: 100% 0;
+  }
+}
+
+/* Section labels: a tinted index chip and a mono label */
+.kicker,
+.eyebrow {
+  font: 500 12px/1.2 var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.kicker-num {
+  min-width: 0;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  color: var(--tone, var(--accent));
+  background: color-mix(in srgb, var(--tone, var(--accent)) 12%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--accent)) 32%, transparent);
+}
+.eyebrow {
+  width: max-content;
+  padding: 6px 12px 6px 10px;
+  border-radius: 999px;
+  background: var(--lg-fill);
+  box-shadow: inset 0 1px 0 var(--lg-rim), inset 0 0 0 1px var(--lg-edge);
+}
+.eyebrow-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--c-tango);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-tango) 22%, transparent);
+  animation: beat 2.4s ease-in-out infinite;
+}
+@keyframes beat {
+  50% {
+    box-shadow: 0 0 0 6px color-mix(in srgb, var(--c-tango) 0%, transparent);
+  }
+}
+
+/* ── Section scaffolding ────────────────────────────────────────────────── */
+
+.sec-head .kicker {
+  grid-column: 1 / -1;
+  padding-top: 0;
+}
+.sec-head-main {
+  grid-column: 1 / span 8;
+  gap: 14px;
+}
+.sec-head-aside {
+  grid-column: 9 / -1;
+}
+
+/* ── Liquid glass surfaces ──────────────────────────────────────────────── */
+
+.glass,
+:is(.folio-main, #main, .app) :is(.bento, .problem-card, .cap-card, .stack, .stack-detail, .net-art, .net-list li, .lab-card, .aud-card, .jobs-board, .faq-item, .faq-contact, .scene-demo, .caps-base),
+.story-cover,
+.finale-cta,
+.hero-facts,
+.orbit-chip,
+.ov-gauge-label,
+.ov-wall-tag,
+.silo-label {
+  position: relative;
+  isolation: isolate;
+  background: var(--lg-fill);
+  -webkit-backdrop-filter: var(--lg-blur);
+  backdrop-filter: var(--lg-blur);
+  border-radius: var(--r-lg);
+  box-shadow: inset 0 1px 0 var(--lg-rim), inset 0 -1px 0 var(--lg-under), inset 0 0 0 1px var(--lg-edge), var(--lg-shadow);
+  transition: box-shadow 0.35s ease, transform 0.45s var(--ease), background-color 0.3s ease;
+}
+/* labels pinned to the particles keep their fixed positioning */
+.silo-label,
+.ov-label {
+  position: fixed;
+}
+html.lite :is(.glass, .bento, .problem-card, .cap-card, .stack, .stack-detail, .net-art, .net-list li, .lab-card, .aud-card, .jobs-board, .faq-item, .faq-contact, .scene-demo, .caps-base, .story-cover, .finale-cta, .hero-facts, .orbit-chip, .ov-gauge-label, .ov-wall-tag, .silo-label) {
+  background: var(--lg-solid);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+/* the specular highlight: a soft light that follows the cursor across the glass */
+:is(.folio-main, #main, .app) :is(.bento, .cap-card, .stack-detail, .lab-card, .aud-card, .faq-item, .net-list li, .scene-demo, .jobs-board, .story-cover),
+.finale-cta,
+.hero-facts {
+  overflow: hidden;
+}
+:is(.folio-main, #main, .app) :is(.bento, .cap-card, .stack-detail, .lab-card, .aud-card, .faq-item, .net-list li, .jobs-board)::after,
+.finale-cta::after,
+.hero-facts::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(320px circle at var(--gx, 50%) var(--gy, -40%), var(--lg-spec), transparent 60%);
+  opacity: 0;
+  mix-blend-mode: soft-light;
+  transition: opacity 0.4s ease;
+}
+:root[data-theme='light'] :is(.bento, .cap-card, .stack-detail, .lab-card, .aud-card, .faq-item, .net-list li, .jobs-board, .finale-cta, .hero-facts)::after {
+  mix-blend-mode: normal;
+}
+@media (hover: hover) {
+  :is(.folio-main, #main, .app) :is(.bento, .cap-card, .stack-detail, .lab-card, .aud-card, .faq-item, .net-list li, .jobs-board):hover::after,
+  .finale-cta:hover::after,
+  .hero-facts:hover::after {
+    opacity: 0.7;
+  }
+  :is(.folio-main, #main, .app) :is(.bento, .problem-card, .cap-card, .lab-card, .aud-card):hover,
+  :is(.folio-main, #main, .app) .lab-card.is-lit {
+    transform: translateY(-4px);
+    box-shadow: inset 0 1px 0 var(--lg-rim), inset 0 -1px 0 var(--lg-under),
+      inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--accent)) 38%, var(--lg-edge)), var(--lg-shadow-hover);
+  }
+}
+
+/* drawings inside cards: a tinted well */
+:is(.folio-main, #main, .app) :is(.bento-art, .problem-art, .lab-card-art, .aud-art),
+:is(.folio-main, #main, .app) .net-art,
+.stack-art {
+  background: radial-gradient(circle, var(--line) 1px, transparent 1.2px) 0 0 / 20px 20px,
+    radial-gradient(120% 100% at 0% 0%, color-mix(in srgb, var(--tone, var(--accent)) 12%, transparent), transparent 60%),
+    radial-gradient(100% 100% at 100% 100%, color-mix(in srgb, var(--c-sky) 8%, transparent), transparent 60%),
+    color-mix(in srgb, var(--card-2) 70%, transparent);
+  border-bottom: 1px solid var(--line);
+}
+
+/* card index numbers: tinted pills in the chapter colour */
+:is(.folio-main, #main, .app) :is(.bento-text .num, .problem-text .num, .lab-card-num, .aud-num) {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  font: 500 11.5px/1 var(--mono);
+  color: var(--tone, var(--accent));
+  background: color-mix(in srgb, var(--tone, var(--accent)) 12%, transparent);
+}
+.tag {
+  border-radius: 999px;
+  font-size: 12px;
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* Animated gradient rim on the few panels that matter most */
+.finale-cta::before,
+.hero-facts::before,
+.stack-detail::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  padding: 1px;
+  border-radius: inherit;
+  background: conic-gradient(from var(--sweep), transparent 0 40%, var(--c-violet) 55%, var(--c-tango) 68%, var(--c-sky) 80%, transparent 92%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0);
+  opacity: 0.85;
+  pointer-events: none;
+  animation: sweep 7s linear infinite;
+}
+@keyframes sweep {
+  to {
+    --sweep: 360deg;
+  }
+}
+
+/* ── Navigation: a floating glass capsule ───────────────────────────────── */
+
+.nav {
+  top: 12px;
+}
+.nav-inner {
+  max-width: min(var(--max), calc(100% - 32px));
+  height: 58px;
+  padding: 0 10px 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--nav-bg);
+  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  backdrop-filter: blur(22px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--lg-rim), inset 0 0 0 1px var(--lg-edge), 0 12px 32px -18px rgba(30, 20, 90, 0.35);
+}
+html.lite .nav-inner {
+  background: var(--lg-solid);
+}
+.nav.is-scrolled .nav-inner {
+  box-shadow: inset 0 1px 0 var(--lg-rim), inset 0 0 0 1px var(--lg-edge), 0 16px 40px -18px rgba(30, 20, 90, 0.42);
+}
+.nav-progress {
+  left: 28px;
+  right: 28px;
+  bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--p1), var(--p2));
+  box-shadow: none;
+}
+.nav-pill {
+  height: 34px;
+  margin-top: -17px;
+  border-radius: 999px;
+  background: var(--fill);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.nav-link {
+  border-radius: 999px;
+  font-size: 13.5px;
+}
+.nav-link[aria-current='page'],
+.nav-link.is-current {
+  color: var(--ink);
+}
+.nav-link.is-current::after,
+.nav-link[aria-current='page']::after {
+  background: linear-gradient(90deg, var(--p1), var(--p2));
+  width: 14px;
+  height: 2px;
+  margin-left: -7px;
+  border-radius: 2px;
+}
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+}
+.nav-cta {
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff !important;
+  background: linear-gradient(120deg, var(--c-violet), color-mix(in srgb, var(--c-violet) 55%, var(--c-rose)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 8px 18px -8px color-mix(in srgb, var(--c-violet) 70%, transparent);
+}
+.nav-cta:hover {
+  background: linear-gradient(120deg, color-mix(in srgb, var(--c-violet) 85%, #fff), var(--c-rose));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 12px 24px -8px color-mix(in srgb, var(--c-rose) 60%, transparent);
+}
+.nav-menu-btn {
+  border-radius: 999px;
+}
+.sheet {
+  inset: calc(var(--nav-h) + 4px) 12px auto;
+  max-height: calc(100svh - var(--nav-h) - 16px);
+  border-radius: 24px;
+  background: color-mix(in srgb, var(--card) 88%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--lg-rim), inset 0 0 0 1px var(--lg-edge), var(--lg-shadow-hover);
+}
+
+/* ── Buttons: liquid pills ──────────────────────────────────────────────── */
+
+.btn {
+  height: 44px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: transform 0.3s var(--ease), box-shadow 0.3s ease, background-color 0.3s ease, color 0.2s ease;
+}
+.btn-solid,
+.btn-light,
+:root[data-theme='light'] .btn-solid,
+:root[data-theme='light'] .btn-light {
+  position: relative;
+  overflow: hidden;
+  color: #fff;
+  background: linear-gradient(120deg, var(--c-violet), color-mix(in srgb, var(--c-violet) 60%, var(--c-sky)));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 -1px 0 rgba(0, 0, 0, 0.12), 0 10px 24px -12px color-mix(in srgb, var(--c-violet) 80%, transparent);
+}
+/* a highlight that slides across on hover */
+.btn-solid::after,
+.btn-light::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.45) 50%, transparent 65%) -150% 0 / 200% 100% no-repeat;
+  transition: background-position 0.8s var(--ease);
+  pointer-events: none;
+}
+.btn-solid:hover::after,
+.btn-light:hover::after {
+  background-position: 150% 0;
+}
+.btn-solid:hover,
+.btn-light:hover {
+  background: linear-gradient(120deg, var(--c-violet), color-mix(in srgb, var(--c-violet) 40%, var(--c-rose))) !important;
+  color: #fff !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4), 0 16px 30px -12px color-mix(in srgb, var(--c-violet) 85%, transparent) !important;
+  transform: translateY(-2px);
+}
+.btn-ghost,
+.hero-actions .btn-ghost {
+  color: var(--ink);
+  background: var(--lg-fill);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 var(--lg-rim), inset 0 0 0 1px var(--lg-edge), 0 6px 16px -10px rgba(30, 20, 90, 0.25);
+}
+.btn-ghost:hover,
+.hero-actions .btn-ghost:hover {
+  color: var(--ink);
+  box-shadow: inset 0 1px 0 var(--lg-rim), inset 0 0 0 1px var(--accent-line), 0 10px 22px -10px rgba(30, 20, 90, 0.32);
+  transform: translateY(-2px);
+}
+.hero-actions .btn {
+  height: 48px;
+  padding: 0 24px;
+}
+
+/* ── Hero: floating glass chips around the mark, a capability marquee ───── */
+
+.hero-grid {
+  position: relative;
+}
+.hero-orbit {
+  position: absolute;
+  inset: 0 0 0 52%;
+  pointer-events: none;
+}
+.orbit-chip {
+  position: absolute;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 10px;
+  align-items: center;
+  padding: 10px 14px 10px 12px;
+  border-radius: 14px;
+  white-space: nowrap;
+  animation: bob 6s ease-in-out infinite;
+}
+.orbit-chip i {
+  grid-row: span 2;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--chip);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--chip) 20%, transparent);
+}
+.orbit-chip b {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.orbit-chip small {
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
+.orbit-chip--1 {
+  left: 6%;
+  top: 14%;
+}
+.orbit-chip--2 {
+  right: 0;
+  top: 30%;
+  animation-delay: -1.5s;
+}
+.orbit-chip--3 {
+  left: 0;
+  bottom: 22%;
+  animation-delay: -3s;
+}
+.orbit-chip--4 {
+  right: 8%;
+  bottom: 8%;
+  animation-delay: -4.5s;
+}
+@keyframes bob {
+  50% {
+    transform: translateY(-10px);
+  }
+}
+[data-tone='violet'] {
+  --chip: var(--c-violet);
+}
+[data-tone='tango'] {
+  --chip: var(--c-tango);
+}
+[data-tone='sky'] {
+  --chip: var(--c-sky);
+}
+[data-tone='teal'] {
+  --chip: var(--c-teal);
+}
+[data-tone='pitch'] {
+  --chip: var(--c-pitch);
+}
+[data-tone='rose'] {
+  --chip: var(--c-rose);
+}
+
+.hero-facts {
+  padding: 0;
+  margin-bottom: 20px;
+  column-gap: 0;
+}
+.hero-facts > div {
+  position: relative;
+  z-index: 4;
+  padding: 18px 22px;
+  border-radius: 0 !important;
+}
+.hero-facts > div + div {
+  border-left: 1px solid var(--line);
+}
+.hero-facts dt {
+  font: 500 11.5px/1.3 var(--mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.hero-facts dd {
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+}
+.hero-facts > div:nth-child(1) dd {
+  color: var(--c-violet);
+}
+.hero-facts > div:nth-child(2) dd {
+  color: var(--c-sky);
+}
+.hero-facts > div:nth-child(3) dd {
+  color: var(--c-tango);
+}
+.hero-facts > div:nth-child(4) dd {
+  color: var(--c-teal);
+}
+
+.hero-marquee {
+  overflow: hidden;
+  padding: 4px 0 28px;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 10%, #000 90%, transparent);
+}
+.hero-marquee-track {
+  display: flex;
+  width: max-content;
+  animation: marquee 48s linear infinite;
+}
+.hero-marquee:hover .hero-marquee-track {
+  animation-play-state: paused;
+}
+.hero-marquee-set {
+  display: flex;
+  gap: 10px;
+  padding-right: 10px;
+}
+.marquee-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 14px 0 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--ink-2);
+  background: var(--lg-fill);
+  box-shadow: inset 0 1px 0 var(--lg-rim), inset 0 0 0 1px var(--lg-edge);
+}
+.marquee-pill::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--chip);
+}
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ── Entrances: content arrives with a soft focus pull ──────────────────── */
+
+.fade {
+  filter: blur(6px);
+  transform: translate3d(0, 16px, 0) scale(0.985);
+  transition: opacity 0.6s ease, transform 0.7s var(--ease), filter 0.6s ease;
+  transition-delay: var(--d, 0ms);
+}
+.fade.is-in,
+.is-in > .fade,
+.is-in .fade {
+  filter: none;
+}
+/* capability cards re-enter one after another whenever the group changes */
+.caps-grid > * {
+  animation: card-in 0.6s var(--ease) both;
+}
+.caps-grid > :nth-child(2) {
+  animation-delay: 60ms;
+}
+.caps-grid > :nth-child(3) {
+  animation-delay: 120ms;
+}
+.caps-grid > :nth-child(4) {
+  animation-delay: 180ms;
+}
+.caps-grid > :nth-child(5) {
+  animation-delay: 240ms;
+}
+@keyframes card-in {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.97);
+    filter: blur(4px);
+  }
+}
+
+/* ── Section details ────────────────────────────────────────────────────── */
+
+/* capabilities: a glass segmented control, the big index in the chapter colour */
+.caps-groups {
+  background: var(--lg-fill);
+  box-shadow: inset 0 1px 0 var(--lg-rim), inset 0 0 0 1px var(--lg-edge);
+}
+.caps-big {
+  font-weight: 600;
+  background: linear-gradient(135deg, var(--c-violet), var(--c-teal));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.cap-card .cap-icon,
+.cap-card > span:first-child {
+  border-radius: 12px;
+}
+
+/* problem: glass tool labels, broken links in the chapter colour */
+.silo-label,
+.silo-label.step-1,
+.silo-label.step-2,
+.silo-label.step-3,
+:root[data-theme='light'] .silo-label.step-1,
+:root[data-theme='light'] .silo-label.step-2,
+:root[data-theme='light'] .silo-label.step-3 {
+  border-radius: 999px;
+  color: var(--ink);
+}
+.silo-label svg {
+  color: var(--c-tango) !important;
+  stroke: var(--c-tango) !important;
+}
+.silo-label.is-hovered {
+  box-shadow: inset 0 1px 0 var(--lg-rim), inset 0 0 0 1px var(--c-tango), var(--lg-shadow) !important;
+}
+.ov-gauge-label,
+.ov-wall-tag {
+  border-radius: 12px;
+}
+
+/* how it works: the trace console as dark glass */
+.how-trace {
+  border-radius: var(--r-lg);
+}
+
+/* architecture: the active layer glows in its tone */
+.slab {
+  border-radius: 10px;
+}
+.slab.is-active {
+  box-shadow: 0 10px 24px -12px var(--lt), inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+}
+
+/* finale: the orb breathes a little brighter */
+.orb-glow {
+  opacity: 0.9;
+}
+
+/* footer word picks up the palette */
+.footer-word {
+  background: linear-gradient(100deg, var(--c-violet), var(--c-rose) 40%, var(--c-tango) 70%, var(--c-pitch)) !important;
+  -webkit-background-clip: text !important;
+  background-clip: text !important;
+  -webkit-text-fill-color: transparent !important;
+  opacity: 0.22;
+}
+
+/* chapter rail: the current chapter in its palette */
+.rail li[data-tone='tango'],
+.rail li[data-tone='violet'] {
+  --dot: var(--p1);
+  --dot-ring: var(--line-strong);
+  --dot-tint: transparent;
+  --dot-soft: color-mix(in srgb, var(--p1) 25%, transparent);
+  --dot-glow: color-mix(in srgb, var(--p1) 40%, transparent);
+}
+
+/* ── Compact screens ────────────────────────────────────────────────────── */
+
+@media (max-width: 1100px) {
+  .hero-orbit {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .hero-facts > div:nth-child(3) {
+    border-left: 0;
+  }
+  .hero-facts > div:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+  }
+  .hero-facts {
+    row-gap: 0;
+  }
+  .sec-head-main,
+  .sec-head-aside {
+    grid-column: 1 / -1;
+  }
+  .nav-inner {
+    padding: 0 8px 0 16px;
+  }
+  /* phones: glass without the live blur (cheaper, and swipe rows scroll smoother) */
+  :is(.bento, .cap-card, .lab-card, .aud-card, .faq-item, .net-list li, .scene-demo) {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    background: var(--lg-solid) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-marquee-track,
+  .orbit-chip,
+  .hero .accent,
+  .finale-cta::before,
+  .hero-facts::before,
+  .stack-detail::before,
+  .eyebrow-dot {
+    animation: none !important;
+  }
+  .fade {
+    filter: none !important;
+  }
+}

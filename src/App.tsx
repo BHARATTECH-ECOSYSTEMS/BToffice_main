@@ -15,6 +15,22 @@ import { Contact } from './pages/Contact';
 import { Privacy, Terms } from './pages/Legal';
 import { NotFound } from './pages/NotFound';
 
+const CHAPTER_TONES: Record<string, [string, string]> = {
+  top: ['violet', 'tango'],
+  intro: ['violet', 'sky'],
+  mission: ['tango', 'rose'],
+  capabilities: ['violet', 'teal'],
+  how: ['sky', 'violet'],
+  architecture: ['violet', 'pitch'],
+  network: ['teal', 'violet'],
+  laboratory: ['pitch', 'tango'],
+  audiences: ['rose', 'violet'],
+  builders: ['violet', 'sky'],
+  journal: ['tango', 'pitch'],
+  faq: ['teal', 'violet'],
+  next: ['violet', 'tango'],
+};
+
 function Layout() {
   const { pathname, state } = useLocation();
   const { scrollTo } = useScene();
@@ -44,10 +60,29 @@ function Layout() {
     return () => window.removeEventListener('pointerover', onMove);
   }, []);
 
+  // Chapter palettes: whichever section holds the middle of the screen sets the page's two background colours.
+  useEffect(() => {
+    const root = document.documentElement;
+    const sections = Array.from(document.querySelectorAll<HTMLElement>('main section'));
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          const [a, b] = CHAPTER_TONES[e.target.id] ?? CHAPTER_TONES.top;
+          root.style.setProperty('--p1', `var(--c-${a})`);
+          root.style.setProperty('--p2', `var(--c-${b})`);
+        }
+      },
+      { rootMargin: '-50% 0px -50% 0px' },
+    );
+    sections.forEach((s) => io.observe(s));
+    return () => io.disconnect();
+  }, [pathname]);
+
   // Card cursor spotlight & sheen tracking (--gx, --gy) across all cards
   useEffect(() => {
     const selector =
-      '.bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item, .stack-detail, .jobs-summary, .jobs-board, .scene-demo';
+      '.bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item, .stack, .stack-detail, .jobs-summary, .jobs-board, .scene-demo, .finale-cta, .hero-facts, .story-cover, .caps-base';
     let rafId = 0;
     let lastEvent: PointerEvent | null = null;
     const update = () => {
