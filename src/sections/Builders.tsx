@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { useFormation } from '../gl/Scene';
+import { useStage } from '../gl/Scene';
+import { TEAMS } from '../gl/figures';
+import { Stage } from '../components/Stage';
 import { Fade, Arrow, SectionHead } from '../components/Reveal';
 import { EMAIL, ROLES, VALUES } from '../content';
 
@@ -23,19 +25,27 @@ const count = (key: 'dept' | 'location') =>
 export function Builders() {
   const ref = useRef<HTMLElement>(null);
   const [dept, setDept] = useState('All');
-  useFormation(ref, { key: 'field', params: { alpha: 0 } });
+  const cap = `Empty seats at the table: ${ROLES.length} open roles across the teams`;
+  const stage = useStage(ref, 'seats', {
+    fig: '09',
+    name: 'Seats',
+    caption: cap,
+    labels: () => TEAMS.map(([team, open]) => ({ text: `${team} · ${open} open`, hot: team === dept, side: 'right' as const })),
+    params: () => ({ highlight: TEAMS.findIndex(([team]) => team === dept) }),
+  });
   const roles = useMemo(() => ROLES.filter((r) => dept === 'All' || r.dept === dept), [dept]);
   const byDept = count('dept');
   const byPlace = count('location');
 
   return (
-    <section id="builders" ref={ref} className="section builders" data-chapter="Builders">
+    <section id="builders" ref={ref} className="section builders" data-room="pitch" data-room2="violet" data-chapter="Builders">
       <div className="wrap">
         <SectionHead
           index="09"
           label="Careers"
           title={['Join the builders.']}
           lede="A research and engineering company working on problems measured in decades. If you would rather build the foundation than another feature, we should talk."
+          stage={<Stage stageRef={stage} fig="09" name="Seats" caption={cap} />}
         />
 
         <div className="jobs">
@@ -69,7 +79,7 @@ export function Builders() {
             </Link>
           </Fade>
 
-          <Fade className="jobs-board" delay={100}>
+          <Fade className="jobs-board" delay={120}>
             <div className="jobs-board-head">
               <div className="segmented" role="group" aria-label="Team">
                 {DEPTS.map((d) => (

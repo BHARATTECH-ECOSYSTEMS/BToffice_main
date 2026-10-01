@@ -23,8 +23,16 @@ export const particleVertex = /* glsl */ `
   uniform float uWave;
   uniform float uExplode;
   uniform float uWarp;
+  uniform float uScale;
+  uniform float uCrisp; // 0 soft light … 1 flat, even dots (the panel illustrations)
+  uniform float uDotPx;
+  uniform float uDim; // how bright the rest stays while one group is highlighted
+  uniform float uGrow; // point size multiplier for soft points
+  uniform float uDotScale; // printed dot size, relative (the globe prints finer dots)
+  uniform float uCull; // 1 hides points on the far side of a sphere centred on the formation (the globe)
 
   varying float vAcc;
+  varying float vCrisp;
   varying float vAlpha;
   varying float vShade;
   varying float vHl;
@@ -50,29 +58,15 @@ export const particleVertex = /* glsl */ `
       sin(t * 0.7 + aRand.y * 6.2831),
       cos(t * 0.6 + aRand.y * 4.7),
       sin(t * 0.5 + aRand.y * 3.1)
-    ) * 0.008 * uDrift;
+    ) * 0.008 * uDrift * (1.0 - uCrisp);
 
     // terrain breathes
     float waveW = (aGrpTo < -1.5 ? st : 0.0) + (aGrpFrom < -1.5 ? 1.0 - st : 0.0);
     p.y += sin(p.x * 1.1 + uTime * 0.45) * cos(p.z * 0.9 + uTime * 0.32) * 0.22 * waveW * uWave;
 
-    // exploded view: layers separate with progressive clearance around the active layer
+    // exploded view: layers above the highlighted one lift, layers below drop
     float g = st < 0.5 ? aGrpFrom : aGrpTo;
-    if (uExplode > 0.001 && uHighlight > -0.5 && g > -0.5) {
-      float diff = g - uHighlight;
-      if (abs(diff) < 0.5) {
-        // Active layer lifts out prominently and steps slightly toward the viewer
-        p.y += 0.08 * uExplode;
-        p.x -= 0.12 * uExplode;
-        p.z += 0.16 * uExplode;
-      } else if (diff < 0.0) {
-        // Layers above (lower index = higher y) lift upward with progressive spacing
-        p.y += (0.22 - diff * 0.04) * uExplode;
-      } else {
-        // Layers below (higher index = lower y) drop downward with progressive spacing
-        p.y += (-0.22 - diff * 0.04) * uExplode;
-      }
-    }
+    if (uExplode > 0.001 && uHighlight > -0.5 && g > -0.5) p.y += clamp(uHighlight - g, -1.0, 1.0) * uExplode * 0.24;
 
     vec4 world = modelMatrix * vec4(p, 1.0);
 
@@ -90,12 +84,21 @@ export const particleVertex = /* glsl */ `
     vec4 mv = viewMatrix * world;
     gl_Position = projectionMatrix * mv;
 
+    // the far side of a sphere turns away: points whose outward direction faces from the camera fade out
+    vec3 centre = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+    float facing = dot(normalize(world.xyz - centre), normalize(cameraPosition - world.xyz));
+    float front = mix(1.0, smoothstep(-0.02, 0.22, facing), uCull);
+
     float grp = st < 0.5 ? aGrpFrom : aGrpTo;
     float hl = (uHighlight > -0.5 && abs(grp - uHighlight) < 0.5) ? uHighlightAmt : 0.0;
     vHl = hl;
 
-    gl_PointSize = uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.65) * (7.0 / -mv.z) * 2.2;
-    vTint = step(0.82, fract(aRand.y * 7.31)) * (0.5 + 0.5 * sin(p.x * 1.3 + p.y * 0.9 + uTime * 0.4));
+    // points shrink with the formation, so a small shape stays as fine-grained as a large one
+    float grain = clamp(pow(uScale, 0.55), 0.55, 1.0);
+    float soft = uGrow * uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.35) * (7.0 / -mv.z) * 2.2 * grain;
+    gl_PointSize = mix(soft, uDotPx * uDotScale * (1.0 + hl * 0.3), uCrisp);
+    vCrisp = uCrisp;
+    vTint = step(0.9, fract(aRand.y * 7.31)) * (0.5 + 0.5 * sin(p.x * 1.3 + p.y * 0.9 + uTime * 0.4)) * (1.0 - uCrisp);
 
     // Parked particles (acc -1) only fade; they borrow the colour of the other side.
     bool hideFrom = aAccFrom < -0.5;
@@ -107,9 +110,9 @@ export const particleVertex = /* glsl */ `
 
     float depth = smoothstep(-10.5, -5.2, mv.z);
     float forgotten = step(aRand.z, uDecay);
-    float dim = (uHighlight > -0.5) ? mix(1.0, 0.40, uHighlightAmt) : 1.0;
+    float dim = (uHighlight > -0.5) ? mix(1.0, uDim, uHighlightAmt) : 1.0;
     float shown = mix(hideFrom ? 0.0 : 1.0, hideTo ? 0.0 : 1.0, st);
-    vAlpha = mix(0.35, 1.0, depth) * (1.0 - forgotten * 0.94) * mix(dim, 1.25, hl) * shown;
+    vAlpha = mix(mix(0.3, 1.0, depth), 1.0, uCrisp) * (1.0 - forgotten * 0.94) * mix(dim, 1.0, hl) * shown * front;
   }
 `;
 
@@ -122,6 +125,7 @@ export const particleFragment = /* glsl */ `
   uniform float uAlpha;
   uniform float uInkAlpha;
   uniform vec3 uCyan;
+  uniform vec3 uYellow;
   uniform float uHalo;
 
   varying float vAcc;
@@ -129,6 +133,7 @@ export const particleFragment = /* glsl */ `
   varying float vShade;
   varying float vHl;
   varying float vTint;
+  varying float vCrisp;
 
   void main() {
     // a crisp core inside a soft halo: points read as light, not dots
@@ -137,10 +142,12 @@ export const particleFragment = /* glsl */ `
     float core = smoothstep(0.42, 0.18, d);
     float halo = exp(-d * d * 5.0) * uHalo;
     vec3 accent = mix(uDeep, uBright, pow(vShade, 1.4));
-    accent = mix(accent, uCyan, vTint * 0.75);
+    vec3 warm = mix(uCyan, uYellow, step(0.5, fract(vAcc * 9.3 + vShade * 5.1)));
+    accent = mix(accent, warm, vTint * 0.55);
     vec3 col = mix(uInk, accent, smoothstep(0.0, 1.0, vAcc));
-    col = mix(col, uHot, vHl * 0.6);
-    float a = (core + halo) * vAlpha * uAlpha * mix(uInkAlpha, 1.0, vAcc) * 0.85;
+    col = mix(col, uHot, vHl * mix(0.6, 0.95, vCrisp)); // printed figures take the highlight colour fully
+    float flat_ = smoothstep(1.0, 0.78, d); // an even, printed dot
+    float a = mix((core + halo) * mix(uInkAlpha, 1.0, vAcc) * 0.85, flat_ * mix(0.55, 1.0, vAcc), vCrisp) * vAlpha * uAlpha;
     gl_FragColor = vec4(col, a);
   }
 `;
@@ -152,7 +159,9 @@ export const trailVertex = /* glsl */ `
   uniform float uPixelRatio;
   uniform float uSize;
   uniform float uSpeed;
+  uniform float uCull;
   varying float vGlow;
+  varying float vFront;
 
   void main() {
     float head = fract(uTime * uSpeed + aSeed);
@@ -161,6 +170,9 @@ export const trailVertex = /* glsl */ `
     vGlow = exp(-behind * 9.0) + 0.1;
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
     gl_Position = projectionMatrix * mv;
+    vec3 w = (modelMatrix * vec4(position, 1.0)).xyz;
+    vec3 c = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+    vFront = mix(1.0, smoothstep(-0.02, 0.22, dot(normalize(w - c), normalize(cameraPosition - w))), uCull);
     gl_PointSize = uSize * uPixelRatio * (0.55 + vGlow) * (7.0 / -mv.z);
   }
 `;
@@ -170,11 +182,12 @@ export const trailFragment = /* glsl */ `
   uniform vec3 uColor;
   uniform float uVisible;
   varying float vGlow;
+  varying float vFront;
 
   void main() {
     float d = length(gl_PointCoord - 0.5);
     if (d > 0.5) discard;
-    float a = smoothstep(0.5, 0.0, d) * vGlow * uVisible;
+    float a = smoothstep(0.5, 0.0, d) * vGlow * uVisible * vFront;
     gl_FragColor = vec4(uColor, a);
   }
 `;

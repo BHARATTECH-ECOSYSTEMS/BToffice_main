@@ -105,7 +105,7 @@ export function Opening() {
         easing: 'cubic-bezier(0.5, 0, 0.75, 0)',
         fill: 'forwards',
       });
-      $('.opening-threads g').animate([{ strokeWidth: 0.0085, stroke: getComputedStyle(el).color }, { strokeWidth: 0.17, stroke: '#fff' }], { duration: 850, delay: 1300, easing: IO, fill: 'forwards' });
+      $('.opening-threads g').animate([{ strokeWidth: 0.0085 }, { strokeWidth: 0.17 }], { duration: 850, delay: 1300, easing: IO, fill: 'forwards' });
       $('.opening-threads').animate([{ opacity: 1 }, { opacity: 0 }], { duration: 250, delay: 2150, fill: 'forwards' });
       $('.opening-orb').animate([{ opacity: 0, transform: 'scale(.35)' }, { opacity: 1, transform: 'none' }], {
         duration: 620,
@@ -145,7 +145,7 @@ export function Opening() {
             <LogoMark size={100} />
           </span>
           <svg className="opening-threads" viewBox="-1 -1 2 2">
-            <g fill="none" stroke="var(--ink)" strokeWidth="0.0085" strokeLinecap="round" strokeLinejoin="round">
+            <g fill="none" stroke="#fff" strokeWidth="0.0085" strokeLinecap="round" strokeLinejoin="round">
               {PATHS.map((d) => (
                 <path key={d} d={d} pathLength={1} />
               ))}

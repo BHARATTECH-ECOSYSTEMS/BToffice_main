@@ -1,9 +1,11 @@
 import { useRef, type CSSProperties } from 'react';
-import { useFormation, worldYOf } from '../gl/Scene';
+import { useStage } from '../gl/Scene';
+import { Stage } from '../components/Stage';
 import { Fade, SectionHead, useInView } from '../components/Reveal';
+import { Diagram, BENTO_DIAGRAMS as ART } from '../components/BentoDiagrams';
 import { PILLARS_PLAIN, SCENARIO } from '../content';
-import { Diagram, BENTO_DIAGRAMS } from '../components/BentoDiagrams';
 
+/** It remembers: sessions come and go, one memory thread runs underneath all of them. */
 function Mark({ ok }: { ok: boolean }) {
   return (
     <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
@@ -15,18 +17,18 @@ function Mark({ ok }: { ok: boolean }) {
 /** What the company is building, said plainly, then shown as one concrete scene. */
 export function Intro() {
   const ref = useRef<HTMLElement>(null);
-  useFormation(ref, () => ({
-    key: 'logo',
-    pose: { x: 1.65, y: worldYOf(ref.current, 0), s: 0.92 },
-    mobilePose: { x: 0, y: worldYOf(ref.current, 0), s: 0.56 },
-    params: { alpha: 0 },
-    follow: 18,
-  }));
+  const cap = 'The Origin mark: three threads that meet in one place, the way one memory serves every tool';
+  const stage = useStage(ref, 'markFig', {
+    fig: '01',
+    name: 'The mark',
+    caption: cap,
+    labels: () => ['Remembers', 'Connects', 'Keeps learning'].map((text) => ({ text, side: 'right' as const })),
+  });
   const [sceneRef, sceneIn] = useInView<HTMLDivElement>({ margin: '0px 0px -25% 0px' });
   const d = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties;
 
   return (
-    <section id="intro" ref={ref} className="section intro" data-chapter="What we build">
+    <section id="intro" ref={ref} className="section intro" data-room="violet" data-room2="tango" data-chapter="What we build">
       <div className="wrap">
         <SectionHead
           index="01"
@@ -34,21 +36,15 @@ export function Intro() {
           title={['AI that remembers, connects', 'and keeps learning.']}
           scrub
           lede="Most AI tools start from zero every time, work alone and stop learning once they are trained. We are building the layer underneath them: one shared intelligence that every application can draw on."
+          stage={<Stage stageRef={stage} fig="01" name="The mark" caption={cap} />}
         />
 
         <div className="plain">
           {PILLARS_PLAIN.map((p, i) => {
-            const diag = BENTO_DIAGRAMS[i];
             return (
-              <Fade key={p.title} className="bento plain-item" delay={i * 90}>
+              <Fade key={p.title} className="bento plain-item" delay={i * 110}>
                 <div className="bento-art">
-                  <Diagram
-                    draw={diag.draw}
-                    period={12}
-                    h={diag.h}
-                    label={diag.label}
-                    still={diag.still}
-                  />
+                  <Diagram draw={ART[i].draw} period={12} h={ART[i].h} label={ART[i].label} still={ART[i].still} />
                 </div>
                 <div className="bento-text">
                   <span className="num">{String(i + 1).padStart(2, '0')}</span>

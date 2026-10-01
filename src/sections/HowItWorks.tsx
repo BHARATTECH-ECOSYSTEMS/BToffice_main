@@ -1,11 +1,12 @@
-import { useRef, useState } from 'react';
-import { useFormation, useScene } from '../gl/Scene';
+import { useEffect, useRef, useState } from 'react';
+import { useStage } from '../gl/Scene';
+import { Stage } from '../components/Stage';
 import { Kicker, Lines, Fade } from '../components/Reveal';
+import { useScrollSteps } from '../components/useScrollSteps';
 import { FLOW } from '../content';
 
 const X = [120, 360, 600, 840, 1080]; // station centres on the 1200-wide diagram
 const Y = 196; // the line every request travels along
-const SPAN = X[4] - X[0];
 
 const NODE_ICONS = [
   'M-8 0h3M-3-5v10M1-8v16M5-4v8M8 0h1',
@@ -14,6 +15,17 @@ const NODE_ICONS = [
   'M1-8h7v7M8-8L-1 1M6 2v5a1 1 0 0 1-1 1h-12a1 1 0 0 1-1-1v-12a1 1 0 0 1 1-1h5',
   'M0-8l8 4-8 4-8-4 8-4zM-8 0l8 4 8-4M-8 4l8 4 8-4',
 ];
+
+/** Each station has its own form and colour: a circle that listens, a card that is recalled, a diamond that
+ * decides, a hexagon that acts, and a store that keeps what was learned. */
+const NODE_SHAPES = [
+  <circle r={25} />,
+  <rect x={-23} y={-23} width={46} height={46} rx={10} />,
+  <path d="M0-29L29 0 0 29-29 0Z" />,
+  <path d="M0-27L23.4-13.5V13.5L0 27-23.4 13.5V-13.5Z" />,
+  <path d="M-24-12a24 9 0 0 1 48 0v24a24 9 0 0 1-48 0Z" />,
+];
+export const STATION_TONES = ['violet', 'tango', 'pitch', 'violet', 'tango'];
 
 /** Station vignettes, each drawn around its own centre (x, 0 = top of the vignette band). */
 function Understand({ x }: { x: number }) {
@@ -27,7 +39,7 @@ function Understand({ x }: { x: number }) {
     <g>
       {inputs.map((c) => (
         <g key={c.label}>
-          <path className="dg-wire dg-flow" d={`M${x + c.dx} 68 C${x + c.dx} 120, ${x} 120, ${x} 172`} />
+          <path className="dg-wire dg-flow" d={`M${x + c.dx} 68 C${x + c.dx} 120, ${x} 120, ${x} ${Y - 24}`} />
           <rect className="dg-chip" x={x + c.dx - 18} y={40} width={36} height={28} rx={8} />
           {c.label === 'Aa' && <text className="dg-chip-text" x={x + c.dx} y={58} textAnchor="middle">Aa</text>}
           {c.label === 'mic' && <path className="dg-glyph" d={`M${x + c.dx} 47v8m-4-3a4 4 0 0 0 8 0M${x + c.dx} 59v3`} />}
@@ -48,7 +60,7 @@ function Recall({ x }: { x: number }) {
           <text x={x - 58} y={60 + i * 30}>{['Survey notes', 'Groundwater study', 'Satellite data'][i]}</text>
         </g>
       ))}
-      <path className="dg-wire" d={`M${x} 128 V172`} />
+      <path className="dg-wire" d={`M${x} 128 V${Y - 24}`} />
     </g>
   );
 }
@@ -59,7 +71,7 @@ function Reason({ x }: { x: number }) {
     <g>
       {leaves.map((dx, i) => (
         <g key={dx} className={i === 2 ? 'dg-branch dg-branch-pick' : 'dg-branch'}>
-          <path d={`M${x} 172 C${x} 120, ${x + dx} 110, ${x + dx} 72`} />
+          <path d={`M${x} ${Y - 24} C${x} 120, ${x + dx} 110, ${x + dx} 72`} />
           <circle cx={x + dx} cy={60} r={12} />
           {i === 2 ? <path className="dg-check" d={`M${x + dx - 5} 60l3 3 6-6`} /> : <path className="dg-cross" d={`M${x + dx - 4} 56l8 8m0-8l-8 8`} />}
         </g>
@@ -73,7 +85,8 @@ function Act({ x }: { x: number }) {
   const agents = ['Draft brief', 'Link sources', 'Share'];
   return (
     <g>
-      <path className="dg-wire dg-flow" d={`M${x} 136 V172`} />
+      {/* the agents stack over their station: one trunk up from the node, one bus through their dots */}
+      <path className="dg-wire dg-flow" d={`M${x} 136 V${Y - 24}`} />
       <path className="dg-wire" d={`M${x - 38} 56 V124`} />
       {agents.map((a, i) => {
         const y = 44 + i * 34;
@@ -98,7 +111,7 @@ function Learn({ x }: { x: number }) {
       <rect className="dg-store-fill" x={x - 40} y={40} width={80} height={90} clipPath="url(#dg-store-clip)" />
       <path className="dg-store-body" d={`M${x - 40} 50v60a40 12 0 0 0 80 0v-60`} />
       <ellipse className="dg-store-top" cx={x} cy={50} rx={40} ry={12} />
-      <path className="dg-wire" d={`M${x} 122 V172`} />
+      <path className="dg-wire" d={`M${x} 122 V${Y - 24}`} />
       <text className="dg-note" x={x + 50} y={92}>+ new findings</text>
     </g>
   );
@@ -107,58 +120,58 @@ function Learn({ x }: { x: number }) {
 const VIGNETTES = [Understand, Recall, Reason, Act, Learn];
 
 /**
- * One request, followed through the system. The section is pinned; scrolling moves the
- * request along the line and each station performs its part as the request arrives.
+ * One request, followed through the system. On wide screens scrolling moves the request
+ * along the line and each station performs its part as the request arrives.
  */
 export function HowItWorks() {
-  const ref = useRef<HTMLElement>(null);
-  const { scrollTo } = useScene();
-  const [active, setActive] = useState(0);
-  const last = useRef(0);
-  const packet = useRef<SVGGElement>(null);
-  const fill = useRef<SVGLineElement>(null);
-
-  useFormation(
-    ref,
-    { key: 'logo', params: { alpha: 0 } },
-    (p) => {
-      const t = Math.min(4, Math.max(0, p * 4.4 - 0.2)); // 0…4 along the stations
-      const x = X[0] + (t / 4) * SPAN;
-      packet.current?.setAttribute('transform', `translate(${x} ${Y})`);
-      fill.current?.setAttribute('x2', String(x));
-      const s = Math.min(4, Math.max(0, Math.round(t)));
-      if (s !== last.current) {
-        last.current = s;
-        setActive(s);
-      }
-    },
-  );
-
-  const jump = (i: number) => {
-    const el = ref.current;
-    if (!el) return;
-    const top = el.getBoundingClientRect().top + window.scrollY;
-    scrollTo(top + ((i + 0.25) / 4.4) * (el.offsetHeight - window.innerHeight));
-  };
+  const { ref, active: scrolled, progress, pinned, jump, style } = useScrollSteps<HTMLElement>(FLOW.length, 40);
+  const [picked, setPicked] = useState(0);
+  const active = pinned ? scrolled : picked;
+  const cap = `Station ${active + 1} of 5 · ${FLOW[active].step}, over one shared memory`;
+  const stage = useStage(ref, 'route', {
+    fig: '04',
+    name: 'Route',
+    caption: cap,
+    labels: () => [...FLOW.map((f, i) => ({ text: f.step, hot: i === active, side: 'right' as const })), { text: 'Shared memory', side: 'above' as const }],
+    params: () => ({ highlight: active }),
+  });
+  // the request glides continuously between stations while scrolling
+  const pos = pinned ? Math.min(FLOW.length - 1, progress * FLOW.length - 0.5) : active;
+  const seg0 = Math.max(0, Math.min(FLOW.length - 2, Math.floor(pos)));
+  const px = pos <= 0 ? X[0] : X[seg0] + (X[seg0 + 1] - X[seg0]) * Math.min(1, pos - seg0);
+  const frac = (px - 40) / 1120;
+  const pick = (i: number) => (pinned ? jump(i) : setPicked(i));
 
   const step = FLOW[active];
 
+  // In a narrow column the station vignettes would shrink to unreadable text; the panel shows the
+  // stations instead, so the diagram keeps only the line, the nodes and the loop, at a readable size.
+  const stageRef = useRef<HTMLDivElement>(null);
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => setNarrow(e.contentRect.width < 900));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <section id="how" ref={ref} className="pin how" data-chapter="How it works">
-      <div className="pin-stage">
-        <div className="wrap how-stage">
-          <header className="how-head">
-            <div>
-              <Kicker index="04">How it works</Kicker>
+    <section id="how" ref={ref} className={`section how room ${pinned ? 'is-pinned' : ''}`} data-room="pitch" data-room2="violet" data-chapter="How it works" style={style}>
+      <div className={pinned ? 'steps-stage' : ''}>
+        <div ref={stageRef} className={`wrap how-stage ${narrow ? 'is-narrow' : ''}`}>
+          <header className="sec-head has-stage how-head">
+            <Kicker index="04">How it works</Kicker>
+            <div className="sec-head-main">
               <Lines className="h2" lines={['From a question to an answer.']} />
+              <Fade as="p" className="lede" delay={120}>
+                The request from the scenario above, followed through the system: five stations, one shared memory underneath. Keep scrolling to follow it.
+              </Fade>
             </div>
-            <Fade as="p" className="body" delay={120}>
-              The request from the scenario above, followed through the system. Keep scrolling: five stations, one shared memory
-              underneath.
-            </Fade>
+            <Stage stageRef={stage} fig="04" name="Route" caption={cap} />
           </header>
 
-          <svg className="diagram" viewBox="0 0 1200 330" preserveAspectRatio="xMidYMid meet" role="img" aria-label="A request travelling through five stages: understand, recall, reason, act, learn.">
+          <svg className="diagram" viewBox={narrow ? '0 150 1200 175' : '0 0 1200 330'} preserveAspectRatio="xMidYMid meet" role="img" aria-label="A request travelling through five stages: understand, recall, reason, act, learn.">
             <defs>
               <marker id="dg-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto">
                 <path d="M2 2l5 3-5 3" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
@@ -171,32 +184,33 @@ export function HowItWorks() {
               </g>
             ))}
 
-            <path className={`dg-loop ${active === 4 ? 'is-on' : ''}`} d={`M${X[4]} 256 C${X[4]} 316, ${X[1]} 316, ${X[1]} 262`} markerEnd="url(#dg-arrow)" />
+            <path className={`dg-loop ${active === 4 ? 'is-on' : ''}`} d={`M${X[4]} ${Y + 60} C${X[4]} 318, ${X[1]} 318, ${X[1]} ${Y + 66}`} markerEnd="url(#dg-arrow)" />
             <text className={`dg-loop-label ${active === 4 ? 'is-on' : ''}`} x={(X[1] + X[4]) / 2} y={306} textAnchor="middle">
               What it learns flows back into memory
             </text>
 
             <line className="dg-rail" x1={40} x2={1160} y1={Y} y2={Y} />
-            <line ref={fill} className="dg-rail-fill" x1={40} x2={X[0]} y1={Y} y2={Y} />
+            <line className="dg-rail-fill" x1={40} x2={1160} y1={Y} y2={Y} style={{ transformOrigin: '40px 0', transform: `scaleX(${frac})`, transition: pinned ? 'none' : 'transform 0.9s var(--ease-io)' }} />
 
             {X.map((x, i) => (
               <g
                 key={x}
                 className={`dg-node ${i === active ? 'is-active' : ''} ${i < active ? 'is-done' : ''}`}
+                data-tone={STATION_TONES[i]}
                 transform={`translate(${x} ${Y})`}
-                onClick={() => jump(i)}
+                onClick={() => pick(i)}
                 role="button"
                 aria-label={FLOW[i].step}
               >
-                <circle r={24} />
-                <path d={NODE_ICONS[i]} />
+                <g className="dg-shape">{NODE_SHAPES[i]}</g>
+                <path className="dg-icon" d={NODE_ICONS[i]} />
                 <text y={48} textAnchor="middle">
                   {FLOW[i].step}
                 </text>
               </g>
             ))}
 
-            <g ref={packet} className="dg-packet" transform={`translate(${X[0]} ${Y})`}>
+            <g className="dg-packet" style={{ transform: `translate(${px}px, ${Y}px)`, transition: pinned ? 'none' : 'transform 0.9s var(--ease-io)' }}>
               <circle r={16} className="dg-packet-ring" />
               <circle r={6} />
             </g>
@@ -206,7 +220,7 @@ export function HowItWorks() {
           <ol className="how-list">
             {FLOW.map((f, i) => (
               <li key={f.step}>
-                <span className="how-list-node">
+                <span className="how-list-node" data-tone={STATION_TONES[i]}>
                   <svg width="18" height="18" viewBox="-12 -12 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <path d={NODE_ICONS[i]} />
                   </svg>
@@ -221,12 +235,19 @@ export function HowItWorks() {
             ))}
           </ol>
 
-          <div className="how-detail" key={active}>
+          <div className="how-detail" key={active} data-tone={STATION_TONES[active]}>
             <div className="how-step">
-              <p className="how-count">
-                <b>{String(active + 1).padStart(2, '0')}</b> / 05
-              </p>
-              <h3 className="h3">{step.step}</h3>
+              <span className="how-badge" aria-hidden="true">
+                <svg width="22" height="22" viewBox="-12 -12 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                  <path d={NODE_ICONS[active]} />
+                </svg>
+              </span>
+              <div>
+                <p className="how-count">
+                  <b>{String(active + 1).padStart(2, '0')}</b> / {String(FLOW.length).padStart(2, '0')}
+                </p>
+                <h3 className="h3">{step.step}</h3>
+              </div>
             </div>
             <div className="how-body">
               <p>{step.body}</p>

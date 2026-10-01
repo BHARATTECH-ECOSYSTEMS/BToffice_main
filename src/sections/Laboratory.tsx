@@ -1,67 +1,19 @@
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { Link } from 'react-router';
-import { useAnchors } from '../gl/useAnchors';
 import { Fade, Arrow, SectionHead } from '../components/Reveal';
 import { DOMAINS } from '../content';
 import { Diagram } from '../components/BentoDiagrams';
 import { LAB_DIAGRAMS } from '../components/LabDiagrams';
-import { useFormation, worldYOf } from '../gl/Scene';
+import { useStage } from '../gl/Scene';
+import { Stage } from '../components/Stage';
 
-const HELIX_BAND = 200; // px from the top of the section to the helix axis
-
-/** Six research domains = six segments of the helix. Pointing at a card lights its segment. */
+/** Six research domains, each shown doing the one thing it is for. */
 export function Laboratory() {
   const ref = useRef<HTMLElement>(null);
-  const [hover, setHover] = useState<number | null>(null);
-  const lit = hover;
-  const litRef = useRef(lit);
-  litRef.current = lit;
-  const owns = useRef(false);
-
-  const tags = useRef<(HTMLSpanElement | null)[]>([]);
-  useAnchors(['helix'], (pts, settle) => {
-    if (!pts || !owns.current) {
-      tags.current.forEach((el) => {
-        if (el && el.style.opacity !== '0') el.style.opacity = '0';
-      });
-      return;
-    }
-    tags.current.forEach((el, i) => {
-      if (!el) return;
-      const focus = litRef.current === null || litRef.current === i ? 1 : 0.35;
-      el.style.opacity = String(settle * focus);
-      el.style.transform = `translate3d(${pts[i].x}px, ${pts[i].y}px, 0) translate(-50%, -100%)`;
-    });
-  });
-
-  // The helix is part of the page: it scrolls with its band at the top of the section.
-  useFormation(
-    ref,
-    () => {
-      const y = worldYOf(ref.current, HELIX_BAND);
-      return {
-        key: 'helix',
-        params: { dark: 1, highlight: litRef.current ?? -1, alpha: 0.95 },
-        pose: { y, s: 0.76, rz: 0 },
-        mobilePose: { y, s: 0.5, rz: 0 },
-        follow: 16,
-      };
-    },
-    (_, isActive) => {
-      owns.current = isActive;
-    },
-  );
-
+  const cap = 'Six research domains, bonded to one core like atoms in a molecule';
+  const stage = useStage(ref, 'molecule', { fig: '07', name: 'Molecule', caption: cap, labels: () => DOMAINS.map((d) => ({ text: d.name, side: 'below' as const })) });
   return (
-    <section id="laboratory" ref={ref} className="section lab" data-chapter="Laboratory">
-      <div className="helix-tags" aria-hidden="true">
-        {DOMAINS.map((d, i) => (
-          <span key={d.id} ref={(el) => (tags.current[i] = el)} className={`helix-tag ${lit === i ? 'is-lit' : ''}`}>
-            <b>{String(i + 1).padStart(2, '0')}</b>
-            <span>{d.name}</span>
-          </span>
-        ))}
-      </div>
+    <section id="laboratory" ref={ref} className="section lab" data-room="violet" data-room2="pitch" data-chapter="Laboratory">
       <div className="wrap">
         <SectionHead
           index="07"
@@ -72,29 +24,17 @@ export function Laboratory() {
               Enter the lab <Arrow size={13} />
             </Link>
           }
+          stage={<Stage stageRef={stage} fig="07" name="Molecule" caption={cap} />}
         />
-        <div className="lab-grid" onMouseLeave={() => setHover(null)}>
+        <div className="lab-grid">
           {DOMAINS.map((d, i) => (
-            <Fade key={d.id} delay={(i % 3) * 80}>
-              <Link
-                to="/research"
-                className={`lab-card ${lit === i ? 'is-lit' : ''}`}
-                onMouseEnter={() => setHover(i)}
-                onFocus={() => setHover(i)}
-                onBlur={() => setHover(null)}
-              >
+            <Fade key={d.id} delay={(i % 3) * 100}>
+              <Link to="/research" className="lab-card">
                 <div className="lab-card-art">
-                  <Diagram
-                    draw={LAB_DIAGRAMS[i].draw}
-                    period={LAB_DIAGRAMS[i].period}
-                    w={LAB_DIAGRAMS[i].w}
-                    h={LAB_DIAGRAMS[i].h}
-                    label={LAB_DIAGRAMS[i].label}
-                    still={LAB_DIAGRAMS[i].still}
-                  />
-                  <span className="lab-card-num">{String(i + 1).padStart(2, '0')}</span>
+                  <Diagram {...LAB_DIAGRAMS[i]} />
                 </div>
                 <div className="lab-card-text">
+                  <span className="lab-card-num">{String(i + 1).padStart(2, '0')}</span>
                   <p className="lab-card-field">{d.field}</p>
                   <h3>{d.name}</h3>
                   <p className="lab-card-body">{d.body}</p>
