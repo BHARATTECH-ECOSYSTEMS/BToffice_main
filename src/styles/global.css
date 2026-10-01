@@ -5729,3 +5729,117 @@ body:has(.finale-cta) .footer-cta {
   border-radius: 32px;
 }
 
+
+/* ── Opening (components/Opening.tsx, decided in index.html) ─────────────────
+   The mark's threads converge, shrink onto the sphere, the name rises, then the sheet folds into the nav.
+   It rests hidden; if the script never runs, it bails out on its own after 5s. The name is sized off the mark
+   (--m) in the nav brand's proportions, so the lockup lands exactly on it. */
+.opening {
+  display: none;
+}
+html.intro-on .opening {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: calc(var(--m) * 0.55);
+  --m: clamp(52px, 10vh, 88px);
+  overflow: hidden;
+  color: var(--ink);
+  background: var(--bg) radial-gradient(circle, var(--line-strong) 1px, transparent 1.4px) 0 0 / 22px 22px;
+  animation: opening-bail 0.5s ease 5s forwards;
+}
+html.intro-on body {
+  overflow: hidden;
+}
+@keyframes opening-bail {
+  to {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+.opening-lock {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--m) / 3);
+}
+.opening-mark {
+  position: relative;
+  width: var(--m);
+  height: var(--m);
+  flex: none;
+}
+.opening-orb {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+}
+.opening-orb svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.opening-threads {
+  position: absolute;
+  left: calc(50% - var(--m) * 3);
+  top: calc(50% - var(--m) * 3);
+  width: calc(var(--m) * 6);
+  height: calc(var(--m) * 6);
+  overflow: visible;
+  pointer-events: none;
+}
+.opening-threads path {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.opening-spark {
+  fill: #9480ff;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.opening-name {
+  display: flex;
+  flex-direction: column;
+  line-height: 1;
+}
+.opening-word {
+  display: flex;
+  font-size: calc(var(--m) * 16 / 30);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.opening-word > span {
+  display: inline-block;
+  overflow: clip;
+  overflow-clip-margin: 0.1em;
+  padding-bottom: 0.12em;
+  margin-bottom: -0.12em;
+}
+.opening-word > span > span {
+  display: inline-block;
+  transform: translateY(110%);
+}
+.opening-small {
+  margin-top: calc(var(--m) * 4 / 30);
+  font-size: calc(var(--m) * 8.5 / 30);
+  font-weight: 600;
+  letter-spacing: 0.42em;
+  color: var(--accent);
+  opacity: 0;
+}
+.opening-tag {
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  opacity: 0;
+}
+@media (max-width: 560px) {
+  .opening-tag {
+    font-size: 9.5px;
+    letter-spacing: 0.12em;
+  }
+}

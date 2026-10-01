@@ -1,3 +1,4 @@
+import { opening, introPlanned } from '../opening';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useFormation, useScene, worldYOf } from '../gl/Scene';
 import { Lines, Arrow } from '../components/Reveal';
@@ -34,8 +35,15 @@ export function Hero() {
   });
 
   useEffect(() => {
-    const t = setTimeout(() => setReady(true), 250);
-    return () => clearTimeout(t);
+    let t = 0;
+    let live = true;
+    opening.then(() => {
+      if (live) t = window.setTimeout(() => setReady(true), introPlanned ? 120 : 250);
+    });
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
   }, []);
 
   const d = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties;

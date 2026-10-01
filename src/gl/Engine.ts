@@ -240,6 +240,11 @@ export class Engine {
 
   // ── public API ────────────────────────────────────────────────────────────
 
+  /** Plays the mark's first resolve again, if nothing has moved it on since (the opening covered the first one). */
+  replayArrival() {
+    if (this.fromKey === 'logo' && this.toKey === 'logo' && !this.reducedMotion) this.progress = 0;
+  }
+
   /** Morph towards a formation. Safe to call every frame with the same target. */
   setTarget(t: Target) {
     this.target = t;

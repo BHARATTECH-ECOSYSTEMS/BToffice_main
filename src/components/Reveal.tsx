@@ -1,3 +1,4 @@
+import { opening } from '../opening';
 import { useEffect, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
 
 export function useInView<T extends Element>(options: { once?: boolean; margin?: string } = {}) {
@@ -16,8 +17,12 @@ export function useInView<T extends Element>(options: { once?: boolean; margin?:
       },
       { rootMargin: margin },
     );
-    io.observe(el);
-    return () => io.disconnect();
+    let live = true;
+    opening.then(() => live && io.observe(el)); // nothing reveals behind the opening
+    return () => {
+      live = false;
+      io.disconnect();
+    };
   }, [once, margin]);
   return [ref, inView] as const;
 }

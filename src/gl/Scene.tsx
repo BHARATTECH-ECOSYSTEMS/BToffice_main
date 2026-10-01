@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Lenis from 'lenis';
+import { opening, introPlanned } from '../opening';
 import { Engine, type Target } from './Engine';
 import { getTheme, onTheme } from '../theme';
 
@@ -94,6 +95,14 @@ export function SceneProvider({ children }: { children: ReactNode }) {
     const offTheme = onTheme((t) => engine?.setDark(t === 'dark'));
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const lenis = reduced ? null : new Lenis({ duration: 0.85, smoothWheel: true });
+    // Behind the opening the page holds still, and the mark resolves again as it is uncovered.
+    if (introPlanned) {
+      lenis?.stop();
+      opening.then(() => {
+        lenis?.start();
+        engine?.replayArrival();
+      });
+    }
     let raf = 0;
     let lastY = window.scrollY;
     let needPick = true;

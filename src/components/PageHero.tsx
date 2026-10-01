@@ -1,3 +1,4 @@
+import { opening, introPlanned } from '../opening';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useFormation } from '../gl/Scene';
 import type { Target } from '../gl/Engine';
@@ -15,8 +16,15 @@ export function PageHero({ index, label, title, lede, target, children }: {
   const [ready, setReady] = useState(false);
   useFormation(ref, target);
   useEffect(() => {
-    const t = setTimeout(() => setReady(true), 200);
-    return () => clearTimeout(t);
+    let t = 0;
+    let live = true;
+    opening.then(() => {
+      if (live) t = window.setTimeout(() => setReady(true), introPlanned ? 120 : 200);
+    });
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
   }, []);
   return (
     <section ref={ref} className="page-hero">

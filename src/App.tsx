@@ -4,6 +4,7 @@ import { SceneProvider, useScene } from './gl/Scene';
 import { Nav } from './components/Nav';
 import { Rail } from './components/Rail';
 import { Footer } from './components/Footer';
+import { Opening } from './components/Opening';
 import { Home } from './pages/Home';
 import { About } from './pages/About';
 import { Research } from './pages/Research';
@@ -85,6 +86,7 @@ function Layout() {
         <Outlet />
       </main>
       <Footer />
+      <Opening />
     </div>
   );
 }
