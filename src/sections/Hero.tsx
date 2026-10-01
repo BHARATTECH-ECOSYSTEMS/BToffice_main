@@ -1,3 +1,4 @@
+import { opening, introPlanned } from '../opening';
 import { CountUp } from '../components/Motion';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { attachTo, useFormation, useScene } from '../gl/Scene';
@@ -18,8 +19,15 @@ export function Hero() {
   useFormation(ref, () => ({ key: 'logo', pose: { x: 1.65, s: 0.92 }, ...attachTo(ref.current, 0.25, 0.56) }));
 
   useEffect(() => {
-    const t = setTimeout(() => setReady(true), 250);
-    return () => clearTimeout(t);
+    let t = 0;
+    let live = true;
+    opening.then(() => {
+      if (live) t = window.setTimeout(() => setReady(true), introPlanned ? 120 : 250);
+    });
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
   }, []);
 
   const d = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties;
