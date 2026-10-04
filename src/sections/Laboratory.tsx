@@ -31,11 +31,11 @@ export function Laboratory() {
     ref,
     () => {
       const compact = isCompact();
-      // lying across the stage, low enough for the card to stand above the lit segment
-      const f = fitTo(visRef.current, 10.6, compact ? 1.8 : 3.4, compact ? 0.6 : 0.74, compact ? 0.5 : 0.78);
+      // upright on wide screens (~10 units tall); lying down in the band on phones
+      const f = compact ? fitTo(visRef.current, 10.4, 1.8, 0.6) : fitTo(visRef.current, 2.6, 10.4, 0.85, 0.5);
       return {
         key: 'helix',
-        pose: { x: f.x, y: f.y, s: f.s, rz: 0 },
+        pose: { x: f.x - (compact ? 0 : 0.6 * f.s), y: f.y, s: f.s, rz: compact ? 0 : -Math.PI / 2 },
         mobilePose: { x: f.x, y: f.y, s: f.s, rz: 0 },
         params: { highlight: activeRef.current },
         follow: 14,
@@ -62,11 +62,11 @@ export function Laboratory() {
     const on = a && owns.current ? settle : 0;
     el.style.opacity = path.style.opacity = String(on);
     if (!a) return;
-    // centred above the lit segment, on a short stem
-    const x = Math.max(16, Math.min(window.innerWidth - el.offsetWidth - 16, a.x - el.offsetWidth / 2));
-    const y = Math.max(84, a.y - 28 - el.offsetHeight);
+    const compact = isCompact();
+    const x = compact ? Math.max(16, Math.min(window.innerWidth - el.offsetWidth - 16, a.x - el.offsetWidth / 2)) : Math.min(a.x + 70, window.innerWidth - el.offsetWidth - 24);
+    const y = compact ? a.y + 26 : Math.max(90, Math.min(window.innerHeight - el.offsetHeight - 70, a.y - el.offsetHeight / 2));
     el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-    path.setAttribute('d', isCompact() ? '' : `M${a.x} ${a.y} V${y + el.offsetHeight}`);
+    path.setAttribute('d', compact ? '' : `M${a.x} ${a.y} C${a.x + 30} ${a.y}, ${x - 30} ${y + el.offsetHeight / 2}, ${x} ${y + el.offsetHeight / 2}`);
   });
 
   const jump = (i: number) => {
@@ -109,6 +109,7 @@ export function Laboratory() {
           aside={`${String(active + 1).padStart(2, '0')} / 06`}
           title={d.name}
           body={d.body}
+          chips={d.focus.slice(0, 3)}
         />
       </div>
     </section>

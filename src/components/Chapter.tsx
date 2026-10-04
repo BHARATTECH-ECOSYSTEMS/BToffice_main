@@ -1,4 +1,4 @@
-import { forwardRef, type CSSProperties, type ReactNode } from 'react';
+import { forwardRef, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { Lines, Fade } from './Reveal';
 import { worldYOf } from '../gl/Scene';
@@ -122,10 +122,43 @@ export function StepList({
       </li>,
     );
   });
+  // The spine: a line through the icon tiles that fills to the active step and on toward the next as you read.
+  const listRef = useRef<HTMLOListElement>(null);
+  useLayoutEffect(() => {
+    const ol = listRef.current;
+    if (!ol) return;
+    const measure = () => {
+      const tiles = Array.from(ol.querySelectorAll<HTMLElement>('.ch-step .ch-tile'));
+      if (tiles.length < 2) return;
+      const top = ol.getBoundingClientRect().top;
+      const mid = (el: HTMLElement) => {
+        const r = el.getBoundingClientRect();
+        return r.top + r.height / 2 - top;
+      };
+      const first = mid(tiles[0]);
+      const last = mid(tiles[tiles.length - 1]);
+      const a = mid(tiles[Math.min(active, tiles.length - 1)]);
+      const b = active + 1 < tiles.length ? mid(tiles[active + 1]) : a;
+      ol.style.setProperty('--spine-top', `${first}px`);
+      ol.style.setProperty('--spine-h', `${last - first}px`);
+      ol.style.setProperty('--spine-fill', `${Math.max(0, a + (b - a) * Math.min(1, progress) - first)}px`);
+    };
+    measure();
+    // the active row opens over ~0.45s; follow it while it does
+    const t1 = window.setTimeout(measure, 250);
+    const t2 = window.setTimeout(measure, 520);
+    window.addEventListener('resize', measure);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      window.removeEventListener('resize', measure);
+    };
+  }, [active, progress, steps.length]);
+
   const cur = steps[active];
   return (
     <>
-      <ol className={`ch-steps ${dense ? 'is-dense' : ''}`} onMouseLeave={() => onHover?.(null)}>
+      <ol ref={listRef} className={`ch-steps has-spine ${dense ? 'is-dense' : ''}`} onMouseLeave={() => onHover?.(null)} data-tone={cur?.tone}>
         {rows}
       </ol>
       {caption && cur && (

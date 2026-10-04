@@ -1094,144 +1094,6 @@ main section .h2 {
   }
 }
 
-/* ─────────────────────────────────────────────────────────────────────────
-   The centred stage (wide screens): headline on top, the object in the middle, the steps as a row of chips beneath
-   it with the active one's detail in a caption. One screen, read top to bottom, like a product shot with its legend.
-   ───────────────────────────────────────────────────────────────────────── */
-
-@media (min-width: 901px) {
-  .ch-stage {
-    align-items: stretch;
-    padding-top: calc(var(--nav-h, 80px) + 8px);
-    padding-bottom: 28px;
-  }
-  .ch-grid {
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
-    justify-items: center;
-    gap: 0;
-    height: 100%;
-    text-align: center;
-  }
-  .ch-copy {
-    display: contents;
-  }
-  .ch-grid .ch-head {
-    grid-row: 1;
-    align-items: center;
-    text-align: center;
-    gap: 12px;
-  }
-  .ch-grid .ch-title {
-    font-size: clamp(2rem, 3.3vw, 3.2rem);
-  }
-  .ch-grid .ch-title .line {
-    display: inline-block;
-    margin: 0 0.14em;
-  }
-  .ch-grid .ch-lede {
-    max-width: 62ch;
-    font-size: 15px;
-  }
-  .ch-grid .ch-tabs {
-    grid-row: 2;
-    align-self: center;
-    margin-top: 18px;
-  }
-  .ch-grid .ch-tabline {
-    grid-row: 3;
-    margin: 10px 0 0;
-  }
-  .ch-grid .ch-visual {
-    grid-row: 4;
-    width: 100%;
-    height: auto;
-    min-height: 0;
-    align-self: stretch;
-  }
-  /* the steps: one row of chips */
-  .ch-grid .ch-steps {
-    grid-row: 5;
-    flex-direction: row;
-    flex-wrap: wrap;
-    justify-content: center;
-    gap: 6px;
-    margin: 0;
-    max-width: 1180px;
-  }
-  .ch-grid .ch-group {
-    display: none;
-  }
-  .ch-grid .ch-step,
-  .ch-grid .ch-steps.is-dense .ch-step {
-    align-items: center;
-    width: auto;
-    gap: 9px;
-    padding: 5px 14px 5px 5px;
-    border-radius: 999px;
-    border-color: var(--line);
-    background: color-mix(in srgb, var(--paper) 55%, transparent);
-    backdrop-filter: blur(8px);
-  }
-  .ch-grid .ch-step .ch-tile {
-    --s: 28px;
-    border-radius: 50%;
-  }
-  .ch-grid .ch-step-main,
-  .ch-grid .ch-steps.is-dense .ch-step-main {
-    padding: 0;
-  }
-  .ch-grid .ch-step-title {
-    font-size: 13.5px;
-    gap: 7px;
-    white-space: nowrap;
-  }
-  .ch-grid .ch-step-sub,
-  .ch-grid .ch-step-body {
-    display: none;
-  }
-  .ch-grid .ch-step-bar {
-    left: 18px;
-    right: 18px;
-    bottom: 3px;
-  }
-  .ch-grid .ch-step.is-active,
-  .ch-grid .ch-steps.is-dense .ch-step.is-active {
-    padding-bottom: 5px;
-    background: var(--paper);
-    border-color: color-mix(in srgb, var(--tone) 40%, var(--line));
-    transform: translateY(-1px);
-  }
-  .ch-grid .ch-step:hover {
-    background: var(--paper);
-  }
-  /* the active step, said in a line under the row */
-  .ch-grid .ch-caption {
-    grid-row: 6;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    max-width: 64ch;
-    margin-top: 14px;
-    animation: ch-in 0.5s var(--ch-ease);
-  }
-  .ch-grid .ch-caption p {
-    margin: 0;
-    font-size: 15px;
-    line-height: 1.5;
-    color: var(--ink-2);
-  }
-  .ch-grid .ch-caption .ch-uses {
-    justify-content: center;
-    padding: 0;
-  }
-  .ch-grid .ch-hint,
-  .ch-grid .ch-more {
-    grid-row: 7;
-    margin: 12px 0 0;
-  }
-}
 @media (max-width: 900px) {
   .ch-caption {
     display: none;
@@ -1309,5 +1171,101 @@ main section .h2 {
 @media (max-width: 900px) {
   .pillars {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   The split, refined: copy and steps on the left, the object on the right. The step list hangs on a spine that
+   fills as you read through the chapter; rows stay quiet until they are the one in focus.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.ch-caption {
+  display: none;
+}
+.ch-steps.has-spine {
+  position: relative;
+}
+.ch-steps.has-spine::before,
+.ch-steps.has-spine::after {
+  content: '';
+  position: absolute;
+  left: 23.5px;
+  top: var(--spine-top, 20px);
+  width: 1.5px;
+  border-radius: 2px;
+  pointer-events: none;
+}
+/* the track: a dotted thread through every tile */
+.ch-steps.has-spine::before {
+  height: var(--spine-h, 0px);
+  background: repeating-linear-gradient(to bottom, color-mix(in srgb, var(--ink) 22%, transparent) 0 2px, transparent 2px 6px);
+}
+/* the fill: solid, in the active step's tone */
+.ch-steps.has-spine::after {
+  height: var(--spine-fill, 0px);
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--tone, var(--violet)) 50%, transparent), var(--tone, var(--violet)));
+  transition: height 0.35s var(--ch-ease);
+}
+/* tiles sit on the spine, opaque so the thread passes behind them */
+.ch-steps.has-spine .ch-tile {
+  position: relative;
+  z-index: 1;
+}
+.ch-steps.has-spine .ch-step:not(.is-active) .ch-tile {
+  background: color-mix(in srgb, var(--tone) 10%, var(--paper));
+}
+.ch-steps.has-spine .ch-step.is-past:not(.is-active) .ch-tile {
+  background: color-mix(in srgb, var(--tone) 18%, var(--paper));
+}
+/* group labels step aside for the thread */
+.ch-steps.has-spine .ch-group {
+  padding-left: 46px;
+  margin-top: 12px;
+}
+.ch-steps.has-spine .ch-group i {
+  display: none;
+}
+.ch-steps.has-spine .ch-group::before {
+  content: '';
+  position: absolute;
+  left: 19px;
+  top: calc(50% - 5px);
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1.5px var(--tone);
+  transform: rotate(45deg);
+  z-index: 1;
+}
+.ch-steps.has-spine > li {
+  position: relative;
+}
+/* the open row: a card with the detail, everything else a quiet line */
+.ch-steps.has-spine .ch-step {
+  border-radius: 16px;
+}
+.ch-steps.has-spine .ch-step:not(.is-active) .ch-step-title {
+  color: var(--ink-2);
+}
+.ch-steps.has-spine .ch-step-bar {
+  display: none;
+}
+
+/* the copy column: centred in the screen, with a little more air and a fixed reading width */
+@media (min-width: 901px) {
+  .ch-grid {
+    grid-template-columns: minmax(340px, 4.6fr) minmax(0, 7.4fr);
+    gap: clamp(32px, 5vw, 88px);
+  }
+  .ch-copy {
+    max-width: 470px;
+    gap: 18px;
+  }
+  .ch-title {
+    font-size: clamp(2rem, 3.2vw, 3.1rem);
+  }
+  .ch-visual {
+    height: min(80vh, 780px);
   }
 }
