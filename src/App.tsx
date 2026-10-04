@@ -45,7 +45,7 @@ function Layout() {
     if (target) {
       const t = setTimeout(() => {
         const el = document.getElementById(target);
-        if (el) scrollTo(el);
+        if (el) scrollTo(el, true); // under the curtain: jump, don't glide
       }, 120);
       return () => clearTimeout(t);
     }

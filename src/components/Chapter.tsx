@@ -64,6 +64,7 @@ export function StepList({
   onHover,
   progress = 0,
   dense,
+  caption,
 }: {
   steps: Step[];
   active: number;
@@ -71,6 +72,8 @@ export function StepList({
   onHover?: (i: number | null) => void;
   progress?: number;
   dense?: boolean;
+  /** Also say the active step's detail in a caption under the row (the centred stage shows steps as chips). */
+  caption?: boolean;
 }) {
   const rows: ReactNode[] = [];
   let group: string | undefined;
@@ -119,10 +122,19 @@ export function StepList({
       </li>,
     );
   });
+  const cur = steps[active];
   return (
-    <ol className={`ch-steps ${dense ? 'is-dense' : ''}`} onMouseLeave={() => onHover?.(null)}>
-      {rows}
-    </ol>
+    <>
+      <ol className={`ch-steps ${dense ? 'is-dense' : ''}`} onMouseLeave={() => onHover?.(null)}>
+        {rows}
+      </ol>
+      {caption && cur && (
+        <div className="ch-caption" key={cur.key} data-tone={cur.tone}>
+          {cur.sub && <p>{cur.sub}</p>}
+          {cur.body}
+        </div>
+      )}
+    </>
   );
 }
 

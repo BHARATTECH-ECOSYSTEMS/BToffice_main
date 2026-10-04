@@ -6,6 +6,7 @@ import { EMPLOYEE_LOGIN_URL, EMAIL } from '../content';
 import { useScene } from '../gl/Scene';
 import { useTheme } from '../theme';
 import { NavGlance, type GlanceKey } from './NavGlance';
+import { playCurtain } from './PageCurtain';
 
 function ThemeToggle({ className = '', tabIndex }: { className?: string; tabIndex?: number }) {
   const [theme, toggle] = useTheme();
@@ -26,11 +27,11 @@ function ThemeToggle({ className = '', tabIndex }: { className?: string; tabInde
 const LINKS: { label: string; to: string; section?: string; glance?: GlanceKey }[] = [
   { label: 'About', to: '/about', glance: 'about' },
   { label: 'Capabilities', to: '/', section: 'capabilities', glance: 'capabilities' },
-  { label: 'How it works', to: '/', section: 'how' },
+  { label: 'How it works', to: '/', section: 'how', glance: 'how' },
   { label: 'Research', to: '/research', glance: 'research' },
   { label: 'Careers', to: '/careers', glance: 'careers' },
   { label: 'Publications', to: '/publications', glance: 'publications' },
-  { label: 'Contact', to: '/contact' },
+  { label: 'Contact', to: '/contact', glance: 'contact' },
 ];
 
 export function Nav() {
@@ -155,13 +156,19 @@ export function Nav() {
     scrollTo(0);
   };
 
+  // A section of the home page plays the same curtain as a page: it covers, the page jumps there, it lifts.
+  const toSection = (section: string, label: string) => {
+    playCurtain(label, () => {
+      const el = document.getElementById(section);
+      if (pathname === '/' && el) scrollTo(el, true);
+      else navigate('/', { state: { scrollTo: section } });
+    });
+  };
   const go = (l: (typeof LINKS)[number]) => (e: React.MouseEvent) => {
     if (!l.section) return;
     e.preventDefault();
     setOpen(false);
-    const el = document.getElementById(l.section);
-    if (pathname === '/' && el) scrollTo(el);
-    else navigate('/', { state: { scrollTo: l.section } });
+    toSection(l.section, l.label);
   };
 
   return (
@@ -247,9 +254,11 @@ export function Nav() {
           onGo={shutGlance}
           onCapabilities={() => {
             shutGlance();
-            const el = document.getElementById('capabilities');
-            if (pathname === '/' && el) scrollTo(el);
-            else navigate('/', { state: { scrollTo: 'capabilities' } });
+            toSection('capabilities', 'Capabilities');
+          }}
+          onSection={(section, label) => {
+            shutGlance();
+            toSection(section, label);
           }}
         />
       </div>

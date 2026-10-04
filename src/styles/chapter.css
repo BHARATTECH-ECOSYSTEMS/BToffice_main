@@ -1093,3 +1093,221 @@ main section .h2 {
     justify-self: start;
   }
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   The centred stage (wide screens): headline on top, the object in the middle, the steps as a row of chips beneath
+   it with the active one's detail in a caption. One screen, read top to bottom, like a product shot with its legend.
+   ───────────────────────────────────────────────────────────────────────── */
+
+@media (min-width: 901px) {
+  .ch-stage {
+    align-items: stretch;
+    padding-top: calc(var(--nav-h, 80px) + 8px);
+    padding-bottom: 28px;
+  }
+  .ch-grid {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto;
+    justify-items: center;
+    gap: 0;
+    height: 100%;
+    text-align: center;
+  }
+  .ch-copy {
+    display: contents;
+  }
+  .ch-grid .ch-head {
+    grid-row: 1;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+  .ch-grid .ch-title {
+    font-size: clamp(2rem, 3.3vw, 3.2rem);
+  }
+  .ch-grid .ch-title .line {
+    display: inline-block;
+    margin: 0 0.14em;
+  }
+  .ch-grid .ch-lede {
+    max-width: 62ch;
+    font-size: 15px;
+  }
+  .ch-grid .ch-tabs {
+    grid-row: 2;
+    align-self: center;
+    margin-top: 18px;
+  }
+  .ch-grid .ch-tabline {
+    grid-row: 3;
+    margin: 10px 0 0;
+  }
+  .ch-grid .ch-visual {
+    grid-row: 4;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    align-self: stretch;
+  }
+  /* the steps: one row of chips */
+  .ch-grid .ch-steps {
+    grid-row: 5;
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin: 0;
+    max-width: 1180px;
+  }
+  .ch-grid .ch-group {
+    display: none;
+  }
+  .ch-grid .ch-step,
+  .ch-grid .ch-steps.is-dense .ch-step {
+    align-items: center;
+    width: auto;
+    gap: 9px;
+    padding: 5px 14px 5px 5px;
+    border-radius: 999px;
+    border-color: var(--line);
+    background: color-mix(in srgb, var(--paper) 55%, transparent);
+    backdrop-filter: blur(8px);
+  }
+  .ch-grid .ch-step .ch-tile {
+    --s: 28px;
+    border-radius: 50%;
+  }
+  .ch-grid .ch-step-main,
+  .ch-grid .ch-steps.is-dense .ch-step-main {
+    padding: 0;
+  }
+  .ch-grid .ch-step-title {
+    font-size: 13.5px;
+    gap: 7px;
+    white-space: nowrap;
+  }
+  .ch-grid .ch-step-sub,
+  .ch-grid .ch-step-body {
+    display: none;
+  }
+  .ch-grid .ch-step-bar {
+    left: 18px;
+    right: 18px;
+    bottom: 3px;
+  }
+  .ch-grid .ch-step.is-active,
+  .ch-grid .ch-steps.is-dense .ch-step.is-active {
+    padding-bottom: 5px;
+    background: var(--paper);
+    border-color: color-mix(in srgb, var(--tone) 40%, var(--line));
+    transform: translateY(-1px);
+  }
+  .ch-grid .ch-step:hover {
+    background: var(--paper);
+  }
+  /* the active step, said in a line under the row */
+  .ch-grid .ch-caption {
+    grid-row: 6;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    max-width: 64ch;
+    margin-top: 14px;
+    animation: ch-in 0.5s var(--ch-ease);
+  }
+  .ch-grid .ch-caption p {
+    margin: 0;
+    font-size: 15px;
+    line-height: 1.5;
+    color: var(--ink-2);
+  }
+  .ch-grid .ch-caption .ch-uses {
+    justify-content: center;
+    padding: 0;
+  }
+  .ch-grid .ch-hint,
+  .ch-grid .ch-more {
+    grid-row: 7;
+    margin: 12px 0 0;
+  }
+}
+@media (max-width: 900px) {
+  .ch-caption {
+    display: none;
+  }
+}
+@media (min-width: 901px) and (max-height: 820px) {
+  .ch-grid .ch-lede {
+    display: none;
+  }
+}
+
+/* ── Intro pillars: each one shown, not just said ───────────────────────── */
+
+.pillars {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+  margin-top: clamp(56px, 8vh, 96px) !important;
+  padding: 0 !important;
+  border: 0 !important;
+  list-style: none;
+}
+.pillar-card {
+  display: flex !important;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 !important;
+  border: 1px solid var(--line) !important;
+  border-radius: 22px;
+  background: var(--paper);
+  box-shadow: 0 1px 2px rgb(30 20 60 / 0.05), 0 22px 44px -30px rgb(30 20 60 / 0.4);
+  transition: transform 0.5s var(--ch-ease), box-shadow 0.5s var(--ch-ease);
+}
+.pillar-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 1px 2px rgb(30 20 60 / 0.05), 0 30px 60px -30px rgb(91 61 245 / 0.45);
+}
+.pillar-media {
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-bottom: 1px solid var(--line);
+  background: #f0f0f4;
+}
+:root[data-theme='dark'] .pillar-media {
+  background: #15131c;
+}
+.themed-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.pillar-copy {
+  display: grid;
+  gap: 8px;
+  padding: 20px 22px 24px;
+}
+.pillar-copy h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+}
+.pillar-copy p {
+  margin: 0;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+.pillar-copy .pillar-num {
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.08em;
+  color: var(--violet);
+}
+@media (max-width: 900px) {
+  .pillars {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}

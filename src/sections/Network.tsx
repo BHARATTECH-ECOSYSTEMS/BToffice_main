@@ -114,7 +114,7 @@ export function Network() {
               title={['Built in Bharat.', <span className="accent">For the world.</span>]}
               lede="An intelligence network conceived in India and engineered to run anywhere. Every node shares what it learns with the rest."
             />
-            <StepList steps={steps} active={phase} progress={stepP} onPick={jump} />
+            <StepList steps={steps} active={phase} progress={stepP} onPick={jump} caption />
             <p className="ch-hint">
               <MoveHorizontal size={15} strokeWidth={1.75} aria-hidden="true" /> Drag the globe to turn it
             </p>

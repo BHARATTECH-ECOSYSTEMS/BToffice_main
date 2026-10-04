@@ -15,29 +15,25 @@ const LABELS: Record<string, string> = {
 };
 const labelOf = (path: string) => LABELS[path] ?? (path.startsWith('/publications/') || path.startsWith('/blog/') ? 'Publication' : 'Origin');
 
-const FULL = 'inset(0px 0px 0px 0px round 0px)';
-const EASE = 'cubic-bezier(.76,0,.24,1)';
-
-/** The nav capsule as a clip-path: the curtain's smallest shape. A small pill at the top if the bar is out of view. */
-function barClip() {
-  const b = document.querySelector('.nav-inner');
-  const r = b?.getBoundingClientRect();
-  if (!r || r.bottom <= 0) return 'inset(12px calc(50% - 70px) calc(100% - 72px) calc(50% - 70px) round 999px)';
-  return `inset(${r.top}px ${innerWidth - r.right}px ${innerHeight - r.bottom}px ${r.left}px round 999px)`;
-}
-
-// a small loader: five chevrons of dots, lit in a wave
-const MARCH: { x: number; y: number }[] = [];
-for (let k = 0; k < 5; k++)
-  for (let r = 0; r < 9; r++) {
-    const x = 4 - Math.abs(r - 4);
-    for (const dx of [0, 1]) MARCH.push({ x: k * 9 + x + dx, y: r });
-  }
+type Play = (label: string, swap: () => void) => void;
+let player: Play | null = null;
 
 /**
- * The curtain between pages (after the Demaze site): following a link to another page, frosted violet glass unfolds
- * out of the nav capsule with that page's name; the next page mounts under it, and it folds back into the capsule.
- * Links into a section of the home page (data-section) and anything opened in a new tab are left alone.
+ * Plays the curtain: the sheet rises over the page, `swap` runs while it covers everything (navigate, jump to a
+ * section), then the sheet carries on up and away. Without motion (or before the curtain mounts) it just swaps.
+ */
+export function playCurtain(label: string, swap: () => void) {
+  if (player) player(label, swap);
+  else swap();
+}
+
+const IN = 'cubic-bezier(.7,0,.25,1)';
+const OUT = 'cubic-bezier(.65,0,.2,1)';
+
+/**
+ * The curtain between pages and chapters. A deep violet sheet with rounded top corners rises from the foot of the
+ * screen; the destination's name rises out of its own mask over the Origin mark while a hairline draws across; then
+ * the whole sheet keeps rising, its lower edge rounding as it goes, and uncovers the destination underneath.
  */
 export function PageCurtain() {
   const ref = useRef<HTMLDivElement>(null);
@@ -51,10 +47,53 @@ export function PageCurtain() {
   useEffect(() => {
     const el = ref.current;
     if (!el || !el.animate || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    const inner = el.querySelector('.curtain-inner') as HTMLElement;
+    const word = el.querySelector('.curtain-word') as HTMLElement;
+    const kicker = el.querySelector('.curtain-kicker') as HTMLElement;
+    const line = el.querySelector('.curtain-line') as HTMLElement;
+    const mark = el.querySelector('.curtain-mark') as HTMLElement;
 
+    const play: Play = (text, swap) => {
+      if (busy.current) return;
+      busy.current = true;
+      if (label.current) label.current.textContent = text;
+      el.classList.add('is-open');
+      const cover = el.animate(
+        [
+          { transform: 'translate3d(0, 100%, 0)', borderRadius: '56px 56px 0 0' },
+          { transform: 'translate3d(0, 0, 0)', borderRadius: '0 0 0 0' },
+        ],
+        { duration: 620, easing: IN, fill: 'forwards' },
+      );
+      word.animate([{ transform: 'translate3d(0, 110%, 0)' }, { transform: 'none' }], { duration: 700, delay: 260, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'both' });
+      kicker.animate([{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 500, delay: 320, easing: 'ease-out', fill: 'both' });
+      mark.animate([{ opacity: 0, transform: 'scale(0.6) rotate(-40deg)' }, { opacity: 0.16, transform: 'none' }], { duration: 900, delay: 120, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'both' });
+      line.animate([{ transform: 'scaleX(0)' }, { transform: 'scaleX(1)' }], { duration: 760, delay: 280, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'both' });
+      cover.onfinish = () => {
+        swap();
+        // let the destination mount and settle under the sheet, then lift it away
+        window.setTimeout(() => {
+          word.animate([{ transform: 'none', opacity: 1 }, { transform: 'translate3d(0, -40%, 0)', opacity: 0 }], { duration: 420, easing: OUT, fill: 'forwards' });
+          kicker.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' });
+          const lift = el.animate(
+            [
+              { transform: 'translate3d(0, 0, 0)', borderRadius: '0 0 0 0' },
+              { transform: 'translate3d(0, -100%, 0)', borderRadius: '0 0 56px 56px' },
+            ],
+            { duration: 720, delay: 120, easing: OUT, fill: 'forwards' },
+          );
+          lift.onfinish = () => {
+            el.classList.remove('is-open');
+            el.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+            busy.current = false;
+          };
+        }, 380);
+      };
+    };
+    player = play;
+
+    // Links to another page play it on the way. Section links (data-section) call playCurtain themselves.
     const onClick = (e: MouseEvent) => {
-      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || busy.current) return;
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
       const a = (e.target as HTMLElement).closest?.('a');
       if (!a || a.target === '_blank' || a.hasAttribute('download') || a.dataset.section !== undefined) return;
       const href = a.getAttribute('href') ?? '';
@@ -63,53 +102,28 @@ export function PageCurtain() {
       if (to === pathRef.current) return;
       e.preventDefault();
       e.stopPropagation();
-      busy.current = true;
-      if (label.current) label.current.textContent = labelOf(to);
-      el.classList.add('is-open');
-      const close = el.animate([{ clipPath: barClip(), opacity: 0 }, { clipPath: barClip(), opacity: 1, offset: 0.12 }, { clipPath: FULL, opacity: 1 }], {
-        duration: 700,
-        easing: EASE,
-        fill: 'forwards',
-      });
-      inner.animate([{ transform: 'scale(0.92) translateY(-30px)', opacity: 0 }, { transform: 'none', opacity: 1 }], {
-        duration: 620,
-        delay: 180,
-        easing: 'cubic-bezier(.22,1,.36,1)',
-        fill: 'both',
-      });
-      close.onfinish = () => {
-        navigate(to);
-        // the next page mounts under the glass, then the glass folds back into the capsule
-        window.setTimeout(() => {
-          const open = el.animate([{ clipPath: FULL, opacity: 1 }, { clipPath: barClip(), opacity: 1, offset: 0.85 }, { clipPath: barClip(), opacity: 0 }], {
-            duration: 820,
-            easing: EASE,
-            fill: 'both',
-          });
-          open.onfinish = () => {
-            el.classList.remove('is-open');
-            el.getAnimations().concat(inner.getAnimations()).forEach((x) => x.cancel());
-            busy.current = false;
-          };
-        }, 260);
-      };
+      play(labelOf(to), () => navigate(to));
     };
     document.addEventListener('click', onClick, true);
-    return () => document.removeEventListener('click', onClick, true);
+    return () => {
+      document.removeEventListener('click', onClick, true);
+      player = null;
+    };
   }, [navigate]);
 
   return (
     <div ref={ref} className="curtain" aria-hidden="true">
+      <span className="curtain-mark">
+        <LogoMark size={720} />
+      </span>
       <div className="curtain-inner">
         <span className="curtain-kicker">
-          <LogoMark size={16} /> Bharattech Origin · Next
+          <LogoMark size={16} /> Bharattech Origin
         </span>
-        <span ref={label} className="curtain-label" />
-        <span className="curtain-march">
-          {MARCH.map((d, i) => (
-            <i key={i} style={{ '--x': d.x, '--y': d.y } as React.CSSProperties} />
-          ))}
+        <span className="curtain-mask">
+          <span className="curtain-word" ref={label} />
         </span>
+        <i className="curtain-line" />
       </div>
     </div>
   );

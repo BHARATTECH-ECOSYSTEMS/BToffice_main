@@ -15,9 +15,18 @@ import {
   Lock,
   MapPin,
   ArrowRight,
+  ScanText,
+  History,
+  BrainCircuit,
+  Zap,
+  BookOpenCheck,
+  Mail,
+  FlaskConical,
+  Briefcase,
+  Newspaper,
   type LucideIcon,
 } from 'lucide-react';
-import { CAPABILITY_GROUPS, CAPABILITIES, DOMAINS, PRINCIPLES, ROLES, POSTS } from '../content';
+import { CAPABILITY_GROUPS, CAPABILITIES, DOMAINS, PRINCIPLES, ROLES, POSTS, FLOW, EMAIL } from '../content';
 import { Cover } from './Cover';
 
 /**
@@ -25,12 +34,13 @@ import { Cover } from './Cover';
  * with a few real things from that page on the left and a way into it on the right.
  */
 
-export type GlanceKey = 'about' | 'capabilities' | 'research' | 'careers' | 'publications';
+export type GlanceKey = 'about' | 'capabilities' | 'how' | 'research' | 'careers' | 'publications' | 'contact';
 
 const GROUP_ICONS: LucideIcon[] = [Eye, Hammer, ShieldCheck];
 const GROUP_LINES = ['Language, vision, sound and the open web.', 'Agents, workflows, studios and APIs.', 'Workspaces, security and a marketplace.'];
 const DOMAIN_ICONS: LucideIcon[] = [Sparkles, Network, Cpu, MapPinned, Shield, Smartphone];
 const PRINCIPLE_ICONS: LucideIcon[] = [Brain, RefreshCw, Users, Lock];
+const FLOW_ICONS: LucideIcon[] = [ScanText, History, BrainCircuit, Zap, BookOpenCheck];
 
 function Tile({ icon: Icon, title, body, to, section, onGo }: { icon: LucideIcon; title: string; body: string; to: string; section?: string; onGo: () => void }) {
   return (
@@ -60,7 +70,19 @@ function Side({ title, body, cta, to, section, onGo }: { title: string; body: st
   );
 }
 
-export function NavGlance({ which, open, onGo, onCapabilities }: { which: GlanceKey | null; open: boolean; onGo: () => void; onCapabilities: () => void }) {
+export function NavGlance({
+  which,
+  open,
+  onGo,
+  onCapabilities,
+  onSection,
+}: {
+  which: GlanceKey | null;
+  open: boolean;
+  onGo: () => void;
+  onCapabilities: () => void;
+  onSection: (section: string, label: string) => void;
+}) {
   const body = (() => {
     switch (which) {
       case 'about':
@@ -94,6 +116,51 @@ export function NavGlance({ which, open, onGo, onCapabilities }: { which: Glance
                 </button>
               ))}
             </div>
+          </>
+        );
+      case 'how':
+        return (
+          <>
+            <ol className="glance-flow">
+              {FLOW.map((f, i) => {
+                const I = FLOW_ICONS[i];
+                return (
+                  <li key={f.step}>
+                    <button type="button" className="glance-tile is-col" onClick={() => onSection('how', 'How it works')}>
+                      <span className="glance-ico">
+                        <I strokeWidth={1.75} aria-hidden="true" />
+                      </span>
+                      <span>
+                        <b>
+                          <em>0{i + 1}</em> {f.step}
+                        </b>
+                        <small>{f.body}</small>
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ol>
+          </>
+        );
+      case 'contact':
+        return (
+          <>
+            <div className="glance-grid">
+              <a className="glance-tile" href={`mailto:${EMAIL}`} onClick={onGo}>
+                <span className="glance-ico">
+                  <Mail strokeWidth={1.75} aria-hidden="true" />
+                </span>
+                <span>
+                  <b>Write to us</b>
+                  <small>{EMAIL}</small>
+                </span>
+              </a>
+              <Tile icon={FlaskConical} title="Collaborate on research" body="Institutions and teams who want to work with the lab early." to="/contact" onGo={onGo} />
+              <Tile icon={Briefcase} title="Join the team" body={`${ROLES.length} open roles in research, engineering and operations.`} to="/careers" onGo={onGo} />
+              <Tile icon={Newspaper} title="Press and partnerships" body="Stories, speaking and partnership enquiries." to="/contact" onGo={onGo} />
+            </div>
+            <Side title="Every message is read" body="A person on the team reads and answers every message." cta="Get in touch" to="/contact" onGo={onGo} />
           </>
         );
       case 'research':
@@ -151,7 +218,7 @@ export function NavGlance({ which, open, onGo, onCapabilities }: { which: Glance
   })();
 
   return (
-    <div className={`glance ${open && which ? 'is-open' : ''} ${which === 'capabilities' ? 'is-wide-grid' : ''}`} data-which={which ?? ''} aria-hidden={!open}>
+    <div className={`glance ${open && which ? 'is-open' : ''} ${which === 'capabilities' || which === 'how' ? 'is-wide-grid' : ''}`} data-which={which ?? ''} aria-hidden={!open}>
       <div className="glance-body" key={which ?? 'none'}>
         {body}
       </div>

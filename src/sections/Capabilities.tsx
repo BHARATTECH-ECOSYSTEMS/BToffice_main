@@ -144,6 +144,7 @@ export function Capabilities() {
               onHover={setHover}
               onPick={setPick}
               dense
+              caption
             />
           </div>
           <div ref={visRef} className="ch-visual" aria-hidden="true" />

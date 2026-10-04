@@ -31,7 +31,7 @@ export function Architecture() {
     sectionRef,
     () => {
       // the exploded stack is ~2.6 wide and ~4 tall once the drawer is out
-      const f = fitTo(visRef.current, 3.6, 6.2, 0.8, 0.56);
+      const f = fitTo(visRef.current, 3.6, 5.2, 0.85, 0.52);
       return {
         key: 'layers',
         pose: { x: f.x - 0.45 * f.s, y: f.y, s: f.s },

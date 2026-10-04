@@ -2,6 +2,9 @@ import { useEffect, useRef, type CSSProperties } from 'react';
 import { useFormation, worldYOf } from '../gl/Scene';
 import { Fade, SectionHead, useInView } from '../components/Reveal';
 import { PILLARS_PLAIN, SCENARIO } from '../content';
+import { ThemedVideo } from '../components/ThemedVideo';
+
+const PILLAR_CLIPS = ['remember', 'connect', 'learn'];
 
 function Mark({ ok }: { ok: boolean }) {
   return (
@@ -150,10 +153,15 @@ export function Intro() {
 
         <ol className="pillars">
           {PILLARS_PLAIN.map((p, i) => (
-            <Fade as="li" key={p.title} delay={i * 90}>
-              <span className="pillar-num">0{i + 1}</span>
-              <h3>{p.title}</h3>
-              <p>{p.body}</p>
+            <Fade as="li" key={p.title} delay={i * 90} className="pillar-card">
+              <div className="pillar-media">
+                <ThemedVideo name={PILLAR_CLIPS[i]} label={`${p.title}: an animated illustration`} />
+              </div>
+              <div className="pillar-copy">
+                <span className="pillar-num">0{i + 1}</span>
+                <h3>{p.title}</h3>
+                <p>{p.body}</p>
+              </div>
             </Fade>
           ))}
         </ol>

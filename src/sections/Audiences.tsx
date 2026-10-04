@@ -91,7 +91,7 @@ export function Audiences() {
         <div className="wrap ch-grid">
           <div className="ch-copy">
             <ChapterHead index="08" label="Who it’s for" title={['One intelligence,', <span className="accent">shaped for your work.</span>]} />
-            <StepList steps={steps} active={active} progress={hovered === null ? stepP : 1} onHover={setHovered} onPick={jump} dense />
+            <StepList steps={steps} active={active} progress={hovered === null ? stepP : 1} onHover={setHovered} onPick={jump} dense caption />
           </div>
           <div ref={visRef} className="ch-visual" aria-hidden="true" />
         </div>
