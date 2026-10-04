@@ -21,13 +21,14 @@
           var lite = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 || matchMedia('(prefers-reduced-transparency: reduce)').matches;
           if (lite) document.documentElement.classList.add('lite');
         } catch (e) {}
-        // The opening plays on every full page load (moving between pages inside the site never replays it), never with
-        // reduced motion (components/Opening.tsx); and never leaves the page covered, whatever happens to the app.
+        // The opening plays once a session, on the first page, never with reduced motion (components/Opening.tsx);
+        // and never leaves the page covered, whatever happens to the app.
         try {
-          if (!matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          if (!sessionStorage.getItem('origin-intro') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
             document.documentElement.classList.add('intro-on');
             window.__introBail = setTimeout(function () { document.documentElement.classList.remove('intro-on'); }, 6500);
           }
+          sessionStorage.setItem('origin-intro', '1');
         } catch (e) {}
       })();
     </script>
