@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bharattech Origin | The Operating System for Intelligence</title>
     <meta name="description" content="Bharattech Origin is an Indian deep-technology research company building a unified intelligence infrastructure designed to learn, remember, reason and evolve." />
-    <meta name="theme-color" content="#F6F6F9" />
+    <meta name="theme-color" content="#F7F2EA" />
     <script>
       (function () {
         // Light by default; a visitor's own choice (the nav's sun/moon) is remembered.
@@ -15,7 +15,7 @@
           if (saved === 'dark' || saved === 'light') theme = saved;
         } catch (e) {}
         document.documentElement.dataset.theme = theme;
-        if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#07070C');
+        if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0C0B10');
         // Modest machines (≤4 cores or ≤4 GB, common on Windows laptops) or "reduce transparency": glass without the live blur.
         try {
           var lite = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 || matchMedia('(prefers-reduced-transparency: reduce)').matches;
@@ -35,7 +35,7 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=Geist+Mono:wght@400;500&display=swap" />
   </head>
   <body>
     <div id="root"></div>

@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { PageHero, Zone } from '../components/PageHero';
 import { Lines, Kicker, Fade, Arrow } from '../components/Reveal';
 import { AUDIENCES, PRINCIPLES } from '../content';
-import { PhilosophyDiagram, PrinciplesRadar, AUDIENCE_CATEGORIES } from '../components/AboutDiagrams';
+import { PhilosophyDiagram, AUDIENCE_CATEGORIES } from '../components/AboutDiagrams';
 
 export function About() {
   const [hl, setHl] = useState<number | null>(null);
@@ -25,18 +25,18 @@ export function About() {
         <div className="about-hero-pillars">
           <div className="about-hero-pillar">
             <span className="mono">01</span>
-            <strong>Sovereign Memory</strong>
-            <p>Persistent context across sessions, agents and models.</p>
+            <strong>Memory that persists</strong>
+            <p>Context carries across sessions, tools and people.</p>
           </div>
           <div className="about-hero-pillar">
             <span className="mono">02</span>
-            <strong>Collaborative Swarms</strong>
-            <p>Specialized systems orchestrated as one coherent brain.</p>
+            <strong>Systems that work together</strong>
+            <p>Specialised models share one memory and act as one.</p>
           </div>
           <div className="about-hero-pillar">
             <span className="mono">03</span>
-            <strong>Continuous Evolution</strong>
-            <p>Intelligence that self-improves through real-world deployment.</p>
+            <strong>Learning after deployment</strong>
+            <p>It keeps improving through use, not just retraining.</p>
           </div>
         </div>
 
@@ -58,7 +58,7 @@ export function About() {
       {/* ── 01 Philosophy: Beyond Model Silos ───────────────────────────── */}
       <Zone
         id="philosophy"
-        target={{ key: 'silos', pose: { x: 1.65, y: -0.05, s: 0.95 }, params: { alpha: 0.32, drift: 0.6 } }}
+        target={{ key: 'field', params: { alpha: 0 } }}
         className="section about-section"
       >
         <div className="wrap">
@@ -89,7 +89,7 @@ export function About() {
       {/* ── 02 & 03 Intent: Vision & Mission ────────────────────────────── */}
       <Zone
         id="vision"
-        target={{ key: 'logo', pose: { x: 0, y: 0, s: 1.25 }, params: { dark: 1, alpha: 0.35, drift: 0.8 } }}
+        target={{ key: 'field', params: { alpha: 0 } }}
         className="section about-section about-vision-section"
       >
         <div className="wrap">
@@ -103,19 +103,19 @@ export function About() {
             <div className="about-pillar-card vision-card">
               <div className="about-pillar-head">
                 <Kicker index="02">Vision</Kicker>
-                <span className="about-pillar-tag">NORTH STAR</span>
+                <span className="about-pillar-tag">Where we are going</span>
               </div>
               <h3 className="about-pillar-display">
                 To make intelligence as accessible as information.
               </h3>
               <p className="about-pillar-copy">
-                Just as the web democratized information retrieval, the next era must democratize sovereign,
-                high-order cognitive synthesis across every school, laboratory, and enterprise.
+                The web made information available to everyone. We want the same for intelligence: something every
+                school, laboratory, public body and company can use, on infrastructure they control.
               </p>
               <div className="about-pillar-features">
-                <span className="about-pill-feature">Universal Accessibility</span>
-                <span className="about-pill-feature">Democratized Compute</span>
-                <span className="about-pill-feature">Sovereign Deployment</span>
+                <span className="about-pill-feature">Open access</span>
+                <span className="about-pill-feature">Affordable compute</span>
+                <span className="about-pill-feature">Sovereign deployment</span>
               </div>
             </div>
 
@@ -123,19 +123,19 @@ export function About() {
             <div className="about-pillar-card mission-card">
               <div className="about-pillar-head">
                 <Kicker index="03">Mission</Kicker>
-                <span className="about-pillar-tag">TECHNICAL OBJECTIVE</span>
+                <span className="about-pillar-tag">What we are building</span>
               </div>
               <h3 className="about-pillar-display">
-                To transform AI from isolated models into a unified ecosystem.
+                To turn AI from isolated models into one system that learns.
               </h3>
               <p className="about-pillar-copy">
-                Engineering the foundational operating system where agents, models, and shared memory modules
-                interconnect with continuous learning, autonomous reasoning, and verifiable integrity.
+                We are building the shared layer underneath AI: one memory, one way of reasoning and one set of
+                controls that every model, agent and application can draw on.
               </p>
               <div className="about-pillar-features">
-                <span className="about-pill-feature">Continuous Learning</span>
-                <span className="about-pill-feature">Persistent Memory</span>
-                <span className="about-pill-feature">Autonomous Reasoning</span>
+                <span className="about-pill-feature">Shared memory</span>
+                <span className="about-pill-feature">Continuous learning</span>
+                <span className="about-pill-feature">Governed agents</span>
               </div>
             </div>
           </div>
@@ -147,8 +147,9 @@ export function About() {
         id="principles"
         target={() => ({
           key: 'orbit6',
-          pose: { x: 1.55, y: -0.02, s: 0.95 },
-          params: { highlight: hlRef.current ?? -1, alpha: 0.42, drift: 0.8 },
+          pose: { x: -1.85, y: -0.75, s: 0.52 },
+          // compact screens have no free column for it: the list carries the section alone
+          params: { highlight: hlRef.current ?? -1, alpha: window.innerWidth > 900 ? 1 : 0 },
         })}
         className="section about-section"
       >
@@ -160,10 +161,9 @@ export function About() {
                 <Kicker index="04">Principles</Kicker>
                 <Lines className="h2" lines={['Six principles.', 'Every system.']} />
                 <p className="about-principles-sub">
-                  Every layer of Bharattech Origin is architected to uphold these foundational axioms.
-                  Hover any principle to engage orbital telemetry.
+                  Six commitments every layer of the system is designed around. Point at one to find it in the
+                  orbit.
                 </p>
-                <PrinciplesRadar activeIndex={hl} />
               </div>
             </div>
 
@@ -193,7 +193,7 @@ export function About() {
       {/* ── 05 Who we build for: Ecosystem Grid ─────────────────────────── */}
       <Zone
         id="audiences"
-        target={{ key: 'globe', pose: { x: 1.45, y: -0.05, s: 1.05 }, params: { alpha: 0.4, drift: 1.0 } }}
+        target={{ key: 'field', params: { alpha: 0 } }}
         className="section about-section"
       >
         <div className="wrap">
@@ -201,8 +201,7 @@ export function About() {
             <Kicker index="05">Who we build for</Kicker>
             <Lines className="h1" lines={['Intelligence shaped', 'for every pioneer.']} />
             <p className="about-audiences-lede">
-              The same foundational memory and reasoning engine underneath, calibrated for specialized workflows
-              across industry, science, and governance.
+              The same memory and reasoning underneath, set up for the work of science, industry and government.
             </p>
           </div>
 
@@ -217,7 +216,6 @@ export function About() {
               >
                 <div className="about-stakeholder-head">
                   <span className="about-category-badge">{cat.badge}</span>
-                  <span className="mono about-stakeholder-metric">{cat.metric}</span>
                 </div>
                 <h3 className="about-stakeholder-title">{cat.title}</h3>
                 <p className="about-stakeholder-desc">{cat.description}</p>
@@ -241,7 +239,7 @@ export function About() {
 
           {/* Complete Audience Filter Pill Bar */}
           <div className="about-all-audiences-bar">
-            <span className="about-filter-label mono">EXPLORE ECOSYSTEM:</span>
+            <span className="about-filter-label mono">Everyone we build for</span>
             <div className="about-pills-row">
               <button
                 type="button"
@@ -267,7 +265,7 @@ export function About() {
 
       {/* ── 06 Continue: CTA Band ────────────────────────────────────────── */}
       <Zone
-        target={{ key: 'layers', pose: { x: 1.55, y: -0.05, s: 0.9 }, params: { alpha: 0.38, drift: 0.8 } }}
+        target={{ key: 'logo', pose: { x: 1.7, y: -0.1, s: 0.72 } }}
         className="cta-band about-cta-band"
       >
         <div className="wrap">
@@ -275,7 +273,7 @@ export function About() {
             <Kicker>Continue the journey</Kicker>
             <Lines className="h1" lines={['See the research', 'behind the thesis.']} />
             <p className="about-cta-sub">
-              Explore our peer-reviewed whitepapers, mathematical memory architectures, and live experimental benchmarks in the laboratory.
+              Six research domains, from long-term memory to geospatial and edge intelligence, each working toward the same layer.
             </p>
             <div className="about-cta-actions">
               <Link to="/research" className="btn btn-solid">

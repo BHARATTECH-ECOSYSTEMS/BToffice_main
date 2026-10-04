@@ -1,0 +1,162 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Motion: every chapter moves in its own way, and every move is scrubbed by the scroll.
+   ScrollFx sets --e (0…1, how far a section has entered) and --p (0…1, how far it has been read) on each
+   section, and --w (0…1, focus) on each headline. Nothing here runs on a timer, so scrolling back rewinds it.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* ── Headlines come into focus: blur and a red/violet split converge into one sharp line ── */
+
+.fx-focus {
+  --u: calc(1 - var(--w, 1));
+  filter: blur(calc(var(--u) * 7px));
+  opacity: calc(0.25 + 0.75 * var(--w, 1));
+  text-shadow:
+    calc(var(--u) * -12px) 0 rgb(226 65 43 / calc(var(--u) * 0.45)),
+    calc(var(--u) * 12px) 0 rgb(91 61 245 / calc(var(--u) * 0.5));
+  will-change: filter, opacity;
+}
+.fx-focus .accent {
+  text-shadow: inherit;
+}
+
+/* ── Giant chapter words, outlined, behind the 3D ─────────────────────── */
+
+.ghost-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+.ghost-word {
+  position: absolute;
+  inset-inline: -40vw;
+  top: 30vh;
+  text-align: center;
+  white-space: nowrap;
+  font: 800 clamp(120px, 21vw, 360px) / 1 var(--sans);
+  letter-spacing: -0.055em;
+  color: transparent;
+  -webkit-text-stroke: 1.25px rgb(21 19 15 / 0.09);
+  will-change: transform, opacity;
+}
+:root[data-theme='dark'] .ghost-word {
+  -webkit-text-stroke-color: rgb(244 241 234 / 0.08);
+}
+
+/* ── 01 Intro: the two assistants arrive from opposite sides and turn to face each other ── */
+
+.intro .compare {
+  perspective: 1600px;
+}
+.intro .compare > * {
+  --k: calc(1 - var(--e, 1));
+  transform-origin: 50% 100%;
+  transition: none;
+}
+.intro .compare > :first-child {
+  transform: translate3d(calc(var(--k) * -9vw), calc(var(--k) * 40px), 0) rotateY(calc(var(--k) * 14deg));
+  opacity: calc(1 - var(--k) * 0.85);
+}
+.intro .compare > :last-child {
+  transform: translate3d(calc(var(--k) * 9vw), calc(var(--k) * 40px), 0) rotateY(calc(var(--k) * -14deg));
+  opacity: calc(1 - var(--k) * 0.85);
+}
+
+/* ── 03 Capabilities: the three families rise in a cascade, left to right ── */
+
+.caps .caps-col {
+  --k: calc(1 - var(--e, 1));
+}
+.caps .caps-col:nth-child(1) { transform: translate3d(0, calc(var(--k) * 60px), 0); }
+.caps .caps-col:nth-child(2) { transform: translate3d(0, calc(var(--k) * 110px), 0); }
+.caps .caps-col:nth-child(3) { transform: translate3d(0, calc(var(--k) * 160px), 0); }
+
+/* ── 04 How it works: the dark panel opens out from a card to the full width of the screen ── */
+
+.how .pin-stage {
+  --k: calc(1 - var(--e, 1));
+  clip-path: inset(0 calc(var(--k) * 7vw) 0 calc(var(--k) * 7vw) round calc(32px + var(--k) * 36px));
+  transform: scale(calc(1 - var(--k) * 0.035));
+  transform-origin: 50% 0;
+}
+.how .pin-stage > * {
+  opacity: calc(1 - var(--k) * 1.4);
+}
+
+/* ── 05 Architecture: the layer list is dealt in from the left, one family after another ── */
+
+.arch .arch-family {
+  --k: calc(1 - var(--e, 1));
+}
+.arch .arch-family:nth-child(1) { transform: translate3d(calc(var(--k) * -40px), 0, 0); opacity: calc(1 - var(--k) * 1.2); }
+.arch .arch-family:nth-child(2) { transform: translate3d(calc(var(--k) * -80px), 0, 0); opacity: calc(1 - var(--k) * 1.6); }
+.arch .arch-family:nth-child(3) { transform: translate3d(calc(var(--k) * -120px), 0, 0); opacity: calc(1 - var(--k) * 2); }
+
+/* ── 09 Builders: a dark sheet that rises over the page, with its bars filled by the scroll ── */
+
+.builders {
+  --k: calc(1 - var(--e, 1));
+  transform: translate3d(0, calc(var(--k) * 70px), 0) scale(calc(1 - var(--k) * 0.04));
+  transform-origin: 50% 0;
+  border-radius: calc(clamp(20px, 2.4vw, 36px) + var(--k) * 30px);
+}
+.builders .jobs-bar i::after {
+  width: calc(var(--w) * 100% * clamp(0, (var(--e, 1) - 0.45) * 2.2, 1));
+}
+
+/* ── 10 Journal: the stories are dealt onto the table like prints ───────── */
+
+.journal .journal-grid {
+  perspective: 1400px;
+}
+.journal .story {
+  --k: calc(1 - var(--e, 1));
+  transform-origin: 50% 100%;
+}
+.journal .journal-grid > :first-child .story,
+.journal .journal-grid > .story:first-child {
+  transform: translate3d(calc(var(--k) * -30px), calc(var(--k) * 90px), 0) rotate(calc(var(--k) * -4deg));
+}
+.journal .journal-side .story:nth-child(1) {
+  transform: translate3d(0, calc(var(--k) * 130px), 0) rotate(calc(var(--k) * 3deg));
+}
+.journal .journal-side .story:nth-child(2) {
+  transform: translate3d(0, calc(var(--k) * 180px), 0) rotate(calc(var(--k) * 5deg));
+}
+.journal .journal-side .story:nth-child(3) {
+  transform: translate3d(0, calc(var(--k) * 230px), 0) rotate(calc(var(--k) * 7deg));
+}
+
+/* ── 11 Questions: hairlines are drawn across, then the questions settle onto them ── */
+
+.faq .faq-item {
+  --k: calc(1 - var(--e, 1));
+  position: relative;
+}
+.faq .faq-item:nth-child(1) { transform: translate3d(0, calc(var(--k) * 24px), 0); }
+.faq .faq-item:nth-child(2) { transform: translate3d(0, calc(var(--k) * 44px), 0); }
+.faq .faq-item:nth-child(3) { transform: translate3d(0, calc(var(--k) * 64px), 0); }
+.faq .faq-item:nth-child(4) { transform: translate3d(0, calc(var(--k) * 84px), 0); }
+.faq .faq-item:nth-child(n + 5) { transform: translate3d(0, calc(var(--k) * 104px), 0); }
+
+/* ── 12 Finale: a paper sheet rises over the last chapter with the mark standing on it ── */
+
+.finale {
+  --k: calc(1 - var(--e, 1));
+}
+.finale .finale-cta {
+  transform: translate3d(0, calc(var(--k) * 120px), 0) rotate(calc(var(--k) * -2deg));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fx-focus {
+    filter: none;
+    text-shadow: none;
+    opacity: 1;
+  }
+  .ghost-word {
+    display: none;
+  }
+}

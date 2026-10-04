@@ -184,10 +184,8 @@ function rotZ([x, y, z]: V3, a: number): V3 {
   return [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a), z];
 }
 
-export function orbit(n: number, satellites: number, seed = 5): Formation {
-  const r = rng(seed);
-  const b = new Builder(n);
-  const coreR = 0.46;
+/** The rings and satellite positions of an orbit; shared by the particle formation and the solid object. */
+export function orbitLayout(satellites: number) {
   const rings =
     satellites > 8
       ? [
@@ -200,14 +198,19 @@ export function orbit(n: number, satellites: number, seed = 5): Formation {
           { radius: 1.95, tiltX: 1.22, tiltZ: -0.18, count: 0 },
         ];
   rings[rings.length - 1].count = satellites - rings.slice(0, -1).reduce((s, g) => s + g.count, 0);
-
   const place = (ring: (typeof rings)[number], angle: number, rad = ring.radius): V3 =>
     rotZ(rotX([Math.cos(angle) * rad, Math.sin(angle) * rad, 0], ring.tiltX), ring.tiltZ);
-
   const sats: V3[] = [];
   rings.forEach((ring, ri) => {
     for (let s = 0; s < ring.count; s++) sats.push(place(ring, (s / ring.count) * Math.PI * 2 + ri * 0.7));
   });
+  return { rings, sats, place, coreR: 0.46 };
+}
+
+export function orbit(n: number, satellites: number, seed = 5): Formation {
+  const r = rng(seed);
+  const b = new Builder(n);
+  const { rings, sats, place, coreR } = orbitLayout(satellites);
 
   const coreN = Math.floor(n * 0.24);
   while (b.i < coreN) {
@@ -250,8 +253,9 @@ export function orbit(n: number, satellites: number, seed = 5): Formation {
 // precision bevel, corner alignment pads, and dedicated technological subsystem circuitry.
 
 export const LAYER_COUNT = 9;
-const LAYER_GAP = 0.35;
-const HALF = 0.92;
+export const LAYER_GAP = 0.35;
+export const LAYER_HALF = 0.92;
+const HALF = LAYER_HALF;
 
 /** Generates points along a rounded square boundary in the X-Z plane */
 function roundedRectEdge(w: number, h: number, cr: number, t: number): [number, number] {
@@ -288,9 +292,9 @@ function roundedRectEdge(w: number, h: number, cr: number, t: number): [number, 
   return [-w / 2 + cr + Math.cos(a) * cr, -h / 2 + cr + Math.sin(a) * cr];
 }
 
-type LayerGen = (index: number, total: number, r: () => number) => [number, number];
+export type LayerGen = (index: number, total: number, r: () => number) => [number, number];
 
-const LAYER_SUB_SYSTEMS: LayerGen[] = [
+export const LAYER_SUB_SYSTEMS: LayerGen[] = [
   // 0. Applications: 3x3 organized grid of app modules with frames & active cores
   (i, total, r) => {
     const tile = i % 9;
@@ -514,8 +518,8 @@ export function layers(n: number): Formation {
       b.push(cx + (r() - 0.5) * 0.005, y, cz + (r() - 0.5) * 0.005, 0.9, l);
     }
 
-    // Anchor positioned cleanly at the front-left edge of the wafer slab
-    b.f.anchors.push([-HALF * 1.02, y, 0]);
+    // Anchor on the right-hand edge of the slab, where a callout can hang off it
+    b.f.anchors.push([HALF * 1.02, y, 0]);
   }
 
   // 5. Central Vertical Data Spine / High-Speed Inter-Layer Bus
@@ -582,10 +586,11 @@ export function globe(n: number): Formation {
       const pt: LonLat = [lon, lat];
       const vec = lonLatToVec(lon, lat, GLOBE_R);
       if (!inPolygon(pt, INDIA)) {
+        // land in ink, the ocean as a faint graticule of dots: the continents read by contrast, India by colour
         if (isLandmass(pt)) {
-          b.push(vec[0], vec[1], vec[2], 0.8, -1);
-        } else if (l % 3 === 0 && g % 3 === 0) {
-          b.push(vec[0], vec[1], vec[2], 0.22, -1);
+          b.push(vec[0], vec[1], vec[2], 0.0, -1);
+        } else if (l % 4 === 0 && g % 4 === 0) {
+          b.push(vec[0], vec[1], vec[2], 0.0, -1);
         }
       }
     }

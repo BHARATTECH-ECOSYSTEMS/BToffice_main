@@ -42,6 +42,16 @@ export function worldYOf(el: HTMLElement | null, offset: number) {
 export const isCompact = () => window.innerWidth <= 900;
 
 /**
+ * For a pinned section: once its pin releases and it starts scrolling off the top, how far (in world units) its
+ * object must rise to leave with it rather than hang on screen.
+ */
+export function pinLift(el: HTMLElement | null) {
+  const r = el?.getBoundingClientRect();
+  if (!r || r.bottom >= window.innerHeight) return 0;
+  return (window.innerHeight - r.bottom) * (worldYOf(el, 0) - worldYOf(el, 1));
+}
+
+/**
  * On compact screens a visual sits in a band at the top of its section and scrolls with it,
  * instead of staying fixed behind the text. `band` is the band's centre as a share of the viewport height.
  */
@@ -108,11 +118,14 @@ export function SceneProvider({ children }: { children: ReactNode }) {
     let needPick = true;
     let lastPickY = -9999;
     let lastVh = -1;
+    let lastBest: Entry | null = null;
 
     const pick = () => {
       const vh = window.innerHeight;
       const y = window.scrollY;
       if (!needPick && Math.abs(y - lastPickY) < 0.2 && vh === lastVh) {
+        // the page is still, but the chapter's state may have moved on (a step changed, a row is hovered)
+        if (lastBest) engine?.setTarget(lastBest.target());
         return;
       }
       needPick = false;
@@ -148,6 +161,7 @@ export function SceneProvider({ children }: { children: ReactNode }) {
         currentEntries[i].onProgress?.(p, currentEntries[i] === best);
       }
 
+      lastBest = best;
       if (best) engine?.setTarget(best.target());
     };
 

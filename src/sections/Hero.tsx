@@ -12,14 +12,25 @@ const FACTS = [
   { label: 'Headquarters', value: 'India' },
 ];
 
-const TONES = ['violet', 'tango', 'sky', 'teal', 'pitch', 'rose'] as const;
-
-const ORBIT = [
-  { label: 'Persistent memory', note: 'Context that carries over', tone: 'violet' },
-  { label: 'Shared reasoning', note: 'Every tool, one mind', tone: 'sky' },
-  { label: 'Keeps learning', note: 'Improves after deployment', tone: 'tango' },
-  { label: 'Sovereign', note: 'Built in Bharat', tone: 'teal' },
-];
+/** Counts a number up from zero once it is shown; words simply appear. */
+function CountUp({ value, run }: { value: string; run: boolean }) {
+  const n = Number(value);
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (!run || Number.isNaN(n)) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - t0) / 1400);
+      setV(Math.round(n * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [run, n]);
+  if (Number.isNaN(n)) return <>{value}</>;
+  return <>{String(v).padStart(value.length, '0')}</>;
+}
 
 export function Hero() {
   const ref = useRef<HTMLElement>(null);
@@ -43,11 +54,13 @@ export function Hero() {
       const bandBottom = copyRef.current.getBoundingClientRect().top - hero.top;
       const perPx = worldYOf(ref.current, 0) - worldYOf(ref.current, 1);
       const radius = ((bandBottom - bandTop) / 2) * perPx;
-      mobile = { x: 0, y: worldYOf(ref.current, (bandTop + bandBottom) / 2), s: Math.max(0.36, Math.min(0.62, (radius * 0.86) / LOGO_R)) };
+      // a little above centre and a little smaller, so the plinth under it clears the headline
+      const mid = bandTop + (bandBottom - bandTop) * 0.44;
+      mobile = { x: 0, y: worldYOf(ref.current, mid), s: Math.max(0.34, Math.min(0.58, (radius * 0.7) / LOGO_R)) };
     }
     return {
       key: 'logo',
-      pose: { x: 1.65, y, s: 0.92 },
+      pose: { x: 1.6, y: y + 0.18, s: 0.8 },
       mobilePose: mobile,
       params: { alpha },
       follow: 18,
@@ -63,6 +76,26 @@ export function Hero() {
     return () => {
       live = false;
       clearTimeout(t);
+    };
+  }, []);
+
+  useEffect(() => {
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const el = copyRef.current;
+        if (!el) return;
+        const k = Math.min(1, window.scrollY / (window.innerHeight * 0.8));
+        el.style.transform = `translate3d(0, ${-k * 60}px, 0)`;
+        el.style.opacity = String(1 - k * 0.85);
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
     };
   }, []);
 
@@ -90,39 +123,18 @@ export function Hero() {
             </button>
           </div>
         </div>
-        {/* Glass chips that float around the mark: what the one layer gives every application */}
-        <div className={`hero-orbit fade ${ready ? 'is-in' : ''}`} style={d(900)} aria-hidden="true">
-          {ORBIT.map((o, i) => (
-            <span key={o.label} className={`orbit-chip orbit-chip--${i + 1}`} data-tone={o.tone}>
-              <i />
-              <b>{o.label}</b>
-              <small>{o.note}</small>
-            </span>
-          ))}
-        </div>
       </div>
       <div className="wrap">
         <dl className={`hero-facts fade ${ready ? 'is-in' : ''}`} style={d(800)}>
           {FACTS.map((f) => (
             <div key={f.label}>
               <dt>{f.label}</dt>
-              <dd>{f.value}</dd>
+              <dd>
+                <CountUp value={f.value} run={ready} />
+              </dd>
             </div>
           ))}
         </dl>
-      </div>
-      <div className={`hero-marquee fade ${ready ? 'is-in' : ''}`} style={d(960)} aria-hidden="true">
-        <div className="hero-marquee-track">
-          {[0, 1].map((k) => (
-            <span key={k} className="hero-marquee-set">
-              {CAPABILITIES.map((c, i) => (
-                <span key={c.name} className="marquee-pill" data-tone={TONES[i % TONES.length]}>
-                  {c.name}
-                </span>
-              ))}
-            </span>
-          ))}
-        </div>
       </div>
     </section>
   );

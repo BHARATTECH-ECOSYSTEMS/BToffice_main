@@ -1,19 +1,14 @@
+import { ScanText, History, BrainCircuit, Zap, BookOpenCheck } from 'lucide-react';
+import { ChapterHead } from '../components/Chapter';
 import { useRef, useState } from 'react';
 import { useFormation, useScene } from '../gl/Scene';
-import { Kicker, Lines, Fade } from '../components/Reveal';
+import { Fade } from '../components/Reveal';
 import { FLOW } from '../content';
 
 const X = [120, 360, 600, 840, 1080]; // station centres on the 1200-wide diagram
 const Y = 196; // the line every request travels along
 const SPAN = X[4] - X[0];
 
-const NODE_ICONS = [
-  'M-8 0h3M-3-5v10M1-8v16M5-4v8M8 0h1',
-  'M-6 0a6 6 0 1 0 1.8-4.3M-6-6.5v3h3',
-  'M-8 0h4m0 0l5-5m-5 5l5 5M1-5h6M1 5h6',
-  'M1-8h7v7M8-8L-1 1M6 2v5a1 1 0 0 1-1 1h-12a1 1 0 0 1-1-1v-12a1 1 0 0 1 1-1h5',
-  'M0-8l8 4-8 4-8-4 8-4zM-8 0l8 4 8-4M-8 4l8 4 8-4',
-];
 
 /** Station vignettes, each drawn around its own centre (x, 0 = top of the vignette band). */
 function Understand({ x }: { x: number }) {
@@ -106,6 +101,7 @@ function Learn({ x }: { x: number }) {
   );
 }
 
+const NODE_LUCIDE = [ScanText, History, BrainCircuit, Zap, BookOpenCheck];
 const VIGNETTES = [Understand, Recall, Reason, Act, Learn];
 
 /**
@@ -150,10 +146,7 @@ export function HowItWorks() {
       <div className="pin-stage">
         <div className="wrap how-stage">
           <header className="how-head">
-            <div>
-              <Kicker index="04">How it works</Kicker>
-              <Lines className="h2" lines={['From a question to an answer.']} />
-            </div>
+            <ChapterHead index="04" label="How it works" title={['From a question', <span className="accent">to an answer.</span>]} />
             <Fade as="p" className="body" delay={120}>
               The request from the scenario above, followed through the system. Keep scrolling: five stations, one shared memory
               underneath.
@@ -190,8 +183,11 @@ export function HowItWorks() {
                 role="button"
                 aria-label={FLOW[i].step}
               >
-                <circle r={24} />
-                <path d={NODE_ICONS[i]} />
+                <rect className="dg-tile" x={-26} y={-26} width={52} height={52} rx={16} />
+                {(() => {
+                  const Icon = NODE_LUCIDE[i];
+                  return <Icon x={-11} y={-11} width={22} height={22} strokeWidth={1.75} />;
+                })()}
                 <text y={48} textAnchor="middle">
                   {FLOW[i].step}
                 </text>
@@ -209,9 +205,10 @@ export function HowItWorks() {
             {FLOW.map((f, i) => (
               <li key={f.step}>
                 <span className="how-list-node">
-                  <svg width="18" height="18" viewBox="-12 -12 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d={NODE_ICONS[i]} />
-                  </svg>
+                  {(() => {
+                    const Icon = NODE_LUCIDE[i];
+                    return <Icon size={18} strokeWidth={1.75} aria-hidden="true" />;
+                  })()}
                 </span>
                 <div>
                   <p className="how-list-num">Step {i + 1}</p>

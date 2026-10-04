@@ -1,8 +1,7 @@
-import { useRef, type CSSProperties } from 'react';
+import { useEffect, useRef, type CSSProperties } from 'react';
 import { useFormation, worldYOf } from '../gl/Scene';
 import { Fade, SectionHead, useInView } from '../components/Reveal';
 import { PILLARS_PLAIN, SCENARIO } from '../content';
-import { Diagram, BENTO_DIAGRAMS } from '../components/BentoDiagrams';
 
 function Mark({ ok }: { ok: boolean }) {
   return (
@@ -25,6 +24,29 @@ export function Intro() {
   const [sceneRef, sceneIn] = useInView<HTMLDivElement>({ margin: '0px 0px -25% 0px' });
   const d = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties;
 
+  // the two windows tilt up into place as they come on screen, like a device being raised to the eye
+  useEffect(() => {
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const el = sceneRef.current;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        const k = Math.min(1, Math.max(0, (window.innerHeight - r.top) / (window.innerHeight * 0.75)));
+        el.style.setProperty('--tilt', `${(1 - k) * 18}deg`);
+        el.style.setProperty('--rise', `${(1 - k) * 60}px`);
+      });
+    };
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [sceneRef]);
+
   return (
     <section id="intro" ref={ref} className="section intro" data-chapter="What we build">
       <div className="wrap">
@@ -32,33 +54,8 @@ export function Intro() {
           index="01"
           label="What we’re building"
           title={['AI that remembers, connects', 'and keeps learning.']}
-          scrub
           lede="Most AI tools start from zero every time, work alone and stop learning once they are trained. We are building the layer underneath them: one shared intelligence that every application can draw on."
         />
-
-        <div className="plain">
-          {PILLARS_PLAIN.map((p, i) => {
-            const diag = BENTO_DIAGRAMS[i];
-            return (
-              <Fade key={p.title} className="bento plain-item" delay={i * 90}>
-                <div className="bento-art">
-                  <Diagram
-                    draw={diag.draw}
-                    period={12}
-                    h={diag.h}
-                    label={diag.label}
-                    still={diag.still}
-                  />
-                </div>
-                <div className="bento-text">
-                  <span className="num">{String(i + 1).padStart(2, '0')}</span>
-                  <h3>{p.title}</h3>
-                  <p>{p.body}</p>
-                </div>
-              </Fade>
-            );
-          })}
-        </div>
 
         <div ref={sceneRef} className={`scene-demo ${sceneIn ? 'is-in' : ''}`}>
           <div className="scene-head">
@@ -72,8 +69,13 @@ export function Intro() {
           <div className="compare">
             <article className="convo convo-today">
               <header className="convo-head">
-                <span className="convo-dot" />
-                A typical AI assistant today
+                <span className="win-dots" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                <span className="win-title">A typical AI assistant</span>
+                <span className="win-status is-off">No memory</span>
               </header>
               <div className="convo-body">
                 <div className="msg msg-user is-past fade" style={d(100)}>
@@ -102,8 +104,13 @@ export function Intro() {
 
             <article className="convo convo-origin">
               <header className="convo-head">
-                <span className="convo-dot" />
-                With Origin
+                <span className="win-dots" aria-hidden="true">
+                  <i />
+                  <i />
+                  <i />
+                </span>
+                <span className="win-title">Origin · Groundwater study</span>
+                <span className="win-status is-on">Memory on</span>
               </header>
               <div className="convo-body">
                 <div className="msg msg-user is-past fade" style={d(150)}>
@@ -140,6 +147,16 @@ export function Intro() {
           </div>
           <p className="scene-note">A concept illustration of the system we are researching, not a transcript of a live product.</p>
         </div>
+
+        <ol className="pillars">
+          {PILLARS_PLAIN.map((p, i) => (
+            <Fade as="li" key={p.title} delay={i * 90}>
+              <span className="pillar-num">0{i + 1}</span>
+              <h3>{p.title}</h3>
+              <p>{p.body}</p>
+            </Fade>
+          ))}
+        </ol>
       </div>
     </section>
   );

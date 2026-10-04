@@ -9,10 +9,26 @@ export const EMPLOYEE_LOGIN_URL = isLocal
   : 'https://learning-management-frontend-v1nx.onrender.com/login';
 
 export const PROBLEMS = [
-  { title: 'It forgets.', body: 'Every session starts from zero. Context is gone the moment you leave.', caption: 'Context retained' },
-  { title: 'It is fragmented.', body: 'Chat, search, documents, code. Separate tools that never share what they know.', caption: '6 tools · 0 shared memory' },
-  { title: 'It stops learning.', body: 'Models are trained once, then frozen. The world keeps moving. They don’t.', caption: 'Frozen at training time' },
-  { title: 'It works alone.', body: 'Each system reaches for the others and falls short. There is no layer that connects them.', caption: '0 of 7 connections complete' },
+  {
+    title: 'It forgets.',
+    body: 'Every session starts from zero. Three weeks later, the groundwater study and its 7 flagged districts are gone.',
+    caption: 'Context retained',
+  },
+  {
+    title: 'It is fragmented.',
+    body: 'Survey notes in documents, satellite data in a GIS tool, the discussion in chat. None of them share what they know.',
+    caption: '6 tools · 0 shared memory',
+  },
+  {
+    title: 'It stops learning.',
+    body: 'The model was trained before the new imagery existed. The water table kept falling; what it knows did not move.',
+    caption: 'Frozen at training time',
+  },
+  {
+    title: 'It works alone.',
+    body: 'Each tool reaches for the others and falls short, so the team copies data between them by hand.',
+    caption: '0 of 7 connections complete',
+  },
 ];
 
 export const SILOS = ['Chat', 'Search', 'Docs', 'Code', 'Vision', 'Voice'];
@@ -37,16 +53,23 @@ export const CAPABILITIES = [
   { name: 'Marketplace', body: 'A shared ecosystem of agents, models and workflows.' },
 ];
 
+/** Nine layers, top to bottom. `trace` is what each one does for the groundwater request in the scenario. */
 export const LAYERS = [
-  { name: 'Applications', body: 'Where people and organisations meet the intelligence.' },
-  { name: 'Reasoning Engine', body: 'Plans, infers and decides across many steps.' },
-  { name: 'Memory Engine', body: 'Retains context across sessions, agents and time.' },
-  { name: 'Knowledge Engine', body: 'Structures what is known into a living graph.' },
-  { name: 'Research Engine', body: 'Investigates, verifies and extends that knowledge.' },
-  { name: 'Security Layer', body: 'Isolation, policy and trust at every boundary.' },
-  { name: 'Infrastructure Layer', body: 'Orchestration that keeps every capability in sync.' },
-  { name: 'Compute Layer', body: 'Efficient training and inference, from cluster to edge.' },
-  { name: 'Sovereign Cloud', body: 'Data and intelligence that remain under national control.' },
+  { name: 'Applications', body: 'Where people and organisations meet the intelligence.', trace: 'The team asks from its study workspace: “Which districts did we flag as critical?”' },
+  { name: 'Reasoning Engine', body: 'Plans, infers and decides across many steps.', trace: 'Plans three steps: recall the study, check the new imagery, draft a brief.' },
+  { name: 'Memory Engine', body: 'Retains context across sessions, agents and time.', trace: 'Recalls the study from three weeks ago and its 7 flagged districts.' },
+  { name: 'Knowledge Engine', body: 'Structures what is known into a living graph.', trace: 'Links each district to its aquifer records and the survey notes.' },
+  { name: 'Research Engine', body: 'Investigates, verifies and extends that knowledge.', trace: 'Compares the new satellite imagery: decline in 3 of the 7 districts.' },
+  { name: 'Security Layer', body: 'Isolation, policy and trust at every boundary.', trace: 'Checks the team may see the survey data; nothing leaves its boundary.' },
+  { name: 'Infrastructure Layer', body: 'Orchestration that keeps every capability in sync.', trace: 'Splits the imagery analysis across workers and gathers the results.' },
+  { name: 'Compute Layer', body: 'Efficient training and inference, from cluster to edge.', trace: 'Runs the imagery models on accelerators close to the data.' },
+  { name: 'Sovereign Cloud', body: 'Data and intelligence that remain under national control.', trace: 'Every step runs, and is stored, on infrastructure inside India.' },
+];
+
+export const LAYER_FAMILIES = [
+  { name: 'Intelligence', from: 0, to: 2 },
+  { name: 'Knowledge & trust', from: 3, to: 5 },
+  { name: 'Foundation', from: 6, to: 8 },
 ];
 
 export const DOMAINS = [

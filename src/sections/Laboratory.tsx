@@ -1,117 +1,116 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
+import { Sparkles, Network, Cpu, MapPinned, Shield, Smartphone, type LucideIcon } from 'lucide-react';
 import { useAnchors } from '../gl/useAnchors';
-import { Fade, Arrow, SectionHead } from '../components/Reveal';
+import { Arrow } from '../components/Reveal';
 import { DOMAINS } from '../content';
-import { Diagram } from '../components/BentoDiagrams';
-import { LAB_DIAGRAMS } from '../components/LabDiagrams';
-import { useFormation, worldYOf } from '../gl/Scene';
+import { isCompact, useFormation, useScene } from '../gl/Scene';
+import { ChapterHead, InfoCard, StepList, fitTo, type Step } from '../components/Chapter';
 
-const HELIX_BAND = 200; // px from the top of the section to the helix axis
+const ICONS: LucideIcon[] = [Sparkles, Network, Cpu, MapPinned, Shield, Smartphone];
 
-/** Six research domains = six segments of the helix. Pointing at a card lights its segment. */
+/**
+ * Six research domains as six segments of one helix, stood upright and pinned. Scrolling climbs down it: the active
+ * segment lights and the card on its side says what the domain is working on.
+ */
 export function Laboratory() {
   const ref = useRef<HTMLElement>(null);
-  const [hover, setHover] = useState<number | null>(null);
-  const lit = hover;
-  const litRef = useRef(lit);
-  litRef.current = lit;
+  const visRef = useRef<HTMLDivElement>(null);
+  const card = useRef<HTMLDivElement>(null);
+  const lead = useRef<SVGPathElement>(null);
+  const [scrolled, setScrolled] = useState(0);
+  const [stepP, setStepP] = useState(0);
+  const [hovered, setHovered] = useState<number | null>(null);
+  const active = hovered ?? scrolled;
+  const activeRef = useRef(active);
+  activeRef.current = active;
   const owns = useRef(false);
+  const { scrollTo } = useScene();
 
-  const tags = useRef<(HTMLSpanElement | null)[]>([]);
-  useAnchors(['helix'], (pts, settle) => {
-    if (!pts || !owns.current) {
-      tags.current.forEach((el) => {
-        if (el && el.style.opacity !== '0') el.style.opacity = '0';
-      });
-      return;
-    }
-    tags.current.forEach((el, i) => {
-      if (!el) return;
-      const focus = litRef.current === null || litRef.current === i ? 1 : 0.35;
-      el.style.opacity = String(settle * focus);
-      el.style.transform = `translate3d(${pts[i].x}px, ${pts[i].y}px, 0) translate(-50%, -100%)`;
-    });
-  });
-
-  // The helix is part of the page: it scrolls with its band at the top of the section.
   useFormation(
     ref,
     () => {
-      const y = worldYOf(ref.current, HELIX_BAND);
+      const compact = isCompact();
+      // upright on wide screens (~10 units tall); lying down in the band on phones
+      const f = compact ? fitTo(visRef.current, 10.4, 1.8, 0.6) : fitTo(visRef.current, 2.6, 10.4, 0.85, 0.5);
       return {
         key: 'helix',
-        params: { dark: 1, highlight: litRef.current ?? -1, alpha: 0.95 },
-        pose: { y, s: 0.76, rz: 0 },
-        mobilePose: { y, s: 0.5, rz: 0 },
-        follow: 16,
+        pose: { x: f.x - (compact ? 0 : 0.6 * f.s), y: f.y, s: f.s, rz: compact ? 0 : -Math.PI / 2 },
+        mobilePose: { x: f.x, y: f.y, s: f.s, rz: 0 },
+        params: { highlight: activeRef.current },
+        follow: 14,
+        exact: true,
       };
     },
-    (_, isActive) => {
+    (p, isActive) => {
       owns.current = isActive;
+      if (!isActive) return;
+      const n = DOMAINS.length;
+      const i = Math.min(n - 1, Math.floor(p * n));
+      setScrolled((v) => (v === i ? v : i));
+      const sp = Math.round(Math.min(1, p * n - i) * 40) / 40;
+      setStepP((v) => (v === sp ? v : sp));
     },
   );
 
+  // the card stands beside the lit segment, joined to it by a leader
+  useAnchors(['helix'], (pts, settle) => {
+    const el = card.current;
+    const path = lead.current;
+    if (!el || !path) return;
+    const a = pts?.[activeRef.current];
+    const on = a && owns.current ? settle : 0;
+    el.style.opacity = path.style.opacity = String(on);
+    if (!a) return;
+    const compact = isCompact();
+    const x = compact ? Math.max(16, Math.min(window.innerWidth - el.offsetWidth - 16, a.x - el.offsetWidth / 2)) : Math.min(a.x + 70, window.innerWidth - el.offsetWidth - 24);
+    const y = compact ? a.y + 26 : Math.max(90, Math.min(window.innerHeight - el.offsetHeight - 70, a.y - el.offsetHeight / 2));
+    el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+    path.setAttribute('d', compact ? '' : `M${a.x} ${a.y} C${a.x + 30} ${a.y}, ${x - 30} ${y + el.offsetHeight / 2}, ${x} ${y + el.offsetHeight / 2}`);
+  });
+
+  const jump = (i: number) => {
+    const el = ref.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    scrollTo(top + ((i + 0.2) / DOMAINS.length) * (el.offsetHeight - window.innerHeight));
+  };
+
+  const steps: Step[] = DOMAINS.map((d, i) => ({ key: d.id, title: d.name, sub: d.field, icon: ICONS[i], tone: 'violet' }));
+  const d = DOMAINS[active];
+
   return (
-    <section id="laboratory" ref={ref} className="section lab" data-chapter="Laboratory">
-      <div className="helix-tags" aria-hidden="true">
-        {DOMAINS.map((d, i) => (
-          <span key={d.id} ref={(el) => (tags.current[i] = el)} className={`helix-tag ${lit === i ? 'is-lit' : ''}`}>
-            <b>{String(i + 1).padStart(2, '0')}</b>
-            <span>{d.name}</span>
-          </span>
-        ))}
-      </div>
-      <div className="wrap">
-        <SectionHead
-          index="07"
-          label="Laboratory"
-          title={['Six domains.', 'One research programme.']}
-          aside={
-            <Link to="/research" className="link">
+    <section id="laboratory" ref={ref} className="ch-pin lab-ch" style={{ '--steps': DOMAINS.length, '--step-h': '45svh' } as CSSProperties} data-chapter="Laboratory">
+      <div className="ch-stage">
+        <svg className="ch-lead" data-tone="violet" aria-hidden="true">
+          <path ref={lead} />
+        </svg>
+        <div className="wrap ch-grid">
+          <div className="ch-copy">
+            <ChapterHead
+              index="07"
+              label="Laboratory"
+              title={['Six domains.', <span className="accent">One programme.</span>]}
+              lede="One strand of research, six fields along it. Each domain feeds what it learns back into the same intelligence."
+            />
+            <StepList steps={steps} active={active} progress={hovered === null ? stepP : 1} onHover={setHovered} onPick={jump} dense />
+            <Link to="/research" className="link ch-more">
               Enter the lab <Arrow size={13} />
             </Link>
-          }
-        />
-        <div className="lab-grid" onMouseLeave={() => setHover(null)}>
-          {DOMAINS.map((d, i) => (
-            <Fade key={d.id} delay={(i % 3) * 80}>
-              <Link
-                to="/research"
-                className={`lab-card ${lit === i ? 'is-lit' : ''}`}
-                onMouseEnter={() => setHover(i)}
-                onFocus={() => setHover(i)}
-                onBlur={() => setHover(null)}
-              >
-                <div className="lab-card-art">
-                  <Diagram
-                    draw={LAB_DIAGRAMS[i].draw}
-                    period={LAB_DIAGRAMS[i].period}
-                    w={LAB_DIAGRAMS[i].w}
-                    h={LAB_DIAGRAMS[i].h}
-                    label={LAB_DIAGRAMS[i].label}
-                    still={LAB_DIAGRAMS[i].still}
-                  />
-                </div>
-                <div className="lab-card-text">
-                  <p className="lab-card-field">
-                    <span className="lab-card-num">{String(i + 1).padStart(2, '0')}</span>
-                    {d.field}
-                  </p>
-                  <h3>{d.name}</h3>
-                  <p className="lab-card-body">{d.body}</p>
-                  <div className="tags">
-                    {d.focus.slice(0, 3).map((f) => (
-                      <span key={f} className="tag">
-                        {f}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </Link>
-            </Fade>
-          ))}
+          </div>
+          <div ref={visRef} className="ch-visual" aria-hidden="true" />
         </div>
+        <InfoCard
+          ref={card}
+          className="is-floating"
+          tone="violet"
+          icon={ICONS[active]}
+          kicker={d.field}
+          aside={`${String(active + 1).padStart(2, '0')} / 06`}
+          title={d.name}
+          body={d.body}
+          chips={d.focus.slice(0, 3)}
+        />
       </div>
     </section>
   );

@@ -23,6 +23,9 @@ export const particleVertex = /* glsl */ `
   uniform float uWave;
   uniform float uExplode;
   uniform float uWarp;
+  uniform float uCull;    // 1 hides what faces away from the camera (a planet's far side)
+  uniform vec3 uCenter;   // the formation's centre in world space, for facing
+  uniform float uDot;     // point size multiplier
 
   varying float vAcc;
   varying float vAlpha;
@@ -94,7 +97,7 @@ export const particleVertex = /* glsl */ `
     float hl = (uHighlight > -0.5 && abs(grp - uHighlight) < 0.5) ? uHighlightAmt : 0.0;
     vHl = hl;
 
-    gl_PointSize = uSize * aRand.x * uPixelRatio * (1.0 + hl * 0.65) * (7.0 / -mv.z) * 2.2;
+    gl_PointSize = uSize * uDot * aRand.x * uPixelRatio * (1.0 + hl * 0.65) * (7.0 / -mv.z) * 2.2;
     vTint = step(0.82, fract(aRand.y * 7.31)) * (0.5 + 0.5 * sin(p.x * 1.3 + p.y * 0.9 + uTime * 0.4));
 
     // Parked particles (acc -1) only fade; they borrow the colour of the other side.
@@ -110,6 +113,13 @@ export const particleVertex = /* glsl */ `
     float dim = (uHighlight > -0.5) ? mix(1.0, 0.40, uHighlightAmt) : 1.0;
     float shown = mix(hideFrom ? 0.0 : 1.0, hideTo ? 0.0 : 1.0, st);
     vAlpha = mix(0.35, 1.0, depth) * (1.0 - forgotten * 0.94) * mix(dim, 1.25, hl) * shown;
+
+    // far side of a solid body: hidden behind it, with a soft limb at the horizon
+    if (uCull > 0.001) {
+      vec3 nrm = normalize(world.xyz - uCenter);
+      float facing = dot(nrm, normalize(cameraPosition - world.xyz));
+      vAlpha *= 1.0 - uCull * (1.0 - smoothstep(-0.12, 0.1, facing));
+    }
   }
 `;
 

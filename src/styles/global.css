@@ -5780,9 +5780,9 @@ html.intro-on .opening {
   gap: calc(var(--m) * 0.55);
   --m: clamp(52px, 10vh, 88px);
   /* the sheet follows the theme: cultured paper in light mode, near-black in dark */
-  --op-bg: #f6f6f9;
+  --op-bg: #f7f2ea;
   --op-ink: #0c0c10;
-  --op-thread: #3a1fa8;
+  --op-thread: #15130f;
   --op-dots: rgba(12, 12, 16, 0.08);
   --op-glow: rgba(91, 61, 245, 0.12);
   --op-halo: rgba(124, 99, 255, 0.32);
@@ -5796,7 +5796,7 @@ html.intro-on .opening {
   animation: opening-bail 0.5s ease 5.5s forwards;
 }
 html.intro-on[data-theme='dark'] .opening {
-  --op-bg: #07070c;
+  --op-bg: #0c0b10;
   --op-ink: #f8f7f3;
   --op-thread: #ffffff;
   --op-dots: rgba(248, 247, 243, 0.07);

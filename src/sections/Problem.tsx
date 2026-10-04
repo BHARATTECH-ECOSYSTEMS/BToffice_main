@@ -1,10 +1,12 @@
 import { useRef, useState } from 'react';
-import { useFormation, useScene } from '../gl/Scene';
+import { pinLift, useFormation, useScene } from '../gl/Scene';
 import { useAnchors } from '../gl/useAnchors';
 import type { FormationKey } from '../gl/Engine';
-import { Lines, Kicker } from '../components/Reveal';
+import { Eraser, Puzzle, Snowflake, Unlink } from 'lucide-react';
+import { ChapterHead, StepList, type Step } from '../components/Chapter';
 import { PROBLEMS, SILOS } from '../content';
 
+const STEP_ICONS = [Eraser, Puzzle, Snowflake, Unlink];
 const STEP_KEYS: FormationKey[] = ['logo', 'silos', 'frozen', 'alone'];
 // the seven neighbouring pairs in the 3 × 2 grid
 const LINKS: [number, number][] = [[0, 1], [1, 2], [3, 4], [4, 5], [0, 3], [1, 4], [2, 5]];
@@ -77,6 +79,7 @@ export function Problem() {
   const ref = useRef<HTMLElement>(null);
   const { scrollTo } = useScene();
   const [step, setStep] = useState(0);
+  const [stepP, setStepP] = useState(0);
   const [hoveredSilo, setHoveredSilo] = useState<number | null>(null);
   const stepRef = useRef(0);
   const local = useRef(0);
@@ -107,10 +110,13 @@ export function Problem() {
     ref,
     () => {
       const s = stepRef.current;
+      // when the pin releases, the objects leave with the page instead of hanging on screen
+      const lift = pinLift(ref.current);
       return {
         key: STEP_KEYS[s],
-        pose: { x: 1.60, y: -0.08, s: s === 0 ? 0.82 : 0.86 },
-        mobilePose: { y: 0.78, s: s === 0 ? 0.46 : 0.6 },
+        pose: { x: 1.6, y: -0.08 + lift, s: s === 0 ? 0.82 : 0.86 },
+        mobilePose: { y: 0.78 + lift, s: s === 0 ? 0.46 : Math.min(0.6, window.innerWidth / 760) },
+        follow: lift > 0 ? 30 : undefined,
         params: {
           decay: s === 0 ? local.current * 0.85 : 0,
           drift: s >= 2 ? 0 : 1,
@@ -131,6 +137,8 @@ export function Problem() {
       }
 
       bars.current.forEach((b, i) => b?.style.setProperty('--p', String(i < s ? 1 : i === s ? local.current : 0)));
+      const sp = Math.round(local.current * 40) / 40;
+      setStepP((v) => (v === sp ? v : sp));
       retainedAmt.current = s === 0 ? 1 - local.current * 0.85 : 0.15;
       const pct = `${Math.round(retainedAmt.current * 100)}%`;
       const g = ov.gaugeLabel.current?.querySelector('b');
@@ -430,38 +438,25 @@ export function Problem() {
           </span>
         </div>
         <div ref={stageRef} className="wrap problem-stage">
-          <header className="problem-head">
-            <Kicker index="02">The problem with AI today</Kicker>
-            <Lines className="h2" lines={['Powerful, but incomplete.']} />
-          </header>
-
-          <div className="problem-statement" key={step} aria-live="polite">
-            <span className="problem-big-num">{String(step + 1).padStart(2, '0')}</span>
-            <h3 className="problem-big">{PROBLEMS[step].title}</h3>
-            <p className="problem-say">{PROBLEMS[step].body}</p>
-            {step > 0 && (
-              <p className="problem-caption">
-                <span className="dot" />
-                <span>{PROBLEMS[step].caption}</span>
-              </p>
-            )}
+          <div className="problem-copy">
+            <ChapterHead index="02" label="The problem with AI today" title={['Powerful,', <span className="coral">but incomplete.</span>]} />
+            <div className="problem-statement" key={step} aria-live="polite">
+              <h3 className="problem-big">{PROBLEMS[step].title}</h3>
+              {step > 0 && (
+                <p className="problem-caption">
+                  <span className="dot" />
+                  <span>{PROBLEMS[step].caption}</span>
+                </p>
+              )}
+            </div>
+            <StepList
+              steps={PROBLEMS.map((pr, i): Step => ({ key: pr.title, title: pr.title, sub: pr.body, icon: STEP_ICONS[i], tone: 'coral' }))}
+              active={step}
+              progress={stepP}
+              onPick={jump}
+              dense
+            />
           </div>
-
-          <ol className="problem-timeline">
-            {PROBLEMS.map((pr, i) => (
-              <li key={pr.title} className={i === step ? 'is-active' : i < step ? 'is-past' : ''}>
-                <button onClick={() => jump(i)} aria-current={i === step}>
-                  <span className="problem-track">
-                    <i className="problem-bar" ref={(el) => (bars.current[i] = el)} />
-                  </span>
-                  <span className="problem-seg">
-                    <span className="num">{String(i + 1).padStart(2, '0')}</span>
-                    {pr.title}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ol>
         </div>
       </div>
     </section>

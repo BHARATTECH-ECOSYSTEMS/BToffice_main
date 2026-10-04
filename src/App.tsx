@@ -5,6 +5,7 @@ import { Nav } from './components/Nav';
 import { Rail } from './components/Rail';
 import { Footer } from './components/Footer';
 import { Opening } from './components/Opening';
+import { useScrollFx } from './components/ScrollFx';
 import { Home } from './pages/Home';
 import { About } from './pages/About';
 import { Research } from './pages/Research';
@@ -15,25 +16,27 @@ import { Contact } from './pages/Contact';
 import { Privacy, Terms } from './pages/Legal';
 import { NotFound } from './pages/NotFound';
 
-const CHAPTER_TONES: Record<string, [string, string]> = {
-  top: ['violet', 'tango'],
-  intro: ['violet', 'sky'],
-  mission: ['tango', 'rose'],
-  capabilities: ['violet', 'teal'],
-  how: ['sky', 'violet'],
-  architecture: ['violet', 'pitch'],
-  network: ['teal', 'violet'],
-  laboratory: ['pitch', 'tango'],
-  audiences: ['rose', 'violet'],
-  builders: ['violet', 'sky'],
-  journal: ['tango', 'pitch'],
-  faq: ['teal', 'violet'],
-  next: ['violet', 'tango'],
+// Each chapter tints the paper a little, the way a printed report changes stock between parts.
+const CHAPTER_TINT: Record<string, string> = {
+  top: 'cream',
+  intro: 'cream',
+  mission: 'blush',
+  capabilities: 'lilac',
+  how: 'mist',
+  architecture: 'lilac',
+  network: 'sage',
+  laboratory: 'sand',
+  audiences: 'blush',
+  builders: 'cream',
+  journal: 'sand',
+  faq: 'cream',
+  next: 'lilac',
 };
 
 function Layout() {
   const { pathname, state } = useLocation();
   const { scrollTo } = useScene();
+  useScrollFx(pathname);
 
   useEffect(() => {
     const target = (state as { scrollTo?: string } | null)?.scrollTo;
@@ -60,17 +63,14 @@ function Layout() {
     return () => window.removeEventListener('pointerover', onMove);
   }, []);
 
-  // Chapter palettes: whichever section holds the middle of the screen sets the page's two background colours.
+  // Chapter tint: whichever section holds the middle of the screen sets the paper colour.
   useEffect(() => {
     const root = document.documentElement;
     const sections = Array.from(document.querySelectorAll<HTMLElement>('main section'));
     const io = new IntersectionObserver(
       (entries) => {
         for (const e of entries) {
-          if (!e.isIntersecting) continue;
-          const [a, b] = CHAPTER_TONES[e.target.id] ?? CHAPTER_TONES.top;
-          root.style.setProperty('--p1', `var(--c-${a})`);
-          root.style.setProperty('--p2', `var(--c-${b})`);
+          if (e.isIntersecting) root.style.setProperty('--tint', `var(--tint-${CHAPTER_TINT[e.target.id] ?? 'cream'})`);
         }
       },
       { rootMargin: '-50% 0px -50% 0px' },
