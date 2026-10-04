@@ -31,10 +31,10 @@ export function Architecture() {
     sectionRef,
     () => {
       // the exploded stack is ~2.6 wide and ~4 tall once the drawer is out
-      const f = fitTo(visRef.current, 3.6, 5.3, 0.8, 0.53);
+      const f = fitTo(visRef.current, 3.6, 6.2, 0.8, 0.56);
       return {
         key: 'layers',
-        pose: { x: f.x - 0.1 * f.s, y: f.y, s: f.s },
+        pose: { x: f.x - 0.45 * f.s, y: f.y, s: f.s },
         mobilePose: { x: f.x, y: f.y, s: f.s },
         params: { highlight: activeRef.current, explode: 1, drift: 0.4 },
         follow: 16,

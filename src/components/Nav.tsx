@@ -34,6 +34,9 @@ const LINKS = [
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const hovering = useRef(false);
+  const linksRef = useRef<HTMLElement>(null);
   const [open, setOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
   const [pill, setPill] = useState({ x: 0, w: 0, on: false });
@@ -44,10 +47,16 @@ export function Nav() {
 
   useEffect(() => {
     let raf = 0;
+    let lastY = window.scrollY;
     const onScroll = () => {
       raf = 0;
       const scrollY = window.scrollY;
       setScrolled(scrollY > 20);
+      // tucks away while reading down the page, comes back the moment you scroll up
+      if (Math.abs(scrollY - lastY) > 4) {
+        setHidden(scrollY > 400 && scrollY > lastY);
+        lastY = scrollY;
+      }
 
       // Compute scroll progress (0 to 1) and set --p property on header
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
@@ -90,9 +99,25 @@ export function Nav() {
   }, [open]);
 
   const onHover = (e: React.MouseEvent<HTMLElement>) => {
+    hovering.current = true;
     const el = e.currentTarget;
     setPill({ x: el.offsetLeft, w: el.offsetWidth, on: true });
   };
+
+  // With nothing hovered, the pill rests on the page (or home section) you are in.
+  const rest = () => {
+    const cur = linksRef.current?.querySelector<HTMLElement>('.nav-link.is-current, .nav-link.active');
+    setPill(cur ? { x: cur.offsetLeft, w: cur.offsetWidth, on: true } : (p) => ({ ...p, on: false }));
+  };
+  useEffect(() => {
+    if (hovering.current) return;
+    const id = requestAnimationFrame(rest);
+    window.addEventListener('resize', rest);
+    return () => {
+      cancelAnimationFrame(id);
+      window.removeEventListener('resize', rest);
+    };
+  }, [pathname, activeSection]);
 
   // Already home: a link to "/" changes nothing, so the brand and "Home" scroll back to the top themselves.
   const home = (e: React.MouseEvent) => {
@@ -114,7 +139,7 @@ export function Nav() {
   return (
     <header
       ref={navRef}
-      className={`nav ${scrolled ? 'is-scrolled' : ''} ${open ? 'menu-open' : ''}`}
+      className={`nav ${scrolled ? 'is-scrolled' : ''} ${hidden && !open ? 'is-hidden' : ''} ${open ? 'menu-open' : ''}`}
       style={{ '--p': 0 } as CSSProperties}
     >
       <div className="nav-inner">
@@ -122,9 +147,13 @@ export function Nav() {
           <Brand />
         </Link>
         <nav
+          ref={linksRef}
           className="nav-links"
           aria-label="Primary"
-          onMouseLeave={() => setPill((p) => ({ ...p, on: false }))}
+          onMouseLeave={() => {
+            hovering.current = false;
+            rest();
+          }}
         >
           <span
             className="nav-pill"

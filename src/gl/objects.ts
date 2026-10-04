@@ -229,22 +229,22 @@ function etchTexture(l: number, family: number): THREE.CanvasTexture {
   g.clearRect(0, 0, S, S);
   const r = rng(300 + l);
   const gen = LAYER_SUB_SYSTEMS[l];
-  const total = 2200;
+  const total = 2600;
   g.fillStyle = '#fff';
   // the layer's own circuit, kept to the middle of the wafer so the type has room
   for (let k = 0; k < total; k++) {
     const [x, z] = gen(k, total, r);
     const px = (x / LAYER_HALF) * 0.36 * S + S / 2;
     const py = (z / LAYER_HALF) * 0.36 * S + S * 0.44;
-    g.globalAlpha = 0.35 + r() * 0.4;
-    g.fillRect(px - 1.6, py - 1.6, 3.2, 3.2);
+    g.globalAlpha = 0.75 + r() * 0.25;
+    g.fillRect(px - 2.4, py - 2.4, 4.8, 4.8);
   }
   g.globalAlpha = 1;
   g.strokeStyle = '#fff';
-  g.lineWidth = 3;
+  g.lineWidth = 5;
   g.strokeRect(S * 0.045, S * 0.045, S * 0.91, S * 0.91);
-  g.globalAlpha = 0.5;
-  g.lineWidth = 1.5;
+  g.globalAlpha = 0.7;
+  g.lineWidth = 2.5;
   g.strokeRect(S * 0.08, S * 0.08, S * 0.84, S * 0.84);
   // number and name along the front edge, where the viewer reads them
   g.globalAlpha = 1;
@@ -318,32 +318,37 @@ function buildLayers(): Solid {
       const k = Math.min(1, s.dt * 7);
       for (let l = 0; l < LAYER_COUNT; l++) {
         // the active wafer slides out toward the viewer like a drawer; the rest part around it
-        // opened up, the wafers spread apart so each one's face shows between its neighbours
+        // Opened up, the stack parts like an accordion at the active wafer: everything above it lifts well clear, so
+        // its whole face (circuit, number, name) is in view, while the rest stay close and show their labelled edges.
         let x = 0;
-        let y = (top - l * LAYER_GAP) * (1 + 0.28 * s.explode);
+        let y = top - l * LAYER_GAP;
         let z = 0;
+        let tilt = 0;
         if (s.explode > 0.001 && hl > -0.5) {
+          const e = s.explode;
           const diff = l - hl;
-          if (Math.abs(diff) < 0.5) {
-            // the drawer slides out to the side, clear of the wafers below it
-            x -= 0.95 * s.explode;
-            y += 0.06 * s.explode;
-            z += 0.3 * s.explode;
-          } else if (diff < 0) y += 0.16 * s.explode;
-          else y -= 0.16 * s.explode;
+          y = top - l * LAYER_GAP * (1 - 0.12 * e); // closer together, to make room for the opening
+          if (diff < -0.5) y += 1.15 * e;
+          else if (Math.abs(diff) < 0.5) {
+            y += 0.42 * e;
+            x -= 0.22 * e;
+            z += 0.22 * e;
+            tilt = 0.16 * e; // tipped toward the viewer
+          }
         }
         const g = slabs[l];
         g.position.set(THREE.MathUtils.lerp(g.position.x, x, k), THREE.MathUtils.lerp(g.position.y, y, k), THREE.MathUtils.lerp(g.position.z, z, k));
+        g.rotation.x = THREE.MathUtils.lerp(g.rotation.x, tilt, k);
         const on = l === hl ? s.hlAmt : 0;
         tone(FAMILY_TONE[fam[l]], s.dark, lit);
         // every wafer carries its family on its body; the active one is glazed in it
-        slabMats[l].color.copy(tone('ceramic', s.dark, c)).lerp(lit, 0.1 + 0.85 * on);
+        slabMats[l].color.copy(tone('ceramic', s.dark, c)).lerp(lit, 0.08 + 0.9 * on);
         slabMats[l].emissive.copy(lit).multiplyScalar(on * 0.12);
         etchMats[l].color.copy(lit).lerp(tone('thread', s.dark, c), on);
-        etchMats[l].userData.target = 0.55 + 0.45 * on;
+        etchMats[l].userData.target = 0.85 + 0.15 * on;
       }
       spineMat.color.copy(tone('violet', s.dark, c));
-      spine.scale.y = 1 + 0.28 * s.explode;
+      spine.scale.y = 1 + 0.3 * s.explode;
     },
     dispose() {
       slabGeo.dispose();
