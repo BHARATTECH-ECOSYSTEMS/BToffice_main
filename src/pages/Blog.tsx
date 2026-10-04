@@ -11,7 +11,7 @@ export function Blog() {
   return (
     <div className="page">
       <PageHero
-        index="Journal"
+        index="Publications"
         label="Ideas · Research · Impact"
         title={['Notes from', 'the frontier.']}
         lede="Essays on memory, reasoning and the architecture of intelligence, written by the people building it."

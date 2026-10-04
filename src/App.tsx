@@ -6,6 +6,7 @@ import { Rail } from './components/Rail';
 import { Footer } from './components/Footer';
 import { Opening } from './components/Opening';
 import { useScrollFx } from './components/ScrollFx';
+import { PageCurtain } from './components/PageCurtain';
 import { Home } from './pages/Home';
 import { About } from './pages/About';
 import { Research } from './pages/Research';
@@ -121,6 +122,7 @@ function Layout() {
         <Outlet />
       </main>
       <Footer />
+      <PageCurtain />
       <Opening />
     </div>
   );
@@ -135,6 +137,9 @@ const router = createHashRouter([
       { path: 'about', Component: About },
       { path: 'research', Component: Research },
       { path: 'careers', Component: Careers },
+      { path: 'publications', Component: Blog },
+      { path: 'publications/:slug', Component: Article },
+      // old links keep working
       { path: 'blog', Component: Blog },
       { path: 'blog/:slug', Component: Article },
       { path: 'contact', Component: Contact },

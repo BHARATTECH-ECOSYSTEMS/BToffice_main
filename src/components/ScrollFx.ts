@@ -19,7 +19,7 @@ const GHOSTS: Record<string, string> = {
   network: 'BHARAT',
   laboratory: 'RESEARCH',
   audiences: 'PEOPLE',
-  journal: 'JOURNAL',
+  journal: 'PUBLISHED',
 };
 
 const HEADLINES = 'main section:not(#top) .h2, main section:not(#top) .display, main .page-hero .h1';

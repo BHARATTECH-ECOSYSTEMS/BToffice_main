@@ -439,7 +439,7 @@ export function Problem() {
         </div>
         <div ref={stageRef} className="wrap problem-stage">
           <div className="problem-copy">
-            <ChapterHead index="02" label="The problem with AI today" title={['Powerful,', <span className="coral">but incomplete.</span>]} />
+            <ChapterHead index="02" label="The problem with AI today" title={['Powerful,', <span className="warm">but incomplete.</span>]} />
             <div className="problem-statement" key={step} aria-live="polite">
               <h3 className="problem-big">{PROBLEMS[step].title}</h3>
               {step > 0 && (
@@ -450,7 +450,7 @@ export function Problem() {
               )}
             </div>
             <StepList
-              steps={PROBLEMS.map((pr, i): Step => ({ key: pr.title, title: pr.title, sub: pr.body, icon: STEP_ICONS[i], tone: 'coral' }))}
+              steps={PROBLEMS.map((pr, i): Step => ({ key: pr.title, title: pr.title, sub: pr.body, icon: STEP_ICONS[i], tone: 'amber' }))}
               active={step}
               progress={stepP}
               onPick={jump}

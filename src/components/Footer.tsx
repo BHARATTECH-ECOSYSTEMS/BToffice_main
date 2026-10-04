@@ -11,7 +11,7 @@ const COLS: { title: string; links: { label: string; to?: string; href?: string;
       { label: 'About', to: '/about' },
       { label: 'Research', to: '/research' },
       { label: 'Careers', to: '/careers' },
-      { label: 'Journal', to: '/blog' },
+      { label: 'Publications', to: '/publications' },
       { label: 'Contact', to: '/contact' },
     ],
   },

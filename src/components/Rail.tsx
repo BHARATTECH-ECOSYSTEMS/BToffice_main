@@ -9,6 +9,14 @@ export function Rail() {
   const [active, setActive] = useState(0);
   const [fill, setFill] = useState(0);
   const [shown, setShown] = useState(false);
+  const [flash, setFlash] = useState(false);
+
+  // the new chapter's name shows for a moment, then steps out of the way of the page
+  useEffect(() => {
+    setFlash(true);
+    const t = setTimeout(() => setFlash(false), 1600);
+    return () => clearTimeout(t);
+  }, [active]);
 
   useEffect(() => {
     if (pathname !== '/') return;
@@ -56,9 +64,9 @@ export function Rail() {
 
   if (pathname !== '/' || chapters.length < 3) return null;
 
-  const cur = chapters[active];
+  // A dotted rail on the right edge: one dot per chapter, the current one a violet pill filling as you read it.
   return (
-    <nav className={`chapter-bar ${shown ? 'is-shown' : ''}`} aria-label="Chapters">
+    <nav className={`side-rail ${shown ? 'is-shown' : ''} ${flash ? 'is-flash' : ''}`} aria-label="Chapters">
       <ol>
         {chapters.map((ch, idx) => (
           <li key={ch.id} className={`${idx === active ? 'is-active' : ''} ${idx < active ? 'is-past' : ''}`}>
@@ -70,16 +78,18 @@ export function Rail() {
               }}
               aria-current={idx === active ? 'step' : undefined}
               aria-label={ch.label}
-              title={ch.label}
             >
-              <i style={idx === active ? { transform: `scaleX(${Math.max(0.12, fill)})` } : undefined} />
+              <span className="side-rail-label">
+                <b>{String(idx).padStart(2, '0')}</b>
+                {ch.label}
+              </span>
+              <span className="side-rail-dot">
+                <i style={idx === active ? { transform: `scaleY(${Math.max(0.15, fill)})` } : undefined} />
+              </span>
             </button>
           </li>
         ))}
       </ol>
-      <p className="chapter-bar-label" key={cur?.id}>
-        <span>{String(active).padStart(2, '0')}</span> {cur?.label}
-      </p>
     </nav>
   );
 }

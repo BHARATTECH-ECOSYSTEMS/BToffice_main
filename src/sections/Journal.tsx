@@ -8,7 +8,7 @@ import { POSTS } from '../content';
 export function Story({ post, index }: { post: (typeof POSTS)[number]; index: number }) {
   return (
     <Fade as="article" delay={index * 90}>
-      <Link to={`/blog/${post.slug}`} className="story">
+      <Link to={`/publications/${post.slug}`} className="story">
         <div className="story-cover">
           <Cover seed={post.slug} variant={index} />
         </div>
@@ -31,15 +31,15 @@ export function Journal() {
   useFormation(ref, { key: 'field', params: { alpha: 0 } });
   const [lead, ...rest] = POSTS;
   return (
-    <section id="journal" ref={ref} className="section journal" data-chapter="Journal">
+    <section id="journal" ref={ref} className="section journal" data-chapter="Publications">
       <div className="wrap">
         <SectionHead
           index="10"
-          label="Journal"
+          label="Publications"
           title={['Notes from the frontier.']}
           aside={
-            <Link to="/blog" className="link">
-              Read the journal <Arrow size={13} />
+            <Link to="/publications" className="link">
+              All publications <Arrow size={13} />
             </Link>
           }
         />

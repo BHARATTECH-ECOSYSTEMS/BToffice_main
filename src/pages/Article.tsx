@@ -18,8 +18,8 @@ export function Article() {
     <article ref={ref} className="page section" style={{ paddingTop: 160 }}>
       <div className="wrap article">
         <Fade as="p" className="story-meta">
-          <Link to="/blog" className="link">
-            ← Journal
+          <Link to="/publications" className="link">
+            ← Publications
           </Link>
           <span>{post.category}</span>
           <span>{post.date}</span>
@@ -43,7 +43,7 @@ export function Article() {
           </p>
         </Fade>
         <hr className="rule" style={{ margin: '64px 0 32px' }} />
-        <Link to={`/blog/${next.slug}`} className="story" style={{ gridTemplateColumns: '1fr auto', alignItems: 'center' }}>
+        <Link to={`/publications/${next.slug}`} className="story" style={{ gridTemplateColumns: '1fr auto', alignItems: 'center' }}>
           <div>
             <p className="mono muted">Next essay</p>
             <p className="story-title" style={{ marginTop: 10 }}>

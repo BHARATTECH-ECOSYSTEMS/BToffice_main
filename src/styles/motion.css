@@ -4,14 +4,14 @@
    section, and --w (0…1, focus) on each headline. Nothing here runs on a timer, so scrolling back rewinds it.
    ───────────────────────────────────────────────────────────────────────── */
 
-/* ── Headlines come into focus: blur and a red/violet split converge into one sharp line ── */
+/* ── Headlines come into focus: blur and an azure/violet split converge into one sharp line ── */
 
 .fx-focus {
   --u: calc(1 - var(--w, 1));
   filter: blur(calc(var(--u) * 7px));
   opacity: calc(0.25 + 0.75 * var(--w, 1));
   text-shadow:
-    calc(var(--u) * -12px) 0 rgb(226 65 43 / calc(var(--u) * 0.45)),
+    calc(var(--u) * -12px) 0 rgb(42 125 225 / calc(var(--u) * 0.45)),
     calc(var(--u) * 12px) 0 rgb(91 61 245 / calc(var(--u) * 0.5));
   will-change: filter, opacity;
 }

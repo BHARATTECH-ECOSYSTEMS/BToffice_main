@@ -11,7 +11,7 @@ const PILLARS = [
     title: 'Sovereign by design',
     body: 'The core lives in India. Data and intelligence stay under the control of those they serve.',
     icon: ShieldCheck,
-    tone: 'amber' as const,
+    tone: 'violet' as const,
     anchor: 0, // India
   },
   {
@@ -25,7 +25,7 @@ const PILLARS = [
     title: 'Open to the world',
     body: 'Conceived in Bharat, engineered to connect to every region and every language.',
     icon: Globe,
-    tone: 'violet' as const,
+    tone: 'steel' as const,
     anchor: 1, // Europe
   },
 ];

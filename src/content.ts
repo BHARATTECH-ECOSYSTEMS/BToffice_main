@@ -383,7 +383,7 @@ export const FAQ = [
   },
   {
     q: 'Can I use it today?',
-    a: 'Rivinity is in active research and development, and we share progress in the Journal. If you are a researcher, institution or organisation interested in early collaboration, write to us.',
+    a: 'Rivinity is in active research and development, and we share progress in our Publications. If you are a researcher, institution or organisation interested in early collaboration, write to us.',
   },
   {
     q: 'What happens to data?',

@@ -1,0 +1,116 @@
+/* ── Chapter rail: dotted, on the right edge ──────────────────────────────── */
+
+.chapter-bar {
+  display: none !important;
+}
+.side-rail {
+  position: fixed;
+  right: clamp(14px, 1.6vw, 26px);
+  top: 50%;
+  z-index: 40;
+  transform: translate3d(14px, -50%, 0);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.side-rail.is-shown {
+  opacity: 1;
+  transform: translate3d(0, -50%, 0);
+  pointer-events: auto;
+}
+.side-rail ol {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* the dotted thread the dots sit on */
+.side-rail ol::before {
+  content: '';
+  position: absolute;
+  right: 4px;
+  top: 6px;
+  bottom: 6px;
+  border-right: 1.5px dotted color-mix(in srgb, var(--ink) 22%, transparent);
+}
+.side-rail button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.side-rail-dot {
+  position: relative;
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--ink) 30%, transparent);
+  overflow: hidden;
+  transition: height 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, background 0.3s ease;
+}
+.side-rail-dot i {
+  position: absolute;
+  inset: 0;
+  background: var(--violet);
+  transform-origin: 50% 0;
+  transform: scaleY(0);
+  transition: transform 0.2s linear;
+}
+.side-rail .is-past .side-rail-dot {
+  background: var(--violet);
+  box-shadow: none;
+}
+.side-rail .is-active .side-rail-dot {
+  height: 30px;
+  background: color-mix(in srgb, var(--violet) 14%, var(--bg));
+  box-shadow: inset 0 0 0 1.5px var(--violet), 0 4px 12px -4px color-mix(in srgb, var(--violet) 70%, transparent);
+}
+.side-rail button:hover .side-rail-dot {
+  box-shadow: inset 0 0 0 1.5px var(--violet);
+}
+/* names: the current one always, the others on hover */
+.side-rail-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow: inset 0 0 0 1px var(--line), 0 6px 16px -10px rgb(30 20 60 / 0.35);
+  font: 500 10.5px/1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--ink-2);
+  opacity: 0;
+  transform: translateX(6px);
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.side-rail-label b {
+  font-weight: 500;
+  color: var(--violet);
+}
+.side-rail.is-flash .is-active .side-rail-label,
+.side-rail button:hover .side-rail-label,
+.side-rail button:focus-visible .side-rail-label {
+  opacity: 1;
+  transform: none;
+}
+@media (max-width: 900px) {
+  .side-rail {
+    display: none;
+  }
+}

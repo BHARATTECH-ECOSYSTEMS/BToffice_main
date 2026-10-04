@@ -1,0 +1,66 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Palette. No red, no green anywhere on the site:
+     violet  Origin, the shared layer (and the first tier of anything)
+     azure   kept, working, connected (and the second tier)
+     steel   foundation (the third tier)
+     amber   a problem, something lost or limited
+   Loaded last, so every older token resolves to these.
+   ───────────────────────────────────────────────────────────────────────── */
+
+:root,
+:root[data-theme='light'] {
+  --azure: #2a7de1;
+  --amber: #c98213;
+  --red: var(--amber);
+  --red-soft: rgba(201, 130, 19, 0.1);
+  --red-line: rgba(201, 130, 19, 0.38);
+  --green: var(--azure);
+  --green-soft: rgba(42, 125, 225, 0.09);
+  --green-line: rgba(42, 125, 225, 0.35);
+  --danger: var(--amber);
+  --ok: var(--azure);
+  --tone-teal: var(--azure);
+  --tone-coral: var(--amber);
+  --tone-amber: var(--amber);
+}
+:root[data-theme='dark'] {
+  --azure: #5aa2f5;
+  --amber: #f0b04a;
+  --red: var(--amber);
+  --red-soft: rgba(240, 176, 74, 0.12);
+  --red-line: rgba(240, 176, 74, 0.42);
+  --green: var(--azure);
+  --green-soft: rgba(90, 162, 245, 0.12);
+  --green-line: rgba(90, 162, 245, 0.4);
+  --danger: var(--amber);
+  --ok: var(--azure);
+  --tone-teal: var(--azure);
+  --tone-coral: var(--amber);
+  --tone-amber: var(--amber);
+}
+:is(.ex-art, .stack, .stack-detail, .stack-art, .how, .scene-demo, .bento-art, .lab-card-art, .aud-art, .net-art, .about-page, .page-hero) {
+  --danger: var(--amber);
+}
+.warm,
+.coral {
+  color: var(--amber);
+}
+
+/* the message from three weeks ago reads as a memory: an outline, not a heavy grey block */
+.msg.is-past,
+.scene-demo .msg.is-past {
+  background: transparent !important;
+  color: var(--ink-3) !important;
+  box-shadow: inset 0 0 0 1px var(--line-strong) !important;
+  border: 0 !important;
+  outline: 1px dashed transparent;
+}
+.msg.is-past .msg-meta {
+  color: var(--ink-3) !important;
+}
+
+/* one vertical rhythm for every ordinary section */
+main > section.section:not(.faq2):not(.builders):not(.finale) {
+  padding-top: clamp(96px, 13vh, 150px);
+  padding-bottom: clamp(96px, 13vh, 150px);
+}

@@ -5,6 +5,7 @@ import { Arrow } from './Reveal';
 import { EMPLOYEE_LOGIN_URL, EMAIL } from '../content';
 import { useScene } from '../gl/Scene';
 import { useTheme } from '../theme';
+import { NavGlance, type GlanceKey } from './NavGlance';
 
 function ThemeToggle({ className = '', tabIndex }: { className?: string; tabIndex?: number }) {
   const [theme, toggle] = useTheme();
@@ -22,13 +23,13 @@ function ThemeToggle({ className = '', tabIndex }: { className?: string; tabInde
   );
 }
 
-const LINKS = [
-  { label: 'About', to: '/about' },
-  { label: 'Capabilities', to: '/', section: 'capabilities' },
+const LINKS: { label: string; to: string; section?: string; glance?: GlanceKey }[] = [
+  { label: 'About', to: '/about', glance: 'about' },
+  { label: 'Capabilities', to: '/', section: 'capabilities', glance: 'capabilities' },
   { label: 'How it works', to: '/', section: 'how' },
-  { label: 'Research', to: '/research' },
-  { label: 'Careers', to: '/careers' },
-  { label: 'Journal', to: '/blog' },
+  { label: 'Research', to: '/research', glance: 'research' },
+  { label: 'Careers', to: '/careers', glance: 'careers' },
+  { label: 'Publications', to: '/publications', glance: 'publications' },
   { label: 'Contact', to: '/contact' },
 ];
 
@@ -36,6 +37,29 @@ export function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [hidden, setHidden] = useState(false);
   const hovering = useRef(false);
+  const [glance, setGlance] = useState<GlanceKey | null>(null);
+  const [glanceOpen, setGlanceOpen] = useState(false);
+  const glanceTimer = useRef(0);
+  const quietUntil = useRef(0); // just after a page change the cursor is still on the link it clicked
+  const openGlance = (k?: GlanceKey) => {
+    clearTimeout(glanceTimer.current);
+    if (k && performance.now() < quietUntil.current) return;
+    if (!k) {
+      glanceTimer.current = window.setTimeout(() => setGlanceOpen(false), 120);
+      return;
+    }
+    setGlance(k);
+    glanceTimer.current = window.setTimeout(() => setGlanceOpen(true), glanceOpen ? 0 : 90);
+  };
+  const closeGlance = () => {
+    clearTimeout(glanceTimer.current);
+    glanceTimer.current = window.setTimeout(() => setGlanceOpen(false), 160);
+  };
+  const shutGlance = () => {
+    clearTimeout(glanceTimer.current);
+    quietUntil.current = performance.now() + 2200;
+    setGlanceOpen(false);
+  };
   const linksRef = useRef<HTMLElement>(null);
   const [open, setOpen] = useState(false);
   const [activeSection, setActiveSection] = useState<string | null>(null);
@@ -55,6 +79,7 @@ export function Nav() {
       // tucks away while reading down the page, comes back the moment you scroll up
       if (Math.abs(scrollY - lastY) > 4) {
         setHidden(scrollY > 400 && scrollY > lastY);
+        if (scrollY > lastY) setGlanceOpen(false);
         lastY = scrollY;
       }
 
@@ -90,7 +115,10 @@ export function Nav() {
     };
   }, [pathname]);
 
-  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    setOpen(false);
+    shutGlance();
+  }, [pathname]);
   useEffect(() => {
     document.body.style.overflow = open ? 'hidden' : '';
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
@@ -141,6 +169,7 @@ export function Nav() {
       ref={navRef}
       className={`nav ${scrolled ? 'is-scrolled' : ''} ${hidden && !open ? 'is-hidden' : ''} ${open ? 'menu-open' : ''}`}
       style={{ '--p': 0 } as CSSProperties}
+      onMouseLeave={closeGlance}
     >
       <div className="nav-inner">
         <Link to="/" className="brand" aria-label="Bharattech Origin home" onClick={home}>
@@ -169,8 +198,15 @@ export function Nav() {
               <a
                 key={l.label}
                 href={`#/`}
-                onClick={go(l)}
-                onMouseEnter={onHover}
+                data-section={l.section}
+                onClick={(e) => {
+                  shutGlance();
+                  go(l)(e);
+                }}
+                onMouseEnter={(e) => {
+                  onHover(e);
+                  openGlance(l.glance);
+                }}
                 className={`nav-link ${pathname === '/' && activeSection === l.section ? 'is-current' : ''}`}
               >
                 {l.label}
@@ -179,7 +215,11 @@ export function Nav() {
               <NavLink
                 key={l.label}
                 to={l.to}
-                onMouseEnter={onHover}
+                onMouseEnter={(e) => {
+                  onHover(e);
+                  openGlance(l.glance);
+                }}
+                onClick={shutGlance}
                 className="nav-link"
               >
                 {l.label}
@@ -200,13 +240,27 @@ export function Nav() {
         <span className="nav-progress" aria-hidden="true" />
       </div>
 
+      <div onMouseEnter={() => clearTimeout(glanceTimer.current)}>
+        <NavGlance
+          which={glance}
+          open={glanceOpen && !hidden}
+          onGo={shutGlance}
+          onCapabilities={() => {
+            shutGlance();
+            const el = document.getElementById('capabilities');
+            if (pathname === '/' && el) scrollTo(el);
+            else navigate('/', { state: { scrollTo: 'capabilities' } });
+          }}
+        />
+      </div>
+
       <div className="sheet" id="sheet" aria-hidden={!open}>
         <nav className="sheet-links" aria-label="Mobile">
           <Link to="/" className="sheet-link" onClick={home} tabIndex={open ? 0 : -1}>
             <span className="mono">00</span>Home
           </Link>
           {LINKS.map((l, i) => (
-            <Link key={l.label} to={l.to} onClick={go(l)} className="sheet-link" tabIndex={open ? 0 : -1}>
+            <Link key={l.label} to={l.to} onClick={go(l)} className="sheet-link" tabIndex={open ? 0 : -1} data-section={l.section}>
               <span className="mono">{String(i + 1).padStart(2, '0')}</span>
               {l.label}
             </Link>

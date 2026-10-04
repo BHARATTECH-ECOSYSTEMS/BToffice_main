@@ -47,7 +47,7 @@ const C = (hex: string) => new THREE.Color(hex);
 /** Light and dark versions of every surface. */
 const PAL = {
   violet: [C('#5b3df5'), C('#6f55ff')],
-  teal: [C('#0e9f8e'), C('#2bc4b0')],
+  teal: [C('#2a7de1'), C('#5aa2f5')], // azure: the second tier (named teal for history)
   steel: [C('#5f6b78'), C('#9aa5b2')],
   violetDeep: [C('#3a1fa8'), C('#4b2fd0')],
   ceramic: [C('#fbf9f5'), C('#2a2734')],
@@ -668,7 +668,7 @@ function buildTools(): Solid {
       ice.userData.target = 0.42 * fade.ice;
       blocks.forEach((b) => (b.visible = fade.ice > 0.01));
       tubeMat.color.copy(tone('wire', s.dark, c));
-      capMat.color.copy(tone('amber', s.dark, c)).lerp(new THREE.Color('#e2412b'), 0.85);
+      capMat.color.copy(tone('amber', s.dark, c));
       capMat.emissive.copy(capMat.color).multiplyScalar(0.3);
       tubeMat.userData.target = fade.links;
       capMat.userData.target = fade.links;
