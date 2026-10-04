@@ -123,37 +123,43 @@ export function StepList({
     );
   });
   // The spine: a line through the icon tiles that fills to the active step and on toward the next as you read.
+  // Tile positions are measured only when the active step changes (its row opens); scrolling just moves the fill.
   const listRef = useRef<HTMLOListElement>(null);
+  const centres = useRef<number[]>([]);
+  const fill = () => {
+    const ol = listRef.current;
+    const c = centres.current;
+    if (!ol || c.length < 2) return;
+    const a = c[Math.min(active, c.length - 1)];
+    const b = active + 1 < c.length ? c[active + 1] : a;
+    ol.style.setProperty('--spine-fill', `${Math.max(0, a + (b - a) * Math.min(1, progress) - c[0])}px`);
+  };
   useLayoutEffect(() => {
     const ol = listRef.current;
     if (!ol) return;
     const measure = () => {
-      const tiles = Array.from(ol.querySelectorAll<HTMLElement>('.ch-step .ch-tile'));
-      if (tiles.length < 2) return;
       const top = ol.getBoundingClientRect().top;
-      const mid = (el: HTMLElement) => {
-        const r = el.getBoundingClientRect();
+      centres.current = Array.from(ol.querySelectorAll<HTMLElement>('.ch-step .ch-tile')).map((t) => {
+        const r = t.getBoundingClientRect();
         return r.top + r.height / 2 - top;
-      };
-      const first = mid(tiles[0]);
-      const last = mid(tiles[tiles.length - 1]);
-      const a = mid(tiles[Math.min(active, tiles.length - 1)]);
-      const b = active + 1 < tiles.length ? mid(tiles[active + 1]) : a;
-      ol.style.setProperty('--spine-top', `${first}px`);
-      ol.style.setProperty('--spine-h', `${last - first}px`);
-      ol.style.setProperty('--spine-fill', `${Math.max(0, a + (b - a) * Math.min(1, progress) - first)}px`);
+      });
+      const c = centres.current;
+      if (c.length < 2) return;
+      ol.style.setProperty('--spine-top', `${c[0]}px`);
+      ol.style.setProperty('--spine-h', `${c[c.length - 1] - c[0]}px`);
+      fill();
     };
     measure();
-    // the active row opens over ~0.45s; follow it while it does
-    const t1 = window.setTimeout(measure, 250);
-    const t2 = window.setTimeout(measure, 520);
+    // the active row opens over ~0.45s; measure again once it has
+    const t = window.setTimeout(measure, 480);
     window.addEventListener('resize', measure);
     return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
+      clearTimeout(t);
       window.removeEventListener('resize', measure);
     };
-  }, [active, progress, steps.length]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [active, steps.length]);
+  useLayoutEffect(fill, [progress]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const cur = steps[active];
   return (

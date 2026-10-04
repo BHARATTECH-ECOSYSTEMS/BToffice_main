@@ -13,7 +13,11 @@
   text-shadow:
     calc(var(--u) * -12px) 0 rgb(42 125 225 / calc(var(--u) * 0.45)),
     calc(var(--u) * 12px) 0 rgb(91 61 245 / calc(var(--u) * 0.5));
-  will-change: filter, opacity;
+}
+.fx-focus.is-sharp {
+  filter: none;
+  text-shadow: none;
+  opacity: 1;
 }
 .fx-focus .accent {
   text-shadow: inherit;

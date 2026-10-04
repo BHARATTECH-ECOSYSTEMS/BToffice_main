@@ -1,0 +1,51 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Lite mode (html.lite): integrated GPUs, modest machines, or any machine whose frames ran slow. The look stays;
+   what goes is what makes the GPU recompose the whole screen every frame over a live WebGL canvas:
+   live backdrop blur, full-screen blending, and animated filters.
+   ───────────────────────────────────────────────────────────────────────── */
+
+html.lite *,
+html.lite *::before,
+html.lite *::after {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+/* the paper grain multiplies over every pixel of the canvas: keep the paper, drop the blend */
+html.lite .grain {
+  display: none !important;
+}
+/* headlines arrive by fading and rising, without a blur */
+html.lite .fx-focus {
+  filter: none !important;
+  text-shadow: none !important;
+}
+/* glass that relied on blur reads as solid paper instead */
+html.lite .nav-inner,
+html.lite .nav.is-scrolled .nav-inner {
+  background: var(--paper) !important;
+}
+html.lite .glance,
+html.lite .ch-card,
+html.lite .ch-tag,
+html.lite .slab-tag,
+html.lite .side-rail-label,
+html.lite .ch-pill,
+html.lite .kicker,
+html.lite .ch-tabs,
+html.lite .sheet {
+  background: var(--paper) !important;
+}
+:root[data-theme='dark'].lite .nav-inner,
+:root[data-theme='dark'].lite .glance {
+  background: #17151f !important;
+}
+/* the curtain's grain is drawn once per frame over the whole screen while it moves */
+html.lite .curtain::after {
+  display: none;
+}
+/* fewer simultaneous transitions on hover-heavy rows */
+html.lite .ch-step,
+html.lite .glance-tile,
+html.lite .pillar-card {
+  transition-duration: 0.2s !important;
+}

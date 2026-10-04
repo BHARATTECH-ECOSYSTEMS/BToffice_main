@@ -217,6 +217,12 @@ export class Engine {
   private dark = false;
   private warp = 0;
   private idle = false;
+  private points!: THREE.Points;
+  /** Quality: 2 full (retina, soft shadows) · 1 lite (1× pixels, no shadow maps) · 0 lowest (0.8× pixels). */
+  private quality = 2;
+  private frameSamples: number[] = [];
+  private invGroup = new THREE.Matrix4();
+  private tmpW = new THREE.Vector3();
 
   constructor(canvas: HTMLCanvasElement) {
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -226,7 +232,10 @@ export class Engine {
     this.count = small ? 9000 : modest ? 14000 : 22000;
 
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
-    this.renderer.shadowMap.enabled = true;
+    // Integrated GPUs (flagged lite before first paint) start one step down; any machine steps down on its own if
+    // frames run slow (see watchFrames).
+    this.quality = document.documentElement.classList.contains('lite') ? 1 : 2;
+    this.renderer.shadowMap.enabled = this.quality === 2;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.toneMapping = THREE.NeutralToneMapping;
@@ -238,7 +247,7 @@ export class Engine {
     // One key light with a soft shadow, so objects sit on their plinths instead of hovering over them.
     const key = new THREE.DirectionalLight(0xffffff, 1.35);
     key.position.set(-3.5, 7, 5);
-    key.castShadow = true;
+    key.castShadow = this.quality === 2;
     key.shadow.mapSize.set(2048, 2048);
     key.shadow.bias = -0.0004;
     key.shadow.normalBias = 0.02;
@@ -330,7 +339,8 @@ export class Engine {
         uDot: { value: 1 },
       },
     });
-    this.group.add(new THREE.Points(this.geometry, this.material));
+    this.points = new THREE.Points(this.geometry, this.material);
+    this.group.add(this.points);
 
     // Each plinth is sized from its formation: horizontal radius and lowest point of the visible particles.
     for (const key of ON_PLINTH) {
@@ -451,8 +461,12 @@ export class Engine {
     this.group.updateMatrixWorld();
     // solids that move their parts (the layer stack's drawers) report where those parts really are
     const live = this.solids[SOLID_FOR[key] ?? '']?.anchors;
-    const pts = live ? live.map((o) => o.getWorldPosition(new THREE.Vector3()).applyMatrix4(this.group.matrixWorld.clone().invert())) : null;
-    for (const a of pts ? pts.map((v) => [v.x, v.y, v.z]) : this.formations[key].anchors) {
+    let pts: number[][] | null = null;
+    if (live) {
+      this.invGroup.copy(this.group.matrixWorld).invert();
+      pts = live.map((o) => o.getWorldPosition(this.tmpW).applyMatrix4(this.invGroup).toArray());
+    }
+    for (const a of pts ?? this.formations[key].anchors) {
       this.tmp.set(a[0], a[1], a[2]).applyMatrix4(this.group.matrixWorld);
       const depthWorld = this.tmp.z;
       this.tmp.project(this.camera);
@@ -680,6 +694,8 @@ export class Engine {
     const hasSolid = !!activeId && this.params.solid > 0.5;
     this.partVis = damp(this.partVis, hasSolid && forgetting < 0.02 ? 0 : 1, hasSolid ? 10 : 3, dt);
     u.uAlpha.value = this.params.alpha * this.partVis;
+    // 14–22k points cost vertex work even fully transparent: take them out of the frame when they are not seen
+    this.points.visible = u.uAlpha.value > 0.004;
     u.uWarp.value = this.reducedMotion ? 0 : this.warp;
     u.uHalo.value = 0.06 + 0.29 * d;
     (u.uInk.value as THREE.Color).lerpColors(THEME.light.ink, THEME.dark.ink, d);
@@ -727,17 +743,50 @@ export class Engine {
 
     // Fully faded out (sections that put the particles away): draw the empty frame once, then stop paying for the GPU.
     const idle = want.alpha === 0 && this.params.alpha < 0.004;
-    if (!idle || !this.idle) this.renderer.render(this.scene, this.camera);
+    if (!idle || !this.idle) {
+      this.renderer.render(this.scene, this.camera);
+      this.watchFrames(now);
+    }
     this.idle = idle;
     this.listeners.forEach((fn) => fn());
   };
+
+  // ── adaptive quality ──────────────────────────────────────────────────────
+
+  private lastFrame = 0;
+  /** Two seconds of slow frames (under ~45 fps) steps quality down once; it never steps back up mid-visit. */
+  private watchFrames(now: number) {
+    const gap = now - this.lastFrame;
+    this.lastFrame = now;
+    if (gap > 200 || this.quality === 0) return; // tab switches and pauses are not slowness
+    this.frameSamples.push(gap);
+    if (this.frameSamples.length < 120) return;
+    const sorted = [...this.frameSamples].sort((a, b) => a - b);
+    const median = sorted[sorted.length >> 1];
+    this.frameSamples.length = 0;
+    if (median > 22) this.degrade();
+  }
+
+  private degrade() {
+    this.quality -= 1;
+    document.documentElement.classList.add('lite');
+    if (this.renderer.shadowMap.enabled) {
+      this.renderer.shadowMap.enabled = false;
+      this.scene.traverse((o) => {
+        const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
+        (Array.isArray(m) ? m : m ? [m] : []).forEach((x) => (x.needsUpdate = true));
+      });
+    }
+    this.resize();
+  }
 
   // ── input & lifecycle ─────────────────────────────────────────────────────
 
   private resize = () => {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    const pr = Math.min(window.devicePixelRatio, 2); // full sharpness: the objects are the product shots
+    // full sharpness on capable machines; integrated GPUs render at 1× (or less, if they still struggle)
+    const pr = this.quality === 2 ? Math.min(window.devicePixelRatio, 2) : this.quality === 1 ? Math.min(window.devicePixelRatio, 1) : 0.8;
     this.renderer.setPixelRatio(pr);
     this.renderer.setSize(this.width, this.height, false);
     this.camera.aspect = this.width / this.height;

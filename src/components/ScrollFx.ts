@@ -33,6 +33,7 @@ const smooth = (a: number, b: number, x: number) => {
 export function useScrollFx(pathname: string) {
   useEffect(() => {
     const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const lite = document.documentElement.classList.contains('lite');
     const sections = Array.from(document.querySelectorAll<HTMLElement>('main section'));
 
     // Ghost words sit in one fixed layer underneath the 3D canvas, so the objects pass in front of them.
@@ -71,34 +72,41 @@ export function useScrollFx(pathname: string) {
       lastY = y;
       lastH = vh;
 
-      for (const s of sections) {
-        const r = s.getBoundingClientRect();
-        if (r.bottom < -vh || r.top > vh * 2) continue;
+      // All reads first, then all writes: interleaving them would force a fresh layout for every element.
+      const sRects = sections.map((s) => s.getBoundingClientRect());
+      const gRects = ghosts.map((g) => g.host.getBoundingClientRect());
+      const hRects = heads.map((h) => h.getBoundingClientRect());
+
+      sections.forEach((s, i) => {
+        const r = sRects[i];
+        if (r.bottom < -vh || r.top > vh * 2) return;
         const e = still ? 1 : smooth(vh, vh * 0.3, r.top);
         const p = clamp01((vh - r.top) / (r.height + vh));
-        s.style.setProperty('--e', e.toFixed(4));
-        s.style.setProperty('--p', p.toFixed(4));
-      }
+        s.style.setProperty('--e', e.toFixed(3));
+        s.style.setProperty('--p', p.toFixed(3));
+      });
 
-      for (const g of ghosts) {
-        const r = g.host.getBoundingClientRect();
+      ghosts.forEach((g, i) => {
+        const r = gRects[i];
         if (r.bottom < -vh || r.top > vh * 2) {
-          g.el.style.opacity = '0';
-          continue;
+          if (g.el.style.opacity !== '0') g.el.style.opacity = '0';
+          return;
         }
         const p = clamp01((vh - r.top) / (r.height + vh));
         const w = smooth(0.08, 0.3, p) * (1 - smooth(0.72, 0.92, p));
         g.el.style.opacity = w.toFixed(3);
         if (!still) g.el.style.transform = `translate3d(${((0.5 - p) * 34).toFixed(2)}vw, 0, 0)`;
-      }
+      });
 
-      for (const h of heads) {
-        const r = h.getBoundingClientRect();
-        if (r.bottom < -vh * 0.5 || r.top > vh * 1.5) continue;
+      heads.forEach((h, i) => {
+        const r = hRects[i];
+        if (r.bottom < -vh * 0.5 || r.top > vh * 1.5) return;
         // comes into focus between 92% and 58% of the screen, and stays sharp from then on
-        const w = still ? 1 : smooth(vh * 0.92, vh * 0.58, r.top);
+        const w = still || lite ? 1 : smooth(vh * 0.92, vh * 0.58, r.top);
         h.style.setProperty('--w', w.toFixed(3));
-      }
+        // once sharp, no filter at all: a blur(0) filter still costs a compositing layer every frame
+        h.classList.toggle('is-sharp', w > 0.995);
+      });
     };
     raf = requestAnimationFrame(frame);
     const onResize = () => (lastH = -1);

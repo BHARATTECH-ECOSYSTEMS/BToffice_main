@@ -2,14 +2,19 @@
 
 .curtain {
   position: fixed;
-  inset: 0;
+  left: 0;
+  right: 0;
+  /* a little taller than the screen, rounded top and bottom: the edges show only while it travels */
+  top: -64px;
+  height: calc(100vh + 128px);
+  border-radius: 56px;
   z-index: 110;
   display: grid;
   place-items: center;
   overflow: hidden;
   visibility: hidden;
   pointer-events: none;
-  transform: translate3d(0, 100%, 0);
+  transform: translate3d(0, calc(100vh + 64px), 0);
   background:
     radial-gradient(70vw 60vh at 20% 10%, rgb(111 85 255 / 0.55), transparent 70%),
     radial-gradient(60vw 60vh at 90% 100%, rgb(42 125 225 / 0.35), transparent 70%),

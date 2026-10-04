@@ -57,11 +57,9 @@ export function PageCurtain() {
       busy.current = true;
       if (label.current) label.current.textContent = text;
       el.classList.add('is-open');
+      // transform only (the sheet's rounded edges are part of its shape), so it moves on the compositor
       const cover = el.animate(
-        [
-          { transform: 'translate3d(0, 100%, 0)', borderRadius: '56px 56px 0 0' },
-          { transform: 'translate3d(0, 0, 0)', borderRadius: '0 0 0 0' },
-        ],
+        [{ transform: 'translate3d(0, calc(100vh + 64px), 0)' }, { transform: 'translate3d(0, 0, 0)' }],
         { duration: 620, easing: IN, fill: 'forwards' },
       );
       word.animate([{ transform: 'translate3d(0, 110%, 0)' }, { transform: 'none' }], { duration: 700, delay: 260, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'both' });
@@ -75,10 +73,7 @@ export function PageCurtain() {
           word.animate([{ transform: 'none', opacity: 1 }, { transform: 'translate3d(0, -40%, 0)', opacity: 0 }], { duration: 420, easing: OUT, fill: 'forwards' });
           kicker.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 260, fill: 'forwards' });
           const lift = el.animate(
-            [
-              { transform: 'translate3d(0, 0, 0)', borderRadius: '0 0 0 0' },
-              { transform: 'translate3d(0, -100%, 0)', borderRadius: '0 0 56px 56px' },
-            ],
+            [{ transform: 'translate3d(0, 0, 0)' }, { transform: 'translate3d(0, calc(-100vh - 64px), 0)' }],
             { duration: 720, delay: 120, easing: OUT, fill: 'forwards' },
           );
           lift.onfinish = () => {
