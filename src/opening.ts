@@ -7,3 +7,8 @@ export { uncover };
 
 /** Whether the opening was set to play on this load (read once, before Opening removes the class). */
 export const introPlanned = typeof document !== 'undefined' && document.documentElement.classList.contains('intro-on');
+
+/** True only for a browser refresh, not for the app's client-side route changes. */
+export const reloadedDocument = () =>
+  typeof performance !== 'undefined' &&
+  (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type === 'reload';

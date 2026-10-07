@@ -32,8 +32,6 @@ export function Builders() {
     <section id="builders" ref={ref} className="section builders" data-chapter="Builders">
       <div className="wrap">
         <SectionHead
-          index="09"
-          label="Careers"
           title={['Join the builders.']}
           lede="A research and engineering company working on problems measured in decades. If you would rather build the foundation than another feature, we should talk."
         />

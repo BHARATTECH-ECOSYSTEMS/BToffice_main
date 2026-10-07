@@ -88,8 +88,6 @@ export function Laboratory() {
         <div className="wrap ch-grid">
           <div className="ch-copy">
             <ChapterHead
-              index="07"
-              label="Laboratory"
               title={['Six domains.', <span className="accent">One programme.</span>]}
               lede="One strand of research, six fields along it. Each domain feeds what it learns back into the same intelligence."
             />
@@ -106,7 +104,6 @@ export function Laboratory() {
           tone="violet"
           icon={ICONS[active]}
           kicker={d.field}
-          aside={`${String(active + 1).padStart(2, '0')} / 06`}
           title={d.name}
           body={d.body}
           chips={d.focus.slice(0, 3)}

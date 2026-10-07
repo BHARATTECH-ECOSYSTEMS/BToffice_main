@@ -19,14 +19,9 @@ export function Faq() {
       <div className="wrap faq2-grid">
         <div className="faq2-side">
           <ChapterHead
-            index="11"
-            label="Questions"
             title={['Questions,', <span className="accent">answered.</span>]}
             lede="What people most often ask us about Bharattech Origin, Generative Intelligence and Rivinity."
           />
-          <p className="faq2-count">
-            <b>{String(FAQ.length).padStart(2, '0')}</b> questions · {open === null ? 'none open' : `reading ${String(open + 1).padStart(2, '0')}`}
-          </p>
         </div>
 
         <div className="faq2-main">
@@ -36,7 +31,6 @@ export function Faq() {
               return (
                 <li key={f.q} className={isOpen ? 'is-open' : ''}>
                   <button className="faq2-row" aria-expanded={isOpen} aria-controls={`faq-${i}`} onClick={() => setOpen(isOpen ? null : i)}>
-                    <span className="faq2-num">{String(i + 1).padStart(2, '0')}</span>
                     <span className="faq2-q">{f.q}</span>
                     <span className="faq2-toggle" aria-hidden="true">
                       <Plus size={16} strokeWidth={2} />

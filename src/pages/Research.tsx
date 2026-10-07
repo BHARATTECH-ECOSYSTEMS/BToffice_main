@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { PageHero, Zone } from '../components/PageHero';
-import { Lines, Kicker, Fade, Arrow } from '../components/Reveal';
+import { Lines, Fade, Arrow } from '../components/Reveal';
 import { DOMAINS, TECHNOLOGY } from '../content';
 
 export function Research() {
@@ -16,19 +16,16 @@ export function Research() {
   };
 
   return (
-    <div className="page">
+    <div className="page page-research">
       <PageHero
-        index="Research"
-        label="The laboratory"
         title={['Six domains.', 'One intelligence.']}
         lede="Our research spans six interconnected domains. They are not separate products. Each one strengthens every other."
-        target={{ key: 'helix', pose: { y: 0.9, s: 0.9 } }}
+        target={{ key: 'field', params: { alpha: 0 } }}
       />
 
       <Zone target={() => ({ key: 'orbit6', params: { dark: 1, highlight: selRef.current, alpha: 0 } })} className="section">
         <div className="wrap explorer">
           <div>
-            <Kicker index="01">Domains</Kicker>
             <Lines className="h2" lines={['Explore', 'the system.']} />
             <ul className="explorer-tabs" role="tablist" aria-orientation="vertical" onKeyDown={onKey} style={{ marginTop: 40 }}>
               {DOMAINS.map((x, i) => (
@@ -42,7 +39,6 @@ export function Research() {
                     onClick={() => setSel(i)}
                     onMouseEnter={() => setSel(i)}
                   >
-                    <span className="mono">{String(i + 1).padStart(2, '0')}</span>
                     <span className="name">{x.name}</span>
                     <span className="mono muted">{x.field.split(' ')[0]}</span>
                   </button>
@@ -69,7 +65,6 @@ export function Research() {
 
       <Zone target={{ key: 'layers', params: { alpha: 0 }, pose: { x: 1.9 } }} className="section">
         <div className="wrap split">
-          <Kicker index="02">Unified architecture</Kicker>
           <div>
             <Fade as="p" className="statement-block">
               Research improves every model. Memory is shared intelligently. <span>Specialised systems collaborate, knowledge flows continuously, and new capabilities emerge through interaction.</span>
@@ -81,7 +76,6 @@ export function Research() {
       <Zone target={{ key: 'field', params: { alpha: 0.5 } }} className="section">
         <div className="wrap">
           <div style={{ maxWidth: 720, marginBottom: 48 }}>
-            <Kicker index="03">Technology focus</Kicker>
             <Lines className="h2" lines={['Where we work.']} />
           </div>
           <Fade className="tech-cloud">

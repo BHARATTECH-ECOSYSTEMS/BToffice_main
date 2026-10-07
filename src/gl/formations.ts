@@ -189,13 +189,13 @@ export function orbitLayout(satellites: number) {
   const rings =
     satellites > 8
       ? [
-          { radius: 1.05, tiltX: 1.25, tiltZ: 0.35, count: Math.round(satellites / 3) },
-          { radius: 1.6, tiltX: 1.38, tiltZ: -0.22, count: Math.round(satellites / 3) },
-          { radius: 2.15, tiltX: 1.18, tiltZ: 0.12, count: 0 },
+          { radius: 1.08, tiltX: 1.24, tiltZ: 0.38, count: Math.round(satellites / 3) },
+          { radius: 1.62, tiltX: 1.38, tiltZ: -0.24, count: Math.round(satellites / 3) },
+          { radius: 2.18, tiltX: 1.18, tiltZ: 0.1, count: 0 },
         ]
       : [
-          { radius: 1.25, tiltX: 1.3, tiltZ: 0.3, count: Math.ceil(satellites / 2) },
-          { radius: 1.95, tiltX: 1.22, tiltZ: -0.18, count: 0 },
+          { radius: 2.05, tiltX: 1.32, tiltZ: 0.12, count: Math.ceil(satellites / 2) },
+          { radius: 1.42, tiltX: 1.3, tiltZ: -0.32, count: 0 },
         ];
   rings[rings.length - 1].count = satellites - rings.slice(0, -1).reduce((s, g) => s + g.count, 0);
   const place = (ring: (typeof rings)[number], angle: number, rad = ring.radius): V3 =>

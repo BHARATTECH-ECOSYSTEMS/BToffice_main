@@ -132,7 +132,7 @@ export function NavGlance({
                       </span>
                       <span>
                         <b>
-                          <em>0{i + 1}</em> {f.step}
+                          {f.step}
                         </b>
                         <small>{f.body}</small>
                       </span>

@@ -3,7 +3,7 @@ import { buildSolids, buildPlinth, studioEnvironment, setSolidOpacity, type Soli
 import { particleVertex, particleFragment, trailVertex, trailFragment } from './shaders';
 import { logo, fragments, silos, frozen, orbit, layers, globe, helix, field, arcPoint, ARCS, rng, GLOBE_R, type Formation } from './formations';
 
-export type FormationKey = 'logo' | 'fragments' | 'silos' | 'frozen' | 'alone' | 'orbit15' | 'orbit6' | 'layers' | 'globe' | 'helix' | 'field';
+export type FormationKey = 'logo' | 'heroLogo' | 'fragments' | 'silos' | 'frozen' | 'alone' | 'orbit15' | 'orbit6' | 'layers' | 'globe' | 'helix' | 'field';
 
 export interface Pose {
   x: number;
@@ -31,6 +31,8 @@ export interface Params {
   body: number; // 1 draws a lit solid body behind the particles (the globe's planet)
   dot: number; // point size multiplier
   solid: number; // 1 lets a settled formation resolve into its solid object
+  heroMotion: number; // 1 adds the hero's floating mark and orbit lines
+  steady: number; // 1 keeps a presentation object upright and ignores pointer lean
 }
 
 export interface Target {
@@ -51,6 +53,7 @@ export interface ScreenAnchor {
 
 const BASE_POSE: Record<FormationKey, Pose> = {
   logo: { x: 1.7, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
+  heroLogo: { x: 1.7, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
   fragments: { x: 0, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
   silos: { x: 1.75, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
   frozen: { x: 1.75, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
@@ -78,13 +81,9 @@ const SOLID_FOR: Partial<Record<FormationKey, string>> = {
   alone: 'tools',
 };
 
-const DEFAULT_PARAMS: Params = { decay: 0, drift: 1, dark: 0, alpha: 1, wave: 1, highlight: -1, spinX: 0, spinY: 0, explode: 0, drag: 0, floor: 1, cull: 0, body: 0, dot: 1, solid: 1 };
+const DEFAULT_PARAMS: Params = { decay: 0, drift: 1, dark: 0, alpha: 1, wave: 1, highlight: -1, spinX: 0, spinY: 0, explode: 0, drag: 0, floor: 1, cull: 0, body: 0, dot: 1, solid: 1, heroMotion: 0, steady: 0 };
 
-/** Formations that stand on a plinth: a lit disc with a hairline rim and a soft contact shadow under them. */
-const ON_PLINTH: FormationKey[] = ['logo', 'orbit15', 'orbit6'];
-/** How much of a formation's footprint its plinth covers: a sphere sits on a disc its own width; an orbit's rings
- *  float well beyond its base. */
-const PLINTH_SPAN: Partial<Record<FormationKey, number>> = { logo: 1.02, orbit15: 0.5, orbit6: 0.56, layers: 0.8, globe: 0.9 };
+
 
 /** A planet's body: a disc that faces the camera, shaded like a lit sphere, with an atmosphere at its rim. */
 const bodyFragment = /* glsl */ `
@@ -126,6 +125,11 @@ const THEME = {
     deep: new THREE.Color('#3A1FA8'),
     bright: new THREE.Color('#7B5CFF'),
     hot: new THREE.Color('#4A1FFF'),
+    heroInk: new THREE.Color('#1d1733'),
+    heroDeep: new THREE.Color('#2d0d9f'),
+    heroBright: new THREE.Color('#6640f3'),
+    heroHot: new THREE.Color('#8c6cff'),
+    heroInkAlpha: 0.72,
     trail: new THREE.Color('#e2600f'),
     floorTop: new THREE.Color('#fffdf8'),
     floorRim: new THREE.Color('#5b3df5'),
@@ -169,8 +173,6 @@ export class Engine {
   private arcMat: THREE.ShaderMaterial;
   private formations = {} as Record<FormationKey, Formation>;
   private plinth: Plinth;
-  private floorSize = {} as Record<FormationKey, { r: number; y: number }>;
-  private floorNow = { r: 1.5, y: -1.6, a: 0 };
   private body: THREE.Mesh;
   private solids: Record<string, Solid>;
   private solidAmt: Record<string, number> = {};
@@ -185,12 +187,12 @@ export class Engine {
   private attr: Record<'from' | 'to' | 'accFrom' | 'accTo' | 'grpFrom' | 'grpTo', THREE.BufferAttribute>;
   private rand: Float32Array;
 
-  private fromKey: FormationKey = 'logo';
-  private toKey: FormationKey = 'logo';
+  private fromKey: FormationKey = 'heroLogo';
+  private toKey: FormationKey = 'heroLogo';
   private progress = 0;
   private duration = 0.85;
-  private target: Target = { key: 'logo' };
-  private pose: Pose = { ...BASE_POSE.logo };
+  private target: Target = { key: 'heroLogo' };
+  private pose: Pose = { ...BASE_POSE.heroLogo };
   private params: Params = { ...DEFAULT_PARAMS };
   private hlAmt = 0;
   private hlGroup = -1;
@@ -224,17 +226,18 @@ export class Engine {
   private invGroup = new THREE.Matrix4();
   private tmpW = new THREE.Vector3();
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, options: { ambient?: boolean } = {}) {
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const small = window.innerWidth < 760;
+    const ambient = options.ambient === true;
     // Fewer particles on phones and on modest laptops (many Windows machines report 4 cores and an integrated GPU).
     const modest = (navigator.hardwareConcurrency || 8) <= 4;
-    this.count = small ? 9000 : modest ? 14000 : 22000;
+    this.count = ambient ? (small ? 3000 : 6400) : small ? 6400 : modest ? 12000 : 18000;
 
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !ambient && !small, alpha: true, powerPreference: 'high-performance' });
     // Integrated GPUs (flagged lite before first paint) start one step down; any machine steps down on its own if
     // frames run slow (see watchFrames).
-    this.quality = document.documentElement.classList.contains('lite') ? 1 : 2;
+    this.quality = ambient || document.documentElement.classList.contains('lite') ? 1 : 2;
     this.renderer.shadowMap.enabled = this.quality === 2;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.setClearColor(0x000000, 0);
@@ -263,6 +266,7 @@ export class Engine {
     const n = this.count;
     const f = this.formations;
     f.logo = logo(n);
+    f.heroLogo = f.logo;
     f.fragments = fragments(n, f.logo);
     f.silos = silos(n, f.logo);
     f.frozen = frozen(n, f.logo);
@@ -342,20 +346,7 @@ export class Engine {
     this.points = new THREE.Points(this.geometry, this.material);
     this.group.add(this.points);
 
-    // Each plinth is sized from its formation: horizontal radius and lowest point of the visible particles.
-    for (const key of ON_PLINTH) {
-      const fm = f[key];
-      let r = 0;
-      let lo = 0;
-      for (let i = 0; i < n; i++) {
-        if (fm.acc[i] < -0.5) continue;
-        const x = fm.pos[i * 3], y = fm.pos[i * 3 + 1], z = fm.pos[i * 3 + 2];
-        r = Math.max(r, Math.hypot(x, z));
-        lo = Math.min(lo, y);
-      }
-      // the object rests on the plinth's top face rather than hovering over it
-      this.floorSize[key] = { r: r * (PLINTH_SPAN[key] ?? 0.9), y: key === 'logo' ? lo + 0.04 : lo - 0.06 };
-    }
+
     this.bodyMat = new THREE.ShaderMaterial({
       vertexShader: floorVertex,
       fragmentShader: bodyFragment,
@@ -413,7 +404,7 @@ export class Engine {
 
   /** Plays the mark's first resolve again, if nothing has moved it on since (the opening covered the first one). */
   replayArrival() {
-    if (this.fromKey === 'logo' && this.toKey === 'logo' && !this.reducedMotion) this.progress = 0;
+    if (this.fromKey === 'heroLogo' && this.toKey === 'heroLogo' && !this.reducedMotion) this.progress = 0;
   }
 
   /** Morph towards a formation. Safe to call every frame with the same target. */
@@ -598,16 +589,22 @@ export class Engine {
       goal.s *= Math.pow(fit, 0.7);
     }
     const want: Params = { ...DEFAULT_PARAMS, ...t.params, dark: this.dark ? 1 : 0 };
-    if (this.reducedMotion) want.drift = 0;
+    if (this.reducedMotion) {
+      want.drift = 0;
+      want.heroMotion = 0;
+    }
 
     const k = t.follow ?? 5.5;
     this.warp = 0; // objects hold their shape while scrolling; nothing smears or scatters
     this.velocity = damp(this.velocity, 0, 6, dt);
     for (const key of Object.keys(goal) as (keyof Pose)[]) this.pose[key] = damp(this.pose[key], goal[key], k, dt);
-    for (const key of ['decay', 'drift', 'dark', 'alpha', 'wave', 'spinX', 'spinY', 'explode', 'drag', 'floor', 'cull', 'body', 'dot'] as const) {
-      const rate = key === 'dark' ? 3.5 : (key === 'alpha' ? (want.alpha === 0 ? 8.5 : 5.0) : 4.5);
+    for (const key of ['decay', 'drift', 'dark', 'alpha', 'wave', 'spinX', 'spinY', 'explode', 'drag', 'floor', 'cull', 'body', 'dot', 'solid', 'heroMotion', 'steady'] as const) {
+      const rate = key === 'dark' ? 3.5 : (key === 'alpha' ? (want.alpha === 0 ? 8.5 : t.key === 'heroLogo' ? 10 : 5.0) : 4.5);
       this.params[key] = damp(this.params[key], want[key], rate, dt);
     }
+    // The intro deliberately has no WebGL object. Once it owns the scene, do not let
+    // the hero particles linger into that section while opacity easing catches up.
+    if (t.key === 'heroLogo' && want.alpha <= 0.001) this.params.alpha = 0;
 
     if (want.highlight !== this.hlGroup) {
       this.hlAmt = damp(this.hlAmt, 0, 14, dt);
@@ -618,7 +615,8 @@ export class Engine {
 
     this.tilt.x = damp(this.tilt.x, this.mouse.y * 0.1, 2, dt);
     this.tilt.y = damp(this.tilt.y, this.mouse.x * 0.16, 2, dt);
-    const sway = this.reducedMotion ? 0 : Math.sin(this.time * 0.21) * 0.035;
+    const motion = 1 - this.params.steady;
+    const sway = this.reducedMotion ? 0 : Math.sin(this.time * 0.21) * 0.035 * motion;
     const p = this.pose;
     // A solid object under the cursor leans toward it and lifts a touch, like something you could pick up.
     // It never breaks apart: the pointer moves the whole object, not its surface.
@@ -632,7 +630,11 @@ export class Engine {
     const leanY = Math.max(-1, Math.min(1, hx / reach)) * 0.32 * lean;
     this.group.position.set(p.x, p.y + 0.04 * lean * p.s, p.z);
     this.group.scale.setScalar(p.s * (1 + 0.025 * lean));
-    this.group.rotation.set(p.rx + this.params.spinX + leanX + (Math.abs(this.mouse.y) < 2 ? this.tilt.x : 0), p.ry + this.params.spinY + this.dragSpin + sway + leanY + (Math.abs(this.mouse.x) < 2 ? this.tilt.y : 0), p.rz);
+    this.group.rotation.set(
+      p.rx + (this.params.spinX + leanX + (Math.abs(this.mouse.y) < 2 ? this.tilt.x : 0)) * motion,
+      p.ry + (this.params.spinY + this.dragSpin + sway + leanY + (Math.abs(this.mouse.x) < 2 ? this.tilt.y : 0)) * motion,
+      p.rz,
+    );
 
     if (this.params.drag < 0.5) this.dragSpin = damp(this.dragSpin, 0, 1.5, dt);
     else if (!this.dragging) {
@@ -688,7 +690,7 @@ export class Engine {
       sol.root.scale.setScalar(0.6 + 0.4 * s0);
       sol.root.position.y = -0.45 * off;
       sol.root.rotation.y = off * (isActive ? -0.85 : 0.5);
-      sol.update({ highlight: this.hlGroup, hlAmt: this.hlAmt, explode: this.params.explode, time: this.time, dark: this.params.dark, key: this.toKey, dt });
+      sol.update({ highlight: this.hlGroup, hlAmt: this.hlAmt, explode: this.params.explode, time: this.time, dark: this.params.dark, key: this.toKey, heroMotion: this.params.heroMotion, dt });
       setSolidOpacity(sol, amt * this.params.alpha);
     }
     const hasSolid = !!activeId && this.params.solid > 0.5;
@@ -704,20 +706,17 @@ export class Engine {
     (u.uHot.value as THREE.Color).lerpColors(THEME.light.hot, THEME.dark.hot, d);
     u.uInkAlpha.value = THEME.light.inkAlpha + (THEME.dark.inkAlpha - THEME.light.inkAlpha) * d;
 
-    // The plinth: glides to the size of whatever stands on it, tipped a little toward the viewer, never spinning.
-    const fs = this.floorSize[t.key];
-    const fn = this.floorNow;
-    if (fs) {
-      fn.r = damp(fn.r, fs.r, 4, dt);
-      fn.y = damp(fn.y, fs.y, 4, dt);
-    }
-    fn.a = damp(fn.a, fs ? 1 : 0, fs ? 4 : 9, dt);
-    const pl = this.plinth.root;
-    const rise = 1 - fn.a;
-    pl.position.set(p.x, p.y + fn.y * p.s - 0.25 * rise * p.s, p.z);
-    pl.rotation.set(0.2, 0, 0);
-    pl.scale.set(fn.r * p.s, p.s, fn.r * p.s);
-    this.plinth.update(fn.a * this.params.alpha * this.params.floor, this.params.dark);
+    // Give the particle mark enough contrast against the warm light hero without
+    // changing the palette used by the rest of the site's formations.
+    const lightHeroPresence = this.presence('heroLogo') * (1 - d);
+    (u.uInk.value as THREE.Color).lerp(THEME.light.heroInk, lightHeroPresence);
+    (u.uDeep.value as THREE.Color).lerp(THEME.light.heroDeep, lightHeroPresence);
+    (u.uBright.value as THREE.Color).lerp(THEME.light.heroBright, lightHeroPresence);
+    (u.uHot.value as THREE.Color).lerp(THEME.light.heroHot, lightHeroPresence);
+    u.uInkAlpha.value += (THEME.light.heroInkAlpha - u.uInkAlpha.value) * lightHeroPresence;
+
+    // The plinth: hidden everywhere so balls float in space
+    this.plinth.root.visible = false;
 
     u.uCull.value = this.params.cull;
     u.uDot.value = this.params.dot;

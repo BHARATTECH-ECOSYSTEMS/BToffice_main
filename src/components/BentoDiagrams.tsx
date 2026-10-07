@@ -5,8 +5,8 @@ export const prefersReducedMotion = () =>
 
 export const X = {
   violet: 'var(--brand-fill, #6d4bff)',
-  tango: 'var(--tango-fill, #ff8643)',
-  pitch: 'var(--pitch-fill, #f59e00)',
+  tango: 'var(--brand-fill, #6d4bff)',
+  pitch: 'var(--brand-fill, #6d4bff)',
   ink: 'var(--ink)',
   mute: 'var(--ink-3)',
   white: '#ffffff',
@@ -14,8 +14,8 @@ export const X = {
 
 export const Pu = {
   violet: 'var(--brand-text, #9480ff)',
-  tango: 'var(--tango-text, #ff8643)',
-  pitch: 'var(--pitch-text, #f59e00)',
+  tango: 'var(--brand-text, #9480ff)',
+  pitch: 'var(--brand-text, #9480ff)',
   ink: 'var(--ink)',
   mute: 'var(--ink-3)',
   white: '#ffffff',
@@ -202,7 +202,7 @@ export function Badge({
   if (a <= 0.01) return null;
   const width = w ?? (text ? approxWidth(text, size) + 16 : 30);
   const height = h ?? (text ? size + 10 : 14);
-  const textColor = tone === 'pitch' ? '#2a1a00' : tone === 'ink' ? 'var(--bg)' : '#ffffff';
+  const textColor = tone === 'pitch' ? '#ffffff' : tone === 'ink' ? 'var(--bg)' : '#ffffff';
   return (
     <g style={{ ...transformStyle(x, y, s), opacity: a }}>
       <rect

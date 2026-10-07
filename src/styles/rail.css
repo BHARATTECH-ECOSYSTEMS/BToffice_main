@@ -28,14 +28,9 @@
   padding: 0;
   list-style: none;
 }
-/* the dotted thread the dots sit on */
+/* the dotted thread removed; only dots remain */
 .side-rail ol::before {
-  content: '';
-  position: absolute;
-  right: 4px;
-  top: 6px;
-  bottom: 6px;
-  border-right: 1.5px dotted color-mix(in srgb, var(--ink) 22%, transparent);
+  display: none;
 }
 .side-rail button {
   position: relative;

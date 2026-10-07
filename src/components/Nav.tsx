@@ -4,33 +4,15 @@ import { Brand } from './LogoMark';
 import { Arrow } from './Reveal';
 import { EMPLOYEE_LOGIN_URL, EMAIL } from '../content';
 import { useScene } from '../gl/Scene';
-import { useTheme } from '../theme';
 import { NavGlance, type GlanceKey } from './NavGlance';
 import { playCurtain } from './PageCurtain';
 
-function ThemeToggle({ className = '', tabIndex }: { className?: string; tabIndex?: number }) {
-  const [theme, toggle] = useTheme();
-  const next = theme === 'dark' ? 'light' : 'dark';
-  return (
-    <button className={`theme-toggle ${className}`} onClick={toggle} aria-label={`Switch to ${next} mode`} title={`Switch to ${next} mode`} tabIndex={tabIndex}>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-        {theme === 'dark' ? (
-          <path d="M12 4V2M12 22v-2M4.9 4.9L3.5 3.5M20.5 20.5l-1.4-1.4M4 12H2M22 12h-2M4.9 19.1l-1.4 1.4M20.5 3.5l-1.4 1.4M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
-        ) : (
-          <path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" />
-        )}
-      </svg>
-    </button>
-  );
-}
-
 const LINKS: { label: string; to: string; section?: string; glance?: GlanceKey }[] = [
-  { label: 'About', to: '/about', glance: 'about' },
-  { label: 'Capabilities', to: '/', section: 'capabilities', glance: 'capabilities' },
-  { label: 'How it works', to: '/', section: 'how', glance: 'how' },
   { label: 'Research', to: '/research', glance: 'research' },
-  { label: 'Careers', to: '/careers', glance: 'careers' },
   { label: 'Publications', to: '/publications', glance: 'publications' },
+  { label: 'Capabilities', to: '/', section: 'capabilities', glance: 'capabilities' },
+  { label: 'Career', to: '/careers', glance: 'careers' },
+  { label: 'About', to: '/about', glance: 'about' },
   { label: 'Contact', to: '/contact', glance: 'contact' },
 ];
 
@@ -84,12 +66,6 @@ export function Nav() {
         lastY = scrollY;
       }
 
-      // Compute scroll progress (0 to 1) and set --p property on header
-      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = maxScroll > 0 ? Math.min(1, Math.max(0, scrollY / maxScroll)) : 0;
-      if (navRef.current) {
-        navRef.current.style.setProperty('--p', String(progress));
-      }
 
       const mid = window.innerHeight / 2;
       const active = LINKS.find((l) => {
@@ -208,6 +184,7 @@ export function Nav() {
                 data-section={l.section}
                 onClick={(e) => {
                   shutGlance();
+                  onHover(e);
                   go(l)(e);
                 }}
                 onMouseEnter={(e) => {
@@ -226,25 +203,25 @@ export function Nav() {
                   onHover(e);
                   openGlance(l.glance);
                 }}
-                onClick={shutGlance}
+                onClick={(e) => {
+                  shutGlance();
+                  onHover(e);
+                }}
                 className="nav-link"
               >
                 {l.label}
               </NavLink>
             ),
           )}
-          <ThemeToggle />
           <a className="nav-cta" href={EMPLOYEE_LOGIN_URL} target="_blank" rel="noopener noreferrer">
             Employee login <Arrow dir="up-right" size={11} />
           </a>
         </nav>
         <div className="nav-mobile">
-          <ThemeToggle />
           <button className="nav-menu-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="sheet">
             {open ? 'Close' : 'Menu'} <span className="burger" />
           </button>
         </div>
-        <span className="nav-progress" aria-hidden="true" />
       </div>
 
       <div onMouseEnter={() => clearTimeout(glanceTimer.current)}>
@@ -266,11 +243,10 @@ export function Nav() {
       <div className="sheet" id="sheet" aria-hidden={!open}>
         <nav className="sheet-links" aria-label="Mobile">
           <Link to="/" className="sheet-link" onClick={home} tabIndex={open ? 0 : -1}>
-            <span className="mono">00</span>Home
+            Home
           </Link>
-          {LINKS.map((l, i) => (
+          {LINKS.map((l) => (
             <Link key={l.label} to={l.to} onClick={go(l)} className="sheet-link" tabIndex={open ? 0 : -1} data-section={l.section}>
-              <span className="mono">{String(i + 1).padStart(2, '0')}</span>
               {l.label}
             </Link>
           ))}

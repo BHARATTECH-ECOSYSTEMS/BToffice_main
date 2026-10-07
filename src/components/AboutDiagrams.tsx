@@ -115,7 +115,7 @@ export function PhilosophyDiagram() {
                       strokeWidth="1.5"
                     />
                     {/* Animated moving data packet */}
-                    <circle cx={px} cy={py} r="3" fill="#ff8643" filter="url(#glow)" />
+                    <circle cx={px} cy={py} r="3" fill="#7a5af8" filter="url(#glow)" />
 
                     {/* Satellite node */}
                     <circle cx={node.x} cy={node.y} r="18" fill="var(--card, #161618)" stroke="rgba(122, 90, 248, 0.6)" strokeWidth="1.5" />
@@ -281,7 +281,7 @@ export function PrinciplesRadar({ activeIndex }: { activeIndex: number | null })
         <defs>
           <linearGradient id="p-core-glow" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#7a5af8" />
-            <stop offset="100%" stopColor="#ff8643" />
+            <stop offset="100%" stopColor="#9682ff" />
           </linearGradient>
           <filter id="p-blur" x="-30%" y="-30%" width="160%" height="160%">
             <feGaussianBlur stdDeviation="4" result="blur" />
@@ -316,7 +316,7 @@ export function PrinciplesRadar({ activeIndex }: { activeIndex: number | null })
                 y1={cy}
                 x2={nx}
                 y2={ny}
-                stroke={isActive ? '#ff8643' : 'var(--line, rgba(255,255,255,0.12))'}
+                stroke={isActive ? '#7a5af8' : 'var(--line, rgba(255,255,255,0.12))'}
                 strokeWidth={isActive ? 2 : 1}
                 strokeDasharray={isActive ? 'none' : '3 3'}
               />
@@ -328,7 +328,7 @@ export function PrinciplesRadar({ activeIndex }: { activeIndex: number | null })
                   y1={cy}
                   x2={nx}
                   y2={ny}
-                  stroke="#ff8643"
+                  stroke="#7a5af8"
                   strokeWidth="3"
                   filter="url(#p-blur)"
                   opacity="0.6"
@@ -337,7 +337,7 @@ export function PrinciplesRadar({ activeIndex }: { activeIndex: number | null })
 
               {/* Outer pulsing ring when active */}
               {isActive && (
-                <circle cx={nx} cy={ny} r="18" fill="rgba(255, 134, 67, 0.2)" filter="url(#p-blur)" />
+                <circle cx={nx} cy={ny} r="18" fill="rgba(122, 90, 248, 0.25)" filter="url(#p-blur)" />
               )}
 
               {/* Node body */}
@@ -345,31 +345,18 @@ export function PrinciplesRadar({ activeIndex }: { activeIndex: number | null })
                 cx={nx}
                 cy={ny}
                 r={isActive ? 12 : 9}
-                fill={isActive ? '#ff8643' : 'var(--card, #18181b)'}
+                fill={isActive ? '#7a5af8' : 'var(--card, #18181b)'}
                 stroke={isActive ? '#ffffff' : 'var(--line-strong, #3f3f46)'}
                 strokeWidth="1.5"
                 style={{ transition: 'all 0.25s ease' }}
               />
-
-              {/* Node index */}
-              <text
-                x={nx}
-                y={ny + 3.5}
-                textAnchor="middle"
-                fill={isActive ? '#000' : 'var(--ink-2, #a1a1aa)'}
-                fontSize={isActive ? '9' : '8'}
-                fontFamily="var(--mono)"
-                fontWeight="700"
-              >
-                {p.num}
-              </text>
 
               {/* Label text */}
               <text
                 x={nx + (Math.cos(rad) * 22)}
                 y={ny + (Math.sin(rad) * 16) + 4}
                 textAnchor={Math.cos(rad) > 0.2 ? 'start' : Math.cos(rad) < -0.2 ? 'end' : 'middle'}
-                fill={isActive ? 'var(--accent, #ff8643)' : 'var(--ink-3, #71717a)'}
+                fill={isActive ? 'var(--violet, #7a5af8)' : 'var(--ink-3, #71717a)'}
                 fontSize="10"
                 fontFamily="var(--sans)"
                 fontWeight={isActive ? '600' : '500'}
@@ -384,7 +371,7 @@ export function PrinciplesRadar({ activeIndex }: { activeIndex: number | null })
       <div className="radar-status-caption">
         <span className="mono">
           {activeIndex !== null
-            ? `ACTIVE PRINCIPLE: ${principles[activeIndex].num} · ${principles[activeIndex].title.toUpperCase()}`
+            ? `ACTIVE PRINCIPLE: ${principles[activeIndex].title.toUpperCase()}`
             : 'HOVER ANY PRINCIPLE TO ENGAGE ORBITAL TELEMETRY'}
         </span>
       </div>

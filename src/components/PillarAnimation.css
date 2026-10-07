@@ -1,0 +1,68 @@
+.pillar-animation {
+  display: block;
+  width: 100%;
+  height: 100%;
+  color: var(--violet);
+  background: radial-gradient(ellipse at 50% 40%, var(--violet-soft), transparent 72%), var(--paper);
+}
+.pillar-animation .pa-grid { opacity: 0.14; }
+.pillar-animation .pa-shadow { fill: var(--violet); opacity: 0.07; }
+.pillar-animation .pa-paper { fill: var(--paper); stroke: var(--violet-line); stroke-width: 1.2; }
+.pillar-animation .pa-orbit { fill: none; stroke: var(--violet-line); stroke-dasharray: 3 6; opacity: 0.55; }
+.pillar-animation .pa-edge { fill: none; stroke: var(--violet); stroke-width: 2; opacity: 0.4; }
+.pillar-animation .pa-detail { fill: none; stroke: var(--ink-3); stroke-width: 3; stroke-linecap: round; opacity: 0.5; }
+.pillar-animation .pa-icon,
+.pillar-animation .pa-check { fill: none; stroke: var(--violet); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pillar-animation .pa-check { stroke: var(--azure); stroke-width: 2.5; }
+.pillar-animation .pa-wire { fill: none; stroke: var(--violet-line); stroke-width: 1.4; }
+.pillar-animation .pa-packet { fill: none; stroke: var(--azure); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 9 91; animation: pa-signal 3.6s linear infinite; }
+.pillar-animation .pa-hub-ring { fill: var(--violet-soft); stroke: var(--violet-line); transform-origin: 205px 150px; animation: pa-hub 3.6s ease-in-out infinite; }
+.pillar-animation .pa-memory-layer { animation: pa-store 4.5s ease-in-out infinite; }
+.pillar-animation .pa-memory-core { opacity: 0.85; }
+.pillar-animation .pa-memory-signal { fill: var(--azure); animation: pa-recall 4.5s ease-in-out infinite; }
+.pillar-animation .pa-guide { fill: none; stroke: var(--line); stroke-dasharray: 3 5; }
+.pillar-animation .pa-bar { opacity: 0.65; transform: scaleY(1); animation: pa-grow 5s ease-in-out infinite; }
+.pillar-animation .pa-trend-base { fill: none; stroke: var(--violet-line); stroke-width: 2; }
+.pillar-animation .pa-trend { fill: none; stroke: var(--violet); stroke-width: 3; stroke-linecap: round; stroke-dasharray: 100; animation: pa-trace 5s ease-in-out infinite; }
+.pillar-animation .pa-cycle { animation: pa-cycle 5s ease-in-out infinite; }
+.pillar-animation .pa-spark { fill: var(--violet); }
+
+/* Pause invisible cards instead of spending frames on loops below the fold. */
+.pillar-animation [style] {
+  animation-delay: var(--phase, 0s);
+}
+.pillar-animation:not(.is-playing) * { animation-play-state: paused; }
+.pillar-animation.is-playing * { animation-play-state: running; }
+
+@keyframes pa-store {
+  0%, 100% { transform: translateY(0); }
+  35%, 55% { transform: translateY(-12px); }
+}
+@keyframes pa-recall {
+  0% { transform: translateY(110px); opacity: 0; }
+  20% { opacity: 0.85; }
+  65% { transform: translateY(-15px); opacity: 0.85; }
+  80%, 100% { transform: translateY(-25px); opacity: 0; }
+}
+@keyframes pa-signal { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+@keyframes pa-hub {
+  0%, 100% { transform: scale(0.93); opacity: 0.6; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+@keyframes pa-grow {
+  0%, 100% { transform: scaleY(0.65); opacity: 0.4; }
+  45%, 80% { transform: scaleY(1); opacity: 0.85; }
+}
+@keyframes pa-trace {
+  0% { stroke-dashoffset: 100; opacity: 0; }
+  15% { opacity: 1; }
+  70%, 85% { stroke-dashoffset: 0; opacity: 1; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes pa-cycle { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .pillar-animation * { animation: none !important; }
+  .pillar-animation .pa-memory-signal { opacity: 0; }
+  .pillar-animation .pa-packet { stroke-dasharray: none; opacity: 0.6; }
+}

@@ -21,13 +21,9 @@ import { worldYOf } from '../gl/Scene';
 export type Tone = 'violet' | 'teal' | 'steel' | 'amber' | 'coral';
 export const TIER_TONES: Tone[] = ['violet', 'teal', 'steel'];
 
-export function ChapterHead({ index, label, title, lede, center }: { index: string; label: string; title: ReactNode[]; lede?: ReactNode; center?: boolean }) {
+export function ChapterHead({ title, lede, center }: { title: ReactNode[]; lede?: ReactNode; center?: boolean }) {
   return (
     <header className={`ch-head ${center ? 'is-center' : ''}`}>
-      <Fade as="p" className="ch-pill">
-        <span className="ch-pill-num">{index}</span>
-        <span>{label}</span>
-      </Fade>
       <Lines className="h2 ch-title" lines={title} />
       {lede && (
         <Fade as="p" className="ch-lede" delay={120}>
@@ -103,7 +99,6 @@ export function StepList({
           <IconTile icon={s.icon} tone={s.tone} size="sm" />
           <span className="ch-step-main">
             <span className="ch-step-title">
-              <span className="ch-step-num">{String(i + 1).padStart(2, '0')}</span>
               {s.title}
             </span>
             {s.sub && (

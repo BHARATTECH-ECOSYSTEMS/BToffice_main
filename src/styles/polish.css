@@ -1,0 +1,646 @@
+/* Static presentation only; chapter geometry and motion stay in their existing stylesheets. */
+:root,
+:root[data-theme='light'] {
+  --ink-3: #716a62;
+  --surface-edge: rgba(56, 42, 80, 0.13);
+  --surface-shadow: 0 2px 3px rgba(35, 24, 55, 0.025), 0 16px 36px -26px rgba(35, 24, 55, 0.24);
+}
+
+:root[data-theme='dark'] {
+  --ink-3: #a39d94;
+  --surface-edge: rgba(230, 221, 255, 0.14);
+  --surface-shadow: 0 2px 3px rgba(0, 0, 0, 0.12), 0 16px 36px -26px rgba(0, 0, 0, 0.65);
+}
+
+.hero .lede,
+.page-hero .lede {
+  line-height: 1.65;
+}
+
+.page-hero .h1 {
+  margin-top: 0;
+}
+
+.hero .eyebrow {
+  letter-spacing: 0.11em;
+}
+
+.hero-facts {
+  column-gap: 0;
+  padding: 22px 0;
+  margin-bottom: 18px;
+  border: 1px solid var(--surface-edge);
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--paper) 80%, transparent);
+  box-shadow: var(--surface-shadow);
+}
+
+.hero-facts > div {
+  gap: 7px;
+  padding: 0 clamp(16px, 2.2vw, 32px);
+  min-width: 0;
+}
+
+.hero-facts > div + div {
+  border-left: 1px solid var(--line);
+}
+
+.hero-facts dt {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+}
+
+.hero-facts dd {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.hero-actions .btn-solid,
+.footer-cta .btn-solid {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 8px 18px -12px var(--ink);
+}
+
+.hero-actions .btn-ghost {
+  background: color-mix(in srgb, var(--paper) 70%, transparent);
+}
+
+.sec-head .lede {
+  line-height: 1.65;
+}
+
+.kicker,
+.ch-pill {
+  color: var(--ink-2);
+}
+
+.ch-pill {
+  border-color: var(--surface-edge);
+}
+
+/* Headings and lists remain aligned after removing decorative sequence labels. */
+.ch-pill,
+.kicker {
+  padding-left: 12px !important;
+}
+
+.faq2-row {
+  grid-template-columns: minmax(0, 1fr) 36px;
+}
+
+.faq2-more p {
+  padding-left: 0;
+}
+
+.explorer-tab {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.about-principle-row {
+  grid-template-columns: minmax(0, 1fr) 12px;
+}
+
+.legal-section {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.ch-pill-num,
+.kicker-num {
+  background: var(--accent-fill);
+  color: var(--on-accent);
+}
+
+.ch-lede {
+  line-height: 1.65;
+}
+
+.pillar-card {
+  border-color: var(--surface-edge) !important;
+}
+
+.pillar-copy {
+  gap: 10px;
+  padding: 24px;
+}
+
+.pillar-copy p {
+  line-height: 1.65;
+}
+
+.ch-card,
+.ch-tabs {
+  border-color: var(--surface-edge);
+}
+
+.ch-step:not(.is-active) .ch-step-title {
+  color: var(--ink-2);
+}
+
+.builders {
+  --ink-3: #aaa3bb;
+  --surface-edge: rgba(230, 221, 255, 0.14);
+}
+
+.jobs-summary,
+.jobs-board {
+  border-radius: 20px;
+}
+
+.jobs-board-head {
+  background: var(--fill);
+}
+
+.story-meta {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.story-dek {
+  line-height: 1.65;
+}
+
+/* Careers and Publications follow the left edge of their content grids. */
+:is(#builders, #journal) .sec-head {
+  justify-items: start;
+  text-align: left;
+}
+
+:is(#builders, #journal) .sec-head :is(.kicker, .sec-head-main, .sec-head-aside) {
+  justify-self: start;
+}
+
+:is(#builders, #journal) .sec-head-main {
+  justify-items: start;
+}
+
+.faq2-list {
+  padding: 0 clamp(16px, 2vw, 28px);
+  border: 1px solid var(--surface-edge);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  box-shadow: var(--surface-shadow);
+}
+
+.faq2-list li:last-child {
+  border-bottom: 0;
+}
+
+.faq2-list li:first-child::before {
+  left: 12px;
+  right: 12px;
+}
+
+.form .field input,
+.form .field textarea {
+  background: color-mix(in srgb, var(--paper) 50%, var(--card-2));
+  min-height: 48px;
+  border-radius: 10px;
+}
+
+.form .field input:focus-visible,
+.form .field textarea:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+.reason {
+  min-height: 40px;
+}
+
+.footer {
+  background: color-mix(in srgb, var(--paper) 45%, var(--bg));
+}
+
+.footer-cta {
+  border-radius: 24px;
+  background: linear-gradient(125deg, var(--paper), color-mix(in srgb, var(--paper) 92%, var(--violet)));
+  box-shadow: inset 0 0 0 1px var(--surface-edge), var(--surface-shadow);
+}
+
+.footer-title {
+  font-weight: 600;
+  line-height: 1.08;
+}
+
+.footer-col h4 {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.footer-col a {
+  display: inline-block;
+  padding-block: 3px;
+}
+
+.footer-mail,
+.faq2-mail {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .hero-facts {
+    margin-bottom: 0;
+  }
+
+  .hero-facts > div:nth-child(3) {
+    border-left: 0;
+  }
+
+  .hero-facts > div:nth-child(n + 3) {
+    border-top: 1px solid var(--line);
+    padding-top: 16px;
+    margin-top: 16px;
+  }
+
+  .sec-head {
+    row-gap: 16px;
+  }
+}
+
+@media (max-width: 560px) {
+  .hero .eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.07em;
+    line-height: 1.6;
+  }
+
+  .hero-actions {
+    gap: 10px;
+  }
+
+  .hero-actions .btn {
+    min-height: 48px;
+    padding-inline: 18px;
+    font-size: 14px;
+  }
+
+  .hero-facts {
+    gap: 0;
+    padding: 8px 0;
+  }
+
+  .hero-facts > div {
+    padding: 16px;
+  }
+
+  .hero-facts > div:nth-child(n + 3) {
+    margin-top: 0;
+  }
+
+  .pillar-copy {
+    padding: 22px;
+  }
+
+  .faq2-row {
+    grid-template-columns: 28px minmax(0, 1fr) 36px;
+  }
+
+  .faq2-more p {
+    padding-inline: 36px 0;
+    font-size: 15px;
+  }
+
+  .footer-cta {
+    padding: 24px;
+  }
+
+  .footer-cta-actions {
+    width: 100%;
+  }
+}
+
+/* ── Cinematic Hero 3D Logo Stage & HUD Telemetry ──────────────────────── */
+.hero-stage {
+  grid-column: 7 / span 6;
+  position: relative;
+  height: 100%;
+  min-height: 480px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.hero-stage-aura {
+  position: absolute;
+  width: 440px;
+  height: 440px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(123, 92, 255, 0.16) 0%, rgba(90, 162, 245, 0.08) 45%, transparent 70%);
+  filter: blur(48px);
+  pointer-events: none;
+  animation: heroAuraPulse 8s ease-in-out infinite alternate;
+  z-index: -1;
+}
+
+:root[data-theme='dark'] .hero-stage-aura {
+  background: radial-gradient(circle, rgba(142, 114, 255, 0.24) 0%, rgba(90, 162, 245, 0.12) 50%, transparent 72%);
+  filter: blur(56px);
+}
+
+@keyframes heroAuraPulse {
+  0% { transform: scale(0.92) translate3d(0, 0, 0); opacity: 0.7; }
+  50% { transform: scale(1.08) translate3d(6px, -8px, 0); opacity: 0.95; }
+  100% { transform: scale(0.96) translate3d(-6px, 6px, 0); opacity: 0.75; }
+}
+
+.hero-stage-ring-fx {
+  position: absolute;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  border: 1px dashed rgba(123, 92, 255, 0.18);
+  pointer-events: none;
+  animation: heroRingSpin 60s linear infinite;
+  box-shadow: inset 0 0 40px rgba(123, 92, 255, 0.04);
+}
+
+@keyframes heroRingSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 900px) {
+  .hero-stage {
+    display: none;
+  }
+}
+
+/* ── Section 01 (#intro) Left Alignment ───────────────────────────────────── */
+.intro .sec-head {
+  justify-items: start;
+  text-align: left;
+}
+.intro .sec-head .kicker,
+.intro .sec-head-main,
+.intro .sec-head-aside {
+  justify-self: start;
+}
+.intro .sec-head-main {
+  justify-items: start;
+  text-align: left;
+}
+.intro .sec-head .line {
+  text-align: left;
+  justify-content: flex-start;
+}
+.intro .sec-head .lede {
+  text-align: left;
+  margin-inline: 0;
+}
+.intro .scene-head {
+  align-items: flex-start;
+  justify-content: flex-start;
+  text-align: left;
+}
+.intro .scene-label {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+}
+.intro .scene-setup {
+  text-align: left;
+}
+.intro .scene-note {
+  text-align: left;
+}
+
+/* ── Architecture (#architecture) Show all 9 Layers & Smooth Interaction ── */
+.arch-ch .ch-stage {
+  padding-top: clamp(48px, 6.5vh, 68px);
+  padding-bottom: 20px;
+}
+
+.arch-ch .ch-copy {
+  gap: clamp(8px, 1.2vh, 14px);
+  max-width: 480px;
+}
+
+.arch-ch .ch-head {
+  gap: 8px;
+}
+
+.arch-ch .ch-title {
+  font-size: clamp(1.65rem, 2.3vw, 2.25rem);
+  line-height: 1.05;
+}
+
+.arch-ch .ch-lede {
+  font-size: 13.5px;
+  line-height: 1.4;
+  max-width: 44ch;
+}
+
+.arch-ch .ch-steps {
+  gap: 1px;
+  margin-top: 2px;
+}
+
+.arch-ch .ch-group {
+  margin: 6px 0 2px 2px;
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+}
+
+.arch-ch .ch-step {
+  padding: 4px 10px 4px 6px;
+  gap: 10px;
+  border-radius: 10px;
+}
+
+.arch-ch .ch-step .ch-tile {
+  --s: 26px;
+  border-radius: 7px;
+}
+
+.arch-ch .ch-step-main {
+  padding-top: 3px;
+  gap: 1px;
+}
+
+.arch-ch .ch-step-title {
+  font-size: 13.5px;
+  line-height: 1.2;
+}
+
+.arch-ch .ch-step-num {
+  font-size: 9.5px;
+}
+
+.arch-ch .ch-step-sub {
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.arch-ch .ch-step.is-active {
+  padding-bottom: 8px;
+}
+
+/* ── Slab Tag Active & Smooth Hover State ───────────────────────────────── */
+.slab-tag {
+  pointer-events: auto !important;
+}
+
+.slab-tag.is-active {
+  color: var(--ink) !important;
+  border-color: var(--tone) !important;
+  background: var(--paper) !important;
+  box-shadow: 0 0 0 1px var(--tone), 0 8px 20px -8px color-mix(in srgb, var(--tone) 45%, transparent) !important;
+}
+
+.ch-card.is-floating {
+  pointer-events: auto;
+}
+
+/* ── Section 02 (#mission / .problem) Violet Theming ────────────────── */
+#mission,
+.problem {
+  --red: var(--violet);
+  --red-soft: var(--violet-soft);
+  --red-line: var(--violet-line);
+  --amber: var(--violet);
+  --danger: var(--violet);
+  --tone-coral: var(--violet);
+  --tone-amber: var(--violet);
+  --tango: var(--violet);
+  --tango-text: var(--violet);
+  --tango-fill: var(--violet);
+  --tango-soft: var(--violet-soft);
+  --tango-line: var(--violet-line);
+}
+
+.problem .problem-big,
+.problem .problem-statement .problem-big {
+  color: var(--violet) !important;
+}
+
+.problem .warm {
+  color: var(--violet) !important;
+}
+
+.problem .problem-big-num {
+  color: var(--violet) !important;
+}
+
+.problem .problem-caption {
+  color: var(--violet) !important;
+  background: var(--violet-soft) !important;
+  border-color: var(--violet-line) !important;
+  box-shadow: inset 0 0 0 1px var(--violet-line) !important;
+}
+
+.problem .problem-caption .dot,
+.problem.step-2 .problem-caption .dot,
+.problem.step-3 .problem-caption .dot {
+  background: var(--violet) !important;
+}
+
+.problem .ov-time-solid,
+.problem.step-2 .ov-time-solid,
+.problem .ov-links line,
+.problem.step-3 .ov-links line,
+.problem .ov-x path,
+.problem.step-3 .ov-x path {
+  stroke: var(--violet) !important;
+}
+
+.problem .ov-time-dot,
+.problem.step-2 .ov-time-dot {
+  fill: var(--violet) !important;
+}
+
+.problem .ov-legend i.solid,
+.problem.step-2 .ov-legend i.solid {
+  border-top-color: var(--violet) !important;
+}
+
+.problem .ov-x circle,
+.problem.step-3 .ov-x circle {
+  stroke: var(--violet-line) !important;
+}
+
+.problem .ov-arc {
+  stroke: var(--violet) !important;
+}
+
+.problem .ov-gauge-label b {
+  color: var(--violet) !important;
+}
+
+.problem-word {
+  -webkit-text-stroke-color: color-mix(in srgb, var(--violet) 18%, transparent) !important;
+}
+
+/* Silo labels & symbols in Section 02 */
+.silo-label.step-1,
+.silo-label.step-2,
+.silo-label.step-3 {
+  color: var(--violet) !important;
+  box-shadow: inset 0 0 0 1px var(--violet-line), 0 4px 14px -6px rgba(0, 0, 0, 0.5) !important;
+}
+
+:root[data-theme='light'] .silo-label.step-1,
+:root[data-theme='light'] .silo-label.step-2,
+:root[data-theme='light'] .silo-label.step-3 {
+  color: var(--violet) !important;
+  box-shadow: 0 4px 12px -6px color-mix(in srgb, var(--violet) 35%, transparent), inset 0 0 0 1px var(--violet-line) !important;
+}
+
+.silo-label.is-hovered {
+  box-shadow: 0 8px 20px -8px color-mix(in srgb, var(--violet) 50%, transparent), inset 0 0 0 1px var(--violet) !important;
+}
+
+.silo-symbol:hover .silo-symbol-img,
+.silo-symbol.is-hovered .silo-symbol-img {
+  filter: drop-shadow(0 14px 28px color-mix(in srgb, var(--violet) 65%, transparent)) brightness(1.15) !important;
+}
+
+/* ── Hide navigation progress bar ── */
+.nav-progress {
+  display: none !important;
+}
+
+/* ── Unified Text Accent Color: Violet Across All Sections ── */
+:root {
+  --tango: var(--violet) !important;
+  --tango-text: var(--violet) !important;
+  --tango-fill: var(--violet) !important;
+  --tango-soft: var(--violet-soft) !important;
+  --tango-line: var(--violet-line) !important;
+  --pitch: var(--violet) !important;
+  --pitch-text: var(--violet) !important;
+  --pitch-fill: var(--violet) !important;
+  --pitch-soft: var(--violet-soft) !important;
+  --pitch-line: var(--violet-line) !important;
+  --tone-amber: var(--violet) !important;
+  --tone-coral: var(--violet) !important;
+  --tone-teal: var(--violet) !important;
+  --tone-steel: var(--violet) !important;
+}
+
+/* Any highlighted / accent text throughout the entire site */
+.accent,
+.hero .accent,
+.hero-word,
+.warm,
+.coral,
+.amber,
+.problem-big,
+.problem-big-num,
+.problem .accent,
+.ch-step.is-active .ch-step-num,
+.ch-step.is-past .ch-tile,
+.ch-card-num,
+.silo-tag,
+.silo-label,
+.active-tag,
+.dg-loop-label.is-on,
+.side-rail-label b,
+[data-tone] .num,
+.slab .num {
+  color: var(--violet) !important;
+  -webkit-text-fill-color: var(--violet) !important;
+}
+
+
+

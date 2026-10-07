@@ -43,11 +43,27 @@ function Layout() {
     const target = (state as { scrollTo?: string } | null)?.scrollTo;
     scrollTo(0, true);
     if (target) {
-      const t = setTimeout(() => {
+      let raf = 0;
+      let frame = 0;
+      let lastTop = -1;
+      const align = () => {
         const el = document.getElementById(target);
-        if (el) scrollTo(el, true); // under the curtain: jump, don't glide
-      }, 120);
-      return () => clearTimeout(t);
+        if (!el) {
+          if (frame++ < 18) raf = requestAnimationFrame(align);
+          return;
+        }
+
+        // Pinned chapters calculate their full scroll height after mounting. Follow
+        // that measurement until it settles so navigation never lands mid-chapter.
+        const top = el.getBoundingClientRect().top + window.scrollY;
+        if (Math.abs(top - lastTop) > 0.5 || Math.abs(window.scrollY - top) > 1) {
+          scrollTo(top, true);
+          lastTop = top;
+        }
+        if (frame++ < 18) raf = requestAnimationFrame(align);
+      };
+      raf = requestAnimationFrame(align);
+      return () => cancelAnimationFrame(raf);
     }
   }, [pathname, state, scrollTo]);
 

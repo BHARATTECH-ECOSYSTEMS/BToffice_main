@@ -1,21 +1,23 @@
-import { opening, introPlanned } from '../opening';
+import { opening, introPlanned, reloadedDocument } from '../opening';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useFormation } from '../gl/Scene';
 import type { Target } from '../gl/Engine';
 import { Lines } from './Reveal';
 
-export function PageHero({ index, label, title, lede, target, children }: {
-  index: string;
-  label: string;
+export function PageHero({ title, lede, meta, target, children }: {
   title: ReactNode[];
   lede: ReactNode;
+  meta?: ReactNode;
   target: Target | (() => Target);
   children?: ReactNode;
 }) {
   const ref = useRef<HTMLElement>(null);
-  const [ready, setReady] = useState(false);
+  // A reload should paint complete copy immediately. The entrance remains for
+  // first visits and client-side navigation, where there is no partial stale frame.
+  const [ready, setReady] = useState(() => !introPlanned && reloadedDocument());
   useFormation(ref, target);
   useEffect(() => {
+    if (ready) return;
     let live = true;
     let t = 0;
     opening.then(() => {
@@ -25,16 +27,13 @@ export function PageHero({ index, label, title, lede, target, children }: {
       live = false;
       clearTimeout(t);
     };
-  }, []);
+  }, [ready]);
   return (
     <section ref={ref} className="page-hero">
       <div className="wrap">
-        <p className={`kicker fade ${ready ? 'is-in' : ''}`}>
-          <span className="kicker-num">{index}</span>
-          <span>{label}</span>
-        </p>
         <Lines as="h1" className="h1" lines={title} show={ready} delay={100} />
         <div className={`fade ${ready ? 'is-in' : ''}`} style={{ '--d': '600ms' } as React.CSSProperties}>
+          {meta && <p className="page-hero-meta">{meta}</p>}
           <p className="lede">{lede}</p>
           {children}
         </div>

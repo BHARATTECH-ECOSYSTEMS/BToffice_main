@@ -8,19 +8,14 @@
 
 .fx-focus {
   --u: calc(1 - var(--w, 1));
-  filter: blur(calc(var(--u) * 7px));
   opacity: calc(0.25 + 0.75 * var(--w, 1));
-  text-shadow:
-    calc(var(--u) * -12px) 0 rgb(42 125 225 / calc(var(--u) * 0.45)),
-    calc(var(--u) * 12px) 0 rgb(91 61 245 / calc(var(--u) * 0.5));
+  transform: translate3d(0, calc(var(--u) * 16px), 0);
+  will-change: transform, opacity;
 }
 .fx-focus.is-sharp {
-  filter: none;
-  text-shadow: none;
   opacity: 1;
-}
-.fx-focus .accent {
-  text-shadow: inherit;
+  transform: none;
+  will-change: auto;
 }
 
 /* ── Giant chapter words, outlined, behind the 3D ─────────────────────── */

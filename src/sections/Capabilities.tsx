@@ -120,8 +120,6 @@ export function Capabilities() {
         <div className="wrap ch-grid">
           <div className="ch-copy">
             <ChapterHead
-              index="03"
-              label="Capabilities"
               title={['One intelligence.', <span className="accent">Fifteen capabilities.</span>]}
               lede="Three families, fifteen satellites of the same core. They share one memory, one way of reasoning and one set of controls."
             />
@@ -130,7 +128,6 @@ export function Capabilities() {
                 <button key={g} type="button" role="tab" aria-selected={i === group} className={i === group ? 'is-active' : i < group ? 'is-past' : ''} data-tone={TIER_TONES[i]} onClick={() => jump(i)} style={{ '--sp': i === group ? stepP : i < group ? 1 : 0 } as CSSProperties}>
                   <i />
                   {g}
-                  <small>0{i + 1}</small>
                 </button>
               ))}
             </div>

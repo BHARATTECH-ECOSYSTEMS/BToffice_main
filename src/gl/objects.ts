@@ -30,6 +30,7 @@ export interface SolidState {
   time: number;
   dark: number; // 0 light theme … 1 dark
   key: string; // the formation on screen (one solid can serve several, like the tools across the problem steps)
+  heroMotion: number;
   dt: number;
 }
 
@@ -54,7 +55,7 @@ const PAL = {
   ceramic2: [C('#efebf6'), C('#1f1d27')],
   ink: [C('#2a2633'), C('#d9d3ea')],
   thread: [C('#fdfcff'), C('#f4f1ff')],
-  amber: [C('#f0a21a'), C('#ffb52e')],
+  amber: [C('#ea580c'), C('#ff7a29')],
   wire: [C('#8f88a6'), C('#6a6385')],
 };
 type Tone = keyof typeof PAL;
@@ -92,24 +93,50 @@ function threadMaskTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-/** A physical material whose front hemisphere carries the thread inlay. */
+/** A physical material whose front hemisphere carries the animated thread inlay. */
 function markMaterial(mask: THREE.Texture) {
-  const m = physical({ roughness: 0.3, metalness: 0, clearcoat: 1, clearcoatRoughness: 0.14, sheen: 0.4, sheenRoughness: 0.5 });
+  const m = physical({ roughness: 0.22, metalness: 0.08, clearcoat: 1, clearcoatRoughness: 0.08, sheen: 0.45, sheenRoughness: 0.4 });
   const thread = { value: new THREE.Color('#fdfcff') };
+  const uTime = { value: 0 };
+  const uPulse = { value: 1 };
   m.userData.thread = thread;
+  m.userData.uTime = uTime;
+  m.userData.uPulse = uPulse;
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uMask = { value: mask };
     sh.uniforms.uThread = thread;
+    sh.uniforms.uTime = uTime;
+    sh.uniforms.uPulse = uPulse;
     sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vObjN;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvObjN = normalize(position);');
+      .replace('#include <common>', '#include <common>\nvarying vec3 vObjN;\nvarying vec3 vWorldP;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvObjN = normalize(position);\nvWorldP = (modelMatrix * vec4(position, 1.0)).xyz;');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vObjN;\nuniform sampler2D uMask;\nuniform vec3 uThread;')
+      .replace('#include <common>', '#include <common>\nvarying vec3 vObjN;\nvarying vec3 vWorldP;\nuniform sampler2D uMask;\nuniform vec3 uThread;\nuniform float uTime;\nuniform float uPulse;')
       .replace(
         '#include <map_fragment>',
         `#include <map_fragment>
-        float th = vObjN.z > -0.02 ? texture2D(uMask, vObjN.xy * 0.5 + 0.5).r : 0.0;
-        diffuseColor.rgb = mix(diffuseColor.rgb, uThread, smoothstep(0.35, 0.65, th));`,
+        vec2 pCoord = vObjN.z >= 0.0 ? vObjN.xy : vec2(-vObjN.x, vObjN.y);
+        float th = texture2D(uMask, pCoord * 0.5 + 0.5).r;
+        // Electric photon wave streaming continuously through the threads
+        float stream = sin(pCoord.x * 6.0 + pCoord.y * 8.5 - uTime * 3.4);
+        float pulse = smoothstep(0.35, 0.95, stream);
+        vec3 photonColor = mix(vec3(0.55, 0.85, 1.0), vec3(1.0, 1.0, 1.0), pulse);
+        vec3 activeThread = mix(uThread, photonColor, pulse * 0.75 * uPulse);
+        diffuseColor.rgb = mix(diffuseColor.rgb, activeThread, smoothstep(0.32, 0.68, th));`,
+      )
+      .replace(
+        '#include <emissivemap_fragment>',
+        `#include <emissivemap_fragment>
+        vec2 pCoordE = vObjN.z >= 0.0 ? vObjN.xy : vec2(-vObjN.x, vObjN.y);
+        float thEdge = texture2D(uMask, pCoordE * 0.5 + 0.5).r;
+        float streamE = sin(pCoordE.x * 6.0 + pCoordE.y * 8.5 - uTime * 3.4);
+        float pulseE = smoothstep(0.4, 0.95, streamE);
+        vec3 glowCol = mix(vec3(0.4, 0.65, 1.0), vec3(1.0, 0.95, 1.0), pulseE);
+        totalEmissiveRadiance += glowCol * smoothstep(0.35, 0.7, thEdge) * (0.4 + 0.6 * pulseE) * uPulse;
+
+        // Ethereal outer rim luminescence (Fresnel aura)
+        float fresnel = pow(clamp(1.0 - abs(vObjN.z), 0.0, 1.0), 2.6);
+        totalEmissiveRadiance += mix(vec3(0.3, 0.15, 0.9), vec3(0.65, 0.35, 1.0), 0.5) * fresnel * 0.35;`,
       );
   };
   return m;
@@ -117,20 +144,171 @@ function markMaterial(mask: THREE.Texture) {
 
 function buildMark(mask: THREE.Texture): Solid {
   const root = new THREE.Group();
+  const mark = new THREE.Group();
+  root.add(mark);
+
+  // 1. The Main Core Sphere
   const mat = markMaterial(mask);
-  const sphere = new THREE.Mesh(new THREE.SphereGeometry(LOGO_R * 0.985, 128, 96), mat);
-  root.add(sphere);
+  const sphereGeo = new THREE.SphereGeometry(LOGO_R * 0.985, 128, 96);
+  const sphere = new THREE.Mesh(sphereGeo, mat);
+  sphere.castShadow = true;
+  mark.add(sphere);
+
+  // 2. Inner Glowing Quantum Facet Core
+  const coreGeo = new THREE.IcosahedronGeometry(LOGO_R * 0.76, 2);
+  const coreMat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color('#7B5CFF'),
+    wireframe: true,
+    transparent: true,
+    opacity: 0.28,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+  });
+  const innerCore = new THREE.Mesh(coreGeo, coreMat);
+  mark.add(innerCore);
+
+  // 3. Multi-tier Celestial & Gyroscopic Astrolabe Rings
+  // Ring 1: Primary Precision Astrolabe
+  const ring1Geo = new THREE.TorusGeometry(LOGO_R * 1.22, 0.009, 16, 200);
+  const ring1Mat = new THREE.MeshPhysicalMaterial({
+    roughness: 0.15,
+    metalness: 0.9,
+    clearcoat: 1,
+    transparent: true,
+    opacity: 0.85,
+    color: new THREE.Color('#9A85FF'),
+  });
+  const ring1 = new THREE.Mesh(ring1Geo, ring1Mat);
+  mark.add(ring1);
+
+  // Ring 2: Tilted Counter-Rotating Meridian Astrolabe
+  const ring2Geo = new THREE.TorusGeometry(LOGO_R * 1.36, 0.0065, 14, 200);
+  const ring2Mat = new THREE.MeshPhysicalMaterial({
+    roughness: 0.2,
+    metalness: 0.85,
+    clearcoat: 0.8,
+    transparent: true,
+    opacity: 0.72,
+    color: new THREE.Color('#5AA2F5'),
+  });
+  const ring2 = new THREE.Mesh(ring2Geo, ring2Mat);
+  mark.add(ring2);
+
+  // Ring 3: Polar Precision Latitude Ring
+  const ring3Geo = new THREE.TorusGeometry(LOGO_R * 1.14, 0.005, 12, 160);
+  const ring3Mat = new THREE.MeshBasicMaterial({
+    color: new THREE.Color('#FF8643'),
+    transparent: true,
+    opacity: 0.45,
+    depthWrite: false,
+  });
+  const ring3 = new THREE.Mesh(ring3Geo, ring3Mat);
+  mark.add(ring3);
+
+
+
+  // 5. Orbiting Quantum Stardust Swarm (Sparkling Constellation)
+  const sparkCount = 110;
+  const sparkPositions = new Float32Array(sparkCount * 3);
+  const sparkPhases = new Float32Array(sparkCount);
+  const sparkRadii = new Float32Array(sparkCount);
+  const sparkSpeeds = new Float32Array(sparkCount);
+  const sparkJitterY = new Float32Array(sparkCount);
+  const rGen = rng(47);
+  for (let i = 0; i < sparkCount; i++) {
+    sparkPhases[i] = rGen() * Math.PI * 2;
+    sparkRadii[i] = LOGO_R * (1.12 + rGen() * 0.52);
+    sparkSpeeds[i] = 0.4 + rGen() * 0.75;
+    sparkJitterY[i] = (rGen() - 0.5) * 0.75;
+    sparkPositions[i * 3] = sparkRadii[i] * Math.cos(sparkPhases[i]);
+    sparkPositions[i * 3 + 1] = sparkJitterY[i];
+    sparkPositions[i * 3 + 2] = sparkRadii[i] * Math.sin(sparkPhases[i]);
+  }
+  const sparkGeo = new THREE.BufferGeometry();
+  sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPositions, 3));
+  const sparkMat = new THREE.PointsMaterial({
+    size: 0.026,
+    color: new THREE.Color('#FFFFFF'),
+    transparent: true,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
+  });
+  const sparkPoints = new THREE.Points(sparkGeo, sparkMat);
+  mark.add(sparkPoints);
+
   const c = new THREE.Color();
   return {
     root,
-    mats: [mat],
+    mats: [mat, ring1Mat, ring2Mat, ring3Mat, coreMat, sparkMat],
     update(s) {
-      mat.color.copy(tone('violet', s.dark, c));
-      (mat.userData.thread.value as THREE.Color).copy(tone('thread', s.dark, c));
+      const dark = s.dark;
+      mat.color.copy(tone('violet', dark, c));
+      (mat.userData.thread.value as THREE.Color).copy(tone('thread', dark, c));
+      mat.userData.uTime.value = s.time;
+      mat.userData.uPulse.value = s.heroMotion;
+
+      // Color syncing
+      ring1Mat.color.copy(tone('violet', dark, c)).lerp(new THREE.Color('#A892FF'), 0.35);
+      ring2Mat.color.copy(tone('teal', dark, c));
+      coreMat.color.copy(tone('violetDeep', dark, c)).lerp(new THREE.Color('#B9A6FF'), 0.5);
+      sparkMat.color.lerpColors(new THREE.Color('#E3D8FF'), new THREE.Color('#FFFFFF'), 0.5 + 0.5 * Math.sin(s.time * 2.2));
+
+      // Visibilities
+      const visible = s.heroMotion > 0.005;
+      ring1.visible = ring2.visible = ring3.visible = sparkPoints.visible = innerCore.visible = visible;
+
+      // Organic Levitation & Harmonic Floating
+      const lev = s.heroMotion * (Math.sin(s.time * 1.2) * 0.09 + Math.cos(s.time * 2.1) * 0.02);
+      mark.position.y = lev;
+
+      // FULL 360-DEGREE CONTINUOUS ROTATION
+      mark.rotation.y = s.time * 0.48;
+      mark.rotation.x = s.heroMotion * (Math.sin(s.time * 0.6) * 0.06);
+      mark.rotation.z = s.heroMotion * (Math.cos(s.time * 0.7) * 0.04);
+
+      // Inner Core Counter-Rotation & Pulse
+      const coreScale = 1.0 + Math.sin(s.time * 2.4) * 0.06;
+      innerCore.scale.setScalar(coreScale);
+      innerCore.rotation.y = -s.time * 0.65;
+      innerCore.rotation.x = Math.sin(s.time * 0.8) * 0.15;
+
+      // Ring 1 (Astrolabe): 360-degree gyroscopic rotation
+      ring1.rotation.set(0.55 + Math.sin(s.time * 0.5) * 0.05, s.time * 0.52, -0.28);
+
+      // Ring 2 (Celestial): 360-degree counter-rotation
+      ring2.rotation.set(-0.48 + Math.cos(s.time * 0.4) * 0.05, -s.time * 0.38, 0.35);
+
+      // Ring 3 (Polar Meridian): 360-degree orbital rotation
+      ring3.rotation.set(s.time * 0.3, 0.85, s.time * 0.22);
+
+
+
+      // Orbiting Quantum Sparks Animation
+      const posArr = sparkGeo.attributes.position.array as Float32Array;
+      for (let i = 0; i < sparkCount; i++) {
+        const angle = sparkPhases[i] + s.time * sparkSpeeds[i] * 0.4;
+        const rad = sparkRadii[i] + Math.sin(s.time * 1.5 + sparkPhases[i]) * 0.08;
+        const yOff = sparkJitterY[i] + Math.sin(angle * 2.0) * 0.18;
+        posArr[i * 3] = rad * Math.cos(angle);
+        posArr[i * 3 + 1] = yOff;
+        posArr[i * 3 + 2] = rad * Math.sin(angle);
+      }
+      sparkGeo.attributes.position.needsUpdate = true;
     },
     dispose() {
-      sphere.geometry.dispose();
+      sphereGeo.dispose();
       mat.dispose();
+      coreGeo.dispose();
+      coreMat.dispose();
+      ring1Geo.dispose();
+      ring1Mat.dispose();
+      ring2Geo.dispose();
+      ring2Mat.dispose();
+      ring3Geo.dispose();
+      ring3Mat.dispose();
+      sparkGeo.dispose();
+      sparkMat.dispose();
     },
   };
 }
@@ -139,22 +317,46 @@ function buildMark(mask: THREE.Texture): Solid {
 
 function buildOrbit(satellites: number, mask: THREE.Texture): Solid {
   const root = new THREE.Group();
-  const { rings, sats, coreR } = orbitLayout(satellites);
+  const { rings, sats, place, coreR } = orbitLayout(satellites);
 
   const coreMat = markMaterial(mask);
   const core = new THREE.Mesh(new THREE.SphereGeometry(coreR * 1.02, 96, 64), coreMat);
   root.add(core);
 
-  const ringMat = physical({ roughness: 0.4, metalness: 0.2, opacity: 0.6 });
-  const ringGeos = rings.map((r) => new THREE.TorusGeometry(r.radius, 0.0055, 8, 220));
+  // Subtle, delicate hairline orbital rings that cleanly frame the system without clutter
+  const ringMat = physical({ roughness: 0.35, metalness: 0.25, opacity: satellites <= 8 ? 0.42 : 0.34 });
+  const ringGeos = rings.map((r) => new THREE.TorusGeometry(r.radius, 0.0032, 8, 240));
   ringGeos.forEach((geo, i) => {
     const m = new THREE.Mesh(geo, ringMat);
     m.rotation.set(rings[i].tiltX, 0, rings[i].tiltZ, 'ZYX');
     root.add(m);
   });
 
-  const satGeo = new THREE.SphereGeometry(0.085, 48, 32);
-  const haloGeo = new THREE.TorusGeometry(0.14, 0.006, 8, 64);
+  // Track orbital parameters for each satellite
+  interface SatOrb {
+    ring: (typeof rings)[number];
+    baseAngle: number;
+    speed: number;
+    selfSpinSpeed: number;
+  }
+  const satOrbs: SatOrb[] = [];
+  const RING_SPEEDS = satellites <= 8 ? [0.48, -0.38] : [0.23, -0.19, 0.15];
+  let satIdx = 0;
+  rings.forEach((ring, ri) => {
+    for (let s = 0; s < ring.count; s++) {
+      satOrbs.push({
+        ring,
+        baseAngle: (s / ring.count) * Math.PI * 2 + ri * 0.7,
+        speed: RING_SPEEDS[ri % RING_SPEEDS.length] || 0.1,
+        selfSpinSpeed: 1.2 + (satIdx % 5) * 0.25,
+      });
+      satIdx++;
+    }
+  });
+
+  // Clean, sleek satellite spheres
+  const satGeo = new THREE.SphereGeometry(0.082, 48, 32);
+  const haloGeo = new THREE.TorusGeometry(0.13, 0.005, 8, 64);
   const satMats = sats.map(() => physical({ roughness: 0.28, clearcoat: 1, clearcoatRoughness: 0.1 }));
   const haloMats = sats.map(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0 }));
   const halos: THREE.Mesh[] = [];
@@ -169,36 +371,78 @@ function buildOrbit(satellites: number, mask: THREE.Texture): Solid {
     return m;
   });
 
-  // a thread of light from the core to every satellite; the active one brightens
-  const lineMats = sats.map(() => new THREE.LineBasicMaterial({ transparent: true, opacity: 0.2 }));
-  const lineGeos = sats.map((p) => {
-    const v = new THREE.Vector3(...p);
-    const a = v.clone().setLength(coreR * 1.05);
-    const mid = v.clone().multiplyScalar(0.55).add(new THREE.Vector3(0, 0.12, 0));
-    const curve = new THREE.QuadraticBezierCurve3(a, mid, v.clone().setLength(v.length() - 0.09));
-    return new THREE.BufferGeometry().setFromPoints(curve.getPoints(40));
+  // Single focused light thread: only rendered for the active satellite to keep the view clean
+  const lineMats = sats.map(() => new THREE.LineBasicMaterial({ transparent: true, opacity: 0 }));
+  const lineGeos = sats.map(() => new THREE.BufferGeometry());
+  const updateLine = (i: number, v: THREE.Vector3, time: number) => {
+    const a = v.clone().setLength(coreR * 1.02);
+    const mid = v.clone().multiplyScalar(0.55).add(new THREE.Vector3(0, 0.06 * Math.sin(time * 2 + i), 0));
+    const end = v.clone().setLength(v.length() - 0.08);
+    const curve = new THREE.QuadraticBezierCurve3(a, mid, end);
+    lineGeos[i].setFromPoints(curve.getPoints(24));
+  };
+  const lines = sats.map((p, i) => {
+    updateLine(i, new THREE.Vector3(...p), 0);
+    const line = new THREE.Line(lineGeos[i], lineMats[i]);
+    line.visible = false;
+    root.add(line);
+    return line;
   });
-  lineGeos.forEach((g, i) => root.add(new THREE.Line(g, lineMats[i])));
 
   const c = new THREE.Color();
   const cam = new THREE.Quaternion();
   return {
     root,
+    anchors: satMeshes,
     mats: [coreMat, ringMat, ...satMats, ...haloMats, ...lineMats],
     update(s) {
       coreMat.color.copy(tone('violet', s.dark, c));
       (coreMat.userData.thread.value as THREE.Color).copy(tone('thread', s.dark, c));
+      coreMat.userData.uTime.value = s.time;
+      coreMat.userData.uPulse.value = 1;
       ringMat.color.copy(tone('wire', s.dark, c));
+
+      // 1. Central sphere active rotation on its axis & graceful levitation
+      core.rotation.y = s.time * 0.45;
+      core.rotation.x = Math.sin(s.time * 0.22) * 0.05;
+      core.rotation.z = Math.cos(s.time * 0.18) * 0.04;
+      core.position.y = Math.sin(s.time * 1.4) * 0.02;
+
+      // 2. Satellites revolving in clean concentric orbits & rotating on their own axes
       satMeshes.forEach((m, i) => {
+        const orb = satOrbs[i];
+        if (orb) {
+          // Orbital revolution along concentric ring track
+          const angle = orb.baseAngle + orb.speed * s.time;
+          const [x, y, z] = place(orb.ring, angle);
+          m.position.set(x, y, z);
+          halos[i].position.set(x, y, z);
+
+          // Ball rotating on its own axis
+          m.rotation.y = s.time * orb.selfSpinSpeed + i;
+          m.rotation.x = s.time * (orb.selfSpinSpeed * 0.5) + i * 0.4;
+          m.rotation.z = Math.sin(s.time * 0.9 + i) * 0.2;
+        }
+
         const on = i === s.highlight ? s.hlAmt : 0;
         satMats[i].color.lerpColors(tone('ceramic', s.dark), tone('violet', s.dark), on);
         satMats[i].emissive.copy(tone('violet', s.dark, c)).multiplyScalar(on * 0.35);
         m.scale.setScalar(1 + on * 0.35);
         haloMats[i].color.copy(tone('violet', s.dark, c));
         haloMats[i].userData.target = on * 0.9;
-        lineMats[i].color.copy(on > 0 ? tone('violet', s.dark, c) : tone('wire', s.dark, c));
-        lineMats[i].userData.target = 0.16 + on * 0.7;
-        // halos always face the camera
+
+        // Clean light connection: ONLY show thread for active satellite to keep space uncluttered
+        if (on > 0.01) {
+          updateLine(i, m.position, s.time);
+          lineMats[i].color.copy(tone('violet', s.dark, c));
+          lineMats[i].userData.target = on * 0.85;
+          lines[i].visible = true;
+        } else {
+          lineMats[i].userData.target = 0;
+          lines[i].visible = false;
+        }
+
+        // Halos always face camera
         root.getWorldQuaternion(cam).invert();
         halos[i].quaternion.copy(cam);
         halos[i].scale.setScalar(1 + 0.08 * Math.sin(s.time * 3 + i));
@@ -215,10 +459,10 @@ function buildOrbit(satellites: number, mask: THREE.Texture): Solid {
   };
 }
 
-// ── The layer stack: nine wafers in three families, each engraved with its number and name ─────────────────
+// ── The layer stack: nine wafers in three families, each engraved with its name ─────────────────
 
 /** The architecture's three families, as tones: intelligence, knowledge & trust, foundation. */
-const FAMILY_TONE: Tone[] = ['violet', 'teal', 'steel'];
+const FAMILY_TONE: Tone[] = ['violet', 'violet', 'violet'];
 const familyOf = (l: number) => LAYER_FAMILIES.findIndex((f) => l >= f.from && l <= f.to);
 
 function etchTexture(l: number, family: number): THREE.CanvasTexture {
@@ -246,13 +490,11 @@ function etchTexture(l: number, family: number): THREE.CanvasTexture {
   g.globalAlpha = 0.7;
   g.lineWidth = 2.5;
   g.strokeRect(S * 0.08, S * 0.08, S * 0.84, S * 0.84);
-  // number and name along the front edge, where the viewer reads them
+  // name along the front edge, where the viewer reads it
   g.globalAlpha = 1;
   g.textBaseline = 'alphabetic';
-  g.font = `700 ${Math.round(S * 0.13)}px Inter, "Helvetica Neue", Arial, sans-serif`;
-  g.fillText(String(l + 1).padStart(2, '0'), S * 0.11, S * 0.885);
   g.font = `600 ${Math.round(S * 0.062)}px Inter, "Helvetica Neue", Arial, sans-serif`;
-  g.fillText(LAYERS[l].name, S * 0.34, S * 0.875);
+  g.fillText(LAYERS[l].name, S * 0.11, S * 0.875);
   g.globalAlpha = 0.6;
   g.font = `500 ${Math.round(S * 0.032)}px "Geist Mono", ui-monospace, Menlo, monospace`;
   g.fillText(LAYER_FAMILIES[family].name.toUpperCase(), S * 0.34, S * 0.79);
@@ -319,7 +561,7 @@ function buildLayers(): Solid {
       for (let l = 0; l < LAYER_COUNT; l++) {
         // the active wafer slides out toward the viewer like a drawer; the rest part around it
         // Opened up, the stack parts like an accordion at the active wafer: everything above it lifts well clear, so
-        // its whole face (circuit, number, name) is in view, while the rest stay close and show their labelled edges.
+        // its whole face (circuit and name) is in view, while the rest stay close and show their labelled edges.
         let x = 0;
         let y = top - l * LAYER_GAP;
         let z = 0;
@@ -668,7 +910,7 @@ function buildTools(): Solid {
       ice.userData.target = 0.42 * fade.ice;
       blocks.forEach((b) => (b.visible = fade.ice > 0.01));
       tubeMat.color.copy(tone('wire', s.dark, c));
-      capMat.color.copy(tone('amber', s.dark, c));
+      capMat.color.copy(tone('violet', s.dark, c));
       capMat.emissive.copy(capMat.color).multiplyScalar(0.3);
       tubeMat.userData.target = fade.links;
       capMat.userData.target = fade.links;
@@ -872,21 +1114,12 @@ export function buildPlinth(): Plinth {
   ground.renderOrder = -3;
   root.add(ground, base, top, lip, contact);
 
-  const c = new THREE.Color();
   const mats = [baseMat, capMat, lipMat, contactMat, groundMat];
   return {
     root,
     top,
-    update(opacity, dark) {
-      baseMat.color.copy(tone('violet', dark, c));
-      capMat.color.copy(tone('ceramic', dark, c));
-      lipMat.color.copy(tone('ceramic', dark, c)).lerp(tone('violet', dark), 0.15);
-      baseMat.opacity = capMat.opacity = lipMat.opacity = opacity;
-      const solid = opacity > 0.98;
-      baseMat.depthWrite = capMat.depthWrite = lipMat.depthWrite = solid;
-      contactMat.opacity = opacity * (0.32 + 0.3 * dark);
-      groundMat.opacity = opacity * (0.22 + 0.35 * dark);
-      root.visible = opacity > 0.003;
+    update() {
+      root.visible = false;
     },
     dispose() {
       [baseGeo, capGeo, lipGeo, planeGeo].forEach((g) => g.dispose());

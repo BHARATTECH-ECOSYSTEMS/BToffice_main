@@ -8,19 +8,19 @@
     <meta name="theme-color" content="#F7F2EA" />
     <script>
       (function () {
-        // Light by default; a visitor's own choice (the nav's sun/moon) is remembered.
-        var theme = 'light';
-        try {
-          var saved = localStorage.getItem('origin-theme');
-          if (saved === 'dark' || saved === 'light') theme = saved;
-        } catch (e) {}
+        // Schedule: 6:00 AM to 6:00 PM is light mode; 6:00 PM to 6:00 AM is dark mode.
+        var hours = new Date().getHours();
+        var theme = (hours >= 6 && hours < 18) ? 'light' : 'dark';
         document.documentElement.dataset.theme = theme;
-        if (theme === 'dark') document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0C0B10');
+        if (theme === 'dark') {
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', '#0C0B10');
+        }
         // Lite mode for modest machines: ≤4 cores, ≤4 GB, "reduce transparency", or an integrated / software GPU
         // (Intel UHD and Iris on most Windows laptops, e.g. a first-generation Galaxy Book). Lite drops live blur and
         // full-screen blending, and the 3D renders at a lighter resolution without shadow maps.
         try {
-          var lite = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 || matchMedia('(prefers-reduced-transparency: reduce)').matches;
+          var lite = innerWidth <= 900 || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 || matchMedia('(prefers-reduced-transparency: reduce)').matches;
           if (!lite) {
             var gl = document.createElement('canvas').getContext('webgl');
             var dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');

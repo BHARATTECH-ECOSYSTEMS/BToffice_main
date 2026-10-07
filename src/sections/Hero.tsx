@@ -1,4 +1,4 @@
-import { opening, introPlanned } from '../opening';
+import { opening, introPlanned, reloadedDocument } from '../opening';
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { isCompact, useFormation, useScene, worldYOf } from '../gl/Scene';
 import { LOGO_R } from '../gl/formations';
@@ -35,7 +35,7 @@ function CountUp({ value, run }: { value: string; run: boolean }) {
 export function Hero() {
   const ref = useRef<HTMLElement>(null);
   const copyRef = useRef<HTMLDivElement>(null);
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(() => !introPlanned && reloadedDocument());
   const { scrollTo } = useScene();
 
   useFormation(ref, () => {
@@ -47,7 +47,7 @@ export function Hero() {
     const progress = Math.min(1, Math.max(0, scrollY / fadeDist));
     const alpha = Math.max(0, 1 - progress * 1.15);
     // Phones and portrait tablets: the mark sits centred in the open band between the nav and the headline, sized to it.
-    let mobile = { x: 0, y, s: 0.56 };
+    let mobile = { x: 0, y, s: 0.6 };
     if (isCompact() && ref.current && copyRef.current) {
       const hero = ref.current.getBoundingClientRect();
       const bandTop = 64; // under the nav capsule
@@ -55,19 +55,20 @@ export function Hero() {
       const perPx = worldYOf(ref.current, 0) - worldYOf(ref.current, 1);
       const radius = ((bandBottom - bandTop) / 2) * perPx;
       // a little above centre and a little smaller, so the plinth under it clears the headline
-      const mid = bandTop + (bandBottom - bandTop) * 0.44;
-      mobile = { x: 0, y: worldYOf(ref.current, mid), s: Math.max(0.34, Math.min(0.58, (radius * 0.7) / LOGO_R)) };
+      const mid = bandTop + (bandBottom - bandTop) * 0.42;
+      mobile = { x: 0, y: worldYOf(ref.current, mid), s: Math.max(0.36, Math.min(0.56, (radius * 0.66) / LOGO_R)) };
     }
     return {
-      key: 'logo',
-      pose: { x: 1.6, y: y + 0.18, s: 0.8 },
+      key: 'heroLogo',
+      pose: { x: 1.6, y: y + 0.18, s: 0.86 },
       mobilePose: mobile,
-      params: { alpha },
+      params: { alpha, solid: 0, drift: 3, dot: 0.9 },
       follow: 18,
     };
   });
 
   useEffect(() => {
+    if (ready) return;
     let live = true;
     let t = 0;
     opening.then(() => {
@@ -77,7 +78,7 @@ export function Hero() {
       live = false;
       clearTimeout(t);
     };
-  }, []);
+  }, [ready]);
 
   useEffect(() => {
     let raf = 0;
@@ -105,10 +106,6 @@ export function Hero() {
     <section id="top" ref={ref} className="hero" data-chapter="Origin">
       <div className="wrap hero-grid">
         <div ref={copyRef} className="hero-copy">
-          <p className={`eyebrow fade ${ready ? 'is-in' : ''}`}>
-            <span className="eyebrow-dot" />
-            Generative Intelligence Infrastructure
-          </p>
           <Lines as="h1" className="display" show={ready} delay={80} lines={['Intelligence', 'should never', <span className="accent">forget.</span>]} />
           <p className={`lede fade ${ready ? 'is-in' : ''}`} style={d(520)}>
             Bharattech Origin is building the operating system for intelligence: one shared layer that lets AI remember context, work
@@ -122,6 +119,9 @@ export function Hero() {
               How it works
             </button>
           </div>
+        </div>
+        <div className={`hero-stage fade ${ready ? 'is-in' : ''}`} style={d(350)}>
+          <div className="hero-stage-aura" aria-hidden="true" />
         </div>
       </div>
       <div className="wrap">

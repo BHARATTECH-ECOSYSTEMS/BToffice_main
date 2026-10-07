@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { PageHero, Zone } from '../components/PageHero';
-import { Lines, Kicker, Fade, Arrow } from '../components/Reveal';
-import { EMAIL, ROLES, VALUES } from '../content';
+import { Lines, Arrow } from '../components/Reveal';
+import { EMAIL, ROLES } from '../content';
 
 const DEPTS = ['All', 'Research', 'Engineering', 'Operations'];
 
@@ -18,36 +18,18 @@ export function Careers() {
   return (
     <div className="page">
       <PageHero
-        index="Careers"
-        label="Join the builders"
         title={['Build the', 'foundation.']}
         lede="We hire researchers and engineers who would rather spend a decade on the right problem than a quarter on the easy one."
-        target={{ key: 'field' }}
+        target={{ key: 'field', params: { alpha: 0 } }}
       >
         <a href="#roles" className="btn btn-solid" style={{ marginTop: 36 }} onClick={(e) => { e.preventDefault(); document.getElementById('roles')?.scrollIntoView({ behavior: 'smooth' }); }}>
           {ROLES.length} open roles <Arrow dir="down" />
         </a>
       </PageHero>
 
-      <Zone target={{ key: 'field', params: { alpha: 0 } }} className="section">
-        <div className="wrap">
-          <Kicker index="01">How we work</Kicker>
-          <div className="values" style={{ marginTop: 40 }}>
-            {VALUES.map((v, i) => (
-              <Fade key={v.title} className="value" delay={i * 90}>
-                <span className="mono muted">{String(i + 1).padStart(2, '0')}</span>
-                <h3>{v.title}</h3>
-                <p>{v.body}</p>
-              </Fade>
-            ))}
-          </div>
-        </div>
-      </Zone>
-
-      <Zone target={{ key: 'field', params: { alpha: 0 } }} className="section" id="roles">
+      <Zone target={{ key: 'field', params: { alpha: 0 } }} className="section careers-roles" id="roles">
         <div className="wrap">
           <div style={{ marginBottom: 40 }}>
-            <Kicker index="02">Open roles</Kicker>
             <Lines className="h2" lines={['Find your', 'problem.']} />
           </div>
           <div className="filters">

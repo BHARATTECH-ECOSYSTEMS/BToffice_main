@@ -82,13 +82,19 @@ export function useFormation(ref: RefObject<HTMLElement>, target: Target | (() =
 
 export function SceneProvider({ children }: { children: ReactNode }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const backgroundCanvasRef = useRef<HTMLCanvasElement>(null);
   const entries = useRef(new Set<Entry>());
+  const entriesVersion = useRef(0);
   const [api, setApi] = useState<SceneApi>(() => ({
     engine: null,
     lenis: null,
     register: (e) => {
       entries.current.add(e);
-      return () => entries.current.delete(e);
+      entriesVersion.current++;
+      return () => {
+        entries.current.delete(e);
+        entriesVersion.current++;
+      };
     },
     scrollTo: (t) => (typeof t === 'number' ? window.scrollTo(0, t) : t.scrollIntoView()),
   }));
@@ -96,15 +102,34 @@ export function SceneProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const canvas = canvasRef.current!;
     let engine: Engine | null = null;
+    let backgroundEngine: Engine | null = null;
     try {
       engine = new Engine(canvas);
     } catch {
       canvas.style.display = 'none'; // no WebGL: the typography carries the page on its own
     }
+    if (backgroundCanvasRef.current) {
+      try {
+        backgroundEngine = new Engine(backgroundCanvasRef.current, { ambient: true });
+        backgroundEngine.setTarget({
+          key: 'field',
+          params: { alpha: 0.96, drift: 0.58, wave: 0.78, solid: 0, dot: 1.05, steady: 1 },
+          follow: 2.5,
+        });
+      } catch {
+        backgroundCanvasRef.current.style.display = 'none';
+      }
+    }
     engine?.setDark(getTheme() === 'dark');
-    const offTheme = onTheme((t) => engine?.setDark(t === 'dark'));
+    backgroundEngine?.setDark(getTheme() === 'dark');
+    const offTheme = onTheme((t) => {
+      engine?.setDark(t === 'dark');
+      backgroundEngine?.setDark(t === 'dark');
+    });
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const lenis = reduced ? null : new Lenis({ duration: 0.85, smoothWheel: true });
+    // Native scrolling is noticeably steadier in the compact layout, where the
+    // browser is also compositing two full-screen WebGL canvases.
+    const lenis = reduced || isCompact() ? null : new Lenis({ duration: 0.68, smoothWheel: true });
     // Behind the opening the page holds still, and the mark resolves again as it is uncovered.
     if (introPlanned) {
       lenis?.stop();
@@ -118,12 +143,13 @@ export function SceneProvider({ children }: { children: ReactNode }) {
     let needPick = true;
     let lastPickY = -9999;
     let lastVh = -1;
+    let lastEntriesVersion = -1;
     let lastBest: Entry | null = null;
 
     const pick = () => {
       const vh = window.innerHeight;
       const y = window.scrollY;
-      if (!needPick && Math.abs(y - lastPickY) < 0.2 && vh === lastVh) {
+      if (!needPick && Math.abs(y - lastPickY) < 0.2 && vh === lastVh && entriesVersion.current === lastEntriesVersion) {
         // the page is still, but the chapter's state may have moved on (a step changed, a row is hovered)
         if (lastBest) engine?.setTarget(lastBest.target());
         return;
@@ -131,6 +157,7 @@ export function SceneProvider({ children }: { children: ReactNode }) {
       needPick = false;
       lastPickY = y;
       lastVh = vh;
+      lastEntriesVersion = entriesVersion.current;
 
       const mid = vh * 0.5;
       let best: Entry | null = null;
@@ -138,7 +165,10 @@ export function SceneProvider({ children }: { children: ReactNode }) {
 
       const currentEntries = Array.from(entries.current);
       const len = currentEntries.length;
-      if (len === 0) return;
+      if (len === 0) {
+        lastBest = null;
+        return;
+      }
 
       const rects = new Array(len);
       for (let i = 0; i < len; i++) {
@@ -178,6 +208,7 @@ export function SceneProvider({ children }: { children: ReactNode }) {
         needPick = true;
       }
       engine?.setVelocity(deltaY);
+      backgroundEngine?.setVelocity(deltaY);
       lastY = y;
       raf = requestAnimationFrame(scrollLoop);
     };
@@ -221,13 +252,15 @@ export function SceneProvider({ children }: { children: ReactNode }) {
       cancelAnimationFrame(raf);
       lenis?.destroy();
       engine?.destroy();
+      backgroundEngine?.destroy();
     };
   }, []);
 
   return (
     <SceneContext.Provider value={api}>
       <div className="atmos" aria-hidden="true" />
-      <canvas ref={canvasRef} className="scene" aria-hidden="true" />
+      <canvas ref={backgroundCanvasRef} className="scene scene-background" aria-hidden="true" />
+      <canvas ref={canvasRef} className="scene scene-foreground" aria-hidden="true" />
       {children}
     </SceneContext.Provider>
   );

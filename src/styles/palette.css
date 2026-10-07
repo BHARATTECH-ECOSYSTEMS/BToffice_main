@@ -9,41 +9,64 @@
 
 :root,
 :root[data-theme='light'] {
-  --azure: #2a7de1;
-  --amber: #c98213;
-  --red: var(--amber);
-  --red-soft: rgba(201, 130, 19, 0.1);
-  --red-line: rgba(201, 130, 19, 0.38);
-  --green: var(--azure);
-  --green-soft: rgba(42, 125, 225, 0.09);
-  --green-line: rgba(42, 125, 225, 0.35);
-  --danger: var(--amber);
-  --ok: var(--azure);
-  --tone-teal: var(--azure);
-  --tone-coral: var(--amber);
-  --tone-amber: var(--amber);
+  --azure: var(--violet);
+  --amber: var(--violet);
+  --red: var(--violet);
+  --red-soft: var(--violet-soft);
+  --red-line: var(--violet-line);
+  --green: var(--violet);
+  --green-soft: var(--violet-soft);
+  --green-line: var(--violet-line);
+  --danger: var(--violet);
+  --ok: var(--violet);
+  --tone-teal: var(--violet);
+  --tone-coral: var(--violet);
+  --tone-amber: var(--violet);
+  --tone-steel: var(--violet);
+  --tango: var(--violet);
+  --tango-text: var(--violet);
+  --tango-fill: var(--violet);
+  --tango-soft: var(--violet-soft);
+  --tango-line: var(--violet-line);
+  --pitch: var(--violet);
+  --pitch-text: var(--violet);
+  --pitch-fill: var(--violet);
+  --pitch-soft: var(--violet-soft);
+  --pitch-line: var(--violet-line);
 }
 :root[data-theme='dark'] {
-  --azure: #5aa2f5;
-  --amber: #f0b04a;
-  --red: var(--amber);
-  --red-soft: rgba(240, 176, 74, 0.12);
-  --red-line: rgba(240, 176, 74, 0.42);
-  --green: var(--azure);
-  --green-soft: rgba(90, 162, 245, 0.12);
-  --green-line: rgba(90, 162, 245, 0.4);
-  --danger: var(--amber);
-  --ok: var(--azure);
-  --tone-teal: var(--azure);
-  --tone-coral: var(--amber);
-  --tone-amber: var(--amber);
+  --azure: var(--violet);
+  --amber: var(--violet);
+  --red: var(--violet);
+  --red-soft: var(--violet-soft);
+  --red-line: var(--violet-line);
+  --green: var(--violet);
+  --green-soft: var(--violet-soft);
+  --green-line: var(--violet-line);
+  --danger: var(--violet);
+  --ok: var(--violet);
+  --tone-teal: var(--violet);
+  --tone-coral: var(--violet);
+  --tone-amber: var(--violet);
+  --tone-steel: var(--violet);
+  --tango: var(--violet);
+  --tango-text: var(--violet);
+  --tango-fill: var(--violet);
+  --tango-soft: var(--violet-soft);
+  --tango-line: var(--violet-line);
+  --pitch: var(--violet);
+  --pitch-text: var(--violet);
+  --pitch-fill: var(--violet);
+  --pitch-soft: var(--violet-soft);
+  --pitch-line: var(--violet-line);
 }
 :is(.ex-art, .stack, .stack-detail, .stack-art, .how, .scene-demo, .bento-art, .lab-card-art, .aud-art, .net-art, .about-page, .page-hero) {
-  --danger: var(--amber);
+  --danger: var(--violet);
 }
 .warm,
-.coral {
-  color: var(--amber);
+.coral,
+.amber {
+  color: var(--violet) !important;
 }
 
 /* the message from three weeks ago reads as a memory: an outline, not a heavy grey block */

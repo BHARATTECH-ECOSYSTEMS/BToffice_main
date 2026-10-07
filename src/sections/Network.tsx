@@ -109,8 +109,6 @@ export function Network() {
         <div className="wrap ch-grid">
           <div className="ch-copy">
             <ChapterHead
-              index="06"
-              label="Network"
               title={['Built in Bharat.', <span className="accent">For the world.</span>]}
               lede="An intelligence network conceived in India and engineered to run anywhere. Every node shares what it learns with the rest."
             />

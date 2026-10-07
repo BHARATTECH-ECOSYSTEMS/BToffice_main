@@ -8,6 +8,7 @@ import './styles/nav.css';
 import './styles/palette.css';
 import './styles/rail.css';
 import './styles/curtain.css';
+import './styles/polish.css';
 import './styles/perf.css';
 
 createRoot(document.getElementById('root')!).render(<App />);

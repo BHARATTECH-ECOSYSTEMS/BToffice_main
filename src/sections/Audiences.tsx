@@ -1,4 +1,4 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Microscope, Code2, Building2, Landmark, GraduationCap, Rocket, Check, type LucideIcon } from 'lucide-react';
 import { useFormation, useScene } from '../gl/Scene';
 import { useAnchors } from '../gl/useAnchors';
@@ -16,13 +16,23 @@ export function Audiences() {
   const visRef = useRef<HTMLDivElement>(null);
   const tag = useRef<HTMLDivElement>(null);
   const [scrolled, setScrolled] = useState(0);
+  const [auto, setAuto] = useState(0);
   const [stepP, setStepP] = useState(0);
   const [hovered, setHovered] = useState<number | null>(null);
-  const active = hovered ?? scrolled;
+  const active = hovered ?? auto;
   const activeRef = useRef(active);
   activeRef.current = active;
   const owns = useRef(false);
+  const lastScrollStep = useRef(0);
   const { scrollTo } = useScene();
+
+  useEffect(() => {
+    if (hovered !== null) return;
+    const timer = window.setInterval(() => {
+      if (owns.current) setAuto((i) => (i + 1) % AUDIENCE_DETAIL.length);
+    }, 3600);
+    return () => window.clearInterval(timer);
+  }, [hovered]);
 
   useFormation(
     ref,
@@ -43,6 +53,10 @@ export function Audiences() {
       const n = AUDIENCE_DETAIL.length;
       const i = Math.min(n - 1, Math.floor(p * n));
       setScrolled((v) => (v === i ? v : i));
+      if (i !== lastScrollStep.current) {
+        lastScrollStep.current = i;
+        setAuto(i);
+      }
       const sp = Math.round(Math.min(1, p * n - i) * 40) / 40;
       setStepP((v) => (v === sp ? v : sp));
     },
@@ -63,6 +77,8 @@ export function Audiences() {
   const jump = (i: number) => {
     const el = ref.current;
     if (!el) return;
+    setHovered(null);
+    setAuto(i);
     const top = el.getBoundingClientRect().top + window.scrollY;
     scrollTo(top + ((i + 0.2) / AUDIENCE_DETAIL.length) * (el.offsetHeight - window.innerHeight));
   };
@@ -90,8 +106,8 @@ export function Audiences() {
       <div className="ch-stage">
         <div className="wrap ch-grid">
           <div className="ch-copy">
-            <ChapterHead index="08" label="Who it’s for" title={['One intelligence,', <span className="accent">shaped for your work.</span>]} />
-            <StepList steps={steps} active={active} progress={hovered === null ? stepP : 1} onHover={setHovered} onPick={jump} dense caption />
+            <ChapterHead title={['One intelligence,', <span className="accent">shaped for your work.</span>]} />
+            <StepList steps={steps} active={active} progress={hovered === null && active === scrolled ? stepP : 1} onHover={setHovered} onPick={jump} dense caption />
           </div>
           <div ref={visRef} className="ch-visual" aria-hidden="true" />
         </div>
@@ -100,7 +116,6 @@ export function Audiences() {
         <i />
         <span>
           <b>{a.name}</b>
-          <small>{String(active + 1).padStart(2, '0')} / 06</small>
         </span>
       </div>
     </section>

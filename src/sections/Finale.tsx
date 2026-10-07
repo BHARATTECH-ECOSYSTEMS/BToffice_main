@@ -1,7 +1,7 @@
 import { useRef, useLayoutEffect, type RefObject } from 'react';
 import { Link } from 'react-router';
 import { useFormation } from '../gl/Scene';
-import { Lines, Kicker, Fade, Arrow } from '../components/Reveal';
+import { Lines, Fade, Arrow } from '../components/Reveal';
 import { EMAIL } from '../content';
 import type { Target } from '../gl/Engine';
 
@@ -47,7 +47,6 @@ export function Finale() {
     >
       <div className="wrap finale-grid">
         <div className="finale-head">
-          <Kicker index="12">What comes next</Kicker>
           <Lines className="display" lines={['The next era of', 'intelligence', 'begins here.']} />
         </div>
 

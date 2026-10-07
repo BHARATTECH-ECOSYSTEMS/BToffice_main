@@ -146,7 +146,7 @@ export function HowItWorks() {
       <div className="pin-stage">
         <div className="wrap how-stage">
           <header className="how-head">
-            <ChapterHead index="04" label="How it works" title={['From a question', <span className="accent">to an answer.</span>]} />
+            <ChapterHead title={['From a question', <span className="accent">to an answer.</span>]} />
             <Fade as="p" className="body" delay={120}>
               The request from the scenario above, followed through the system. Keep scrolling: five stations, one shared memory
               underneath.
@@ -188,9 +188,11 @@ export function HowItWorks() {
                   const Icon = NODE_LUCIDE[i];
                   return <Icon x={-11} y={-11} width={22} height={22} strokeWidth={1.75} />;
                 })()}
-                <text y={48} textAnchor="middle">
-                  {FLOW[i].step}
-                </text>
+                {i > 1 && (
+                  <text y={48} textAnchor="middle">
+                    {FLOW[i].step}
+                  </text>
+                )}
               </g>
             ))}
 
@@ -211,7 +213,6 @@ export function HowItWorks() {
                   })()}
                 </span>
                 <div>
-                  <p className="how-list-num">Step {i + 1}</p>
                   <h3>{f.step}</h3>
                   <p>{f.body}</p>
                   <p className="how-list-trace">{f.trace}</p>
@@ -222,9 +223,6 @@ export function HowItWorks() {
 
           <div className="how-detail" key={active}>
             <div className="how-step">
-              <p className="how-count">
-                <b>{String(active + 1).padStart(2, '0')}</b> / 05
-              </p>
               <h3 className="h3">{step.step}</h3>
             </div>
             <div className="how-body">

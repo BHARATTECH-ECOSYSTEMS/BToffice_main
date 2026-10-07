@@ -128,7 +128,7 @@ function drawReasoning(n: number) {
                 fontFamily: 'var(--sans)',
               }}
             >
-              {idx + 1}. {step}
+              {step}
             </text>
           </g>
         );

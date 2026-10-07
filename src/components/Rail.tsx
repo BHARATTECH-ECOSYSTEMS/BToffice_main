@@ -80,7 +80,6 @@ export function Rail() {
               aria-label={ch.label}
             >
               <span className="side-rail-label">
-                <b>{String(idx).padStart(2, '0')}</b>
                 {ch.label}
               </span>
               <span className="side-rail-dot">

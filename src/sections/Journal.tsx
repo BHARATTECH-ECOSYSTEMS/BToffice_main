@@ -34,8 +34,6 @@ export function Journal() {
     <section id="journal" ref={ref} className="section journal" data-chapter="Publications">
       <div className="wrap">
         <SectionHead
-          index="10"
-          label="Publications"
           title={['Notes from the frontier.']}
           aside={
             <Link to="/publications" className="link">

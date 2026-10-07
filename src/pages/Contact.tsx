@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { PageHero, Zone } from '../components/PageHero';
-import { Kicker, Fade, Arrow, Lines } from '../components/Reveal';
+import { Fade, Arrow, Lines } from '../components/Reveal';
 import { EMAIL } from '../content';
 
 const REASONS = ['General enquiry', 'Research collaboration', 'Partnership', 'Press & media'];
@@ -19,18 +19,20 @@ export function Contact() {
   };
 
   return (
-    <div className="page">
+    <div className="page page-contact">
       <PageHero
-        index="Contact"
-        label="Start a conversation"
         title={['Let’s build', 'what comes next.']}
         lede="Research collaborations, partnerships, press, or simply a good question. Every message is read by a person."
-        target={{ key: 'globe', pose: { x: 1.6 } }}
+        target={{
+          key: 'globe',
+          pose: { x: 1.9, y: 0.16, s: 0.76 },
+          mobilePose: { x: 0.38, y: 1.9, s: 0.37 },
+          params: { steady: 1 },
+        }}
       />
-      <Zone target={{ key: 'globe', pose: { x: 2.2, s: 1.15 }, params: { alpha: 0 } }} className="section" id="write">
+      <Zone target={{ key: 'globe', params: { alpha: 0 } }} className="section contact-section" id="write">
         <div className="wrap contact-grid">
           <div className="contact-aside">
-            <Kicker index="01">Write to us</Kicker>
             <Fade>
               <a className="big link" href={`mailto:${EMAIL}`}>
                 {EMAIL}

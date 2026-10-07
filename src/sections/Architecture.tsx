@@ -1,9 +1,9 @@
-import { useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { AppWindow, Brain, Database, Network, Microscope, ShieldCheck, Workflow, Cpu, Cloud, type LucideIcon } from 'lucide-react';
 import { LAYERS, LAYER_FAMILIES } from '../content';
 import { isCompact, useFormation, useScene } from '../gl/Scene';
 import { useAnchors } from '../gl/useAnchors';
-import { ChapterHead, InfoCard, StepList, TIER_TONES, fitTo, type Step } from '../components/Chapter';
+import { ChapterHead, InfoCard, StepList, fitTo, type Step } from '../components/Chapter';
 
 const ICONS: LucideIcon[] = [AppWindow, Brain, Database, Network, Microscope, ShieldCheck, Workflow, Cpu, Cloud];
 const familyOf = (i: number) => LAYER_FAMILIES.findIndex((f) => i >= f.from && i <= f.to);
@@ -18,6 +18,7 @@ export function Architecture() {
   const card = useRef<HTMLDivElement>(null);
   const lead = useRef<SVGPathElement>(null);
   const tags = useRef<(HTMLButtonElement | null)[]>([]);
+  const cardDim = useRef({ w: 320, h: 220 });
   const [scrolled, setScrolled] = useState(0);
   const [stepP, setStepP] = useState(0);
   const [hovered, setHovered] = useState<number | null>(null);
@@ -26,6 +27,15 @@ export function Architecture() {
   activeRef.current = active;
   const owns = useRef(false);
   const { scrollTo } = useScene();
+
+  useEffect(() => {
+    if (card.current) {
+      cardDim.current = {
+        w: card.current.offsetWidth || 320,
+        h: card.current.offsetHeight || 220,
+      };
+    }
+  }, [active]);
 
   useFormation(
     sectionRef,
@@ -57,11 +67,11 @@ export function Architecture() {
     const el = card.current;
     const path = lead.current;
     if (!el || !path) return;
-    // every other wafer is named by a tag at its front-left corner
+    // every wafer is named by a tag at its front-left corner without disappearing when hovered
     tags.current.forEach((t, i) => {
       if (!t) return;
       const c = pts?.[LAYERS.length + i];
-      const show = c && owns.current && i !== activeRef.current && !isCompact() ? settle : 0;
+      const show = c && owns.current && !isCompact() ? settle : 0;
       t.style.opacity = String(show);
       t.style.pointerEvents = show > 0.5 ? 'auto' : 'none';
       if (c) t.style.transform = `translate3d(${c.x}px, ${c.y}px, 0) translate(calc(-100% - 10px), -50%)`;
@@ -72,10 +82,12 @@ export function Architecture() {
     path.style.opacity = String(on);
     if (!a) return;
     const compact = isCompact();
-    const x = compact ? Math.max(16, Math.min(window.innerWidth - el.offsetWidth - 16, a.x - el.offsetWidth / 2)) : Math.min(a.x + 48, window.innerWidth - el.offsetWidth - 24);
-    const y = compact ? a.y + 22 : Math.max(90, Math.min(window.innerHeight - el.offsetHeight - 80, a.y - el.offsetHeight / 2));
+    const cw = cardDim.current.w;
+    const ch = cardDim.current.h;
+    const x = compact ? Math.max(16, Math.min(window.innerWidth - cw - 16, a.x - cw / 2)) : Math.min(a.x + 48, window.innerWidth - cw - 24);
+    const y = compact ? a.y + 22 : Math.max(90, Math.min(window.innerHeight - ch - 80, a.y - ch / 2));
     el.style.transform = `translate3d(${x}px, ${y}px, 0)`;
-    path.setAttribute('d', compact ? '' : `M${a.x} ${a.y} C${a.x + 24} ${a.y}, ${x - 24} ${y + el.offsetHeight / 2}, ${x} ${y + el.offsetHeight / 2}`);
+    path.setAttribute('d', compact ? '' : `M${a.x} ${a.y} C${a.x + 24} ${a.y}, ${x - 24} ${y + ch / 2}, ${x} ${y + ch / 2}`);
   });
 
   const jump = (i: number) => {
@@ -90,11 +102,11 @@ export function Architecture() {
     title: l.name,
     sub: l.body,
     icon: ICONS[i],
-    tone: TIER_TONES[familyOf(i)],
+    tone: 'violet',
     group: LAYER_FAMILIES[familyOf(i)].name,
   }));
   const L = LAYERS[active];
-  const tone = TIER_TONES[familyOf(active)];
+  const tone = 'violet';
 
   return (
     <section id="architecture" ref={sectionRef} className="ch-pin arch-ch" style={{ '--steps': LAYERS.length, '--step-h': '34svh' } as CSSProperties} data-chapter="Architecture">
@@ -105,8 +117,6 @@ export function Architecture() {
         <div className="wrap ch-grid">
           <div className="ch-copy">
             <ChapterHead
-              index="05"
-              label="Architecture"
               title={['An operating system,', <span className="accent">not an application.</span>]}
               lede="Nine layers in three families. Scroll to follow one request from the app the team uses down to sovereign compute."
             />
@@ -120,14 +130,13 @@ export function Architecture() {
               key={l.name}
               ref={(el) => (tags.current[i] = el)}
               type="button"
-              className={`slab-tag ${i < active ? 'is-above' : ''}`}
-              data-tone={TIER_TONES[familyOf(i)]}
+              className={`slab-tag ${i < active ? 'is-above' : ''} ${i === active ? 'is-active' : ''}`}
+              data-tone="violet"
               onClick={() => jump(i)}
               onMouseEnter={() => setHovered(i)}
               onMouseLeave={() => setHovered(null)}
               tabIndex={-1}
             >
-              <b>{String(i + 1).padStart(2, '0')}</b>
               {l.name}
               <i />
             </button>
@@ -138,7 +147,7 @@ export function Architecture() {
           className="is-floating"
           tone={tone}
           icon={ICONS[active]}
-          kicker={`Layer ${String(active + 1).padStart(2, '0')} / ${LAYERS.length} · ${LAYER_FAMILIES[familyOf(active)].name}`}
+          kicker={LAYER_FAMILIES[familyOf(active)].name}
           title={L.name}
           body={L.body}
           trace={L.trace}

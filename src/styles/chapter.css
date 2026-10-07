@@ -7,7 +7,7 @@
   --tone-violet: #5b3df5;
   --tone-teal: #0e9f8e;
   --tone-steel: #5f6b78;
-  --tone-amber: #d98a0b;
+  --tone-amber: #ea580c;
   --tone-coral: #e2412b;
   --ch-radius: 18px;
   --ch-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -16,14 +16,14 @@
   --tone-violet: #9682ff;
   --tone-teal: #34c9b4;
   --tone-steel: #a3aebb;
-  --tone-amber: #f2b04a;
+  --tone-amber: #ff7a29;
   --tone-coral: #ff6a52;
 }
 [data-tone='violet'] { --tone: var(--tone-violet); }
-[data-tone='teal'] { --tone: var(--tone-teal); }
-[data-tone='steel'] { --tone: var(--tone-steel); }
-[data-tone='amber'] { --tone: var(--tone-amber); }
-[data-tone='coral'] { --tone: var(--tone-coral); }
+[data-tone='teal'] { --tone: var(--tone-violet); }
+[data-tone='steel'] { --tone: var(--tone-violet); }
+[data-tone='amber'] { --tone: var(--tone-violet); }
+[data-tone='coral'] { --tone: var(--tone-violet); }
 
 /* ── Pinned chapter scaffold ────────────────────────────────────────────── */
 

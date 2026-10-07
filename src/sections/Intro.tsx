@@ -2,9 +2,9 @@ import { useEffect, useRef, type CSSProperties } from 'react';
 import { useFormation, worldYOf } from '../gl/Scene';
 import { Fade, SectionHead, useInView } from '../components/Reveal';
 import { PILLARS_PLAIN, SCENARIO } from '../content';
-import { ThemedVideo } from '../components/ThemedVideo';
+import { PillarAnimation } from '../components/PillarAnimation';
 
-const PILLAR_CLIPS = ['remember', 'connect', 'learn'];
+const PILLAR_ANIMATIONS = ['remember', 'connect', 'learn'] as const;
 
 function Mark({ ok }: { ok: boolean }) {
   return (
@@ -18,7 +18,7 @@ function Mark({ ok }: { ok: boolean }) {
 export function Intro() {
   const ref = useRef<HTMLElement>(null);
   useFormation(ref, () => ({
-    key: 'logo',
+    key: 'heroLogo',
     pose: { x: 1.65, y: worldYOf(ref.current, 0), s: 0.92 },
     mobilePose: { x: 0, y: worldYOf(ref.current, 0), s: 0.56 },
     params: { alpha: 0 },
@@ -54,8 +54,6 @@ export function Intro() {
     <section id="intro" ref={ref} className="section intro" data-chapter="What we build">
       <div className="wrap">
         <SectionHead
-          index="01"
-          label="What we’re building"
           title={['AI that remembers, connects', 'and keeps learning.']}
           lede="Most AI tools start from zero every time, work alone and stop learning once they are trained. We are building the layer underneath them: one shared intelligence that every application can draw on."
         />
@@ -155,10 +153,9 @@ export function Intro() {
           {PILLARS_PLAIN.map((p, i) => (
             <Fade as="li" key={p.title} delay={i * 90} className="pillar-card">
               <div className="pillar-media">
-                <ThemedVideo name={PILLAR_CLIPS[i]} label={`${p.title}: an animated illustration`} />
+                <PillarAnimation kind={PILLAR_ANIMATIONS[i]} label={`${p.title}: an animated illustration`} />
               </div>
               <div className="pillar-copy">
-                <span className="pillar-num">0{i + 1}</span>
                 <h3>{p.title}</h3>
                 <p>{p.body}</p>
               </div>

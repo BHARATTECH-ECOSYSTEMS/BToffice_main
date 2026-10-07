@@ -39,8 +39,8 @@
   --green: #12935f;
   --green-soft: rgba(18, 147, 95, 0.09);
   --green-line: rgba(18, 147, 95, 0.35);
-  --amber: #e89b0c;
-  --amber-soft: rgba(232, 155, 12, 0.12);
+  --amber: #ea580c;
+  --amber-soft: rgba(234, 88, 12, 0.12);
 
   /* the older token names the components use, pointed at the new palette */
   --accent: var(--violet);
@@ -55,10 +55,10 @@
   --tango-soft: var(--red-soft);
   --tango-line: var(--red-line);
   --pitch: var(--amber);
-  --pitch-text: #b07300;
+  --pitch-text: #c2410c;
   --pitch-fill: var(--amber);
   --pitch-soft: var(--amber-soft);
-  --pitch-line: rgba(176, 115, 0, 0.4);
+  --pitch-line: rgba(234, 88, 12, 0.4);
   --danger: var(--red);
   --ok: var(--green);
   --panel: #15130f;
@@ -105,12 +105,12 @@
   --green: #3ccf8e;
   --green-soft: rgba(60, 207, 142, 0.12);
   --green-line: rgba(60, 207, 142, 0.4);
-  --amber: #ffb52e;
-  --amber-soft: rgba(255, 181, 46, 0.13);
+  --amber: #ff7a29;
+  --amber-soft: rgba(255, 122, 41, 0.14);
   --accent-fill: #6f55ff;
   --brand-fill: #6f55ff;
   --tango-text: #ff8a76;
-  --pitch-text: #ffc457;
+  --pitch-text: #ff9147;
   --on-tone: #160c02;
   --panel: #1f1d26;
 
@@ -1995,8 +1995,14 @@ body {
   color: var(--ink);
 }
 .how-trace {
-  background: #0b0a0f;
-  box-shadow: inset 0 0 0 1px var(--line);
+  background: linear-gradient(145deg, #211e2a, #17151d);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  box-shadow: 0 16px 30px -24px rgb(0 0 0 / 0.9), inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+.how-list-trace {
+  background: linear-gradient(145deg, #211e2a, #17151d);
+  border: 1px solid rgb(255 255 255 / 0.12);
+  box-shadow: 0 12px 24px -22px rgb(0 0 0 / 0.9);
 }
 .how .tag,
 .builders .tag {
