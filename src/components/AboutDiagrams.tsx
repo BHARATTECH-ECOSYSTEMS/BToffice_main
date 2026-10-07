@@ -387,7 +387,7 @@ export const AUDIENCE_CATEGORIES = [
     id: 'research',
     title: 'Researchers & Scientists',
     badge: 'Science',
-    description: 'Literature reviews that run for months, experiments tracked over time, and one memory shared by the whole lab.',
+    description: 'Literature reviews that run for months, experiments tracked over time, and one memory shared by the whole office.',
     metric: '400k+ sources synthesized',
     audiences: ['Researchers', 'Scientists', 'Students'],
   },

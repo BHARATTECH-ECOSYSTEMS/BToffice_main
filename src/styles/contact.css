@@ -1,0 +1,846 @@
+/* ═════════════════════════════════════════════════════════════════════════
+   Bharattech Origin — Contact Page Styles (Centered Hero & Refined Spacing)
+   ═════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --paper-2: rgba(255, 255, 255, 0.88);
+}
+
+[data-theme='dark'] {
+  --paper-2: rgba(26, 24, 34, 0.88);
+}
+
+.page-contact {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   1. Centered Hero Section (Fixed Spacing & Full Alignment)
+   ───────────────────────────────────────────────────────────────────────── */
+.page-contact .page-hero {
+  min-height: 62svh;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  padding: calc(var(--nav-h) + 64px) 0 clamp(48px, 6vw, 72px) !important;
+}
+
+.page-contact .page-hero .wrap {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  max-width: 860px !important;
+  margin: 0 auto !important;
+  padding: 0 var(--gutter);
+}
+
+.page-contact .page-hero .wrap > * {
+  grid-column: 1 / -1 !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+}
+
+.page-contact .page-hero .h1,
+.page-contact .page-hero h1 {
+  text-align: center !important;
+  margin: 0 auto 20px !important;
+  width: 100% !important;
+  font-size: clamp(2.8rem, 5.5vw, 4.6rem);
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+}
+
+.page-contact .page-hero .lines {
+  text-align: center !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+.page-contact .page-hero .line {
+  text-align: center !important;
+  width: 100% !important;
+  display: block;
+}
+
+.page-contact .page-hero .line > span {
+  display: inline-block !important;
+  text-align: center !important;
+}
+
+.page-contact .page-hero .lede {
+  max-width: 620px !important;
+  margin: 0 auto !important;
+  text-align: center !important;
+  font-size: clamp(1.05rem, 1.4vw, 1.25rem);
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.contact-hero-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 36px;
+}
+
+.contact-hero-mail {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 24px;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-family: var(--font-mono, monospace);
+  text-decoration: none;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.contact-hero-mail:hover {
+  border-color: var(--violet);
+  background: var(--paper-3);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px -6px rgba(124, 77, 255, 0.15);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   2. Main Contact Section & 2-Column Grid
+   ───────────────────────────────────────────────────────────────────────── */
+.contact-main-section {
+  padding-top: clamp(48px, 6vw, 80px);
+  padding-bottom: clamp(64px, 8vw, 112px);
+  position: relative;
+}
+
+.contact-main-section .wrap,
+.contact-visit-section .wrap,
+.contact-faq-section .wrap {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+.contact-grid-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(36px, 5vw, 68px);
+  align-items: start;
+}
+
+/* Left Column: Ways to Connect */
+.contact-ways-col {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.contact-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-2);
+}
+
+.contact-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--violet);
+  box-shadow: 0 0 10px var(--violet);
+  animation: pulse-dot 2.2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(0.85); }
+}
+
+.contact-ways-title {
+  font-size: clamp(1.8rem, 2.5vw, 2.4rem);
+  line-height: 1.18;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.contact-ways-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.contact-way-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+  padding: 22px;
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.contact-way-card:hover {
+  border-color: var(--violet);
+  background: var(--paper-3);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 30px -8px rgba(0, 0, 0, 0.08);
+}
+
+.contact-way-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(124, 77, 255, 0.08);
+  border: 1px solid rgba(124, 77, 255, 0.18);
+  color: var(--violet);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.25s ease;
+}
+
+.contact-way-card:hover .contact-way-icon {
+  transform: scale(1.08);
+  background: var(--violet);
+  color: #fff;
+}
+
+.contact-way-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.contact-way-desc {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+  line-height: 1.45;
+}
+
+.contact-way-val {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+
+/* Right Column: Brief Card */
+.contact-brief-card {
+  border-radius: 24px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: clamp(28px, 4vw, 44px);
+  box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.06);
+}
+
+.brief-form {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.brief-title {
+  font-size: clamp(1.4rem, 1.8vw, 1.8rem);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  margin: 0 0 6px;
+  color: var(--ink);
+}
+
+.brief-fieldset {
+  border: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.brief-legend {
+  font-family: inherit;
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  color: var(--ink);
+  display: block;
+  margin-bottom: 4px;
+}
+
+.brief-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.brief-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 20px;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--ink-2);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.brief-chip:hover {
+  border-color: var(--violet);
+  color: var(--ink);
+  background: var(--paper-3);
+  transform: translateY(-1px);
+}
+
+.brief-chip.is-active {
+  border-color: var(--violet);
+  background: var(--violet);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(124, 77, 255, 0.35);
+  transform: translateY(-1px);
+}
+
+.brief-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.brief-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.brief-label {
+  font-family: inherit;
+  font-size: 0.94rem;
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--ink);
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.brief-label em {
+  font-style: normal;
+  color: var(--ink-2);
+  font-weight: 400;
+  font-size: 0.84rem;
+}
+
+.brief-input,
+.brief-textarea {
+  width: 100%;
+  padding: 15px 18px;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.96rem;
+  font-family: inherit;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  outline: none;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.brief-input::placeholder,
+.brief-textarea::placeholder {
+  color: var(--ink-3);
+  font-family: inherit;
+  font-size: 0.92rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  opacity: 0.75;
+}
+
+.brief-input:focus,
+.brief-textarea:focus {
+  border-color: var(--violet);
+  background: var(--paper-2);
+  box-shadow: 0 0 0 3px rgba(124, 77, 255, 0.14);
+}
+
+.brief-textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.55;
+}
+
+.brief-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.brief-note {
+  font-size: 0.82rem;
+  color: var(--ink-2);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Success state */
+.brief-sent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 18px;
+  padding: 40px 20px;
+}
+
+.brief-sent-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: rgba(124, 77, 255, 0.12);
+  color: var(--violet);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   3. Visit / Office Location Section
+   ───────────────────────────────────────────────────────────────────────── */
+.contact-visit-section {
+  padding-top: clamp(64px, 8vw, 108px);
+  padding-bottom: clamp(64px, 8vw, 112px);
+  border-top: 1px solid var(--line);
+  position: relative;
+}
+
+.contact-visit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 6.5fr) minmax(0, 5.5fr);
+  gap: clamp(36px, 6vw, 72px);
+  align-items: center;
+}
+
+.visit-map-card {
+  position: relative;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.07);
+  display: block;
+  text-decoration: none;
+  color: inherit;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s ease;
+}
+
+.visit-map-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--violet);
+}
+
+.visit-map-svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.visit-map-badge {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  background: rgba(10, 10, 14, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #ffffff;
+  font-size: 0.8rem;
+  font-family: var(--font-mono, monospace);
+}
+
+.visit-map-badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--violet);
+}
+
+/* ── 3D Isometric Diorama Square Card (Pure Transparent Blend) ──────────── */
+.office-diorama-card {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-width: 500px;
+  margin: 0 auto;
+  border-radius: 28px;
+  overflow: hidden;
+  background: transparent;
+  border: 1px solid var(--line);
+  box-shadow: 0 16px 40px -16px rgba(0, 0, 0, 0.08);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.4s ease, box-shadow 0.4s ease;
+  user-select: none;
+}
+
+[data-theme='dark'] .office-diorama-card {
+  background: transparent;
+  border: 1px solid rgba(167, 139, 250, 0.22);
+  box-shadow: 0 20px 50px -20px rgba(0, 0, 0, 0.4);
+}
+
+.office-diorama-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--violet);
+  box-shadow: 0 30px 60px -18px rgba(124, 77, 255, 0.22);
+}
+
+.office-diorama-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+
+.office-diorama-canvas:active {
+  cursor: grabbing;
+}
+
+.office-diorama-canvas canvas {
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* Projected HTML Tag */
+.office-diorama-pin-tag {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--paper);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 6px 14px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+  white-space: nowrap;
+  z-index: 10;
+  transform-origin: bottom center;
+}
+
+.office-diorama-pin-tag::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--paper);
+}
+
+.diorama-tag-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  font-family: inherit;
+}
+
+.diorama-tag-sub {
+  font-size: 0.68rem;
+  color: var(--violet);
+  font-family: inherit;
+  margin-top: 1px;
+}
+
+/* Top Floating Pill */
+.office-diorama-top-badge {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  background: var(--paper);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--line);
+  color: var(--ink-2);
+  font-size: 0.74rem;
+  letter-spacing: 0.02em;
+  font-family: inherit;
+  z-index: 5;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.diorama-spin-icon {
+  color: var(--violet);
+}
+
+/* Bottom Floating Control / Map Link Pill */
+.office-diorama-bottom-badge {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 18px;
+  border-radius: 9999px;
+  background: var(--paper);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--line);
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-weight: 500;
+  font-family: inherit;
+  z-index: 5;
+  transition: all 0.25s ease;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+}
+
+.office-diorama-bottom-badge:hover {
+  background: var(--paper-2);
+  border-color: var(--violet);
+  transform: translateY(-1px);
+}
+
+.diorama-pulse-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #7c4dff;
+  box-shadow: 0 0 8px #7c4dff;
+  animation: dioramaPulse 2s infinite ease-in-out;
+}
+
+@keyframes dioramaPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.7; }
+}
+
+.diorama-badge-text {
+  flex: 1;
+}
+
+.visit-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.visit-title {
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.visit-lead {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 0;
+}
+
+.visit-ctas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   4. FAQ Accordion Section
+   ───────────────────────────────────────────────────────────────────────── */
+.contact-faq-section {
+  padding-top: clamp(64px, 8vw, 108px);
+  padding-bottom: clamp(72px, 9vw, 128px);
+  border-top: 1px solid var(--line);
+}
+
+.contact-faq-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 4.5fr) minmax(0, 7.5fr);
+  gap: clamp(36px, 6vw, 72px);
+  align-items: start;
+}
+
+.contact-faq-head {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: sticky;
+  top: calc(var(--nav-h) + 32px);
+}
+
+.contact-faq-title {
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.contact-faq-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.faq-card {
+  border-radius: 18px;
+  border: 1px solid var(--line);
+  background: var(--paper-2);
+  overflow: hidden;
+  transition: border-color 0.25s ease, background 0.25s ease;
+}
+
+.faq-card.is-open {
+  border-color: var(--violet);
+  background: var(--paper-3);
+}
+
+.faq-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px;
+  border: none;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: -0.01em;
+}
+
+.faq-trigger-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.faq-num {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.85rem;
+  color: var(--violet);
+  opacity: 0.85;
+}
+
+.faq-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.25s ease;
+}
+
+.faq-card.is-open .faq-icon {
+  transform: rotate(180deg);
+  border-color: var(--violet);
+  color: var(--violet);
+}
+
+.faq-body {
+  padding: 0 24px 24px calc(24px + 16px + 20px);
+  color: var(--ink-2);
+  font-size: 0.96rem;
+  line-height: 1.65;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   5. Responsive Media Queries
+   ───────────────────────────────────────────────────────────────────────── */
+@media (max-width: 960px) {
+  .contact-grid-layout,
+  .contact-visit-grid,
+  .contact-faq-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 40px;
+  }
+
+  .contact-faq-head {
+    position: static;
+  }
+}
+
+@media (max-width: 600px) {
+  .brief-row {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-hero-ctas,
+  .visit-ctas {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .contact-hero-ctas .btn,
+  .contact-hero-mail,
+  .visit-ctas .btn {
+    width: 100%;
+    justify-content: center;
+  }
+}

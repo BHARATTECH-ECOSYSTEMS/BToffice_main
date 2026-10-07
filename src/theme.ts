@@ -5,8 +5,18 @@ const listeners = new Set<(t: Theme) => void>();
 
 const getForcedTheme = (): Theme | null => {
   if (typeof window === 'undefined') return null;
-  const requested = new URLSearchParams(window.location.search).get('theme');
-  return requested === 'light' || requested === 'dark' ? requested : null;
+  // 1. Check standard query parameter: ?theme=dark#/contact
+  const searchTheme = new URLSearchParams(window.location.search).get('theme');
+  if (searchTheme === 'light' || searchTheme === 'dark') return searchTheme;
+
+  // 2. Check hash query parameter: #/contact?theme=dark
+  if (window.location.hash.includes('?')) {
+    const hashQuery = window.location.hash.slice(window.location.hash.indexOf('?'));
+    const hashTheme = new URLSearchParams(hashQuery).get('theme');
+    if (hashTheme === 'light' || hashTheme === 'dark') return hashTheme;
+  }
+
+  return null;
 };
 
 /**
@@ -52,18 +62,20 @@ export function useTheme() {
   return [t, () => setTheme(t === 'dark' ? 'light' : 'dark')] as const;
 }
 
-// Automatically sync theme according to the 6 AM / 6 PM schedule
+// Automatically sync theme according to URL parameter or the 6 AM / 6 PM schedule
 if (typeof window !== 'undefined') {
   const syncTheme = () => {
-    if (getForcedTheme()) return;
-    const scheduled = getScheduledTheme();
-    if (scheduled !== current) {
-      setTheme(scheduled);
+    const forced = getForcedTheme();
+    const target = forced ?? getScheduledTheme();
+    if (target !== current) {
+      setTheme(target);
     }
   };
   // Check every 30 seconds
   setInterval(syncTheme, 30000);
   window.addEventListener('focus', syncTheme);
+  window.addEventListener('hashchange', syncTheme);
+  window.addEventListener('popstate', syncTheme);
   document.addEventListener('visibilitychange', () => {
     if (!document.hidden) syncTheme();
   });

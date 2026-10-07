@@ -10,5 +10,6 @@ import './styles/rail.css';
 import './styles/curtain.css';
 import './styles/polish.css';
 import './styles/perf.css';
+import './styles/contact.css';
 
 createRoot(document.getElementById('root')!).render(<App />);

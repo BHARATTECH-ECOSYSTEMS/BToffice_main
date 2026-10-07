@@ -93,7 +93,7 @@ export function Laboratory() {
             />
             <StepList steps={steps} active={active} progress={hovered === null ? stepP : 1} onHover={setHovered} onPick={jump} dense />
             <Link to="/research" className="link ch-more">
-              Enter the lab <Arrow size={13} />
+              Enter the office <Arrow size={13} />
             </Link>
           </div>
           <div ref={visRef} className="ch-visual" aria-hidden="true" />

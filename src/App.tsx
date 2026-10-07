@@ -9,6 +9,7 @@ import { useScrollFx } from './components/ScrollFx';
 import { PageCurtain } from './components/PageCurtain';
 import { Home } from './pages/Home';
 import { About } from './pages/About';
+import { AboutTest } from './pages/AboutTest';
 import { Research } from './pages/Research';
 import { Careers } from './pages/Careers';
 import { Blog } from './pages/Blog';
@@ -151,6 +152,7 @@ const router = createHashRouter([
     children: [
       { index: true, Component: Home },
       { path: 'about', Component: About },
+      { path: 'about-test', Component: AboutTest },
       { path: 'research', Component: Research },
       { path: 'careers', Component: Careers },
       { path: 'publications', Component: Blog },

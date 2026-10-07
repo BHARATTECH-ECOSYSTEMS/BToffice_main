@@ -4,7 +4,13 @@ import { useFormation } from '../gl/Scene';
 import type { Target } from '../gl/Engine';
 import { Lines } from './Reveal';
 
-export function PageHero({ title, lede, meta, target, children }: {
+export function PageHero({
+  title,
+  lede,
+  meta,
+  target,
+  children,
+}: {
   title: ReactNode[];
   lede: ReactNode;
   meta?: ReactNode;
@@ -28,6 +34,7 @@ export function PageHero({ title, lede, meta, target, children }: {
       clearTimeout(t);
     };
   }, [ready]);
+
   return (
     <section ref={ref} className="page-hero">
       <div className="wrap">

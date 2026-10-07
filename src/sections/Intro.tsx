@@ -1,6 +1,7 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { useFormation, worldYOf } from '../gl/Scene';
-import { Fade, SectionHead, useInView } from '../components/Reveal';
+import { Fade, useInView } from '../components/Reveal';
+import { ScrollLitIntroHead } from '../components/ScrollLitIntroHead';
 import { PILLARS_PLAIN, SCENARIO } from '../content';
 import { PillarAnimation } from '../components/PillarAnimation';
 
@@ -53,10 +54,7 @@ export function Intro() {
   return (
     <section id="intro" ref={ref} className="section intro" data-chapter="What we build">
       <div className="wrap">
-        <SectionHead
-          title={['AI that remembers, connects', 'and keeps learning.']}
-          lede="Most AI tools start from zero every time, work alone and stop learning once they are trained. We are building the layer underneath them: one shared intelligence that every application can draw on."
-        />
+        <ScrollLitIntroHead />
 
         <div ref={sceneRef} className={`scene-demo ${sceneIn ? 'is-in' : ''}`}>
           <div className="scene-head">

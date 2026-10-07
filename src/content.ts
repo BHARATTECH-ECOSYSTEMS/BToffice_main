@@ -335,7 +335,7 @@ export const AUDIENCE_DETAIL = [
   {
     name: 'Researchers',
     line: 'A research partner that remembers every source, experiment and dead end, and picks up exactly where you left off.',
-    uses: ['Long-horizon literature reviews', 'Hypotheses tracked over months', 'Shared memory for the whole lab'],
+    uses: ['Long-horizon literature reviews', 'Hypotheses tracked over months', 'Shared memory for the whole office'],
   },
   {
     name: 'Developers',

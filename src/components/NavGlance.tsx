@@ -93,7 +93,7 @@ export function NavGlance({
                 <Tile key={p.title} icon={PRINCIPLE_ICONS[i]} title={p.title.replace('Intelligence should ', 'Should ')} body={p.body} to="/about" onGo={onGo} />
               ))}
             </div>
-            <Side title="An Indian deep-tech lab" body="Building the operating system for intelligence: one layer that remembers, reasons and keeps learning." cta="About Origin" to="/about" onGo={onGo} />
+            <Side title="An Indian deep-tech office" body="Building the operating system for intelligence: one layer that remembers, reasons and keeps learning." cta="About Origin" to="/about" onGo={onGo} />
           </>
         );
       case 'capabilities':
@@ -156,7 +156,7 @@ export function NavGlance({
                   <small>{EMAIL}</small>
                 </span>
               </a>
-              <Tile icon={FlaskConical} title="Collaborate on research" body="Institutions and teams who want to work with the lab early." to="/contact" onGo={onGo} />
+              <Tile icon={FlaskConical} title="Collaborate on research" body="Institutions and teams who want to work with the office early." to="/contact" onGo={onGo} />
               <Tile icon={Briefcase} title="Join the team" body={`${ROLES.length} open roles in research, engineering and operations.`} to="/careers" onGo={onGo} />
               <Tile icon={Newspaper} title="Press and partnerships" body="Stories, speaking and partnership enquiries." to="/contact" onGo={onGo} />
             </div>
@@ -171,7 +171,7 @@ export function NavGlance({
                 <Tile key={d.id} icon={DOMAIN_ICONS[i]} title={d.name} body={d.field} to="/research" onGo={onGo} />
               ))}
             </div>
-            <Side title="Six domains, one programme" body="Every domain feeds what it learns back into the same intelligence." cta="Enter the lab" to="/research" onGo={onGo} />
+            <Side title="Six domains, one programme" body="Every domain feeds what it learns back into the same intelligence." cta="Enter the office" to="/research" onGo={onGo} />
           </>
         );
       case 'careers':

@@ -73,9 +73,9 @@ export function Research() {
         </div>
       </Zone>
 
-      <Zone target={{ key: 'field', params: { alpha: 0.5 } }} className="section">
+      <Zone target={{ key: 'field', params: { alpha: 0.5 } }} className="section research-cloud-section">
         <div className="wrap">
-          <div style={{ maxWidth: 720, marginBottom: 48 }}>
+          <div style={{ marginBottom: 48 }} className="research-cloud-head">
             <Lines className="h2" lines={['Where we work.']} />
           </div>
           <Fade className="tech-cloud">

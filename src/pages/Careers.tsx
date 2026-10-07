@@ -29,7 +29,7 @@ export function Careers() {
 
       <Zone target={{ key: 'field', params: { alpha: 0 } }} className="section careers-roles" id="roles">
         <div className="wrap">
-          <div style={{ marginBottom: 40 }}>
+          <div style={{ marginBottom: 40 }} className="careers-roles-head">
             <Lines className="h2" lines={['Find your', 'problem.']} />
           </div>
           <div className="filters">
