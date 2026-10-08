@@ -5,7 +5,7 @@ import { Arrow, Eyebrow, Headline, Reveal, toneStyle } from '../components/ui';
 import { CONTACT_FAQ, CONTACT_NEEDS, EMAIL, HQ, HQ_MAP } from '../content';
 import type { HueName } from '../gl/palette';
 
-const NEED_TONES: HueName[] = ['emerald', 'cobalt', 'violet', 'tangerine', 'saffron', 'pink'];
+const NEED_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
 
 export function Contact() {
   const [need, setNeed] = useState(0);
@@ -25,7 +25,7 @@ export function Contact() {
     <>
       <PageHero
         eyebrow="Contact"
-        tone="cobalt"
+        tone="violet"
         title={['Let’s build', 'what comes next.']}
         lede="Direct access to our research and engineering teams. Every message is read by a person."
         object="mark"
@@ -76,7 +76,7 @@ export function Contact() {
               </form>
             </Reveal>
             <div className="contact-side">
-              <Reveal className="cell cell-row" style={toneStyle('cobalt')} delay={80}>
+              <Reveal className="cell cell-row" style={toneStyle('violet')} delay={80}>
                 <span className="icon-tile">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M4 6h16v12H4zM4 7l8 6 8-6" />
@@ -102,7 +102,7 @@ export function Contact() {
                   </a>
                 </div>
               </Reveal>
-              <Reveal className="cell cell-row" style={toneStyle('emerald')} delay={200}>
+              <Reveal className="cell cell-row" style={toneStyle('saffron')} delay={200}>
                 <span className="icon-tile">
                   <svg viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3" />

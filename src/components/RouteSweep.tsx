@@ -1,0 +1,82 @@
+import { useEffect, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router';
+import '../styles/route-sweep.css';
+
+/** Keep the transition inside the navigation, with the page changing beneath it. */
+export function RouteSweep() {
+  const ref = useRef<HTMLDivElement>(null);
+  const location = useLocation();
+  const pathname = useRef(location.pathname);
+  pathname.current = location.pathname;
+  const navigate = useNavigate();
+  useEffect(() => {
+    const sweep = ref.current;
+    if (!sweep) return;
+    let running = false;
+    let timer = 0;
+    let frame = 0;
+    const animations = new Set<Animation>();
+    const animate = (element: Element | null, frames: Keyframe[], options: KeyframeAnimationOptions) => {
+      if (!element) return;
+      const animation = element.animate(frames, options);
+      animations.add(animation);
+      return animation;
+    };
+    const clear = () => {
+      animations.forEach(animation => animation.cancel());
+      animations.clear();
+      sweep.classList.remove('is-running');
+      running = false;
+    };
+    const click = (event: MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return;
+      const target = event.target instanceof Element ? event.target : null;
+      const link = target?.closest<HTMLAnchorElement>('a');
+      const capabilities = target?.closest('.nav-links > button, .nav-sheet li > button');
+      if (!link && !capabilities) return;
+      if (link && (link.target === '_blank' || link.hasAttribute('download'))) return;
+      const href = link?.getAttribute('href') ?? (capabilities ? '#/' : '');
+      if (!href.startsWith('#/')) return;
+      const route = href.slice(1);
+      if (route.split('?')[0] === pathname.current) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches || !sweep.animate) return;
+      event.preventDefault();
+      event.stopPropagation();
+      if (running) return;
+      running = true;
+      const nav = document.querySelector('.nav-bar');
+      if (nav) {
+        const rect = nav.getBoundingClientRect();
+        Object.assign(sweep.style, { top: `${rect.top}px`, left: `${rect.left}px`, width: `${rect.width}px`, height: `${rect.height}px` });
+      }
+      sweep.classList.add('is-running');
+      const entrance = animate(sweep, [
+        { transform: 'translate3d(-104%,0,0)', opacity: 0 },
+        { opacity: .88, offset: .18 },
+        { transform: 'translate3d(0,0,0)', opacity: .82 },
+      ], { duration: 360, easing: 'cubic-bezier(.65,0,.35,1)', fill: 'forwards' });
+      animate(document.querySelector('#main'), [{ opacity: 1, transform: 'translate3d(0,0,0)' }, { opacity: .18, transform: 'translate3d(0,-8px,0)' }], { duration: 260, easing: 'ease-out', fill: 'forwards' });
+      const footer = document.querySelector('.footer');
+      animate(footer, [{ opacity: 1 }, { opacity: .18 }], { duration: 260, easing: 'ease-out', fill: 'forwards' });
+      timer = window.setTimeout(() => {
+        navigate(route, capabilities ? { state: { scrollTo: 'capabilities' } } : undefined);
+        frame = requestAnimationFrame(() => {
+          animate(document.querySelector('#main'), [{ opacity: 0, transform: 'translate3d(0,18px,0)' }, { opacity: 1, transform: 'translate3d(0,0,0)' }], { duration: 560, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'both' });
+          animate(footer, [{ opacity: .18 }, { opacity: 1 }], { duration: 420, easing: 'ease-out', fill: 'forwards' });
+          entrance?.finished.then(() => {
+            const exit = animate(sweep, [{ transform: 'translate3d(0,0,0)', opacity: .82 }, { transform: 'translate3d(104%,0,0)', opacity: 0 }], { duration: 440, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' });
+            if (exit) exit.onfinish = clear;
+          }, () => {});
+        });
+      }, 280);
+    };
+    document.addEventListener('click', click, true);
+    return () => {
+      document.removeEventListener('click', click, true);
+      window.clearTimeout(timer);
+      cancelAnimationFrame(frame);
+      clear();
+    };
+  }, [navigate]);
+  return <div ref={ref} className="route-sweep" aria-hidden="true" />;
+}

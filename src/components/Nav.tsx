@@ -6,12 +6,13 @@ import { useScene } from '../gl/Scene';
 import { NavPeek, type PeekId } from './NavPeek';
 import type { HueName } from '../gl/palette';
 
-const LINKS: { label: string; to: string; section?: string; tone: HueName; peek: PeekId }[] = [
-  { label: 'Research', to: '/research', tone: 'emerald', peek: 'research' },
-  { label: 'Capabilities', to: '/', section: 'capabilities', tone: 'cobalt', peek: 'capabilities' },
+const LINKS: { label: string; to: string; section?: string; tone: HueName; peek?: PeekId }[] = [
+  { label: 'Research', to: '/research', tone: 'saffron', peek: 'research' },
   { label: 'Publications', to: '/publications', tone: 'violet', peek: 'publications' },
-  { label: 'Careers', to: '/careers', tone: 'tangerine', peek: 'careers' },
-  { label: 'About', to: '/about', tone: 'pink', peek: 'about' },
+  { label: 'Capabilities', to: '/', section: 'capabilities', tone: 'tangerine', peek: 'capabilities' },
+  { label: 'Careers', to: '/careers', tone: 'saffron', peek: 'careers' },
+  { label: 'About', to: '/about', tone: 'violet', peek: 'about' },
+  { label: 'Contact', to: '/contact', tone: 'tangerine' },
 ];
 
 const fine = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
@@ -204,22 +205,20 @@ export function Nav() {
   const peekProps = (l: (typeof LINKS)[number], i: number) => ({
     onPointerEnter: (e: React.PointerEvent) => {
       setHover(i);
-      if (e.pointerType === 'mouse' && fine()) openPeek(l.peek);
+      if (l.peek && e.pointerType === 'mouse' && fine()) openPeek(l.peek);
+      else if (!l.peek) closePeek();
     },
     onFocus: () => setHover(i),
     onBlur: () => setHover(-1),
     onKeyDown: (e: React.KeyboardEvent) => {
-      if (e.key !== 'ArrowDown') return;
+      if (!l.peek || e.key !== 'ArrowDown') return;
       e.preventDefault();
       openPeek(l.peek);
       window.setTimeout(() => document.querySelector<HTMLElement>(`#peek-${l.peek} button`)?.focus(), 160);
     },
-    'aria-expanded': peek === l.peek,
-    'aria-controls': `peek-${l.peek}`,
+    'aria-expanded': l.peek ? peek === l.peek : undefined,
+    'aria-controls': l.peek ? `peek-${l.peek}` : undefined,
   });
-
-  const current = CHAPTERS[chapter];
-  const ring = 2 * Math.PI * 6.5;
 
   return (
     <header className="nav" data-peek={peek || undefined} data-hidden={(hidden && !open && !peek) || undefined} data-compact={compact || open || undefined} data-open={open || undefined}>
@@ -228,19 +227,6 @@ export function Nav() {
         <Link to="/" className="nav-brand" aria-label="Bharattech Origin, home" onClick={() => home && scrollTo(0)}>
           <Brand />
         </Link>
-
-        {home && (
-          <button className="nav-readout" style={toneStyle(current.tone)} onClick={() => toChapter(current.id)} aria-label={`Chapter ${chapter + 1}: ${current.label}`}>
-            <svg className="nav-ring" viewBox="0 0 16 16" aria-hidden="true">
-              <circle cx="8" cy="8" r="6.5" className="nav-ring-track" />
-              <circle cx="8" cy="8" r="6.5" className="nav-ring-fill" style={{ strokeDasharray: ring, strokeDashoffset: ring * (1 - fills[chapter]) }} />
-            </svg>
-            <span className="nav-readout-num">{String(chapter + 1).padStart(2, '0')}</span>
-            <span className="nav-readout-label" key={current.id}>
-              {current.label}
-            </span>
-          </button>
-        )}
 
         <nav
           className="nav-links"

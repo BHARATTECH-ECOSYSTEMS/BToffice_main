@@ -11,8 +11,8 @@ export function Research() {
       <div className="wrap">
         <div className="section-head">
           <div>
-            <Eyebrow tone="emerald">Research</Eyebrow>
-            <Headline tone="emerald" lines={['Six domains.', 'One intelligence.']} />
+            <Eyebrow tone="violet">Research</Eyebrow>
+            <Headline tone="violet" lines={['Six domains.', 'One intelligence.']} />
           </div>
           <Reveal as="p" className="lede" delay={120}>
             Our research spans six connected domains. They are not separate products: each one strengthens every other.

@@ -131,7 +131,6 @@ export function HowItWorks() {
                   <path d={ICONS[i]} />
                 </svg>
               </span>
-              <small>{String(i + 1).padStart(2, '0')}</small>
               {s.step}
             </button>
           ))}

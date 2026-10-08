@@ -97,7 +97,6 @@ export function StepTabs({ labels, step, goTo, tones, className = '' }: { labels
           <span className="step-tab-bar" aria-hidden="true">
             <span />
           </span>
-          <small>{String(i + 1).padStart(2, '0')}</small>
           <b>{l}</b>
         </button>
       ))}

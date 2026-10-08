@@ -126,10 +126,6 @@ export function Story() {
             const Tag = i === 0 ? 'h1' : 'h2';
             return (
               <article key={i} ref={(n) => (beats.current[i] = n)} className={`beat is-act-${c.act}${i === 0 ? ' is-hero' : ''}`} aria-hidden={current !== i || undefined}>
-                <p className="beat-eyebrow">
-                  <i />
-                  {c.act === 0 ? 'Bharattech Origin · Research lab, India' : `${ACTS[c.act].label} · ${String(c.act === 1 ? i : i - 4).padStart(2, '0')}`}
-                </p>
                 <Tag className="beat-title">
                   {c.title.map((line, k) => (
                     <span key={k} className="beat-line" style={{ '--k': k } as CSSProperties}>
@@ -178,9 +174,6 @@ export function Story() {
               <i />
             </button>
           ))}
-          <span className="story-count">
-            {String(current + 1).padStart(2, '0')} <em>/ {String(BEATS).padStart(2, '0')}</em>
-          </span>
         </nav>
       </div>
     </section>

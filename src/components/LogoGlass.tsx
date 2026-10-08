@@ -5,7 +5,7 @@ import { Studio } from '../gl/Studio';
  * The mark as the same piece of violet glass the home film is made of, sitting in a page. Falls back to
  * nothing when WebGL is unavailable; the page reads fine without it.
  */
-export function LogoGlass({ background = '#fbf6ef', className = '' }: { background?: string; className?: string }) {
+export function LogoGlass({ background = '#F8F7F3', className = '' }: { background?: string; className?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [gl, setGl] = useState(true);
 

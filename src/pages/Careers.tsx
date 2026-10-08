@@ -69,7 +69,7 @@ const TEAM_ART: Record<string, number> = {
 };
 
 const DEPTS = ['All', 'Research', 'Engineering', 'Operations'];
-const DEPT_TONE: Record<string, HueName> = { Research: 'emerald', Engineering: 'cobalt', Operations: 'tangerine' };
+const DEPT_TONE: Record<string, HueName> = { Research: 'violet', Engineering: 'saffron', Operations: 'tangerine' };
 
 export function Careers() {
   const [dept, setDept] = useState('All');
@@ -114,7 +114,7 @@ export function Careers() {
           <div className="roles-bar">
             <div className="segmented" role="group" aria-label="Department">
               {DEPTS.map((d) => (
-                <button key={d} aria-pressed={dept === d} style={toneStyle(DEPT_TONE[d] ?? 'ink')} onClick={() => setDept(d)}>
+                <button key={d} aria-pressed={dept === d} style={toneStyle(DEPT_TONE[d] ?? 'violet')} onClick={() => setDept(d)}>
                   <i aria-hidden="true" />
                   {d}
                   <small>{d === 'All' ? ROLES.length : ROLES.filter((r) => r.dept === d).length}</small>

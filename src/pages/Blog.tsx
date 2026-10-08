@@ -7,7 +7,7 @@ import type { HueName } from '../gl/palette';
 import { Cover } from '../components/art';
 
 const CATS = ['All', ...Array.from(new Set(POSTS.map((p) => p.category)))];
-const CAT_TONE: Record<string, HueName> = { Research: 'cobalt', Technology: 'emerald', Company: 'tangerine' };
+const CAT_TONE: Record<string, HueName> = { Research: 'violet', Technology: 'saffron', Company: 'tangerine' };
 
 /**
  * Column spans for n cards on a 12-column grid, so no row is left with a lone card:

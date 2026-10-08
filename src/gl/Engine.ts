@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { SAMPLED_THREADS, THREAD_HALF_WIDTH } from './threads';
-import { CONTINENTS, INDIA, INDIA_BBOX, INDIA_HUBS, WORLD, inPolygon, lonLatToVec, type LonLat } from './geo';
+import { CONTINENTS, INDIA, INDIA_BBOX, INDIA_HUBS, WORLD, GLOBE_LABELS, inPolygon, lonLatToVec, type LonLat } from './geo';
 
 /**
  * The site's 3D layer: two physically lit objects that share one stage.
@@ -276,6 +276,109 @@ function arcPoint(a: LonLat, c: LonLat, t: number, r: number): THREE.Vector3 {
   return v.multiplyScalar(r * lift);
 }
 
+function drawRoundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(x, y, w, h, r);
+  } else {
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+  }
+}
+
+function createGlobeLabelSprite(text: string, isHome = false): {
+  sprite: THREE.Sprite;
+  mat: THREE.SpriteMaterial;
+  texture: THREE.CanvasTexture;
+} {
+  const dpr = 2;
+  const fontSize = 18 * dpr;
+  const margin = 10 * dpr;
+  const h = 46 * dpr;
+
+  // Measure with the exact rendered font
+  const scratch = document.createElement('canvas');
+  const sCtx = scratch.getContext('2d')!;
+  const fontStr = `800 ${fontSize}px "Figtree", "Geist Mono", system-ui, -apple-system, sans-serif`;
+  sCtx.font = fontStr;
+  const textWidth = Math.ceil(sCtx.measureText(text).width);
+
+  const padLeft = 14 * dpr;
+  const dotR = 4 * dpr;
+  const dotGap = 9 * dpr;
+  const padRight = 18 * dpr; // generous buffer so the final alphabet is never clipped
+  const badgeW = padLeft + dotR * 2 + dotGap + textWidth + padRight;
+
+  const canvasW = Math.ceil(badgeW + margin * 2);
+  const canvasH = Math.ceil(h + margin * 2);
+
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  const ctx = canvas.getContext('2d')!;
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  const badgeX = margin;
+  const badgeY = margin;
+  const radius = h / 2;
+
+  // Drop shadow behind the badge
+  ctx.save();
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.22)';
+  ctx.shadowBlur = 8 * dpr;
+  ctx.shadowOffsetY = 3 * dpr;
+  ctx.fillStyle = '#FFFFFF';
+  ctx.beginPath();
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, h, radius);
+  ctx.fill();
+  ctx.restore();
+
+  // Crisp contrasting border
+  ctx.strokeStyle = isHome ? '#FF8643' : 'rgba(0, 0, 0, 0.26)';
+  ctx.lineWidth = isHome ? 2.4 * dpr : 1.8 * dpr;
+  ctx.beginPath();
+  drawRoundRect(ctx, badgeX, badgeY, badgeW, h, radius);
+  ctx.stroke();
+
+  // Indicator dot
+  const dotX = badgeX + padLeft + dotR;
+  const dotY = badgeY + h / 2;
+  ctx.fillStyle = isHome ? '#FF8643' : '#F59E00';
+  ctx.beginPath();
+  ctx.arc(dotX, dotY, dotR, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Deep solid black, extra bold text for maximum clarity (#000000)
+  ctx.font = fontStr;
+  ctx.textBaseline = 'middle';
+  ctx.textAlign = 'left';
+  ctx.fillStyle = '#000000';
+  const textX = dotX + dotR + dotGap;
+  const textY = badgeY + h / 2;
+  ctx.fillText(text, textX, textY);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.minFilter = THREE.LinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+
+  const mat = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthWrite: false,
+  });
+
+  const sprite = new THREE.Sprite(mat);
+  const aspect = canvas.width / canvas.height;
+  const spriteH = 0.16;
+  sprite.scale.set(spriteH * aspect, spriteH, 1);
+
+  return { sprite, mat, texture };
+}
+
 function buildGlobe() {
   const group = new THREE.Group();
   const spinner = new THREE.Group();
@@ -327,7 +430,7 @@ function buildGlobe() {
     mats.push(m);
   };
   dots(world, 0.019, '#2b2640', 0.5);
-  dots(india, 0.016, '#5b3df5', 0.3);
+  dots(india, 0.016, '#FF8643', 0.4);
 
   // 3. hubs in India, with rings that breathe
   const ringGeo = new THREE.RingGeometry(0.03, 0.04, 40);
@@ -335,7 +438,7 @@ function buildGlobe() {
   const rings: THREE.Mesh[] = [];
   INDIA_HUBS.slice(0, 6).forEach((h, i) => {
     const p = new THREE.Vector3(...lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.012));
-    const m = new THREE.MeshBasicMaterial({ color: '#5b3df5', transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const m = new THREE.MeshBasicMaterial({ color: '#FF8643', transparent: true, depthWrite: false, side: THREE.DoubleSide });
     const r = new THREE.Mesh(ringGeo, m);
     r.position.copy(p);
     r.lookAt(p.clone().multiplyScalar(2));
@@ -348,9 +451,9 @@ function buildGlobe() {
   trash.push(ringGeo);
 
   // 4. routes of light from India to the world, each with a travelling signal
-  const arcMat = new THREE.MeshBasicMaterial({ color: '#7b62ff', transparent: true, opacity: 0.55, depthWrite: false });
+  const arcMat = new THREE.MeshBasicMaterial({ color: '#F59E00', transparent: true, opacity: 0.65, depthWrite: false });
   const headGeo = new THREE.SphereGeometry(0.022, 16, 12);
-  const headMat = new THREE.MeshBasicMaterial({ color: '#ff7438', transparent: true });
+  const headMat = new THREE.MeshBasicMaterial({ color: '#FF8643', transparent: true });
   const heads: { mesh: THREE.Mesh; curve: THREE.CatmullRomCurve3; phase: number; speed: number }[] = [];
   trash.push(arcMat, headGeo, headMat);
   mats.push(arcMat, headMat);
@@ -379,6 +482,18 @@ function buildGlobe() {
   group.add(new THREE.Mesh(atmoGeo, atmoMat));
   trash.push(atmoGeo, atmoMat);
 
+  // 6. names directly on the globe
+  const labelSprites: { sprite: THREE.Sprite; pos: THREE.Vector3; mat: THREE.SpriteMaterial }[] = [];
+  GLOBE_LABELS.forEach((lbl) => {
+    const { sprite, mat, texture } = createGlobeLabelSprite(lbl.name, !!lbl.home);
+    const p = new THREE.Vector3(...lonLatToVec(lbl.at[0], lbl.at[1], GLOBE_R * 1.055));
+    sprite.position.copy(p);
+    spinner.add(sprite);
+    labelSprites.push({ sprite, pos: p, mat });
+    trash.push(mat, texture);
+    mats.push(mat);
+  });
+
   // India faces the viewer at rest; the globe idles around its axis from there
   spinner.rotation.x = 0.12;
 
@@ -398,6 +513,13 @@ function buildGlobe() {
         const k = (time * 0.6 + r.userData.phase) % 1;
         r.scale.setScalar(1 + k * 2.4);
         ringMats[i].opacity = (1 - k) * 0.9;
+      });
+      const euler = new THREE.Euler(spinner.rotation.x, spinner.rotation.y, 0, 'YXZ');
+      labelSprites.forEach(({ sprite, pos, mat }) => {
+        const rotatedPos = pos.clone().applyEuler(euler);
+        const facing = Math.max(0, Math.min(1, (rotatedPos.z - 0.1) / 0.4));
+        mat.opacity = facing;
+        sprite.visible = facing > 0.02;
       });
     },
     dispose: () => trash.forEach((t) => t.dispose()),

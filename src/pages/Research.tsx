@@ -15,7 +15,7 @@ export function Research() {
     <>
       <PageHero
         eyebrow="Research"
-        tone="emerald"
+        tone="violet"
         title={['Six domains.', 'One intelligence.']}
         lede="Our research spans six connected domains. They are not separate products: each one strengthens every other, and all of them share one memory."
         visual={<Beams size={440} nodes={DOMAINS.map((d, i) => ({ label: d.name, icon: <Icon name={DOMAIN_ICONS[i]} size={17} />, tone: DOMAIN_TONES[i] }))} />}
@@ -47,7 +47,6 @@ export function Research() {
             </Reveal>
             {rivinity.focus.map((f, i) => (
               <Reveal key={f} className="cell cell-glass focus-cell" style={{ gridColumn: 'span 4', '--tone': DOMAIN_TONES[i] } as CSSProperties} delay={i * 60}>
-                <span className="num">{String(i + 1).padStart(2, '0')}</span>
                 <h3>{f}</h3>
               </Reveal>
             ))}

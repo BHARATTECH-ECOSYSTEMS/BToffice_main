@@ -6,7 +6,7 @@ import { Cover } from '../components/art';
 import { POSTS, ROLES } from '../content';
 import type { HueName } from '../gl/palette';
 
-const TONES: HueName[] = ['cobalt', 'violet', 'emerald'];
+const TONES: HueName[] = ['violet', 'tangerine', 'saffron'];
 const DEPTS = Array.from(new Set(ROLES.map((r) => r.dept)));
 
 export function Journal() {

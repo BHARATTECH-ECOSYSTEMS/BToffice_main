@@ -166,7 +166,7 @@ export function MetricsArt() {
         {[0.25, 0.5, 0.75].map((k) => (
           <line key={k} x1="0" x2={w} y1={h * k} y2={h * k} className="metrics-grid" />
         ))}
-        <path d={area} fill="#5b3df5" fillOpacity="0.1" className="metrics-area" />
+        <path d={area} fill="#FF8643" fillOpacity="0.1" className="metrics-area" />
         <path d={line} className="metrics-line" pathLength={1} vectorEffect="non-scaling-stroke" />
       </svg>
       <ul className="metrics-regions">
@@ -365,7 +365,6 @@ export function LayerStack({ names, active, tones }: { names: string[]; active: 
               <PlateArt i={i} />
             </svg>
             <span className="stack-chip">
-              {String(i + 1).padStart(2, '0')}
               <b>{n}</b>
             </span>
           </div>
@@ -473,7 +472,7 @@ export function DomainArt({ index }: { index: number }) {
 
 // ── Publication covers: a drawing of what each essay is about, white on one flat colour ─────────
 
-const COVER_TONES = ['#5b3df5', '#2e5bff', '#0fa874', '#e08a00', '#ff5fa2', '#ff7438'];
+const COVER_TONES = ['#6E58F5', '#FF8643', '#F59E00'];
 
 function CoverArt({ kind }: { kind: number }) {
   switch (kind) {

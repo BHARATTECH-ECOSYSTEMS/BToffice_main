@@ -8,10 +8,10 @@ import type { HueName } from '../gl/palette';
 export type PeekId = 'research' | 'capabilities' | 'publications' | 'careers' | 'about';
 export const PEEK_ORDER: PeekId[] = ['research', 'capabilities', 'publications', 'careers', 'about'];
 
-const DOMAIN_TONES: HueName[] = ['violet', 'cobalt', 'emerald', 'saffron', 'pink', 'tangerine'];
-const FAMILY_TONES: HueName[] = ['cobalt', 'violet', 'emerald'];
+const DOMAIN_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
+const FAMILY_TONES: HueName[] = ['violet', 'tangerine', 'saffron'];
 const FAMILY_ART = [SearchArt, WorkflowArt, MetricsArt];
-const DEPT_TONE: Record<string, HueName> = { Research: 'emerald', Engineering: 'cobalt', Operations: 'tangerine' };
+const DEPT_TONE: Record<string, HueName> = { Research: 'violet', Engineering: 'saffron', Operations: 'tangerine' };
 
 /**
  * The glance under the nav. One panel morphs between sections: its height follows the open pane, the new
@@ -137,7 +137,7 @@ function ResearchPeek({ go }: { go: Go }) {
           </li>
         ))}
       </ul>
-      <Foot figure="06" label="research domains" blurb="Separate programmes, one shared memory." cta="Open Research" onClick={go('/research')} tone="emerald" />
+      <Foot figure="06" label="research domains" blurb="Separate programmes, one shared memory." cta="Open Research" onClick={go('/research')} tone="saffron" />
     </div>
   );
 }
@@ -155,7 +155,6 @@ function CapabilitiesPeek({ go }: { go: Go }) {
                   <Art />
                 </span>
                 <span className="peek-family-name">
-                  <small>{String(gi + 1).padStart(2, '0')}</small>
                   {g}
                 </span>
                 <span className="peek-family-list">
@@ -235,10 +234,10 @@ function CareersPeek({ go }: { go: Go }) {
 }
 
 const ABOUT_ROWS: { icon: IconName; title: string; body: string; tone: HueName; section?: string }[] = [
-  { icon: 'building', title: 'Our story', body: 'Deep technology, designed in India.', tone: 'saffron' },
-  { icon: 'spark', title: 'Principles', body: `${PRINCIPLES.length} beliefs about what intelligence should be.`, tone: 'cobalt', section: 'principles' },
-  { icon: 'rocket', title: 'Recognition', body: `${AWARDS.length} milestones since 2023.`, tone: 'tangerine', section: 'recognition' },
-  { icon: 'users', title: 'How we work', body: 'Built for decades, not quarters.', tone: 'emerald', section: 'values' },
+  { icon: 'building', title: 'Our story', body: 'Deep technology, designed in India.', tone: 'violet' },
+  { icon: 'spark', title: 'Principles', body: `${PRINCIPLES.length} beliefs about what intelligence should be.`, tone: 'tangerine', section: 'principles' },
+  { icon: 'rocket', title: 'Recognition', body: `${AWARDS.length} milestones since 2023.`, tone: 'saffron', section: 'recognition' },
+  { icon: 'users', title: 'How we work', body: 'Built for decades, not quarters.', tone: 'violet', section: 'values' },
 ];
 
 function AboutPeek({ go }: { go: Go }) {

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { createHashRouter, Outlet, RouterProvider, useLocation } from 'react-router';
 import { SceneProvider, useScene } from './gl/Scene';
 import { Nav } from './components/Nav';
@@ -12,34 +12,32 @@ import { Article } from './pages/Article';
 import { Contact } from './pages/Contact';
 import { Privacy, Terms } from './pages/Legal';
 import { NotFound } from './pages/NotFound';
-import { LogoMark } from './components/ui';
-
-/** A violet wipe with the mark, on every route change after the first page. */
-function Curtain({ pathname }: { pathname: string }) {
-  const first = useRef(true);
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    if (first.current) {
-      first.current = false;
-      return;
-    }
-    setN((x) => x + 1);
-  }, [pathname]);
-  return n ? <div className="curtain" key={n} aria-hidden="true"><LogoMark size={72} /></div> : null;
-}
+import { RouteSweep } from './components/RouteSweep';
 
 /** A hairline along the top of the window that fills as the page is read. */
 function ReadProgress() {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     let raf = 0;
-    const tick = () => {
-      const max = document.documentElement.scrollHeight - window.innerHeight;
-      if (ref.current) ref.current.style.transform = `scaleX(${max > 0 ? window.scrollY / max : 0})`;
-      raf = requestAnimationFrame(tick);
+    let max = 1;
+    const measureMax = () => {
+      max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
     };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    const update = () => {
+      raf = 0;
+      if (ref.current) ref.current.style.transform = `scaleX(${Math.min(1, Math.max(0, window.scrollY / max))})`;
+    };
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    measureMax();
+    update();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', () => { measureMax(); onScroll(); }, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', onScroll);
+    };
   }, []);
   return <div className="read-progress" ref={ref} aria-hidden="true" />;
 }
@@ -93,9 +91,9 @@ function Layout() {
         Skip to content
       </a>
       <ReadProgress />
-      <Curtain pathname={pathname} />
+      <RouteSweep />
       <Nav />
-      <main id="main" tabIndex={-1} key={pathname} className="page-enter">
+      <main id="main" tabIndex={-1} key={pathname}>
         <Outlet />
       </main>
       <Footer />

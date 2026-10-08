@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
-import { Arrow, Brand } from './ui';
-import { EMAIL, EMPLOYEE_LOGIN_URL, HQ } from '../content';
+import { Brand } from './ui';
+import { EMPLOYEE_LOGIN_URL } from '../content';
 
 const COLS: { title: string; links: { label: string; to?: string; href?: string }[] }[] = [
   {
@@ -14,7 +14,7 @@ const COLS: { title: string; links: { label: string; to?: string; href?: string 
     ],
   },
   {
-    title: 'Work',
+    title: 'Products',
     links: [
       { label: 'Rivinity', to: '/research' },
       { label: 'CollegeCue', href: '#' },
@@ -38,12 +38,9 @@ export function Footer() {
         <div className="footer-top">
           <div className="footer-lead">
             <Link to="/" aria-label="Bharattech Origin, home">
-              <Brand size={32} />
+              <Brand size={34} />
             </Link>
             <p>Building the operating system for intelligence. Made in Bharat.</p>
-            <a className="footer-mail" href={`mailto:${EMAIL}`}>
-              {EMAIL} <Arrow dir="up-right" size={13} />
-            </a>
           </div>
           {COLS.map((c) => (
             <div className="footer-col" key={c.title}>
@@ -58,8 +55,11 @@ export function Footer() {
         </div>
         <div className="footer-base">
           <span>© {new Date().getFullYear()} Bharattech Origin</span>
-          <span>{HQ}</span>
+          <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+            Back to top <span aria-hidden="true">↑</span>
+          </button>
         </div>
+        <div className="footer-origin" aria-hidden="true">ORIGIN</div>
       </div>
     </footer>
   );

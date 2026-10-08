@@ -4,7 +4,7 @@ import { Eyebrow, Headline } from '../components/ui';
 import { CAPABILITIES, CAPABILITY_GROUPS } from '../content';
 import type { HueName } from '../gl/palette';
 
-const TONES: HueName[] = ['cobalt', 'violet', 'emerald'];
+const TONES: HueName[] = ['violet', 'tangerine', 'saffron'];
 const LINES = [
   'Read the world in any form: text, images, speech and the web.',
   'Compose agents and workflows that inherit everything the system knows.',
@@ -81,9 +81,6 @@ export function Capabilities() {
                   <i />
                   {CAPABILITY_GROUPS[fam]}
                 </span>
-                <span className="wheel-num">
-                  {String(active + 1).padStart(2, '0')} <em>/ {N}</em>
-                </span>
               </div>
               <div className="wheel-card-body" key={active}>
                 <h3>{cap.name}</h3>
@@ -98,7 +95,6 @@ export function Capabilities() {
                   <button type="button" onClick={() => go(i * 5)}>
                     <i />
                     {g}
-                    <span>05</span>
                   </button>
                 </li>
               ))}
@@ -128,7 +124,6 @@ export function Capabilities() {
           {CAPABILITIES.map((c, i) => (
             <span key={c.name} className="wheel-chip" data-on={i === active || undefined} style={{ '--a': `${i * STEP}deg`, '--tone': `var(--${TONES[Math.floor(i / 5)]})` } as CSSProperties}>
               <span>
-                <b>{String(i + 1).padStart(2, '0')}</b>
                 {c.name}
               </span>
             </span>

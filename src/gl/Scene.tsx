@@ -93,14 +93,19 @@ export function SceneProvider({ children }: { children: ReactNode }) {
       canvas.style.display = 'none'; // no WebGL: the page carries itself without the objects
     }
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // Native scrolling is steadier on touch screens; Lenis smooths the wheel on desktop.
-    const lenis = reduced || isCompact() ? null : new Lenis({ duration: 1.1, smoothWheel: true, wheelMultiplier: 0.95 });
+    // Snappy, responsive smooth scrolling (0.6s duration instead of 1.1s lag)
+    const lenis = reduced || isCompact() ? null : new Lenis({ duration: 0.6, smoothWheel: true, wheelMultiplier: 1.0, touchMultiplier: 1.2 });
     let raf = 0;
     let lastY = window.scrollY;
+    let lastPickedY = -999999;
 
     // The section holding the middle of the screen decides what the scene shows; the smallest one wins,
     // so a stage nested inside a long chapter can take over from it.
-    const pick = () => {
+    const pick = (force = false) => {
+      const y = window.scrollY;
+      if (!force && Math.abs(y - lastPickedY) < 1) return;
+      lastPickedY = y;
+
       const vh = window.innerHeight;
       const mid = vh * 0.5;
       let best: Entry | null = null;
@@ -130,7 +135,8 @@ export function SceneProvider({ children }: { children: ReactNode }) {
       raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
-    const off = engine?.onFrame(pick);
+    pick(true);
+    const off = engine?.onFrame(() => pick());
 
     setApi((prev) => ({
       ...prev,

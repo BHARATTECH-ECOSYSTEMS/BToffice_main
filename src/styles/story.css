@@ -911,29 +911,29 @@
   color: rgb(255 255 255 / 0.6);
 }
 .ch-arch .headline .is-accent {
-  color: #a693ff;
+  color: #F59E00;
 }
 .ch-arch .arch {
-  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr);
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   align-items: center;
   height: 100%;
 }
 .arch-side .arch-list {
-  gap: 14px;
-  margin-top: 26px;
+  gap: 16px;
+  margin-top: 24px;
 }
 .ch-arch .arch-family button {
-  padding: 7px 12px;
-  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: 10px;
 }
 .ch-arch .arch-name {
-  font-size: 16.5px;
+  font-size: 15.5px;
+  white-space: nowrap;
 }
 .ch-arch .arch-family button[data-done] {
   color: rgb(255 255 255 / 0.82);
-}
-.ch-arch .arch-family button[data-done] .arch-num {
-  color: color-mix(in srgb, var(--tone) 70%, white);
 }
 .ch-arch .arch-visual {
   display: grid;
@@ -2538,11 +2538,11 @@
   overflow: visible;
 }
 .faq-mark-disc {
-  fill: #4a2fd0;
+  fill: var(--violet);
 }
 .faq-mark-thread {
   fill: none;
-  stroke: #f1eefc;
+  stroke: #F8F7F3;
   stroke-width: 0.17;
   stroke-linecap: round;
   stroke-dasharray: 1;

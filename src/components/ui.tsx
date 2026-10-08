@@ -7,7 +7,7 @@ const PATHS = threadPaths();
 /** A tone as a CSS custom property, for components that colour themselves from their chapter. */
 export const toneStyle = (tone: HueName, extra?: CSSProperties) => ({ '--tone': `var(--${tone})`, ...extra }) as CSSProperties;
 
-/** The Origin mark, as it has always been drawn: a violet sphere with the three threads in white. */
+/** The Origin mark: a violet sphere with the three threads in white. */
 export function LogoMark({ size = 28 }: { size?: number }) {
   const id = useId().replace(/:/g, '');
   return (
@@ -53,13 +53,8 @@ export function Arrow({ dir = 'right', size = 14 }: { dir?: 'right' | 'down' | '
 }
 
 /** Mono label with a diamond in the chapter's colour. */
-export function Eyebrow({ tone, children, className = '' }: { tone: HueName; children: ReactNode; className?: string }) {
-  return (
-    <p className={`eyebrow ${className}`} style={toneStyle(tone)}>
-      <i aria-hidden="true" />
-      {children}
-    </p>
-  );
+export function Eyebrow(_props: { tone?: HueName; children?: ReactNode; className?: string }) {
+  return null;
 }
 
 /** Fires once when the element comes into view. */

@@ -396,29 +396,29 @@ export const FAQ = [
 // ── Redesign: chapters, tones and page data ──────────────────────────────
 
 
-/** The home page as a story: each chapter owns a colour, and the nav's progress line is drawn from this list. */
+/** The home page as a story: curated chapter colors creating a rich visual journey. */
 export const CHAPTERS: { id: string; label: string; tone: HueName }[] = [
-  { id: 'top', label: 'Origin', tone: 'cobalt' },
+  { id: 'top', label: 'Origin', tone: 'violet' },
   { id: 'problem', label: 'The problem', tone: 'tangerine' },
-  { id: 'promise', label: 'The answer', tone: 'emerald' },
-  { id: 'capabilities', label: 'Capabilities', tone: 'cobalt' },
-  { id: 'how', label: 'How it works', tone: 'pink' },
-  { id: 'architecture', label: 'Architecture', tone: 'violet' },
-  { id: 'network', label: 'Network', tone: 'saffron' },
-  { id: 'research', label: 'Research', tone: 'emerald' },
-  { id: 'who', label: 'Join us', tone: 'tangerine' },
+  { id: 'promise', label: 'The answer', tone: 'saffron' },
+  { id: 'capabilities', label: 'Capabilities', tone: 'violet' },
+  { id: 'how', label: 'How it works', tone: 'tangerine' },
+  { id: 'architecture', label: 'Architecture', tone: 'saffron' },
+  { id: 'network', label: 'Network', tone: 'violet' },
+  { id: 'research', label: 'Research', tone: 'tangerine' },
+  { id: 'who', label: 'Join us', tone: 'saffron' },
 ];
 
 /** The mark's three threads are the three things Origin does; they keep these colours everywhere. */
 export const THREAD_LABELS = ['Remembers', 'Connects', 'Keeps learning'];
 
-export const FLOW_TONES: HueName[] = ['cobalt', 'violet', 'tangerine', 'emerald', 'pink'];
-export const AUDIENCE_TONES: HueName[] = ['cobalt', 'violet', 'emerald', 'saffron', 'pink', 'tangerine'];
+export const FLOW_TONES: HueName[] = ['saffron', 'violet', 'tangerine', 'saffron', 'violet'];
+export const AUDIENCE_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
 
 export const NETWORK = [
   { title: 'Sovereign by design', body: 'The core lives in India. Data and intelligence stay under the control of those they serve.', tone: 'tangerine' as HueName },
-  { title: 'Cloud to edge', body: 'The same intelligence runs in national data centres and on the phone in your hand.', tone: 'cobalt' as HueName },
-  { title: 'Open to the world', body: 'Conceived in Bharat, engineered to connect to every region and every language.', tone: 'emerald' as HueName },
+  { title: 'Cloud to edge', body: 'The same intelligence runs in national data centres and on the phone in your hand.', tone: 'violet' as HueName },
+  { title: 'Open to the world', body: 'Conceived in Bharat, engineered to connect to every region and every language.', tone: 'saffron' as HueName },
 ];
 
 export const HQ = 'Kanpur, Uttar Pradesh, India';

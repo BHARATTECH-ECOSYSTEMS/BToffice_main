@@ -17,7 +17,6 @@ export function Accordion({ items, tone = 'cobalt', tags }: { items: { q: string
             <button aria-expanded={open === i} aria-controls={`acc-${i}`} id={`acc-q-${i}`} onClick={() => setOpen((o) => (o === i ? null : i))}>
               {tags && (
                 <span className="acc-tag" aria-hidden="true">
-                  <small>{String(i + 1).padStart(2, '0')}</small>
                   {tags[i]}
                 </span>
               )}

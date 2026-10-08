@@ -1,0 +1,31 @@
+.company-about-page .company-about-hero { min-height: 60svh; padding: calc(var(--nav-h) + 100px) 0 100px; text-align: center; }
+.company-about-hero h1,.company-awards-head h2 { font: 600 clamp(44px,5.6vw,76px)/1.08 var(--display); letter-spacing: -.055em; margin: 0 0 24px; }
+.company-about-hero p { max-width: 720px; margin: 0 auto; font-size: clamp(17px,1.5vw,20px); line-height: 1.6; color: var(--ink-2); }
+.company-story-section { padding-top: clamp(64px,8vw,116px); padding-bottom: clamp(76px,9vw,132px); }
+.company-story-grid { display: grid; grid-template-columns: repeat(12,minmax(0,1fr)); column-gap: 24px; row-gap: 48px; align-items: start; }
+.company-story-index { grid-column: 1 / span 3; position: sticky; top: calc(var(--nav-h) + 36px); display: grid; gap: 16px; padding: 7px clamp(18px,3vw,46px) 0 0; color: var(--ink-2); }
+.company-story-index span { color: var(--violet); font: 11px var(--mono); text-transform: uppercase; letter-spacing: .12em; }
+.company-story-index p { max-width: 220px; font-size: 14.5px; line-height: 1.65; margin: 0; }
+.company-story-copy { grid-column: 4 / span 9; display: grid; gap: clamp(76px,8vw,116px); padding-left: clamp(0px,2vw,28px); }
+.company-story-block { display: grid; gap: 22px; max-width: 920px; padding-top: clamp(24px,3vw,38px); border-top: 1px solid var(--line); }
+.company-story-block h2 { font: 600 clamp(32px,3.9vw,52px)/1.08 var(--display); letter-spacing: -.045em; margin: 0; }
+.company-story-block p { max-width: 840px; font-size: clamp(1.05rem,1.35vw,1.22rem); line-height: 1.7; color: var(--ink-2); margin: 0; }
+.company-awards-section { padding-top: clamp(76px,9vw,128px); padding-bottom: clamp(88px,10vw,148px); border-top: 1px solid var(--line); }
+.company-awards-head { display: flex; flex-direction: column; align-items: center; gap: 24px; text-align: center; margin-bottom: clamp(38px,5vw,64px); }
+.company-awards-head h2 { margin: 0; }
+.company-awards-head p { max-width: 620px; margin: 0; font-size: 18px; line-height: 1.6; color: var(--ink-2); }
+.company-awards-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: clamp(14px,2vw,24px); }
+.company-award-card { min-height: 264px; display: grid; align-content: start; grid-template-rows: auto minmax(2.3em,auto) 1fr; gap: 20px; padding: clamp(24px,3vw,38px); border-radius: var(--r-lg); background: color-mix(in srgb,var(--paper) 90%,transparent); box-shadow: var(--shadow-sm); }
+.company-award-year { color: var(--violet); font: 12px var(--mono); letter-spacing: .12em; }
+.company-award-card h3 { max-width: 440px; font-size: clamp(1.35rem,2vw,1.85rem); line-height: 1.15; letter-spacing: -.03em; margin: 0; }
+.company-award-card p { max-width: 470px; line-height: 1.65; color: var(--ink-2); margin: 0; }
+@media(max-width:900px) {
+  .company-about-page .company-about-hero { padding: calc(var(--nav-h) + 70px) 0 72px; }
+  .company-story-grid { grid-template-columns: 1fr; }
+  .company-story-index,.company-story-copy { grid-column: 1 / -1; }
+  .company-story-index { position: static; padding: 0 0 28px; border-bottom: 1px solid var(--line); }
+  .company-story-copy { gap: 58px; padding-left: 0; }
+  .company-story-block { padding-top: 0; border-top: 0; gap: 20px; }
+  .company-awards-grid { grid-template-columns: 1fr; gap: 14px; }
+  .company-award-card { min-height: 0; grid-template-rows: auto; gap: 16px; padding: 24px; }
+}

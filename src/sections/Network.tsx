@@ -25,14 +25,6 @@ export function Network() {
       <div className="wrap network-grid">
         <div className="network-visual">
           <div className="network-stage" ref={stage} aria-hidden="true" />
-          <div className="network-legend" aria-hidden="true">
-            <span>
-              <i className="is-core" /> Sovereign core · India
-            </span>
-            <span>
-              <i className="is-route" /> Live routes
-            </span>
-          </div>
         </div>
         <div className="network-copy">
           <Eyebrow tone="saffron">Network</Eyebrow>

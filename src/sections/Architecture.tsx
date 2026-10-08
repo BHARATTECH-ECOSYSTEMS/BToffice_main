@@ -5,7 +5,7 @@ import { Chapter, Steps, usePinned } from '../components/Chapter';
 import { LayerStack } from '../components/art';
 import { LAYERS, LAYER_FAMILIES } from '../content';
 
-const FAMILY_TONES = ['var(--violet)', 'var(--cobalt)', 'var(--tangerine)'];
+const FAMILY_TONES = ['var(--violet)', 'var(--pitch-yellow)', 'var(--tangerine)'];
 const TONES = LAYERS.map((_, i) => FAMILY_TONES[LAYER_FAMILIES.findIndex((f) => i >= f.from && i <= f.to)]);
 
 /** Nine layers as a stack of plates. Scrolling walks one request down through them, top to bottom. */
@@ -34,7 +34,6 @@ export function Architecture() {
                     return (
                       <li key={x.name}>
                         <button data-on={i === step || undefined} data-done={i < step || undefined} onClick={() => goTo(i)}>
-                          <span className="arch-num">{String(i + 1).padStart(2, '0')}</span>
                           <span className="arch-name">{x.name}</span>
                         </button>
                       </li>
@@ -54,7 +53,7 @@ export function Architecture() {
                 <div key={x.name} className="arch-card-body">
                   <p className="cell-label">
                     <i />
-                    Layer {String(i + 1).padStart(2, '0')} · {LAYER_FAMILIES.find((f) => i >= f.from && i <= f.to)?.name}
+                    {LAYER_FAMILIES.find((f) => i >= f.from && i <= f.to)?.name}
                   </p>
                   <h3>{x.name}</h3>
                   <p className="arch-card-what">{x.body}</p>

@@ -18,7 +18,7 @@ import { SAMPLED_THREADS } from './threads';
 export const BEATS = 8;
 
 const CENTER = new THREE.Vector3(0, 1.5, 0);
-const PAPER = new THREE.Color('#f6f0e7');
+const PAPER = new THREE.Color('#F8F7F3');
 
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const smooth = (a: number, b: number, x: number) => {
@@ -32,7 +32,7 @@ const mixN = (a: number, b: number, t: number) => a + (b - a) * t;
 interface Look {
   tint: string; // the colour the glass lets through
   density: number;
-  body: number; // how much of the logo's own violet it carries
+  body: number; // how much of the logo's own orange/yellow it carries
   core: string;
   coreI: number;
   frost: number;
@@ -315,8 +315,8 @@ export class Studio {
 
     // ── light on the floor: the form's shadow, the coloured light it focuses, and rings when it grows
     const shadowTex = radial([
-      [0, 'rgba(34,24,70,0.5)'],
-      [0.45, 'rgba(34,24,70,0.2)'],
+      [0, 'rgba(34,24,70,0.45)'],
+      [0.45, 'rgba(34,24,70,0.18)'],
       [1, 'rgba(34,24,70,0)'],
     ]);
     const causticTex = radial([

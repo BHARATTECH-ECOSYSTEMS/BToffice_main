@@ -22,7 +22,6 @@ function LegalPage({ title, items }: { title: [string, string]; items: readonly 
             {items.map(([h, b], i) => (
               <section key={h} id={`s${i}`}>
                 <h2>
-                  <small>{String(i + 1).padStart(2, '0')}</small>
                   {h}
                 </h2>
                 <p>{b}</p>
