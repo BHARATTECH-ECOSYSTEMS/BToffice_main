@@ -1,44 +1,30 @@
-# Bharattech Origin: redesign
+# Bharattech Origin
 
-A redesign of `CinematicLandingPageDesign(Community)`, built around one idea from the logo:
-**three white threads converging on a single point: the origin.**
+The site is built around the logo: **a violet sphere with three white threads converging on one point, the origin.**
 
-The whole site runs on **one particle system (22k points, 9k on phones)**. It *is* the logo on
-arrival: a purple sphere whose threads are literal voids. As you scroll, those same particles
-act out the story:
+## Visual system (October 2026, pinned-story pass)
 
-| Chapter | Formation | What the particles do |
-|---|---|---|
-| Hero | the mark | The logo resolves in place: a purple sphere with the three threads cut through it |
-| The problem | mark, silos, frozen, alone | The mark forgets (dissolves), splits into six labelled tools, freezes into rigid cubes, then reaches for its neighbours and never connects |
-| Capabilities | orbit | 15 satellites on 3 rings (Understand, Build, Operate); a grouped list to read, one callout pinned to the active satellite |
-| Architecture | exploded stack | 9 layers, each with its own pattern; the active layer lifts out of the stack and is tagged in place |
-| Network | globe | India in dot-matrix, arcs of light to the world; drag to rotate |
-| Laboratory | helix | 6 labelled segments = 6 research domains; opening a domain lights its segment |
-| Builders / Journal | none | Typography only: the particles step aside while people read |
-| Finale | the mark | Everything returns to the logo, rising over the horizon |
-
-Inner pages reuse the same system with their own formations, so moving between routes morphs
-the scene instead of reloading it. Particles only ever appear as part of a shape; spare ones are parked
-invisibly on the shape itself, so nothing drifts across the page.
+- **3D (`src/gl/Engine.ts`)**: the logo stays one whole sphere. Its three threads are **memory, connection and learning**, and they meet at the origin point; every chapter tells its idea through those threads.
+  - **The problem**: the memory thread is wiped, every thread breaks into pieces, the whole mark dulls to slate and freezes, then the threads stop short of the origin and never meet.
+  - **The answer**: the memory thread returns, all three meet again, and signals run along them into the origin.
+  - **Capabilities**: Understand, Build and Operate are the three threads; the family being read takes its colour while the other two sink into the glaze.
+  - `ThreadDial` (`src/components/ThreadDial.tsx`) labels the threads on the stage with what is happening to each.
+  - *The globe* still carries **Network** and the About page.
+  - Sections drive it with `useFormation(ref, () => ({ key: 'mark', show, broken, apart, focus, tint, flow, grey, pose }))`.
+- **Pinned chapters (`src/components/Chapter.tsx`)**: Problem, Answer, Capabilities, How it works and Architecture are several screens tall with a frame that stays put. Scrolling walks the steps; numbered tabs fill as each step is read and jump to it when pressed. Steps cross-fade with a short rise and blur.
+- **Architecture**: nine isometric plates, each engraved with what its layer does (app windows, a plan tree, memory on a timeline, a knowledge graph, a lens over imagery, nested boundaries, workers, an accelerator die, India). The plate being read lifts out in colour, beside a card with its role in the groundwater request.
+- **Nav glance (`src/components/NavPeek.tsx`)**: hovering a link opens one panel that morphs between sections (research domains with their drawings, the capability families, latest essays, open roles, about), with a caret that follows the link. Hidden on touch and below 1024px.
+- **Pages**: Publications fans three covers (each drawn for its essay) and lays posts out so no row has a lone card; Careers deals every role as a deck you can open card by card, then shows roles as illustrated cards; About has drawn principles, a milestone track and numbered values.
+- **Colour**: flat fills only. The logo's own violet is the one gradient left.
+- **Styles**: `base.css` (tokens, type, nav, footer), `fx.css` (bento, sections, effects), `story.css` (chapters, stack, glance, covers, careers, about; loaded last).
 
 ## Run
 
 ```bash
 npm install
-npm run dev     # http://localhost:5175
+npm run dev     # http://localhost:5174
 npm run build
 ```
-
-## Structure
-
-- `src/gl/threads.ts`: the logo's thread geometry (drives the 3D sphere, the SVG mark and the favicon)
-- `src/gl/formations.ts`: every shape the particles can become
-- `src/gl/Engine.ts` + `shaders.ts`: three.js renderer, interruptible morphing, pointer physics, trails
-- `src/gl/useAnchors.ts`: pins HTML labels to live particle structures
-- `src/gl/Scene.tsx`: `useFormation(ref, target)`: any section declares what the scene becomes while it's in view
-- `src/content.ts`: all copy and data in one place
-- `src/sections/*`, `src/pages/*`: layout; `src/styles/global.css`: the design system (Geist, 12-column grid, one section-header pattern)
 
 ## Notes
 
@@ -50,10 +36,8 @@ npm run build
 
 ## Themes and breakpoints
 
-- Dark is the default; the sun/moon button in the nav switches to light and the choice is remembered
-  (`src/theme.ts`). The particle engine follows the theme: additive glow on dark, crisp ink on light.
-- `src/styles/global.css` is one stylesheet with light/dark tokens at the top. Layouts step down at
-  ≤1100px (tablet), ≤900px (compact: everything stacks, 3D visuals sit in a band at the top of their
-  section and scroll with it) and ≤560px (phone).
-- On compact screens the capabilities gallery becomes a native swipe carousel and "How it works"
-  becomes a vertical timeline.
+- The site is light only: warm paper, ink type, one colour per chapter.
+- `src/styles/site.css` is one stylesheet with tokens at the top. Layouts step down at
+  ≤1024px (menu sheet replaces the links), ≤900px (everything stacks; each object sits in a band above its copy)
+  and ≤640px (phone).
+- Pinned chapters on phones show only the step being read; the "How it works" chain becomes a swipe row.

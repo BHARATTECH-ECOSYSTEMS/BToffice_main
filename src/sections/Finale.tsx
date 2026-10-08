@@ -1,66 +1,36 @@
 import { useRef } from 'react';
 import { Link } from 'react-router';
-import { useFormation } from '../gl/Scene';
-import { Lines, Fade, Arrow } from '../components/Reveal';
-import { EMAIL } from '../content';
+import { fitTo, useFormation } from '../gl/Scene';
+import { MARK_SIZE } from '../gl/Engine';
+import { Arrow, Headline, Reveal } from '../components/ui';
+import { Aurora } from '../components/fx';
+import { EMAIL, HQ } from '../content';
 
-/** Section 12: What comes next - The next era of intelligence begins here */
+/** The story closes where it began: the globe folds back into the mark. */
 export function Finale() {
-  const sectionRef = useRef<HTMLElement>(null);
-
-  // Keep the continuous ambient wave field without the 3D logo sphere
-  useFormation(sectionRef, { key: 'field', params: { alpha: 0 } });
-
+  const ref = useRef<HTMLElement>(null);
+  const stage = useRef<HTMLDivElement>(null);
+  useFormation(ref, () => ({ key: 'mark', flow: 1, pose: fitTo(stage.current, MARK_SIZE, 0.8), follow: 30 }));
   return (
-    <section
-      id="next"
-      ref={sectionRef}
-      className="section finale"
-      data-room="violet"
-      data-room2="tango"
-      data-chapter="Next era"
-    >
-      <div className="wrap finale-grid">
-        <div className="finale-head">
-          <Lines className="display finale-display" lines={['The next era of intelligence', 'begins here.']} />
-          <Fade className="finale-lede" delay={80}>
-            <p>
-              We are engineering India’s foundational operating system for intelligence uniting persistent neural
-              memory, multi-turn reasoning, and sovereign infrastructure for researchers, institutions, and enterprises
-              worldwide.
-            </p>
-          </Fade>
-        </div>
-
-        <Fade className="finale-cta glass" delay={160}>
-          <div className="finale-cta-content">
-            <p className="footer-kicker mono">
-              <span className="live-dot" aria-hidden="true" />
-              <span>Start a conversation</span>
-            </p>
-            <h2 className="footer-title">
-              Build what comes next <span className="accent">with us.</span>
-            </h2>
-            <p className="finale-cta-desc">
-              Direct access to our research and engineering teams. Explore joint research, fellowships, or
-              foundational enterprise deployments.
-            </p>
-          </div>
-
-          <div className="finale-cta-side">
-            <div className="finale-cta-actions">
-              <Link to="/contact" className="btn btn-solid">
-                Get in touch <Arrow size={13} />
-              </Link>
-              <a className="footer-mail" href={`mailto:${EMAIL}`}>
-                {EMAIL}
-              </a>
-            </div>
-            <div className="finale-cta-badge mono">
-              <span>Kanpur, India · Made in Bharat</span>
-            </div>
-          </div>
-        </Fade>
+    <section id="next" ref={ref} className="section finale">
+      <Aurora className="is-finale" />
+      <div className="wrap finale-inner">
+        <div className="finale-stage" ref={stage} aria-hidden="true" />
+        <Headline className="display finale-title" tone="violet" lines={['The next era of intelligence', 'begins here.']} />
+        <Reveal as="p" className="lede" delay={120}>
+          Direct access to our research and engineering teams: joint research, fellowships and foundational deployments.
+        </Reveal>
+        <Reveal className="finale-actions" delay={200}>
+          <Link to="/contact" className="btn btn-primary btn-lg">
+            Start a conversation <Arrow />
+          </Link>
+          <a href={`mailto:${EMAIL}`} className="btn btn-ghost btn-lg">
+            {EMAIL}
+          </a>
+        </Reveal>
+        <Reveal as="p" className="finale-meta" delay={260}>
+          {HQ} · Made in Bharat
+        </Reveal>
       </div>
     </section>
   );

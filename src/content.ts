@@ -1,5 +1,7 @@
 // All site copy lives here so the story can be edited without touching layout.
 
+import type { HueName } from './gl/palette';
+
 export const EMAIL = 'hello@bharattechorigin.com';
 export const PRIVACY_EMAIL = 'privacy@bharattechorigin.com';
 
@@ -389,4 +391,52 @@ export const FAQ = [
     q: 'What happens to data?',
     a: 'Security and sovereignty are design principles, not features: data and intelligence are meant to stay under the control of the people and organisations they serve. Our privacy policy explains how this website handles information.',
   },
+];
+
+// ── Redesign: chapters, tones and page data ──────────────────────────────
+
+
+/** The home page as a story: each chapter owns a colour, and the nav's progress line is drawn from this list. */
+export const CHAPTERS: { id: string; label: string; tone: HueName }[] = [
+  { id: 'top', label: 'Origin', tone: 'cobalt' },
+  { id: 'problem', label: 'The problem', tone: 'tangerine' },
+  { id: 'promise', label: 'The answer', tone: 'emerald' },
+  { id: 'capabilities', label: 'Capabilities', tone: 'cobalt' },
+  { id: 'how', label: 'How it works', tone: 'pink' },
+  { id: 'architecture', label: 'Architecture', tone: 'violet' },
+  { id: 'network', label: 'Network', tone: 'saffron' },
+  { id: 'research', label: 'Research', tone: 'emerald' },
+  { id: 'who', label: 'Join us', tone: 'tangerine' },
+];
+
+/** The mark's three threads are the three things Origin does; they keep these colours everywhere. */
+export const THREAD_LABELS = ['Remembers', 'Connects', 'Keeps learning'];
+
+export const FLOW_TONES: HueName[] = ['cobalt', 'violet', 'tangerine', 'emerald', 'pink'];
+export const AUDIENCE_TONES: HueName[] = ['cobalt', 'violet', 'emerald', 'saffron', 'pink', 'tangerine'];
+
+export const NETWORK = [
+  { title: 'Sovereign by design', body: 'The core lives in India. Data and intelligence stay under the control of those they serve.', tone: 'tangerine' as HueName },
+  { title: 'Cloud to edge', body: 'The same intelligence runs in national data centres and on the phone in your hand.', tone: 'cobalt' as HueName },
+  { title: 'Open to the world', body: 'Conceived in Bharat, engineered to connect to every region and every language.', tone: 'emerald' as HueName },
+];
+
+export const HQ = 'Kanpur, Uttar Pradesh, India';
+export const HQ_MAP = 'https://maps.google.com/?q=Kanpur,+Uttar+Pradesh,+India';
+
+export const PRODUCTS = ['BharatAI', 'CollegeCue', 'Recag', 'BSearch'];
+
+export const AWARDS = [
+  { year: '2023', title: 'Uttar Pradesh Global Investor Summit', body: 'Launch of BSearch by PM Shri Narendra Modi, and recognition among the top technology startups in the state.' },
+  { year: '2023', title: 'International Trade Show', body: 'Bharattech represented at the UP International Trade Show 2023.' },
+  { year: '2024', title: 'Indian Web Browser Development Challenge', body: 'Bharattech took part in the Indian Web Browser Development Challenge.' },
+  { year: '2024', title: 'MeitY Open Challenge Program', body: 'Bharattech took part in the MeitY Open Challenge Program.' },
+];
+
+export const CONTACT_NEEDS = ['Research collaboration', 'Enterprise intelligence', 'Foundation models', 'Rivinity & RECAG', 'Fellowships & careers', 'Press & media'];
+
+export const CONTACT_FAQ = [
+  { q: 'How do you partner with institutions and enterprises?', a: 'Through joint research programmes, sponsored fellowships with academic institutions, and early-access deployments for teams building on Origin’s intelligence infrastructure.' },
+  { q: 'Are you hiring researchers and systems engineers?', a: 'Yes. We look for researchers, systems engineers and mathematicians who would rather spend a decade on the right problem than a quarter on the easy one. See the Careers page for open roles.' },
+  { q: 'How quickly will I hear back?', a: 'Every message is read by a member of the team. Expect a considered reply within two working days.' },
 ];

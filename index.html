@@ -1,51 +1,35 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Bharattech Origin | The Operating System for Intelligence</title>
     <meta name="description" content="Bharattech Origin is an Indian deep-technology research company building a unified intelligence infrastructure designed to learn, remember, reason and evolve." />
-    <meta name="theme-color" content="#F7F2EA" />
+    <meta name="theme-color" content="#FBF6EF" />
     <script>
+      // Modest machines (≤4 cores or ≤4 GB, or an integrated GPU) get the lighter render path before first paint.
       (function () {
-        // Schedule: 6:00 AM to 6:00 PM is light mode; 6:00 PM to 6:00 AM is dark mode.
-        var hours = new Date().getHours();
-        var theme = (hours >= 6 && hours < 18) ? 'light' : 'dark';
-        document.documentElement.dataset.theme = theme;
-        if (theme === 'dark') {
-          var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta) meta.setAttribute('content', '#0C0B10');
-        }
-        // Lite mode for modest machines: ≤4 cores, ≤4 GB, "reduce transparency", or an integrated / software GPU
-        // (Intel UHD and Iris on most Windows laptops, e.g. a first-generation Galaxy Book). Lite drops live blur and
-        // full-screen blending, and the 3D renders at a lighter resolution without shadow maps.
         try {
-          var lite = innerWidth <= 900 || (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4 || matchMedia('(prefers-reduced-transparency: reduce)').matches;
+          var lite = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
           if (!lite) {
             var gl = document.createElement('canvas').getContext('webgl');
             var dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');
             var gpu = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
-            if (/Intel|Iris|UHD|HD Graphics|Mali|Adreno|PowerVR|SwiftShader|llvmpipe|Basic Render|Radeon\(TM\) Graphics|Radeon Graphics|Vega \d/i.test(gpu)) lite = true;
+            if (/Intel|Iris|UHD|HD Graphics|Mali|Adreno|PowerVR|SwiftShader|llvmpipe|Basic Render/i.test(gpu)) lite = true;
             var lose = gl && gl.getExtension('WEBGL_lose_context');
             if (lose) lose.loseContext();
           }
           if (lite) document.documentElement.classList.add('lite');
-        } catch (e) {}
-        // The opening plays once a session, on the first page, never with reduced motion (components/Opening.tsx);
-        // and never leaves the page covered, whatever happens to the app.
-        try {
-          if (!sessionStorage.getItem('origin-intro') && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
-            document.documentElement.classList.add('intro-on');
-            window.__introBail = setTimeout(function () { document.documentElement.classList.remove('intro-on'); }, 6500);
-          }
-          sessionStorage.setItem('origin-intro', '1');
         } catch (e) {}
       })();
     </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..700&family=Geist+Mono:wght@400;500&display=swap" />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:wght@400..700&family=Geist+Mono:wght@400;500;600&display=swap"
+    />
   </head>
   <body>
     <div id="root"></div>

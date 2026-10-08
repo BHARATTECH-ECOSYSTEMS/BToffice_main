@@ -1,140 +1,106 @@
-import { opening, introPlanned, reloadedDocument } from '../opening';
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { isCompact, useFormation, useScene, worldYOf } from '../gl/Scene';
-import { LOGO_R } from '../gl/formations';
-import { Lines, Arrow } from '../components/Reveal';
-import { CAPABILITIES, DOMAINS, LAYERS } from '../content';
-
-const FACTS = [
-  { label: 'Research domains', value: String(DOMAINS.length).padStart(2, '0') },
-  { label: 'System layers', value: String(LAYERS.length).padStart(2, '0') },
-  { label: 'Capabilities', value: String(CAPABILITIES.length) },
-  { label: 'Headquarters', value: 'India' },
-];
-
-/** Counts a number up from zero once it is shown; words simply appear. */
-function CountUp({ value, run }: { value: string; run: boolean }) {
-  const n = Number(value);
-  const [v, setV] = useState(0);
-  useEffect(() => {
-    if (!run || Number.isNaN(n)) return;
-    let raf = 0;
-    const t0 = performance.now();
-    const tick = (t: number) => {
-      const k = Math.min(1, (t - t0) / 1400);
-      setV(Math.round(n * (1 - Math.pow(1 - k, 3))));
-      if (k < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [run, n]);
-  if (Number.isNaN(n)) return <>{value}</>;
-  return <>{String(v).padStart(value.length, '0')}</>;
-}
+import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
+import { fitTo, useFormation } from '../gl/Scene';
+import { MARK_SIZE } from '../gl/Engine';
+import { Arrow, Headline } from '../components/ui';
+import { Counter, Marquee } from '../components/fx';
+import { CAPABILITIES, DOMAINS, LAYERS, THREAD_LABELS } from '../content';
 
 export function Hero() {
   const ref = useRef<HTMLElement>(null);
-  const copyRef = useRef<HTMLDivElement>(null);
-  const [ready, setReady] = useState(() => !introPlanned && reloadedDocument());
-  const { scrollTo } = useScene();
-
-  useFormation(ref, () => {
-    const el = copyRef.current ?? ref.current;
-    const y = worldYOf(el, el ? el.offsetHeight * 0.48 : window.innerHeight * 0.45);
-    const scrollY = window.scrollY;
-    // Fade out smoothly and subtly as hero copy scrolls up, avoiding overlap with facts
-    const fadeDist = Math.max(240, window.innerHeight * 0.52);
-    const progress = Math.min(1, Math.max(0, scrollY / fadeDist));
-    const alpha = Math.max(0, 1 - progress * 1.15);
-    // Phones and portrait tablets: the mark sits centred in the open band between the nav and the headline, sized to it.
-    let mobile = { x: 0, y, s: 0.6 };
-    if (isCompact() && ref.current && copyRef.current) {
-      const hero = ref.current.getBoundingClientRect();
-      const bandTop = 64; // under the nav capsule
-      const bandBottom = copyRef.current.getBoundingClientRect().top - hero.top;
-      const perPx = worldYOf(ref.current, 0) - worldYOf(ref.current, 1);
-      const radius = ((bandBottom - bandTop) / 2) * perPx;
-      // a little above centre and a little smaller, so the plinth under it clears the headline
-      const mid = bandTop + (bandBottom - bandTop) * 0.42;
-      mobile = { x: 0, y: worldYOf(ref.current, mid), s: Math.max(0.36, Math.min(0.56, (radius * 0.66) / LOGO_R)) };
-    }
-    return {
-      key: 'heroLogo',
-      pose: { x: 1.6, y: y + 0.18, s: 0.86 },
-      mobilePose: mobile,
-      params: { alpha, solid: 0, drift: 3, dot: 0.9 },
-      follow: 18,
-    };
-  });
-
+  const stage = useRef<HTMLDivElement>(null);
+  const [ready, setReady] = useState(false);
   useEffect(() => {
-    if (ready) return;
-    let live = true;
-    let t = 0;
-    opening.then(() => {
-      if (live) t = window.setTimeout(() => setReady(true), introPlanned ? 120 : 250);
-    });
-    return () => {
-      live = false;
-      clearTimeout(t);
-    };
-  }, [ready]);
-
-  useEffect(() => {
-    let raf = 0;
-    const onScroll = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
-        const el = copyRef.current;
-        if (!el) return;
-        const k = Math.min(1, window.scrollY / (window.innerHeight * 0.8));
-        el.style.transform = `translate3d(0, ${-k * 60}px, 0)`;
-        el.style.opacity = String(1 - k * 0.85);
-      });
-    };
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('scroll', onScroll);
-    };
+    const t = setTimeout(() => setReady(true), 80);
+    return () => clearTimeout(t);
   }, []);
 
-  const d = (ms: number) => ({ '--d': `${ms}ms` }) as CSSProperties;
+  useFormation(ref, () => ({ key: 'mark', pose: fitTo(stage.current, MARK_SIZE, 1.05), follow: 30 }));
 
   return (
-    <section id="top" ref={ref} className="hero" data-chapter="Origin">
-      <div className="wrap hero-grid">
-        <div ref={copyRef} className="hero-copy">
-          <Lines as="h1" className="display" show={ready} delay={80} lines={['Intelligence', 'should never', <span className="accent">forget.</span>]} />
-          <p className={`lede fade ${ready ? 'is-in' : ''}`} style={d(520)}>
-            Bharattech Origin is building the operating system for intelligence: one shared layer that lets AI remember context, work
-            across tools and keep learning.
+    <section id="top" ref={ref} className="hero" data-ready={ready || undefined}>
+      <div className="hero-grid-bg" aria-hidden="true" />
+      <div className="wrap hero-inner">
+        <div className="hero-copy">
+          <Link to="/research" className="hero-badge">
+            <span className="hero-badge-tag">New</span>
+            Rivinity, our flagship research programme
+            <Arrow size={12} />
+          </Link>
+          <Headline as="h1" className="display" tone="violet" lines={['Intelligence', 'should never', 'forget.']} show={ready} />
+          <p className="hero-lede">
+            We are building the operating system for intelligence: one shared layer that lets AI remember context, work across tools and keep learning.
           </p>
-          <div className={`hero-actions fade ${ready ? 'is-in' : ''}`} style={d(640)}>
-            <button className="btn btn-solid" onClick={() => scrollTo(document.getElementById('intro')!)}>
-              See what we’re building <Arrow dir="down" size={13} />
-            </button>
-            <button className="btn btn-ghost" onClick={() => scrollTo(document.getElementById('how')!)}>
-              How it works
-            </button>
+          <div className="hero-actions">
+            <Link to="/contact" className="btn btn-primary btn-lg">
+              Start a conversation <Arrow />
+            </Link>
+            <Link to="/research" className="btn btn-ghost btn-lg">
+              Explore research
+            </Link>
           </div>
+          <ul className="hero-facts">
+            <li>
+              <b>
+                <Counter to={DOMAINS.length} />
+              </b>
+              <span>research domains</span>
+            </li>
+            <li>
+              <b>
+                <Counter to={LAYERS.length} />
+              </b>
+              <span>system layers</span>
+            </li>
+            <li>
+              <b>
+                <Counter to={CAPABILITIES.length} />
+              </b>
+              <span>capabilities</span>
+            </li>
+          </ul>
         </div>
-        <div className={`hero-stage fade ${ready ? 'is-in' : ''}`} style={d(350)}>
-          <div className="hero-stage-aura" aria-hidden="true" />
+
+        <div className="hero-visual">
+          <div className="hero-plate" aria-hidden="true">
+            <span className="plate-corner is-tl" />
+            <span className="plate-corner is-tr" />
+            <span className="plate-corner is-bl" />
+            <span className="plate-corner is-br" />
+            <span className="plate-ring" />
+            <span className="plate-ring is-outer" />
+            <span className="plate-axis is-x" />
+            <span className="plate-axis is-y" />
+            <p className="plate-note is-tl">
+              Fig. 01
+              <b>The origin mark</b>
+            </p>
+            <ul className="plate-note is-br">
+              {THREAD_LABELS.map((t, i) => (
+                <li key={t}>
+                  <i />
+                  {String(i + 1).padStart(2, '0')} {t}
+                </li>
+              ))}
+            </ul>
+            <p className="plate-note is-tr">
+              3 threads
+              <b>1 origin</b>
+            </p>
+          </div>
+          <div className="hero-stage" ref={stage} aria-hidden="true" />
         </div>
       </div>
-      <div className="wrap">
-        <dl className={`hero-facts fade ${ready ? 'is-in' : ''}`} style={d(800)}>
-          {FACTS.map((f) => (
-            <div key={f.label}>
-              <dt>{f.label}</dt>
-              <dd>
-                <CountUp value={f.value} run={ready} />
-              </dd>
-            </div>
+
+      <div className="hero-ticker">
+        <Marquee speed={55}>
+          {CAPABILITIES.map((c) => (
+            <span key={c.name} className="ticker-item">
+              <i aria-hidden="true" />
+              {c.name}
+            </span>
           ))}
-        </dl>
+        </Marquee>
       </div>
     </section>
   );

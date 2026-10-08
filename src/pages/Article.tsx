@@ -1,58 +1,63 @@
-import { useRef } from 'react';
 import { Link, useParams } from 'react-router';
-import { useFormation } from '../gl/Scene';
-import { Cover } from '../components/Cover';
-import { Arrow, Fade, Lines } from '../components/Reveal';
-import { POSTS, EMAIL } from '../content';
+import { Quiet } from '../components/PageHero';
+import { Arrow, Reveal, toneStyle } from '../components/ui';
+import { EMAIL, POSTS } from '../content';
 import { NotFound } from './NotFound';
+import { Cover } from '../components/art';
 
 export function Article() {
   const { slug } = useParams();
-  const ref = useRef<HTMLElement>(null);
-  useFormation(ref, { key: 'field', params: { alpha: 0 } });
-  const i = POSTS.findIndex((p) => p.slug === slug);
-  if (i < 0) return <NotFound />;
-  const post = POSTS[i];
-  const next = POSTS[(i + 1) % POSTS.length];
+  const post = POSTS.find((p) => p.slug === slug);
+  if (!post) return <NotFound />;
+  const more = POSTS.filter((p) => p.slug !== post.slug).slice(0, 2);
   return (
-    <article ref={ref} className="page section" style={{ paddingTop: 160 }}>
-      <div className="wrap article">
-        <Fade as="p" className="story-meta">
-          <Link to="/publications" className="link">
-            ← Publications
+    <>
+      <Quiet className="article">
+        <div className="wrap article-wrap">
+          <Link to="/publications" className="text-link back">
+            <Arrow dir="left" size={12} /> Publications
           </Link>
-          <span>{post.category}</span>
-          <span>{post.date}</span>
-          <span>{post.read} read</span>
-        </Fade>
-        <Lines as="h1" className="h1" lines={[post.title]} />
-        <Fade as="p" className="lede">
-          {post.dek}
-        </Fade>
-        <Fade className="article-cover" delay={200}>
-          <Cover seed={post.slug} variant={i} />
-        </Fade>
-        <Fade className="article-body" delay={250}>
-          <p>{post.excerpt}</p>
-          <p>
-            The full essay is being prepared for publication. For early access or to discuss the research, write to{' '}
-            <a className="link violet" href={`mailto:${EMAIL}`}>
-              {EMAIL}
-            </a>
-            .
+          <p className="post-meta" style={toneStyle('violet')}>
+            <span>{post.category}</span>
+            {post.date} · {post.read} read
           </p>
-        </Fade>
-        <hr className="rule" style={{ margin: '64px 0 32px' }} />
-        <Link to={`/publications/${next.slug}`} className="story" style={{ gridTemplateColumns: '1fr auto', alignItems: 'center' }}>
-          <div>
-            <p className="mono muted">Next essay</p>
-            <p className="story-title" style={{ marginTop: 10 }}>
-              {next.title}
+          <h1 className="h1">{post.title}</h1>
+          <p className="article-dek">{post.dek}</p>
+          <div className="article-cover">
+            <Cover index={POSTS.indexOf(post)} label={post.category} />
+          </div>
+          <p className="article-body">{post.excerpt}</p>
+          <div className="cell cell-tint article-note" style={toneStyle('violet')}>
+            <p className="cell-label">Full essay coming</p>
+            <p>
+              We publish the full piece once it has been reviewed. Want it when it lands? <a href={`mailto:${EMAIL}?subject=${encodeURIComponent(`Essay: ${post.title}`)}`}>Ask us to send it.</a>
             </p>
           </div>
-          <Arrow size={22} />
-        </Link>
-      </div>
-    </article>
+        </div>
+      </Quiet>
+      <Quiet>
+        <div className="wrap">
+          <p className="cell-label more-label">Read next</p>
+          <div className="bento posts-bento">
+            {more.map((p, i) => (
+              <Reveal key={p.slug} className="cell post" delay={i * 70}>
+                <Link to={`/publications/${p.slug}`} className="cell-link" style={toneStyle('violet')}>
+                  <Cover index={POSTS.indexOf(p)} label={p.category} />
+                  <p className="post-meta">
+                    <span>{p.category}</span>
+                    {p.date}
+                  </p>
+                  <h3>{p.title}</h3>
+                  <p>{p.dek}</p>
+                  <span className="cell-go">
+                    Read <Arrow />
+                  </span>
+                </Link>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </Quiet>
+    </>
   );
 }

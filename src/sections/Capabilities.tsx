@@ -1,159 +1,80 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import {
-  Microscope,
-  Search,
-  Database,
-  Eye,
-  AudioLines,
-  Bot,
-  Workflow,
-  SlidersHorizontal,
-  Code2,
-  Rocket,
-  LayoutDashboard,
-  Globe,
-  Building2,
-  ShieldCheck,
-  Store,
-  type LucideIcon,
-} from 'lucide-react';
-import { useFormation, useScene } from '../gl/Scene';
-import { useAnchors } from '../gl/useAnchors';
-import { ChapterHead, StepList, TIER_TONES, fitTo, type Step } from '../components/Chapter';
+import { useRef, type CSSProperties } from 'react';
+import { fitTo, useFormation } from '../gl/Scene';
+import { MARK_SIZE } from '../gl/Engine';
+import { Eyebrow, Headline } from '../components/ui';
+import { Chapter, StepTabs, Steps, usePinned } from '../components/Chapter';
+import { MetricsArt, SearchArt, WorkflowArt } from '../components/art';
 import { CAPABILITIES, CAPABILITY_GROUPS } from '../content';
+import type { HueName } from '../gl/palette';
 
-const PER_GROUP = 5;
+const ROOM = 1.35;
 
-const GROUP_LINES = [
-  'Perceive the world: language, images, sound and the open web.',
-  'Turn intelligence into working things: agents, workflows, models.',
-  'Run it safely at scale, across an organisation and its partners.',
+/** Each family is one of the logo's threads; `thread` is its colour on the glaze. */
+const FAMILY: { tone: HueName; thread: string; line: string; Art: () => JSX.Element }[] = [
+  { tone: 'cobalt', thread: '#6d8cff', line: 'Read the world in any form: text, images, speech and the web.', Art: SearchArt },
+  { tone: 'violet', thread: '#d2c7ff', line: 'Compose agents and workflows that inherit everything the system knows.', Art: WorkflowArt },
+  { tone: 'emerald', thread: '#2fd39a', line: 'Run it on your data, under your governance, from cloud to edge.', Art: MetricsArt },
 ];
 
-const ICONS: LucideIcon[] = [Microscope, Search, Database, Eye, AudioLines, Bot, Workflow, SlidersHorizontal, Code2, Rocket, LayoutDashboard, Globe, Building2, ShieldCheck, Store];
-
-/**
- * Fifteen capabilities, read five at a time. The chapter is pinned: scrolling moves through the three families
- * (Understand, Build, Operate), each one a ring of the orbit. The family's five capabilities are listed beside it,
- * and the one in focus lights its satellite with its name pinned on it.
- */
+/** Three families, three threads: the family being read lights its thread while the other two sink into the glaze. */
 export function Capabilities() {
   const ref = useRef<HTMLElement>(null);
-  const visRef = useRef<HTMLDivElement>(null);
-  const tag = useRef<HTMLDivElement>(null);
-  const [group, setGroup] = useState(0);
-  const [stepP, setStepP] = useState(0);
-  const [pick, setPick] = useState(0); // within the family
-  const [hover, setHover] = useState<number | null>(null);
-  const owns = useRef(false);
-  const { scrollTo } = useScene();
-  const local = hover ?? pick;
-  const active = group * PER_GROUP + local;
-  const activeRef = useRef(active);
-  activeRef.current = active;
+  const stage = useRef<HTMLDivElement>(null);
+  const { step, goTo } = usePinned(ref, CAPABILITY_GROUPS.length);
+  const stepRef = useRef(0);
+  stepRef.current = step;
 
-  useFormation(
-    ref,
-    () => {
-      const f = fitTo(visRef.current, 4.7, 3.3, 1, 0.46);
-      return {
-        key: 'orbit15',
-        pose: { x: f.x, y: f.y, s: f.s, rx: 0.12 },
-        mobilePose: { x: f.x, y: f.y, s: f.s },
-        params: { highlight: activeRef.current },
-        follow: 16,
-        exact: true,
-      };
-    },
-    (p, isActive) => {
-      owns.current = isActive;
-      if (!isActive) return;
-      const n = CAPABILITY_GROUPS.length;
-      const g = Math.min(n - 1, Math.floor(p * n));
-      setGroup((v) => (v === g ? v : g));
-      const sp = Math.round(Math.min(1, p * n - g) * 50) / 50;
-      setStepP((v) => (v === sp ? v : sp));
-    },
-  );
-
-  // a new family starts at its first capability
-  useEffect(() => setPick(0), [group]);
-
-  // while nobody is pointing, focus walks the family's five satellites
-  useEffect(() => {
-    if (hover !== null) return;
-    const t = setInterval(() => owns.current && setPick((a) => (a + 1) % PER_GROUP), 2800);
-    return () => clearInterval(t);
-  }, [hover, group]);
-
-  useAnchors(['orbit15'], (pts, settle) => {
-    const el = tag.current;
-    if (!el) return;
-    const p = pts?.[activeRef.current];
-    const on = p && owns.current ? settle : 0;
-    el.style.opacity = String(on);
-    if (!p) return;
-    const left = p.x > window.innerWidth * 0.78;
-    el.classList.toggle('is-left', left);
-    el.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)${left ? ' translateX(-100%)' : ''}`;
-  });
-
-  const jump = (g: number) => {
-    const el = ref.current;
-    if (!el) return;
-    const top = el.getBoundingClientRect().top + window.scrollY;
-    scrollTo(top + ((g + 0.15) / CAPABILITY_GROUPS.length) * (el.offsetHeight - window.innerHeight));
-  };
-
-  const steps: Step[] = CAPABILITIES.slice(group * PER_GROUP, (group + 1) * PER_GROUP).map((c, i) => ({
-    key: c.name,
-    title: c.name,
-    sub: c.body,
-    icon: ICONS[group * PER_GROUP + i],
-    tone: TIER_TONES[group],
-  }));
-  const cap = CAPABILITIES[active];
+  useFormation(ref, () => ({ key: 'mark', focus: stepRef.current, tint: FAMILY[stepRef.current].thread, flow: 0.6, pose: fitTo(stage.current, MARK_SIZE * ROOM, 0.95), follow: 30 }));
 
   return (
-    <section id="capabilities" ref={ref} className="ch-pin caps-ch" style={{ '--steps': 3, '--step-h': '75svh' } as CSSProperties} data-chapter="Capabilities">
-      <div className="ch-stage">
-        <div className="wrap ch-grid">
-          <div className="ch-copy">
-            <ChapterHead
-              title={['One intelligence.', <span className="accent">Fifteen capabilities.</span>]}
-              lede="Three families, fifteen satellites of the same core. They share one memory, one way of reasoning and one set of controls."
-            />
-            <div className="ch-tabs" role="tablist" aria-label="Capability families">
-              {CAPABILITY_GROUPS.map((g, i) => (
-                <button key={g} type="button" role="tab" aria-selected={i === group} className={i === group ? 'is-active' : i < group ? 'is-past' : ''} data-tone={TIER_TONES[i]} onClick={() => jump(i)} style={{ '--sp': i === group ? stepP : i < group ? 1 : 0 } as CSSProperties}>
-                  <i />
-                  {g}
-                </button>
-              ))}
-            </div>
-            <p className="ch-tabline" key={group}>
-              {GROUP_LINES[group]}
-            </p>
-            <StepList
-              steps={steps}
-              active={local}
-              progress={1}
-              onHover={setHover}
-              onPick={setPick}
-              dense
-              caption
-            />
+    <Chapter id="capabilities" innerRef={ref} n={CAPABILITY_GROUPS.length} tone="cobalt" className="ch-caps">
+      <div className="wrap caps-frame">
+        <div className="caps-head">
+          <div>
+            <Eyebrow tone="cobalt">Capabilities</Eyebrow>
+            <Headline tone="cobalt" lines={['One intelligence.', 'Fifteen capabilities.']} />
           </div>
-          <div ref={visRef} className="ch-visual" aria-hidden="true" />
+          <StepTabs labels={CAPABILITY_GROUPS} step={step} goTo={goTo} tones={FAMILY.map((f) => f.tone)} />
+        </div>
+        <div className="caps-body">
+          <Steps step={step} className="chapter-steps caps-copy">
+            {CAPABILITY_GROUPS.map((g, gi) => {
+              const f = FAMILY[gi];
+              return (
+                <div key={g} className="chapter-step cap-step" style={{ '--tone': `var(--${f.tone})` } as CSSProperties}>
+                  <span className="chapter-step-num">
+                    {String(gi + 1).padStart(2, '0')} · {g}
+                  </span>
+                  <h3>{f.line}</h3>
+                  <ul className="cap-specs">
+                    {CAPABILITIES.slice(gi * 5, gi * 5 + 5).map((c, k) => (
+                      <li key={c.name} style={{ '--k': k } as CSSProperties}>
+                        <b>{c.name}</b>
+                        <span>{c.body}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })}
+          </Steps>
+          <div className="chapter-stage cap-stage" ref={stage} aria-hidden="true">
+            <ol className="thread-key">
+              {CAPABILITY_GROUPS.map((g, i) => (
+                <li key={g} data-on={i === step || undefined} style={{ '--tone': `var(--${FAMILY[i].tone})` } as CSSProperties}>
+                  <i />
+                  Thread {String(i + 1).padStart(2, '0')} · {g}
+                </li>
+              ))}
+            </ol>
+          </div>
+          <Steps step={step} className="cap-art-steps">
+            {FAMILY.map(({ Art }, i) => (
+              <Art key={i} />
+            ))}
+          </Steps>
         </div>
       </div>
-      <div ref={tag} className="ch-tag" data-tone={TIER_TONES[group]} aria-hidden="true">
-        <i />
-        <span>
-          <b>{cap.name}</b>
-          <small>{CAPABILITY_GROUPS[group]}</small>
-        </span>
-      </div>
-    </section>
+    </Chapter>
   );
 }

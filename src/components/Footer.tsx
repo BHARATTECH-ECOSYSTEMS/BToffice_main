@@ -1,10 +1,8 @@
 import { Link } from 'react-router';
-import { Brand } from './LogoMark';
-import { Arrow } from './Reveal';
-import { EMAIL, EMPLOYEE_LOGIN_URL } from '../content';
-import { useScene } from '../gl/Scene';
+import { Arrow, Brand } from './ui';
+import { EMAIL, EMPLOYEE_LOGIN_URL, HQ } from '../content';
 
-const COLS: { title: string; links: { label: string; to?: string; href?: string; external?: boolean }[] }[] = [
+const COLS: { title: string; links: { label: string; to?: string; href?: string }[] }[] = [
   {
     title: 'Company',
     links: [
@@ -16,10 +14,10 @@ const COLS: { title: string; links: { label: string; to?: string; href?: string;
     ],
   },
   {
-    title: 'Products',
+    title: 'Work',
     links: [
       { label: 'Rivinity', to: '/research' },
-      { label: 'Collegecue', href: '#' },
+      { label: 'CollegeCue', href: '#' },
       { label: 'RECAG', href: '#' },
     ],
   },
@@ -28,71 +26,41 @@ const COLS: { title: string; links: { label: string; to?: string; href?: string;
     links: [
       { label: 'Privacy', to: '/privacy' },
       { label: 'Terms', to: '/terms' },
-      { label: 'Employee login', href: EMPLOYEE_LOGIN_URL, external: true },
+      { label: 'Employee login', href: EMPLOYEE_LOGIN_URL },
     ],
   },
 ];
 
 export function Footer() {
-  const { scrollTo } = useScene();
   return (
     <footer className="footer">
       <div className="wrap">
-        <div className="footer-cta">
-          <div>
-            <p className="footer-kicker mono">Start a conversation</p>
-            <h2 className="footer-title">
-              Build what comes next <span className="accent">with us.</span>
-            </h2>
-          </div>
-          <div className="footer-cta-actions">
-            <Link className="btn btn-solid" to="/contact">
-              Get in touch <Arrow size={13} />
-            </Link>
-            <a className="footer-mail" href={`mailto:${EMAIL}`}>
-              {EMAIL}
-            </a>
-          </div>
-        </div>
-
-        <div className="footer-grid">
+        <div className="footer-top">
           <div className="footer-lead">
-            <Link to="/" className="brand" style={{ paddingLeft: 0 }} aria-label="Bharattech Origin home">
-              <Brand />
+            <Link to="/" aria-label="Bharattech Origin, home">
+              <Brand size={32} />
             </Link>
-            <p className="footer-statement">Building the operating system for intelligence. Made in Bharat.</p>
+            <p>Building the operating system for intelligence. Made in Bharat.</p>
+            <a className="footer-mail" href={`mailto:${EMAIL}`}>
+              {EMAIL} <Arrow dir="up-right" size={13} />
+            </a>
           </div>
           {COLS.map((c) => (
             <div className="footer-col" key={c.title}>
               <h4>{c.title}</h4>
               <ul>
                 {c.links.map((l) => (
-                  <li key={l.label}>
-                    {l.to ? (
-                      <Link to={l.to}>{l.label}</Link>
-                    ) : (
-                      <a
-                        href={l.href}
-                        {...(l.external || l.href?.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                      >
-                        {l.label}
-                      </a>
-                    )}
-                  </li>
+                  <li key={l.label}>{l.to ? <Link to={l.to}>{l.label}</Link> : <a href={l.href}>{l.label}</a>}</li>
                 ))}
               </ul>
             </div>
           ))}
         </div>
-
         <div className="footer-base">
-          <span>© 2026 Bharattech Origin</span>
-          <button className="to-origin" onClick={() => scrollTo(0)}>
-            Back to top <Arrow dir="up" size={12} />
-          </button>
+          <span>© {new Date().getFullYear()} Bharattech Origin</span>
+          <span>{HQ}</span>
         </div>
       </div>
-      <p className="footer-word" aria-hidden="true">ORIGIN</p>
     </footer>
   );
 }

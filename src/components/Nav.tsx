@@ -1,265 +1,334 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
-import { Link, NavLink, useLocation, useNavigate } from 'react-router';
-import { Brand } from './LogoMark';
-import { Arrow } from './Reveal';
-import { EMPLOYEE_LOGIN_URL, EMAIL } from '../content';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router';
+import { Arrow, Brand, toneStyle } from './ui';
+import { CHAPTERS, EMAIL } from '../content';
 import { useScene } from '../gl/Scene';
-import { NavGlance, type GlanceKey } from './NavGlance';
-import { playCurtain } from './PageCurtain';
+import { NavPeek, type PeekId } from './NavPeek';
+import type { HueName } from '../gl/palette';
 
-const LINKS: { label: string; to: string; section?: string; glance?: GlanceKey }[] = [
-  { label: 'Research', to: '/research', glance: 'research' },
-  { label: 'Publications', to: '/publications', glance: 'publications' },
-  { label: 'Capabilities', to: '/', section: 'capabilities', glance: 'capabilities' },
-  { label: 'Career', to: '/careers', glance: 'careers' },
-  { label: 'About', to: '/about', glance: 'about' },
-  { label: 'Contact', to: '/contact', glance: 'contact' },
+const LINKS: { label: string; to: string; section?: string; tone: HueName; peek: PeekId }[] = [
+  { label: 'Research', to: '/research', tone: 'emerald', peek: 'research' },
+  { label: 'Capabilities', to: '/', section: 'capabilities', tone: 'cobalt', peek: 'capabilities' },
+  { label: 'Publications', to: '/publications', tone: 'violet', peek: 'publications' },
+  { label: 'Careers', to: '/careers', tone: 'tangerine', peek: 'careers' },
+  { label: 'About', to: '/about', tone: 'pink', peek: 'about' },
 ];
 
-export function Nav() {
-  const [scrolled, setScrolled] = useState(false);
-  const [hidden, setHidden] = useState(false);
-  const hovering = useRef(false);
-  const [glance, setGlance] = useState<GlanceKey | null>(null);
-  const [glanceOpen, setGlanceOpen] = useState(false);
-  const glanceTimer = useRef(0);
-  const quietUntil = useRef(0); // just after a page change the cursor is still on the link it clicked
-  const openGlance = (k?: GlanceKey) => {
-    clearTimeout(glanceTimer.current);
-    if (k && performance.now() < quietUntil.current) return;
-    if (!k) {
-      glanceTimer.current = window.setTimeout(() => setGlanceOpen(false), 120);
-      return;
-    }
-    setGlance(k);
-    glanceTimer.current = window.setTimeout(() => setGlanceOpen(true), glanceOpen ? 0 : 90);
-  };
-  const closeGlance = () => {
-    clearTimeout(glanceTimer.current);
-    glanceTimer.current = window.setTimeout(() => setGlanceOpen(false), 160);
-  };
-  const shutGlance = () => {
-    clearTimeout(glanceTimer.current);
-    quietUntil.current = performance.now() + 2200;
-    setGlanceOpen(false);
-  };
-  const linksRef = useRef<HTMLElement>(null);
-  const [open, setOpen] = useState(false);
-  const [activeSection, setActiveSection] = useState<string | null>(null);
-  const [pill, setPill] = useState({ x: 0, w: 0, on: false });
-  const navRef = useRef<HTMLElement>(null);
-  const { pathname } = useLocation();
-  const navigate = useNavigate();
-  const { scrollTo } = useScene();
+const fine = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
+/** Hover intent: a short wait before the first glance opens, none between links, and a grace period on
+ *  leaving so the pointer can travel down into the panel. */
+function usePeek() {
+  const [peek, setPeek] = useState<PeekId | null>(null);
+  const timer = useRef(0);
+  const current = useRef<PeekId | null>(null);
+  const set = useCallback((id: PeekId | null) => {
+    current.current = id;
+    setPeek(id);
+  }, []);
+  const open = useCallback(
+    (id: PeekId) => {
+      window.clearTimeout(timer.current);
+      if (current.current) set(id);
+      else timer.current = window.setTimeout(() => set(id), 90);
+    },
+    [set],
+  );
+  const close = useCallback(
+    (now = false) => {
+      window.clearTimeout(timer.current);
+      if (now) set(null);
+      else timer.current = window.setTimeout(() => set(null), 220);
+    },
+    [set],
+  );
+  const hold = useCallback(() => window.clearTimeout(timer.current), []);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  return { peek, open, close, hold };
+}
+
+/** Where the reader is in the home story: the chapter holding the middle of the screen, and how far through it. */
+function useChapterProgress(enabled: boolean) {
+  const [state, setState] = useState({ index: 0, fills: CHAPTERS.map(() => 0) });
   useEffect(() => {
+    if (!enabled) return;
     let raf = 0;
-    let lastY = window.scrollY;
-    const onScroll = () => {
+    const measure = () => {
       raf = 0;
-      const scrollY = window.scrollY;
-      setScrolled(scrollY > 20);
-      // tucks away while reading down the page, comes back the moment you scroll up
-      if (Math.abs(scrollY - lastY) > 4) {
-        setHidden(scrollY > 400 && scrollY > lastY);
-        if (scrollY > lastY) setGlanceOpen(false);
-        lastY = scrollY;
-      }
-
-
-      const mid = window.innerHeight / 2;
-      const active = LINKS.find((l) => {
-        if (!l.section) return false;
-        const el = document.getElementById(l.section);
-        if (!el) return false;
-        const r = el.getBoundingClientRect();
-        return r.top <= mid && r.bottom >= mid;
+      const mid = window.scrollY + window.innerHeight * 0.5;
+      const starts = CHAPTERS.map((c) => {
+        const el = document.getElementById(c.id);
+        return el ? el.getBoundingClientRect().top + window.scrollY : Infinity;
       });
-      setActiveSection(active?.section ?? null);
+      const end = (document.querySelector('.footer') as HTMLElement | null)?.offsetTop ?? document.body.scrollHeight;
+      let index = 0;
+      const fills = starts.map((s, i) => {
+        const e = i < starts.length - 1 ? starts[i + 1] : end;
+        if (mid >= s) index = i;
+        return Math.min(1, Math.max(0, (mid - s) / Math.max(1, e - s)));
+      });
+      setState((p) => (p.index === index && p.fills.every((f, i) => Math.abs(f - fills[i]) < 0.004) ? p : { index, fills }));
     };
-
-    const handleScroll = () => {
-      if (!raf) raf = requestAnimationFrame(onScroll);
+    const on = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
     };
-
-    onScroll();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', onScroll, { passive: true });
+    measure();
+    window.addEventListener('scroll', on, { passive: true });
+    window.addEventListener('resize', on);
     return () => {
       cancelAnimationFrame(raf);
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', onScroll);
+      window.removeEventListener('scroll', on);
+      window.removeEventListener('resize', on);
     };
-  }, [pathname]);
+  }, [enabled]);
+  return state;
+}
+
+export function Nav() {
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { scrollTo, lenis } = useScene();
+  const home = pathname === '/';
+  const [compact, setCompact] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [hover, setHover] = useState(-1);
+  const [inCaps, setInCaps] = useState(false);
+  const linksRef = useRef<HTMLDivElement>(null);
+  const [hl, setHl] = useState({ x: 0, w: 0, glide: false });
+  const { index: chapter, fills } = useChapterProgress(home);
+  const { peek, open: openPeek, close: closePeek, hold } = usePeek();
+  const [caret, setCaret] = useState(0);
+
+  // compact once the page moves; tucked away while reading down, back the moment you scroll up
+  useEffect(() => {
+    let lastY = window.scrollY;
+    let raf = 0;
+    const on = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        const y = window.scrollY;
+        setCompact(y > 24);
+        if (Math.abs(y - lastY) > 6) {
+          setHidden(y > 640 && y > lastY);
+          lastY = y;
+        }
+        const caps = document.getElementById('capabilities')?.getBoundingClientRect();
+        setInCaps(!!caps && caps.top < window.innerHeight * 0.5 && caps.bottom > window.innerHeight * 0.5);
+      });
+    };
+    on();
+    window.addEventListener('scroll', on, { passive: true });
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', on);
+    };
+  }, []);
 
   useEffect(() => {
     setOpen(false);
-    shutGlance();
-  }, [pathname]);
+    closePeek(true);
+  }, [pathname, closePeek]);
+
+  // a glance closes on Escape, on a press outside the nav, or once the page has moved on under it
   useEffect(() => {
-    document.body.style.overflow = open ? 'hidden' : '';
+    if (!peek) return;
+    const y0 = window.scrollY;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closePeek(true);
+    const onDown = (e: PointerEvent) => !(e.target as Element).closest('.nav') && closePeek(true);
+    const onScroll = () => Math.abs(window.scrollY - y0) > 80 && closePeek(true);
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onDown);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onDown);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, [peek, closePeek]);
+  useEffect(() => {
+    if (hidden) closePeek(true);
+  }, [hidden, closePeek]);
+  useEffect(() => {
+    if (open) lenis?.stop();
+    else lenis?.start();
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [open]);
+  }, [open, lenis]);
 
-  const onHover = (e: React.MouseEvent<HTMLElement>) => {
-    hovering.current = true;
-    const el = e.currentTarget;
-    setPill({ x: el.offsetLeft, w: el.offsetWidth, on: true });
+  const active = LINKS.findIndex((l) => (l.section ? home && inCaps : l.to !== '/' && pathname.startsWith(l.to)));
+  const openIdx = peek ? LINKS.findIndex((l) => l.peek === peek) : -1;
+  const lit = hover >= 0 ? hover : openIdx >= 0 ? openIdx : active;
+
+  // the highlight glides between links; the first time it appears it fades in place instead of sliding from 0
+  useLayoutEffect(() => {
+    const b = linksRef.current?.querySelectorAll<HTMLElement>('a, button')[lit];
+    if (b) {
+      setHl((p) => ({ x: b.offsetLeft, w: b.offsetWidth, glide: p.w > 0 }));
+      const r = b.getBoundingClientRect();
+      setCaret(r.left + r.width / 2);
+    }
+  }, [lit]);
+
+  const go = useCallback(
+    (l: (typeof LINKS)[number]) => {
+      setOpen(false);
+      if (!l.section) return;
+      if (home) {
+        const el = document.getElementById(l.section);
+        if (el) scrollTo(el);
+      } else navigate('/', { state: { scrollTo: l.section } });
+    },
+    [home, navigate, scrollTo],
+  );
+
+  const fromPeek = useCallback(
+    (to: string, section?: string) => {
+      closePeek(true);
+      if (to === pathname && section) {
+        const el = document.getElementById(section);
+        if (el) scrollTo(el);
+      } else if (to === pathname) scrollTo(0);
+      else navigate(to, section ? { state: { scrollTo: section } } : undefined);
+    },
+    [closePeek, navigate, pathname, scrollTo],
+  );
+
+  const toChapter = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) scrollTo(el);
   };
 
-  // With nothing hovered, the pill rests on the page (or home section) you are in.
-  const rest = () => {
-    const cur = linksRef.current?.querySelector<HTMLElement>('.nav-link.is-current, .nav-link.active');
-    setPill(cur ? { x: cur.offsetLeft, w: cur.offsetWidth, on: true } : (p) => ({ ...p, on: false }));
-  };
-  useEffect(() => {
-    if (hovering.current) return;
-    const id = requestAnimationFrame(rest);
-    window.addEventListener('resize', rest);
-    return () => {
-      cancelAnimationFrame(id);
-      window.removeEventListener('resize', rest);
-    };
-  }, [pathname, activeSection]);
+  const peekProps = (l: (typeof LINKS)[number], i: number) => ({
+    onPointerEnter: (e: React.PointerEvent) => {
+      setHover(i);
+      if (e.pointerType === 'mouse' && fine()) openPeek(l.peek);
+    },
+    onFocus: () => setHover(i),
+    onBlur: () => setHover(-1),
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.key !== 'ArrowDown') return;
+      e.preventDefault();
+      openPeek(l.peek);
+      window.setTimeout(() => document.querySelector<HTMLElement>(`#peek-${l.peek} button`)?.focus(), 160);
+    },
+    'aria-expanded': peek === l.peek,
+    'aria-controls': `peek-${l.peek}`,
+  });
 
-  // Already home: a link to "/" changes nothing, so the brand and "Home" scroll back to the top themselves.
-  const home = (e: React.MouseEvent) => {
-    setOpen(false);
-    if (pathname !== '/') return;
-    e.preventDefault();
-    scrollTo(0);
-  };
-
-  // A section of the home page plays the same curtain as a page: it covers, the page jumps there, it lifts.
-  const toSection = (section: string, label: string) => {
-    playCurtain(label, () => {
-      const el = document.getElementById(section);
-      if (pathname === '/' && el) scrollTo(el, true);
-      else navigate('/', { state: { scrollTo: section } });
-    });
-  };
-  const go = (l: (typeof LINKS)[number]) => (e: React.MouseEvent) => {
-    if (!l.section) return;
-    e.preventDefault();
-    setOpen(false);
-    toSection(l.section, l.label);
-  };
+  const current = CHAPTERS[chapter];
+  const ring = 2 * Math.PI * 6.5;
 
   return (
-    <header
-      ref={navRef}
-      className={`nav ${scrolled ? 'is-scrolled' : ''} ${hidden && !open ? 'is-hidden' : ''} ${open ? 'menu-open' : ''}`}
-      style={{ '--p': 0 } as CSSProperties}
-      onMouseLeave={closeGlance}
-    >
-      <div className="nav-inner">
-        <Link to="/" className="brand" aria-label="Bharattech Origin home" onClick={home}>
+    <header className="nav" data-peek={peek || undefined} data-hidden={(hidden && !open && !peek) || undefined} data-compact={compact || open || undefined} data-open={open || undefined}>
+      <div className="nav-bar">
+        <span className="nav-glass" aria-hidden="true" />
+        <Link to="/" className="nav-brand" aria-label="Bharattech Origin, home" onClick={() => home && scrollTo(0)}>
           <Brand />
         </Link>
+
+        {home && (
+          <button className="nav-readout" style={toneStyle(current.tone)} onClick={() => toChapter(current.id)} aria-label={`Chapter ${chapter + 1}: ${current.label}`}>
+            <svg className="nav-ring" viewBox="0 0 16 16" aria-hidden="true">
+              <circle cx="8" cy="8" r="6.5" className="nav-ring-track" />
+              <circle cx="8" cy="8" r="6.5" className="nav-ring-fill" style={{ strokeDasharray: ring, strokeDashoffset: ring * (1 - fills[chapter]) }} />
+            </svg>
+            <span className="nav-readout-num">{String(chapter + 1).padStart(2, '0')}</span>
+            <span className="nav-readout-label" key={current.id}>
+              {current.label}
+            </span>
+          </button>
+        )}
+
         <nav
-          ref={linksRef}
           className="nav-links"
+          ref={linksRef}
           aria-label="Primary"
-          onMouseLeave={() => {
-            hovering.current = false;
-            rest();
+          onPointerLeave={() => {
+            setHover(-1);
+            closePeek();
           }}
         >
           <span
-            className="nav-pill"
+            className="nav-hl"
             aria-hidden="true"
-            style={{
-              transform: `translateX(${pill.x}px)`,
-              width: `${pill.w}px`,
-              opacity: pill.on ? 1 : 0,
-            }}
+            data-show={lit >= 0 || undefined}
+            data-glide={hl.glide || undefined}
+            style={{ transform: `translateX(${hl.x}px)`, width: hl.w, ...(lit >= 0 ? toneStyle(LINKS[lit].tone) : {}) }}
           />
-          {LINKS.map((l) =>
+          {LINKS.map((l, i) =>
             l.section ? (
-              <a
-                key={l.label}
-                href={`#/`}
-                data-section={l.section}
-                onClick={(e) => {
-                  shutGlance();
-                  onHover(e);
-                  go(l)(e);
-                }}
-                onMouseEnter={(e) => {
-                  onHover(e);
-                  openGlance(l.glance);
-                }}
-                className={`nav-link ${pathname === '/' && activeSection === l.section ? 'is-current' : ''}`}
-              >
+              <button key={l.label} style={toneStyle(l.tone, { '--i': i } as CSSProperties)} {...peekProps(l, i)} onClick={() => go(l)} aria-current={i === active || undefined}>
+                <i aria-hidden="true" />
                 {l.label}
-              </a>
+              </button>
             ) : (
-              <NavLink
-                key={l.label}
-                to={l.to}
-                onMouseEnter={(e) => {
-                  onHover(e);
-                  openGlance(l.glance);
-                }}
-                onClick={(e) => {
-                  shutGlance();
-                  onHover(e);
-                }}
-                className="nav-link"
-              >
+              <Link key={l.label} to={l.to} style={toneStyle(l.tone, { '--i': i } as CSSProperties)} {...peekProps(l, i)} aria-current={i === active ? 'page' : undefined}>
+                <i aria-hidden="true" />
                 {l.label}
-              </NavLink>
+              </Link>
             ),
           )}
-          <a className="nav-cta" href={EMPLOYEE_LOGIN_URL} target="_blank" rel="noopener noreferrer">
-            Employee login <Arrow dir="up-right" size={11} />
-          </a>
         </nav>
-        <div className="nav-mobile">
-          <button className="nav-menu-btn" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="sheet">
-            {open ? 'Close' : 'Menu'} <span className="burger" />
+
+        <div className="nav-end">
+          <Link to="/contact" className="nav-cta">
+            <span>Get in touch</span>
+            <span className="nav-cta-icon">
+              <Arrow dir="up-right" size={13} />
+            </span>
+          </Link>
+          <button className="nav-burger" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="nav-sheet" aria-label={open ? 'Close menu' : 'Open menu'}>
+            <span />
+            <span />
           </button>
         </div>
       </div>
 
-      <div onMouseEnter={() => clearTimeout(glanceTimer.current)}>
-        <NavGlance
-          which={glance}
-          open={glanceOpen && !hidden}
-          onGo={shutGlance}
-          onCapabilities={() => {
-            shutGlance();
-            toSection('capabilities', 'Capabilities');
-          }}
-          onSection={(section, label) => {
-            shutGlance();
-            toSection(section, label);
-          }}
-        />
-      </div>
+      <NavPeek peek={peek} caret={caret} onEnter={hold} onLeave={() => closePeek()} onGo={fromPeek} />
 
-      <div className="sheet" id="sheet" aria-hidden={!open}>
-        <nav className="sheet-links" aria-label="Mobile">
-          <Link to="/" className="sheet-link" onClick={home} tabIndex={open ? 0 : -1}>
-            Home
-          </Link>
-          {LINKS.map((l) => (
-            <Link key={l.label} to={l.to} onClick={go(l)} className="sheet-link" tabIndex={open ? 0 : -1} data-section={l.section}>
-              {l.label}
-            </Link>
+      {home && (
+        <div className="nav-progress" aria-hidden="true">
+          {CHAPTERS.map((c, i) => (
+            <button key={c.id} tabIndex={-1} style={toneStyle(c.tone)} onClick={() => toChapter(c.id)} title={c.label} data-on={i === chapter || undefined}>
+              <span style={{ transform: `scaleX(${fills[i]})` }} />
+            </button>
           ))}
-        </nav>
-        <div className="sheet-foot">
-          <a href={`mailto:${EMAIL}`} className="link muted" tabIndex={open ? 0 : -1}>
+        </div>
+      )}
+
+      <div className="nav-sheet" id="nav-sheet" aria-hidden={!open}>
+        <ul>
+          {LINKS.map((l, i) => (
+            <li key={l.label} style={toneStyle(l.tone, { '--i': i } as CSSProperties)}>
+              {l.section ? (
+                <button onClick={() => go(l)} tabIndex={open ? 0 : -1}>
+                  <i aria-hidden="true" />
+                  {l.label}
+                  <Arrow />
+                </button>
+              ) : (
+                <Link to={l.to} tabIndex={open ? 0 : -1}>
+                  <i aria-hidden="true" />
+                  {l.label}
+                  <Arrow />
+                </Link>
+              )}
+            </li>
+          ))}
+        </ul>
+        <div className="nav-sheet-foot" style={{ '--i': LINKS.length } as CSSProperties}>
+          <Link to="/contact" className="btn btn-primary" tabIndex={open ? 0 : -1}>
+            Get in touch <Arrow />
+          </Link>
+          <a href={`mailto:${EMAIL}`} className="nav-sheet-mail" tabIndex={open ? 0 : -1}>
             {EMAIL}
-          </a>
-          <a className="btn btn-solid" href={EMPLOYEE_LOGIN_URL} target="_blank" rel="noopener noreferrer" tabIndex={open ? 0 : -1}>
-            Employee login <Arrow dir="up-right" />
           </a>
         </div>
       </div>
+      <button className="nav-scrim" aria-hidden="true" tabIndex={-1} onClick={() => setOpen(false)} />
     </header>
   );
 }

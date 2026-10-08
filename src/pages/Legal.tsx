@@ -1,35 +1,39 @@
-import { PageHero } from '../components/PageHero';
-import { Fade } from '../components/Reveal';
-import { PRIVACY, TERMS, LEGAL_DATE } from '../content';
+import { PageHero, Quiet } from '../components/PageHero';
+import { LEGAL_DATE, PRIVACY, TERMS } from '../content';
 
-function LegalPage({ title, sections }: { title: string[]; sections: readonly (readonly [string, string])[] }) {
+function LegalPage({ title, items }: { title: [string, string]; items: readonly (readonly [string, string])[] }) {
   return (
-    <div className="page">
-      <PageHero meta={`Effective ${LEGAL_DATE} · Last updated ${LEGAL_DATE}`} title={title} lede="Written to be read, not skimmed past." target={{ key: 'field', params: { alpha: 0 } }} />
-      <div className="wrap legal">
-        <ol className="toc">
-          {sections.map(([h], i) => (
-            <li key={h}>
-              <a href={`#s${i}`} onClick={(e) => { e.preventDefault(); document.getElementById(`s${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}>
-                {h}
-              </a>
-            </li>
-          ))}
-        </ol>
-        <div className="legal-body">
-          {sections.map(([h, body], i) => (
-            <Fade as="section" key={h} className="legal-section" id={`s${i}`} style={{ scrollMarginTop: 120 }}>
-              <div>
-                <h2>{h}</h2>
-                <p>{body}</p>
-              </div>
-            </Fade>
-          ))}
+    <>
+      <PageHero eyebrow={`Effective ${LEGAL_DATE}`} tone="cobalt" title={title} lede="Written to be read, not skimmed past." />
+      <Quiet>
+        <div className="wrap legal">
+          <nav className="legal-toc" aria-label="Sections">
+            <ol>
+              {items.map(([h], i) => (
+                <li key={h}>
+                  <a href={`#s${i}`} onClick={(e) => (e.preventDefault(), document.getElementById(`s${i}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }))}>
+                    {h}
+                  </a>
+                </li>
+              ))}
+            </ol>
+          </nav>
+          <div className="legal-body">
+            {items.map(([h, b], i) => (
+              <section key={h} id={`s${i}`}>
+                <h2>
+                  <small>{String(i + 1).padStart(2, '0')}</small>
+                  {h}
+                </h2>
+                <p>{b}</p>
+              </section>
+            ))}
+          </div>
         </div>
-      </div>
-    </div>
+      </Quiet>
+    </>
   );
 }
 
-export const Privacy = () => <LegalPage title={['Privacy', 'policy.']} sections={PRIVACY} />;
-export const Terms = () => <LegalPage title={['Terms of', 'service.']} sections={TERMS} />;
+export const Privacy = () => <LegalPage title={['Privacy', 'policy.']} items={PRIVACY} />;
+export const Terms = () => <LegalPage title={['Terms of', 'service.']} items={TERMS} />;

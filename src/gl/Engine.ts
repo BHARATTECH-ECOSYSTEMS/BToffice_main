@@ -1,842 +1,627 @@
 import * as THREE from 'three';
-import { buildSolids, buildPlinth, studioEnvironment, setSolidOpacity, type Solid, type Plinth } from './objects';
-import { particleVertex, particleFragment, trailVertex, trailFragment } from './shaders';
-import { logo, fragments, silos, frozen, orbit, layers, globe, helix, field, arcPoint, ARCS, rng, GLOBE_R, type Formation } from './formations';
+import { SAMPLED_THREADS, THREAD_HALF_WIDTH } from './threads';
+import { CONTINENTS, INDIA, INDIA_BBOX, INDIA_HUBS, WORLD, inPolygon, lonLatToVec, type LonLat } from './geo';
 
-export type FormationKey = 'logo' | 'heroLogo' | 'fragments' | 'silos' | 'frozen' | 'alone' | 'orbit15' | 'orbit6' | 'layers' | 'globe' | 'helix' | 'field';
+/**
+ * The site's 3D layer: two physically lit objects that share one stage.
+ *  - the mark: the Bharattech Origin logo as a glazed violet sphere with its three white threads inlaid
+ *  - the globe: a ceramic planet with raised dot-matrix continents, India in violet and live routes to the world
+ * Each section asks for one of them (or none) at a place on the page; the outgoing object folds away
+ * while the incoming one unfolds, and the pose glides between stages.
+ */
+
+export type ObjectKey = 'mark' | 'globe' | 'none';
+export type Vec3 = [number, number, number];
 
 export interface Pose {
   x: number;
   y: number;
-  z: number;
   s: number;
-  rx: number;
-  ry: number;
-  rz: number;
-}
-
-export interface Params {
-  decay: number; // share of particles that have been "forgotten"
-  drift: number; // idle motion; 0 freezes the system
-  dark: number; // 0 light theme … 1 dark theme
-  alpha: number;
-  wave: number;
-  highlight: number; // group id or -1
-  spinX: number; // scroll-linked extra rotation
-  spinY: number;
-  explode: number; // separates the highlighted layer from its neighbours
-  drag: number; // 1 lets the visitor spin the formation by dragging
-  floor: number; // 1 sets the formation on its plinth (only for formations that stand on one)
-  cull: number; // 1 hides particles on the far side of the formation (for solid bodies like the globe)
-  body: number; // 1 draws a lit solid body behind the particles (the globe's planet)
-  dot: number; // point size multiplier
-  solid: number; // 1 lets a settled formation resolve into its solid object
-  heroMotion: number; // 1 adds the hero's floating mark and orbit lines
-  steady: number; // 1 keeps a presentation object upright and ignores pointer lean
 }
 
 export interface Target {
-  key: FormationKey;
+  key: ObjectKey;
   pose?: Partial<Pose>;
-  mobilePose?: Partial<Pose>;
-  params?: Partial<Params>;
-  /** How tightly the pose tracks its goal; high values pin a formation to the page while scrolling. */
+  /** extra turn (radians) added to the object's idle rotation, usually driven by scroll */
+  spin?: number;
+  /** how tightly the pose tracks its goal; high values pin the object to its stage while scrolling */
   follow?: number;
-  exact?: boolean;
+  /** the mark only, one value per thread (memory, connection, learning): 1 drawn, 0 wiped */
+  show?: Vec3;
+  /** the mark only, per thread: 1 cut into pieces */
+  broken?: Vec3;
+  /** the mark only: 1 every thread stops short of the origin */
+  apart?: number;
+  /** the mark only: the one thread drawn in `tint` while the others sink into the glaze */
+  focus?: number;
+  tint?: string;
+  /** the mark only: 1 signals run along the threads into the origin */
+  flow?: number;
+  /** the mark only: 1 dulled to slate and frozen in place */
+  grey?: number;
 }
 
-export interface ScreenAnchor {
-  x: number;
-  y: number;
-  depth: number; // -1 far … 1 near
-}
+const LOGO_R = 1.35;
+export const GLOBE_R = 1.45;
+/** Footprints in world units, for fitting an object into its stage. */
+export const MARK_SIZE = LOGO_R * 2.25;
+export const GLOBE_SIZE = GLOBE_R * 2.35;
 
-const BASE_POSE: Record<FormationKey, Pose> = {
-  logo: { x: 1.7, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
-  heroLogo: { x: 1.7, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
-  fragments: { x: 0, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
-  silos: { x: 1.75, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
-  frozen: { x: 1.75, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
-  alone: { x: 1.75, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
-  orbit15: { x: 0, y: -0.1, z: 0, s: 1, rx: 0.1, ry: 0, rz: 0 },
-  orbit6: { x: 1.5, y: 0, z: 0, s: 1, rx: 0.1, ry: 0, rz: 0 },
-  layers: { x: 1.55, y: -0.06, z: 0, s: 0.86, rx: 0.65, ry: -0.68, rz: 0 },
-  globe: { x: 1.35, y: -0.1, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
-  helix: { x: 0, y: -0.3, z: -0.5, s: 1, rx: 0.25, ry: 0, rz: 0 },
-  field: { x: 0, y: 0, z: 0, s: 1, rx: 0, ry: 0, rz: 0 },
-};
-
-const MOBILE_POSE: Partial<Pose> = { x: 0, y: 0.7, s: 0.62 };
-
-/** Which solid each formation resolves into. The three problem steps share the tools, so they stay put between steps. */
-const SOLID_FOR: Partial<Record<FormationKey, string>> = {
-  logo: 'logo',
-  orbit15: 'orbit15',
-  orbit6: 'orbit6',
-  layers: 'layers',
-  globe: 'globe',
-  helix: 'helix',
-  silos: 'tools',
-  frozen: 'tools',
-  alone: 'tools',
-};
-
-const DEFAULT_PARAMS: Params = { decay: 0, drift: 1, dark: 0, alpha: 1, wave: 1, highlight: -1, spinX: 0, spinY: 0, explode: 0, drag: 0, floor: 1, cull: 0, body: 0, dot: 1, solid: 1, heroMotion: 0, steady: 0 };
-
-
-
-/** A planet's body: a disc that faces the camera, shaded like a lit sphere, with an atmosphere at its rim. */
-const bodyFragment = /* glsl */ `
-  precision highp float;
-  varying vec2 vUv;
-  uniform float uOpacity;
-  uniform vec3 uLit;
-  uniform vec3 uShade;
-  uniform vec3 uAtmos;
-  uniform float uBodyAlpha;
-  uniform float uRimAlpha;
-  uniform float uGlowAlpha;
-  void main() {
-    vec2 p = (vUv * 2.0 - 1.0) * 1.3;                 // 1.0 = the planet's edge
-    float d = length(p);
-    float inside = 1.0 - smoothstep(0.992, 1.004, d);
-    vec3 n = vec3(p, sqrt(max(0.0, 1.0 - d * d)));
-    float light = clamp(dot(n, normalize(vec3(-0.45, 0.55, 0.7))), 0.0, 1.0);
-    vec3 col = mix(uShade, uLit, smoothstep(0.0, 1.0, light));
-    float rim = smoothstep(0.9, 1.0, d) * inside;        // a thin atmosphere at the limb only
-    col = mix(col, uAtmos, rim * 0.35);
-    float glow = exp(-max(0.0, d - 1.0) * 22.0) * (1.0 - inside);
-    float a = inside * uBodyAlpha + rim * uRimAlpha + glow * uGlowAlpha;
-    gl_FragColor = vec4(mix(col, uAtmos, 1.0 - inside), a * uOpacity);
-  }
-`;
-
-const floorVertex = /* glsl */ `
-  varying vec2 vUv;
-  void main() {
-    vUv = uv;
-    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-  }
-`;
-const THEME = {
-  light: {
-    ink: new THREE.Color('#2a2740'),
-    inkAlpha: 0.55,
-    deep: new THREE.Color('#3A1FA8'),
-    bright: new THREE.Color('#7B5CFF'),
-    hot: new THREE.Color('#4A1FFF'),
-    heroInk: new THREE.Color('#1d1733'),
-    heroDeep: new THREE.Color('#2d0d9f'),
-    heroBright: new THREE.Color('#6640f3'),
-    heroHot: new THREE.Color('#8c6cff'),
-    heroInkAlpha: 0.72,
-    trail: new THREE.Color('#e2600f'),
-    floorTop: new THREE.Color('#fffdf8'),
-    floorRim: new THREE.Color('#5b3df5'),
-    floorShadow: new THREE.Color('#2a2014'),
-    bodyLit: new THREE.Color('#fffdf9'),
-    bodyShade: new THREE.Color('#e6e2ea'),
-    bodyAtmos: new THREE.Color('#7b5cff'),
-  },
-  dark: {
-    ink: new THREE.Color('#7d76a8'),
-    inkAlpha: 0.3,
-    deep: new THREE.Color('#5b3df5'),
-    bright: new THREE.Color('#b9a6ff'),
-    hot: new THREE.Color('#ffffff'),
-    trail: new THREE.Color('#ffa36b'),
-    floorTop: new THREE.Color('#1d1b25'),
-    floorRim: new THREE.Color('#9682ff'),
-    floorShadow: new THREE.Color('#000000'),
-    bodyLit: new THREE.Color('#232036'),
-    bodyShade: new THREE.Color('#08070d'),
-    bodyAtmos: new THREE.Color('#8f78ff'),
-  },
-};
-
-const stagger = (m: number, th: number) => {
-  const s = Math.min(1, Math.max(0, m * 1.45 - th * 0.45));
-  return s * s * (3 - 2 * s);
-};
-
+const VIOLET = new THREE.Color('#4a2fd0');
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt));
+const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+
+// ── Studio light ─────────────────────────────────────────────────────────────
+
+/** A product-photography studio built from softboxes and baked into an environment map. */
+function studio(renderer: THREE.WebGLRenderer): THREE.Texture {
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color('#cfc9c0');
+  const trash: { dispose(): void }[] = [];
+  const panel = (w: number, h: number, power: number, pos: [number, number, number], rot: [number, number, number], color = '#ffffff') => {
+    const g = new THREE.PlaneGeometry(w, h);
+    const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(color).multiplyScalar(power), side: THREE.DoubleSide });
+    const mesh = new THREE.Mesh(g, m);
+    mesh.position.set(...pos);
+    mesh.rotation.set(...rot);
+    scene.add(mesh);
+    trash.push(g, m);
+  };
+  panel(10, 10, 2.2, [0, 7, 1], [Math.PI / 2, 0, 0]); // overhead softbox
+  panel(4, 7, 3.2, [-7, 2.5, 4], [0, Math.PI / 2.4, 0]); // key strip, front left
+  panel(1.6, 7, 2.4, [7, 1.5, -1], [0, -Math.PI / 2, 0]); // rim, right
+  panel(12, 2.5, 0.8, [0, 0.5, 9], [0, 0, 0], '#fff6ea'); // warm front fill
+  panel(40, 40, 0.5, [0, -3, 0], [-Math.PI / 2, 0, 0], '#9a9288'); // floor bounce
+  const pmrem = new THREE.PMREMGenerator(renderer);
+  const tex = pmrem.fromScene(scene, 0.035).texture;
+  pmrem.dispose();
+  trash.forEach((t) => t.dispose());
+  return tex;
+}
+
+/** A soft contact shadow: a radial falloff seen from the front, just below and behind an object. */
+function contactShadow(): THREE.Mesh {
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = 256;
+  const g = cv.getContext('2d')!;
+  const grd = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  grd.addColorStop(0, 'rgba(32,22,60,0.55)');
+  grd.addColorStop(0.35, 'rgba(32,22,60,0.28)');
+  grd.addColorStop(1, 'rgba(32,22,60,0)');
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(cv);
+  const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
+  return mesh;
+}
+
+// ── The mark ─────────────────────────────────────────────────────────────────
+
+/**
+ * Two textures in the logo's unit-disk space, one colour channel per thread (memory, connection, learning):
+ *  - mask: where each thread is inlaid
+ *  - param: how far along its thread a point is, 0 at the edge of the sphere … 1 at the origin point
+ */
+function threadTextures(): { mask: THREE.CanvasTexture; param: THREE.CanvasTexture } {
+  const S = 1024;
+  const px = ([x, y]: [number, number]) => [(x * 0.5 + 0.5) * S, (0.5 - y * 0.5) * S] as const;
+  const width = THREAD_HALF_WIDTH * 2 * (S / 2) * 0.92;
+  const layer = (draw: (g: CanvasRenderingContext2D, curve: [number, number][]) => void, curve: [number, number][]) => {
+    const cv = document.createElement('canvas');
+    cv.width = cv.height = S;
+    const g = cv.getContext('2d')!;
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, S, S);
+    g.lineCap = 'round';
+    g.lineJoin = 'round';
+    draw(g, curve);
+    return g.getImageData(0, 0, S, S).data;
+  };
+  const solid = (g: CanvasRenderingContext2D, curve: [number, number][]) => {
+    g.strokeStyle = '#fff';
+    g.lineWidth = width;
+    g.beginPath();
+    curve.forEach((p, i) => (i ? g.lineTo(...px(p)) : g.moveTo(...px(p))));
+    g.stroke();
+  };
+  // drawn a little wider than the thread, so filtering never pulls the edge of a thread towards 0
+  const along = (g: CanvasRenderingContext2D, curve: [number, number][]) => {
+    g.lineWidth = width * 1.7;
+    for (let i = 0; i < curve.length - 1; i++) {
+      const v = Math.round((i / (curve.length - 2)) * 255);
+      g.strokeStyle = `rgb(${v},${v},${v})`;
+      g.beginPath();
+      g.moveTo(...px(curve[i]));
+      g.lineTo(...px(curve[i + 1]));
+      g.stroke();
+    }
+  };
+  const merge = (draw: typeof solid) => {
+    const out = document.createElement('canvas');
+    out.width = out.height = S;
+    const og = out.getContext('2d')!;
+    const img = og.createImageData(S, S);
+    const chans = SAMPLED_THREADS.map((c) => layer(draw, c as [number, number][]));
+    for (let i = 0; i < S * S * 4; i += 4) {
+      img.data[i] = chans[0][i];
+      img.data[i + 1] = chans[1][i];
+      img.data[i + 2] = chans[2][i];
+      img.data[i + 3] = 255;
+    }
+    og.putImageData(img, 0, 0);
+    const tex = new THREE.CanvasTexture(out);
+    tex.colorSpace = THREE.NoColorSpace;
+    tex.anisotropy = 4;
+    return tex;
+  };
+  return { mask: merge(solid), param: merge(along) };
+}
+
+export interface MarkUniforms {
+  uShow: { value: THREE.Vector3 };
+  uBreak: { value: THREE.Vector3 };
+  uDim: { value: THREE.Vector3 };
+  uTint: { value: THREE.Vector3 };
+  uTintCol: { value: THREE.Color };
+  uApart: { value: number };
+  uFlow: { value: number };
+  uGrey: { value: number };
+  uTime: { value: number };
+}
+
+/**
+ * The logo as one glazed violet sphere with its three white threads inlaid. The threads carry the story:
+ * each can dissolve (memory wiped), break into pieces (fragmented), sink into the glaze (out of focus),
+ * pull back from the origin so the three no longer meet (working alone), take a colour, or carry signals
+ * towards the origin (learning).
+ */
+function markMaterial(tex: { mask: THREE.Texture; param: THREE.Texture }, u: MarkUniforms) {
+  const mat = new THREE.MeshPhysicalMaterial({
+    color: VIOLET,
+    roughness: 0.38,
+    metalness: 0,
+    clearcoat: 1,
+    clearcoatRoughness: 0.06,
+    sheen: 0.12,
+    sheenColor: new THREE.Color('#9d8cff'),
+    sheenRoughness: 0.5,
+    transparent: true,
+  });
+  mat.onBeforeCompile = (sh) => {
+    Object.assign(sh.uniforms, u, { uMask: { value: tex.mask }, uParam: { value: tex.param } });
+    sh.vertexShader = sh.vertexShader
+      .replace('#include <common>', '#include <common>\nvarying vec3 vObjN;')
+      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvObjN = normalize(position);');
+    sh.fragmentShader = sh.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+        varying vec3 vObjN;
+        uniform sampler2D uMask; uniform sampler2D uParam;
+        uniform vec3 uShow; uniform vec3 uBreak; uniform vec3 uDim; uniform vec3 uTint; uniform vec3 uTintCol;
+        uniform float uApart; uniform float uFlow; uniform float uGrey; uniform float uTime;
+        float threadAmt;`,
+      )
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        vec2 pc = vObjN.z >= 0.0 ? vObjN.xy : vec2(-vObjN.x, vObjN.y);
+        vec2 tuv = pc * 0.5 + 0.5;
+        vec3 m = smoothstep(0.35, 0.65, texture2D(uMask, tuv).rgb);
+        vec3 tp = texture2D(uParam, tuv).rgb;
+        // memory wiped: a thread breaks up cell by cell
+        float cell = fract(sin(dot(floor(vObjN * 46.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
+        m *= smoothstep(vec3(cell), vec3(cell + 0.12), uShow * 1.12);
+        // fragmented: the thread is cut into short lengths with gaps between them
+        vec3 seg = fract(tp * 9.0);
+        m *= 1.0 - uBreak * smoothstep(0.58, 0.62, seg) * (1.0 - smoothstep(0.96, 0.99, seg));
+        // working alone: every thread stops short of the origin, so the three never meet
+        m *= 1.0 - smoothstep(0.99 - uApart * 0.36, 1.01 - uApart * 0.36, tp);
+        vec3 amt = m * (1.0 - uDim * 0.78);
+        // learning: short lengths of colour travel along each thread into the origin
+        vec3 run = fract(tp * 2.0 - uTime * 0.32 + vec3(0.0, 0.33, 0.66));
+        vec3 pulse = smoothstep(0.0, 0.03, run) * (1.0 - smoothstep(0.16, 0.19, run)) * uFlow;
+        vec3 white = vec3(0.93, 0.92, 0.97);
+        vec3 pulseCol = vec3(1.0, 0.43, 0.0);
+        vec3 c0 = mix(mix(white, uTintCol, uTint.x), pulseCol, pulse.x);
+        vec3 c1 = mix(mix(white, uTintCol, uTint.y), pulseCol, pulse.y);
+        vec3 c2 = mix(mix(white, uTintCol, uTint.z), pulseCol, pulse.z);
+        float wsum = amt.x + amt.y + amt.z;
+        vec3 tcol = wsum > 0.001 ? (c0 * amt.x + c1 * amt.y + c2 * amt.z) / wsum : white;
+        threadAmt = max(amt.x, max(amt.y, amt.z));
+        // the logo's own gradient: lighter violet towards the top right, deeper at the lower left
+        float grad = clamp(0.5 + 0.42 * (vObjN.x * 0.55 + vObjN.y * 0.85), 0.0, 1.0);
+        diffuseColor.rgb = mix(vec3(0.036, 0.009, 0.32), vec3(0.155, 0.098, 0.91), grad); // #35189A → #6E58F5, in linear light
+        diffuseColor.rgb = mix(diffuseColor.rgb, tcol, threadAmt);
+        // a model that stopped learning: the glaze dulls to slate
+        float lum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.05, 0.05, 0.065) + vec3(lum) * 0.75, uGrey * 0.9);`,
+      )
+      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(mix(roughnessFactor, 0.55, threadAmt), 0.72, uGrey);');
+  };
+  return mat;
+}
+
+function buildMark(tex: { mask: THREE.Texture; param: THREE.Texture }) {
+  const group = new THREE.Group();
+  const uniforms: MarkUniforms = {
+    uShow: { value: new THREE.Vector3(1, 1, 1) },
+    uBreak: { value: new THREE.Vector3() },
+    uDim: { value: new THREE.Vector3() },
+    uTint: { value: new THREE.Vector3() },
+    uTintCol: { value: new THREE.Color('#ffffff') },
+    uApart: { value: 0 },
+    uFlow: { value: 0 },
+    uGrey: { value: 0 },
+    uTime: { value: 0 },
+  };
+  const surface = markMaterial(tex, uniforms);
+  const geo = new THREE.SphereGeometry(LOGO_R, 160, 120);
+  const ball = new THREE.Mesh(geo, surface);
+  // facing the camera like the logo, turned a touch so the glaze catches the key light
+  ball.rotation.set(0.04, -0.18, 0);
+  group.add(ball);
+  return { group, surface, uniforms, mats: [surface] as THREE.Material[], dispose: () => (geo.dispose(), surface.dispose()) };
+}
+
+// ── The globe ────────────────────────────────────────────────────────────────
+
+function arcPoint(a: LonLat, c: LonLat, t: number, r: number): THREE.Vector3 {
+  const p = new THREE.Vector3(...lonLatToVec(a[0], a[1], 1));
+  const q = new THREE.Vector3(...lonLatToVec(c[0], c[1], 1));
+  const om = Math.acos(THREE.MathUtils.clamp(p.dot(q), -1, 1));
+  const so = Math.sin(om) || 1e-6;
+  const v = p.multiplyScalar(Math.sin((1 - t) * om) / so).add(q.multiplyScalar(Math.sin(t * om) / so));
+  const lift = 1 + Math.sin(Math.PI * t) * Math.min(0.22, 0.05 + om * 0.09);
+  return v.multiplyScalar(r * lift);
+}
+
+function buildGlobe() {
+  const group = new THREE.Group();
+  const spinner = new THREE.Group();
+  group.add(spinner);
+  const trash: { dispose(): void }[] = [];
+  const mats: THREE.Material[] = [];
+
+  // 1. a ceramic planet
+  const bodyGeo = new THREE.SphereGeometry(GLOBE_R, 128, 96);
+  const bodyMat = new THREE.MeshPhysicalMaterial({ color: '#f4f1fb', roughness: 0.55, clearcoat: 0.6, clearcoatRoughness: 0.25, sheen: 0.5, sheenColor: new THREE.Color('#d9d0ff'), transparent: true });
+  spinner.add(new THREE.Mesh(bodyGeo, bodyMat));
+  trash.push(bodyGeo, bodyMat);
+  mats.push(bodyMat);
+
+  // 2. continents as raised dots, India denser and in violet
+  const world: THREE.Vector3[] = [];
+  const india: THREE.Vector3[] = [];
+  const step = 2.6;
+  let row = 0;
+  for (let lat = -62; lat <= 80; lat += step, row++) {
+    const n = Math.max(1, Math.round((360 * Math.cos((lat * Math.PI) / 180)) / step));
+    for (let k = 0; k < n; k++) {
+      const lon = ((k + (row % 2 ? 0.5 : 0)) / n) * 360 - 180;
+      const pt: LonLat = [lon, lat];
+      if (inPolygon(pt, INDIA)) continue;
+      if (CONTINENTS.some((c) => inPolygon(pt, c))) world.push(new THREE.Vector3(...lonLatToVec(lon, lat, GLOBE_R)));
+    }
+  }
+  const di = 1.15;
+  for (let lat = INDIA_BBOX.minLat; lat <= INDIA_BBOX.maxLat; lat += di) {
+    for (let lon = INDIA_BBOX.minLon; lon <= INDIA_BBOX.maxLon; lon += di / Math.cos((lat * Math.PI) / 180)) {
+      if (inPolygon([lon, lat], INDIA)) india.push(new THREE.Vector3(...lonLatToVec(lon, lat, GLOBE_R)));
+    }
+  }
+  const dots = (pts: THREE.Vector3[], radius: number, color: string, rough: number) => {
+    const g = new THREE.CylinderGeometry(radius, radius * 1.05, 0.016, 14);
+    g.rotateX(Math.PI / 2); // the disc's axis along +z, so lookAt stands it on the surface
+    const m = new THREE.MeshPhysicalMaterial({ color, roughness: rough, clearcoat: 0.4, transparent: true });
+    const inst = new THREE.InstancedMesh(g, m, pts.length);
+    const o = new THREE.Object3D();
+    pts.forEach((p, i) => {
+      o.position.copy(p).multiplyScalar(1.002);
+      o.lookAt(p.clone().multiplyScalar(2));
+      o.updateMatrix();
+      inst.setMatrixAt(i, o.matrix);
+    });
+    spinner.add(inst);
+    trash.push(g, m);
+    mats.push(m);
+  };
+  dots(world, 0.019, '#2b2640', 0.5);
+  dots(india, 0.016, '#5b3df5', 0.3);
+
+  // 3. hubs in India, with rings that breathe
+  const ringGeo = new THREE.RingGeometry(0.03, 0.04, 40);
+  const ringMats: THREE.MeshBasicMaterial[] = [];
+  const rings: THREE.Mesh[] = [];
+  INDIA_HUBS.slice(0, 6).forEach((h, i) => {
+    const p = new THREE.Vector3(...lonLatToVec(h.at[0], h.at[1], GLOBE_R * 1.012));
+    const m = new THREE.MeshBasicMaterial({ color: '#5b3df5', transparent: true, depthWrite: false, side: THREE.DoubleSide });
+    const r = new THREE.Mesh(ringGeo, m);
+    r.position.copy(p);
+    r.lookAt(p.clone().multiplyScalar(2));
+    r.userData.phase = i * 0.37;
+    spinner.add(r);
+    rings.push(r);
+    ringMats.push(m);
+    trash.push(m);
+  });
+  trash.push(ringGeo);
+
+  // 4. routes of light from India to the world, each with a travelling signal
+  const arcMat = new THREE.MeshBasicMaterial({ color: '#7b62ff', transparent: true, opacity: 0.55, depthWrite: false });
+  const headGeo = new THREE.SphereGeometry(0.022, 16, 12);
+  const headMat = new THREE.MeshBasicMaterial({ color: '#ff7438', transparent: true });
+  const heads: { mesh: THREE.Mesh; curve: THREE.CatmullRomCurve3; phase: number; speed: number }[] = [];
+  trash.push(arcMat, headGeo, headMat);
+  mats.push(arcMat, headMat);
+  WORLD.forEach((w, i) => {
+    const from = INDIA_HUBS[i % INDIA_HUBS.length].at;
+    const pts = Array.from({ length: 48 }, (_, k) => arcPoint(from, w.at, k / 47, GLOBE_R * 1.004));
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const tube = new THREE.TubeGeometry(curve, 96, 0.0055, 6, false);
+    spinner.add(new THREE.Mesh(tube, arcMat));
+    trash.push(tube);
+    const head = new THREE.Mesh(headGeo, headMat);
+    spinner.add(head);
+    heads.push({ mesh: head, curve, phase: (i * 0.173) % 1, speed: 0.16 + (i % 4) * 0.03 });
+  });
+
+  // 5. a thin atmosphere at the limb, so the planet reads as round against the paper
+  const atmoGeo = new THREE.SphereGeometry(GLOBE_R * 1.06, 64, 48);
+  const atmoMat = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.BackSide,
+    uniforms: { uOpacity: { value: 1 } },
+    vertexShader: `varying vec3 vN; varying vec3 vV; void main(){ vec4 mv = modelViewMatrix*vec4(position,1.0); vN = normalize(normalMatrix*normal); vV = normalize(-mv.xyz); gl_Position = projectionMatrix*mv; }`,
+    fragmentShader: `uniform float uOpacity; varying vec3 vN; varying vec3 vV; void main(){ float f = pow(1.0 - abs(dot(vN, vV)), 3.0); gl_FragColor = vec4(0.55,0.47,1.0, f*0.16*uOpacity); }`,
+  });
+  group.add(new THREE.Mesh(atmoGeo, atmoMat));
+  trash.push(atmoGeo, atmoMat);
+
+  // India faces the viewer at rest; the globe idles around its axis from there
+  spinner.rotation.x = 0.12;
+
+  return {
+    group,
+    spinner,
+    mats,
+    atmo: atmoMat,
+    update(time: number, spin: number) {
+      spinner.rotation.y = Math.sin(time * 0.12) * 0.55 + spin;
+      heads.forEach((h) => {
+        const t = (((h.phase + time * h.speed) % 1) + 1) % 1;
+        h.mesh.position.copy(h.curve.getPointAt(t));
+        h.mesh.scale.setScalar(Math.sin(Math.PI * t) * 1.2 + 0.2);
+      });
+      rings.forEach((r, i) => {
+        const k = (time * 0.6 + r.userData.phase) % 1;
+        r.scale.setScalar(1 + k * 2.4);
+        ringMats[i].opacity = (1 - k) * 0.9;
+      });
+    },
+    dispose: () => trash.forEach((t) => t.dispose()),
+  };
+}
+
+// ── Engine ───────────────────────────────────────────────────────────────────
+
+interface Slot {
+  group: THREE.Group;
+  mats: THREE.Material[];
+  amt: number; // 0 folded away … 1 present
+  pose: Pose;
+  shadow: THREE.Mesh;
+}
 
 export class Engine {
-  readonly count: number;
   readonly reducedMotion: boolean;
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-  private group = new THREE.Group();
-  private geometry = new THREE.BufferGeometry();
-  private material: THREE.ShaderMaterial;
-  private arcMat: THREE.ShaderMaterial;
-  private formations = {} as Record<FormationKey, Formation>;
-  private plinth: Plinth;
-  private body: THREE.Mesh;
-  private solids: Record<string, Solid>;
-  private solidAmt: Record<string, number> = {};
-  /** Each solid's entrance spring: 0 put away … 1 on its plinth (overshoots a little on the way in). */
-  private spring: Record<string, { s: number; v: number }> = {};
-  private solidMeshes: Record<string, THREE.Mesh[]> = {};
-  private partVis = 1;
-  private hover = 0;
-  private disposeSolids: () => void;
+  private slots: Record<'mark' | 'globe', Slot>;
+  private mark: ReturnType<typeof buildMark>;
+  private globe: ReturnType<typeof buildGlobe>;
+  private tex: { mask: THREE.Texture; param: THREE.Texture };
   private env: THREE.Texture;
-  private bodyMat: THREE.ShaderMaterial;
-  private attr: Record<'from' | 'to' | 'accFrom' | 'accTo' | 'grpFrom' | 'grpTo', THREE.BufferAttribute>;
-  private rand: Float32Array;
-
-  private fromKey: FormationKey = 'heroLogo';
-  private toKey: FormationKey = 'heroLogo';
-  private progress = 0;
-  private duration = 0.85;
-  private target: Target = { key: 'heroLogo' };
-  private pose: Pose = { ...BASE_POSE.heroLogo };
-  private params: Params = { ...DEFAULT_PARAMS };
-  private hlAmt = 0;
-  private hlGroup = -1;
-
-  private mouse = new THREE.Vector2(10, 10);
-  private mouseWorld = new THREE.Vector3(99, 99, 0);
-  private mouseAmt = 0;
-  private tilt = new THREE.Vector2();
-  private dragging = false;
-  private dragX = 0;
-  private dragSpin = 0;
-  private dragVel = 0;
-  private raycaster = new THREE.Raycaster();
-  private plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
-
-  private last = performance.now();
-  private time = 0;
-  private raf = 0;
-  private width = 1;
-  private height = 1;
-  private listeners = new Set<() => void>();
-  private tmp = new THREE.Vector3();
+  private target: Target = { key: 'mark' };
+  private pointer = new THREE.Vector2();
+  private lean = new THREE.Vector2();
   private velocity = 0;
-  private dark = false;
-  private warp = 0;
-  private idle = false;
-  private points!: THREE.Points;
-  /** Quality: 2 full (retina, soft shadows) · 1 lite (1× pixels, no shadow maps) · 0 lowest (0.8× pixels). */
-  private quality = 2;
-  private frameSamples: number[] = [];
-  private invGroup = new THREE.Matrix4();
-  private tmpW = new THREE.Vector3();
+  private show = new THREE.Vector3(1, 1, 1);
+  private broken = new THREE.Vector3();
+  private dim = new THREE.Vector3();
+  private tintAmt = new THREE.Vector3();
+  private tintCol = new THREE.Color('#ffffff');
+  private apart = 0;
+  private flow = 0;
+  private grey = 0;
+  /** a clock that stops when the mark freezes */
+  private life = 0;
+  private spin = 0;
+  private time = 0;
+  private last = performance.now();
+  private raf = 0;
+  private listeners = new Set<() => void>();
+  private idleFrames = 0;
+  private onPointer = (e: PointerEvent) => this.pointer.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
+  private onResize = () => this.resize();
 
-  constructor(canvas: HTMLCanvasElement, options: { ambient?: boolean } = {}) {
+  constructor(canvas: HTMLCanvasElement) {
     this.reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const small = window.innerWidth < 760;
-    const ambient = options.ambient === true;
-    // Fewer particles on phones and on modest laptops (many Windows machines report 4 cores and an integrated GPU).
-    const modest = (navigator.hardwareConcurrency || 8) <= 4;
-    this.count = ambient ? (small ? 3000 : 6400) : small ? 6400 : modest ? 12000 : 18000;
-
-    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !ambient && !small, alpha: true, powerPreference: 'high-performance' });
-    // Integrated GPUs (flagged lite before first paint) start one step down; any machine steps down on its own if
-    // frames run slow (see watchFrames).
-    this.quality = ambient || document.documentElement.classList.contains('lite') ? 1 : 2;
-    this.renderer.shadowMap.enabled = this.quality === 2;
-    this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    this.renderer.setClearColor(0x000000, 0);
-    this.renderer.toneMapping = THREE.NeutralToneMapping;
+    const lite = document.documentElement.classList.contains('lite');
+    this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, lite ? 1.25 : 2));
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.95;
-    // Studio light for the solid objects: soft environment reflections, a sky/ground fill and one key light.
-    this.env = studioEnvironment(this.renderer);
+    this.renderer.setClearColor(0x000000, 0);
+
+    this.env = studio(this.renderer);
     this.scene.environment = this.env;
-    this.scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d0e6, 0.45));
-    // One key light with a soft shadow, so objects sit on their plinths instead of hovering over them.
-    const key = new THREE.DirectionalLight(0xffffff, 1.35);
-    key.position.set(-3.5, 7, 5);
-    key.castShadow = this.quality === 2;
-    key.shadow.mapSize.set(2048, 2048);
-    key.shadow.bias = -0.0004;
-    key.shadow.normalBias = 0.02;
-    key.shadow.radius = 4;
-    const sc = key.shadow.camera;
-    sc.left = sc.bottom = -6;
-    sc.right = sc.top = 6;
-    sc.near = 1;
-    sc.far = 24;
-    this.scene.add(key);
-    this.camera.position.set(0, 0, 7);
+    const key = new THREE.DirectionalLight('#fff4e6', 1.4);
+    key.position.set(-4, 5, 6);
+    this.scene.add(key, new THREE.HemisphereLight('#ffffff', '#cbbfae', 0.35));
 
-    const n = this.count;
-    const f = this.formations;
-    f.logo = logo(n);
-    f.heroLogo = f.logo;
-    f.fragments = fragments(n, f.logo);
-    f.silos = silos(n, f.logo);
-    f.frozen = frozen(n, f.logo);
-    f.alone = frozen(n, f.logo, false);
-    f.orbit15 = orbit(n, 15);
-    f.orbit6 = orbit(n, 6, 9);
-    f.layers = layers(n);
-    f.globe = globe(n);
-    f.helix = helix(n);
-    f.field = field(n);
-
-    const r = rng(3);
-    this.rand = new Float32Array(n * 4);
-    for (let i = 0; i < n; i++) {
-      this.rand[i * 4] = 0.8 + r() * 0.45;
-      this.rand[i * 4 + 1] = r();
-      this.rand[i * 4 + 2] = r();
-      this.rand[i * 4 + 3] = 0.5 + r();
-    }
-
-    // The first frame is the mark, slightly contracted and invisible: it resolves in place.
-    const start = new Float32Array(n * 3);
-    for (let i = 0; i < n * 3; i++) start[i] = f.logo.pos[i] * 0.82;
-
-    const mk = (arr: Float32Array, size: number) => new THREE.BufferAttribute(arr, size).setUsage(THREE.DynamicDrawUsage);
-    this.attr = {
-      from: mk(start, 3),
-      to: mk(new Float32Array(f.logo.pos), 3),
-      accFrom: mk(new Float32Array(n).fill(-1), 1),
-      accTo: mk(new Float32Array(f.logo.acc), 1),
-      grpFrom: mk(new Float32Array(n).fill(-1), 1),
-      grpTo: mk(new Float32Array(f.logo.grp), 1),
-    };
-    this.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
-    this.geometry.setAttribute('aFrom', this.attr.from);
-    this.geometry.setAttribute('aTo', this.attr.to);
-    this.geometry.setAttribute('aAccFrom', this.attr.accFrom);
-    this.geometry.setAttribute('aAccTo', this.attr.accTo);
-    this.geometry.setAttribute('aGrpFrom', this.attr.grpFrom);
-    this.geometry.setAttribute('aGrpTo', this.attr.grpTo);
-    this.geometry.setAttribute('aRand', new THREE.BufferAttribute(this.rand, 4));
-    this.geometry.boundingSphere = new THREE.Sphere(new THREE.Vector3(), 20);
-
-    this.material = new THREE.ShaderMaterial({
-      vertexShader: particleVertex,
-      fragmentShader: particleFragment,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      uniforms: {
-        uMix: { value: 0 },
-        uTime: { value: 0 },
-        uDrift: { value: 1 },
-        uMouse: { value: this.mouseWorld },
-        uMouseAmt: { value: 0 },
-        uSize: { value: small ? 2 : 1.8 },
-        uPixelRatio: { value: 1 },
-        uDecay: { value: 0 },
-        uHighlight: { value: -1 },
-        uHighlightAmt: { value: 0 },
-        uWave: { value: 1 },
-        uExplode: { value: 0 },
-        uInk: { value: THEME.light.ink.clone() },
-        uDeep: { value: THEME.light.deep.clone() },
-        uBright: { value: THEME.light.bright.clone() },
-        uHot: { value: THEME.light.hot.clone() },
-        uAlpha: { value: 1 },
-        uInkAlpha: { value: THEME.light.inkAlpha },
-        uCyan: { value: new THREE.Color('#FF8643') },
-        uWarp: { value: 0 },
-        uHalo: { value: 0.35 },
-        uCull: { value: 0 },
-        uCenter: { value: new THREE.Vector3() },
-        uDot: { value: 1 },
-      },
-    });
-    this.points = new THREE.Points(this.geometry, this.material);
-    this.group.add(this.points);
-
-
-    this.bodyMat = new THREE.ShaderMaterial({
-      vertexShader: floorVertex,
-      fragmentShader: bodyFragment,
-      transparent: true,
-      depthWrite: false,
-      uniforms: {
-        uOpacity: { value: 0 },
-        uLit: { value: THEME.light.bodyLit.clone() },
-        uShade: { value: THEME.light.bodyShade.clone() },
-        uAtmos: { value: THEME.light.bodyAtmos.clone() },
-        uBodyAlpha: { value: 0.9 },
-        uRimAlpha: { value: 0.25 },
-        uGlowAlpha: { value: 0.18 },
-      },
-    });
-    this.body = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.bodyMat);
-    this.body.renderOrder = -2;
-    this.scene.add(this.body);
-
-    this.plinth = buildPlinth();
-    this.scene.add(this.plinth.root);
-
-    this.arcMat = this.makeTrailMaterial(1.8, 0.12);
-    this.group.add(this.buildArcTrails());
-
-    const built = buildSolids();
-    this.solids = built.solids;
-    this.disposeSolids = built.dispose;
-    for (const [id, sol] of Object.entries(this.solids)) {
-      sol.root.visible = false;
-      this.group.add(sol.root);
-      const meshes: THREE.Mesh[] = [];
-      sol.root.traverse((o) => {
-        if ((o as THREE.Mesh).isMesh) meshes.push(o as THREE.Mesh);
+    this.tex = threadTextures();
+    this.mark = buildMark(this.tex);
+    this.globe = buildGlobe();
+    const slot = (group: THREE.Group, mats: THREE.Material[], shadowW: number): Slot => {
+      const holder = new THREE.Group();
+      holder.add(group);
+      const shadow = contactShadow();
+      shadow.scale.set(shadowW, shadowW * 0.42, 1);
+      holder.add(shadow);
+      holder.visible = false;
+      this.scene.add(holder);
+      const all = [...mats, shadow.material as THREE.Material];
+      // each material fades from its own resting opacity; see-through ones never write depth
+      all.forEach((m) => {
+        m.userData.base = m.opacity;
+        m.userData.noDepth = !m.depthWrite || m.opacity < 1;
       });
-      this.solidMeshes[id] = meshes;
-    }
-    this.scene.add(this.group);
-
-    if (this.reducedMotion) {
-      this.duration = 0.01;
-      this.params.drift = 0;
-    }
+      return { group: holder, mats: all, amt: 0, pose: { x: 1.7, y: 0, s: 1 }, shadow };
+    };
+    this.slots = { mark: slot(this.mark.group, this.mark.mats, LOGO_R * 2.2), globe: slot(this.globe.group, this.globe.mats, GLOBE_R * 2.3) };
+    this.slots.mark.shadow.position.set(0, -LOGO_R * 1.32, -0.4);
+    this.slots.globe.shadow.position.set(0, -GLOBE_R * 1.28, -0.4);
 
     this.resize();
-    window.addEventListener('resize', this.resize);
-    window.addEventListener('pointermove', this.onPointerMove, { passive: true });
-    window.addEventListener('pointerdown', this.onPointerDown, { passive: true });
-    document.documentElement.addEventListener('pointerleave', this.onPointerLeave);
-    document.addEventListener('visibilitychange', this.onVisibility);
-    this.loop();
+    window.addEventListener('resize', this.onResize);
+    window.addEventListener('pointermove', this.onPointer, { passive: true });
+    this.raf = requestAnimationFrame(this.frame);
   }
 
-  // ── public API ────────────────────────────────────────────────────────────
-
-  /** Plays the mark's first resolve again, if nothing has moved it on since (the opening covered the first one). */
-  replayArrival() {
-    if (this.fromKey === 'heroLogo' && this.toKey === 'heroLogo' && !this.reducedMotion) this.progress = 0;
-  }
-
-  /** Morph towards a formation. Safe to call every frame with the same target. */
   setTarget(t: Target) {
     this.target = t;
-    if (t.key !== this.toKey) this.morphTo(t.key);
   }
 
-  /** Scroll velocity (px per frame); fast scrolling stretches the field. */
-  /** Follows the site theme: glowing light on dark, crisp ink on light. */
-  setDark(dark: boolean) {
-    this.dark = dark;
-    const blending = dark ? THREE.AdditiveBlending : THREE.NormalBlending;
-    for (const m of [this.material, this.arcMat]) {
-      m.blending = blending;
-      m.needsUpdate = true;
-    }
-  }
-
+  /** Scroll velocity in px per frame: a quick scroll gives the objects a little extra turn. */
   setVelocity(v: number) {
-    if (Math.abs(v) > Math.abs(this.velocity)) this.velocity = v;
-  }
-
-  get currentKey() {
-    return this.toKey;
-  }
-
-  /** 0…1: how settled the current formation is (for a solid, how far it has made its entrance). */
-  get settled() {
-    const id = SOLID_FOR[this.toKey];
-    return id && this.params.solid > 0.5 ? Math.min(1, (this.spring[id]?.s ?? 0)) : Math.min(1, this.progress);
+    this.velocity = v;
   }
 
   onFrame(fn: () => void) {
     this.listeners.add(fn);
-    return () => {
-      this.listeners.delete(fn);
-    };
+    return () => void this.listeners.delete(fn);
   }
 
-  /** Screen-space positions of the current formation's anchors, or null mid-transition to another key. */
-  anchors(key: FormationKey): ScreenAnchor[] | null {
-    if (this.toKey !== key) return null;
-    const out: ScreenAnchor[] = [];
-    this.group.updateMatrixWorld();
-    // solids that move their parts (the layer stack's drawers) report where those parts really are
-    const live = this.solids[SOLID_FOR[key] ?? '']?.anchors;
-    let pts: number[][] | null = null;
-    if (live) {
-      this.invGroup.copy(this.group.matrixWorld).invert();
-      pts = live.map((o) => o.getWorldPosition(this.tmpW).applyMatrix4(this.invGroup).toArray());
-    }
-    for (const a of pts ?? this.formations[key].anchors) {
-      this.tmp.set(a[0], a[1], a[2]).applyMatrix4(this.group.matrixWorld);
-      const depthWorld = this.tmp.z;
-      this.tmp.project(this.camera);
-      out.push({ x: (this.tmp.x * 0.5 + 0.5) * this.width, y: (-this.tmp.y * 0.5 + 0.5) * this.height, depth: Math.max(-1, Math.min(1, depthWorld / 2)) });
-    }
-    return out;
+  private resize() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    this.renderer.setSize(w, h, false);
+    this.camera.aspect = w / h;
+    // same framing as worldYOf() in Scene.tsx
+    this.camera.position.set(0, 0, w / h < 1 ? 7 / Math.max(0.62, w / h) ** 0.55 : 7);
+    this.camera.updateProjectionMatrix();
   }
+
+  private frame = (now: number) => {
+    this.raf = requestAnimationFrame(this.frame);
+    const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000)); // rAF's first timestamp can predate the constructor
+    this.last = now;
+    if (!this.reducedMotion) this.time += dt;
+    this.listeners.forEach((fn) => fn());
+
+    const t = this.target;
+    this.spin = damp(this.spin, this.velocity * 0.004, 4, dt);
+    this.lean.x = damp(this.lean.x, this.pointer.x, 3, dt);
+    this.lean.y = damp(this.lean.y, this.pointer.y, 3, dt);
+
+    let busy = false;
+    (['mark', 'globe'] as const).forEach((k) => {
+      const s = this.slots[k];
+      const want = t.key === k ? 1 : 0;
+      // the outgoing object folds away before the incoming one unfolds, so they never overlap
+      const other = this.slots[k === 'mark' ? 'globe' : 'mark'];
+      const gate = want && other.amt > 0.15 ? 0 : want;
+      s.amt = damp(s.amt, gate, gate ? 5 : 8, dt);
+      if (Math.abs(s.amt - gate) < 0.001) s.amt = gate;
+      else busy = true;
+
+      const goal = t.key === k ? t.pose : undefined;
+      const follow = t.follow ?? 12;
+      if (goal) {
+        if (s.amt < 0.02) Object.assign(s.pose, goal); // appears in place, rather than flying in from the last stage
+        else {
+          s.pose.x = damp(s.pose.x, goal.x ?? s.pose.x, follow, dt);
+          s.pose.y = damp(s.pose.y, goal.y ?? s.pose.y, follow, dt);
+          s.pose.s = damp(s.pose.s, goal.s ?? s.pose.s, follow * 0.6, dt);
+        }
+      }
+      const vis = s.amt > 0.002;
+      s.group.visible = vis;
+      if (!vis) return;
+      const e = easeOut(s.amt);
+      s.group.position.set(s.pose.x, s.pose.y - (1 - e) * 0.35, 0);
+      s.group.scale.setScalar(s.pose.s * (0.72 + 0.28 * e));
+      s.mats.forEach((m) => {
+        m.opacity = e * (m.userData.base as number);
+        m.depthWrite = e > 0.98 && !m.userData.noDepth;
+      });
+    });
+
+    // the mark's threads carry the story; each eases to what the section asks for
+    const m = this.mark;
+    const mt = t.key === 'mark' ? t : null;
+    const k = 1 - Math.exp(-2.4 * dt);
+    const v3 = (cur: THREE.Vector3, want: Vec3 | undefined, rest: number) => {
+      const w = want ?? [rest, rest, rest];
+      cur.set(cur.x + (w[0] - cur.x) * k, cur.y + (w[1] - cur.y) * k, cur.z + (w[2] - cur.z) * k);
+    };
+    const focus = mt?.focus ?? -1;
+    v3(this.show, mt?.show, 1);
+    v3(this.broken, mt?.broken, 0);
+    v3(this.dim, focus < 0 ? undefined : ([0, 1, 2].map((i) => (i === focus ? 0 : 1)) as Vec3), 0);
+    v3(this.tintAmt, focus < 0 ? undefined : ([0, 1, 2].map((i) => (i === focus ? 0.85 : 0)) as Vec3), 0);
+    if (mt?.tint) this.tintCol.lerp(new THREE.Color(mt.tint), k);
+    this.apart = damp(this.apart, mt?.apart ?? 0, 2.4, dt);
+    this.flow = damp(this.flow, mt?.flow ?? 0, 2.4, dt);
+    this.grey = damp(this.grey, mt?.grey ?? 0, 2.4, dt);
+    const u = m.uniforms;
+    u.uShow.value.copy(this.show);
+    u.uBreak.value.copy(this.broken);
+    u.uDim.value.copy(this.dim);
+    u.uTint.value.copy(this.tintAmt);
+    u.uTintCol.value.copy(this.tintCol);
+    u.uApart.value = this.apart;
+    u.uFlow.value = this.flow;
+    u.uGrey.value = this.grey;
+    (m.surface as THREE.MeshPhysicalMaterial).clearcoat = 1 - this.grey * 0.85;
+    if (!this.reducedMotion) this.life += dt * (1 - this.grey * 0.95);
+    u.uTime.value = this.life;
+    if (Math.abs(this.flow) > 0.001 || Math.abs(this.apart - (mt?.apart ?? 0)) > 0.001) busy = true;
+
+    // it breathes and leans toward the cursor, like an object on a desk; frozen, it stops
+    const mk = m.group;
+    const alive = 1 - this.grey * 0.9;
+    mk.rotation.y = this.lean.x * 0.28 * alive + Math.sin(this.life * 0.45) * 0.12 + this.spin;
+    mk.rotation.x = this.lean.y * 0.18 * alive + Math.sin(this.life * 0.35) * 0.04;
+    mk.position.y = Math.sin(this.life * 0.9) * 0.06;
+    this.slots.mark.shadow.scale.set(LOGO_R * 2.2 * (1 - mk.position.y * 0.6), LOGO_R * 0.92 * (1 - mk.position.y * 0.6), 1);
+
+    this.globe.group.rotation.x = this.lean.y * 0.1;
+    this.globe.update(this.time, (t.key === 'globe' ? t.spin ?? 0 : 0) + this.lean.x * 0.25 + this.spin * 2);
+    this.globe.atmo.uniforms.uOpacity.value = easeOut(this.slots.globe.amt);
+
+    const anyVisible = this.slots.mark.group.visible || this.slots.globe.group.visible;
+    if (anyVisible || busy) {
+      this.idleFrames = 0;
+      this.renderer.render(this.scene, this.camera);
+    } else if (this.idleFrames++ < 2) {
+      this.renderer.render(this.scene, this.camera); // clear once after the last object leaves
+    }
+  };
 
   destroy() {
     cancelAnimationFrame(this.raf);
-    window.removeEventListener('resize', this.resize);
-    window.removeEventListener('pointermove', this.onPointerMove);
-    window.removeEventListener('pointerdown', this.onPointerDown);
-    document.documentElement.removeEventListener('pointerleave', this.onPointerLeave);
-    document.removeEventListener('visibilitychange', this.onVisibility);
-    this.geometry.dispose();
-    this.material.dispose();
-    this.arcMat.dispose();
-    this.plinth.dispose();
-    Object.values(this.solids).forEach((sol) => sol.dispose());
-    this.disposeSolids();
+    window.removeEventListener('resize', this.onResize);
+    window.removeEventListener('pointermove', this.onPointer);
+    this.mark.dispose();
+    this.globe.dispose();
+    this.tex.mask.dispose();
+    this.tex.param.dispose();
     this.env.dispose();
-    this.bodyMat.dispose();
-    this.body.geometry.dispose();
     this.renderer.dispose();
   }
-
-  // ── morphing ──────────────────────────────────────────────────────────────
-
-  private morphTo(key: FormationKey) {
-    const n = this.count;
-    const mix = Math.min(1, this.progress);
-    const from = this.attr.from.array as Float32Array;
-    const to = this.attr.to.array as Float32Array;
-    const accF = this.attr.accFrom.array as Float32Array;
-    const accT = this.attr.accTo.array as Float32Array;
-    const grpF = this.attr.grpFrom.array as Float32Array;
-    const grpT = this.attr.grpTo.array as Float32Array;
-
-    // Freeze wherever each particle is right now (mirrors the vertex shader).
-    for (let i = 0; i < n; i++) {
-      const rp = this.rand[i * 4 + 1];
-      const st = stagger(mix, this.rand[i * 4 + 2]);
-      const tr = Math.sin(Math.PI * st) * 0.1;
-      const fx = from[i * 3], fy = from[i * 3 + 1], fz = from[i * 3 + 2];
-      const tx = to[i * 3], ty = to[i * 3 + 1], tz = to[i * 3 + 2];
-      from[i * 3] = fx + (tx - fx) * st + tr * Math.sin(rp * 6.2831 + ty * 2);
-      from[i * 3 + 1] = fy + (ty - fy) * st + tr * Math.cos(rp * 5.1 + fx * 2);
-      from[i * 3 + 2] = fz + (tz - fz) * st + tr * Math.sin(rp * 3.7);
-      accF[i] = accF[i] < -0.5 || accT[i] < -0.5 ? (st < 0.5 ? accF[i] : accT[i]) : accF[i] + (accT[i] - accF[i]) * st;
-      grpF[i] = st < 0.5 ? grpF[i] : grpT[i];
-    }
-    const f = this.formations[key];
-    to.set(f.pos);
-    accT.set(f.acc);
-    grpT.set(f.grp);
-    for (const a of Object.values(this.attr)) a.needsUpdate = true;
-
-    this.fromKey = mix > 0.5 ? this.toKey : this.fromKey;
-    this.toKey = key;
-    this.progress = 0;
-  }
-
-  /** How much of formation `key` is currently on screen (0…1). */
-  private presence(key: FormationKey) {
-    const m = stagger(Math.min(1, this.progress), 0.5);
-    return (this.toKey === key ? m : 0) + (this.fromKey === key && this.toKey !== key ? 1 - m : 0);
-  }
-
-  // ── trails ────────────────────────────────────────────────────────────────
-
-  private makeTrailMaterial(size: number, speed: number) {
-    return new THREE.ShaderMaterial({
-      vertexShader: trailVertex,
-      fragmentShader: trailFragment,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-      uniforms: {
-        uTime: { value: 0 },
-        uPixelRatio: { value: 1 },
-        uSize: { value: size },
-        uSpeed: { value: speed },
-        uColor: { value: THEME.light.trail.clone() },
-        uVisible: { value: 0 },
-      },
-    });
-  }
-
-  private buildArcTrails() {
-    const pos: number[] = [];
-    const t: number[] = [];
-    const seed: number[] = [];
-    const r = rng(19);
-    ARCS.forEach(([a, c]) => {
-      const s = r();
-      for (let k = 0; k < 180; k++) {
-        const tt = k / 179;
-        pos.push(...arcPoint(a, c, tt));
-        t.push(tt);
-        seed.push(s);
-      }
-    });
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute('aT', new THREE.Float32BufferAttribute(t, 1));
-    g.setAttribute('aSeed', new THREE.Float32BufferAttribute(seed, 1));
-    return new THREE.Points(g, this.arcMat);
-  }
-
-  // ── loop ──────────────────────────────────────────────────────────────────
-
-  private loop = () => {
-    this.raf = requestAnimationFrame(this.loop);
-    const now = performance.now();
-    const dt = Math.min(0.05, (now - this.last) / 1000);
-    this.last = now;
-    this.time += dt * (this.reducedMotion ? 0 : 1);
-    this.progress += dt / this.duration;
-
-    const mobile = this.width <= 900;
-    const t = this.target;
-    // An exact pose is already measured from the page (it follows an element), so the generic phone pose must not override it.
-    const goal: Pose = { ...BASE_POSE[t.key], ...t.pose, ...(mobile ? { ...(t.exact ? {} : MOBILE_POSE), ...t.mobilePose } : {}) };
-    if (!mobile && !t.exact) {
-      // Compositions are authored for a 16:10 screen; narrower ones pull side visuals in and scale them down.
-      const fit = Math.min(1, this.width / this.height / 1.6);
-      goal.x *= fit;
-      goal.s *= Math.pow(fit, 0.7);
-    }
-    const want: Params = { ...DEFAULT_PARAMS, ...t.params, dark: this.dark ? 1 : 0 };
-    if (this.reducedMotion) {
-      want.drift = 0;
-      want.heroMotion = 0;
-    }
-
-    const k = t.follow ?? 5.5;
-    this.warp = 0; // objects hold their shape while scrolling; nothing smears or scatters
-    this.velocity = damp(this.velocity, 0, 6, dt);
-    for (const key of Object.keys(goal) as (keyof Pose)[]) this.pose[key] = damp(this.pose[key], goal[key], k, dt);
-    for (const key of ['decay', 'drift', 'dark', 'alpha', 'wave', 'spinX', 'spinY', 'explode', 'drag', 'floor', 'cull', 'body', 'dot', 'solid', 'heroMotion', 'steady'] as const) {
-      const rate = key === 'dark' ? 3.5 : (key === 'alpha' ? (want.alpha === 0 ? 8.5 : t.key === 'heroLogo' ? 10 : 5.0) : 4.5);
-      this.params[key] = damp(this.params[key], want[key], rate, dt);
-    }
-    // The intro deliberately has no WebGL object. Once it owns the scene, do not let
-    // the hero particles linger into that section while opacity easing catches up.
-    if (t.key === 'heroLogo' && want.alpha <= 0.001) this.params.alpha = 0;
-
-    if (want.highlight !== this.hlGroup) {
-      this.hlAmt = damp(this.hlAmt, 0, 14, dt);
-      if (this.hlAmt < 0.03) this.hlGroup = want.highlight;
-    } else {
-      this.hlAmt = damp(this.hlAmt, this.hlGroup >= 0 ? 1 : 0, 6, dt);
-    }
-
-    this.tilt.x = damp(this.tilt.x, this.mouse.y * 0.1, 2, dt);
-    this.tilt.y = damp(this.tilt.y, this.mouse.x * 0.16, 2, dt);
-    const motion = 1 - this.params.steady;
-    const sway = this.reducedMotion ? 0 : Math.sin(this.time * 0.21) * 0.035 * motion;
-    const p = this.pose;
-    // A solid object under the cursor leans toward it and lifts a touch, like something you could pick up.
-    // It never breaks apart: the pointer moves the whole object, not its surface.
-    const reach = 1.35 * p.s;
-    const hx = this.mouseWorld.x - p.x;
-    const hy = this.mouseWorld.y - p.y;
-    const near = this.mouse.x < 5 && !this.reducedMotion && !this.dragging ? 1 - Math.min(1, Math.max(0, (Math.hypot(hx, hy) / reach - 0.55) / 0.9)) : 0;
-    this.hover = damp(this.hover, near, 4, dt);
-    const lean = this.hover * this.hover * (3 - 2 * this.hover);
-    const leanX = Math.max(-1, Math.min(1, -hy / reach)) * 0.2 * lean;
-    const leanY = Math.max(-1, Math.min(1, hx / reach)) * 0.32 * lean;
-    this.group.position.set(p.x, p.y + 0.04 * lean * p.s, p.z);
-    this.group.scale.setScalar(p.s * (1 + 0.025 * lean));
-    this.group.rotation.set(
-      p.rx + (this.params.spinX + leanX + (Math.abs(this.mouse.y) < 2 ? this.tilt.x : 0)) * motion,
-      p.ry + (this.params.spinY + this.dragSpin + sway + leanY + (Math.abs(this.mouse.x) < 2 ? this.tilt.y : 0)) * motion,
-      p.rz,
-    );
-
-    if (this.params.drag < 0.5) this.dragSpin = damp(this.dragSpin, 0, 1.5, dt);
-    else if (!this.dragging) {
-      this.dragSpin += this.dragVel * dt; // a little inertia after release
-      this.dragVel = damp(this.dragVel, 0, 2.5, dt);
-    }
-    this.mouseAmt = 0; // the pointer never pushes particles around
-
-    const d = this.dark ? 1 : 0;
-    const u = this.material.uniforms;
-    u.uMix.value = Math.min(1, this.progress);
-    u.uTime.value = this.time;
-    u.uDrift.value = this.params.drift;
-    u.uMouseAmt.value = this.mouseAmt;
-    u.uDecay.value = this.params.decay;
-    u.uHighlight.value = this.hlGroup;
-    u.uHighlightAmt.value = this.hlAmt;
-    u.uWave.value = this.params.wave;
-    u.uExplode.value = this.params.explode;
-    // Solids. Each chapter's object makes an entrance on a spring: it rises onto its plinth, turns into place and
-    // settles with a little overshoot; the outgoing one sinks and shrinks away first. Particles are only seen where
-    // there is no object to show (or while the mark is forgetting itself), so nothing scatters around a solid.
-    const forgetting = Math.min(1, this.params.decay * 5);
-    const activeId = SOLID_FOR[this.toKey];
-    const leaving = Object.keys(this.solids).some((id) => id !== activeId && (this.spring[id]?.s ?? 0) > 0.3);
-    for (const id of Object.keys(this.solids)) {
-      const sol = this.solids[id];
-      const sp = (this.spring[id] ??= { s: 0, v: 0 });
-      const isActive = id === activeId;
-      const goalS = isActive && !leaving ? this.params.solid * (1 - forgetting) : 0;
-      if (this.reducedMotion) {
-        sp.s = goalS;
-        sp.v = 0;
-      } else {
-        // entering: lively with a small overshoot; leaving: quick and clean
-        const K = isActive ? 70 : 150;
-        const D = isActive ? 10.5 : 25;
-        for (let k = 0; k < 2; k++) {
-          const h = dt / 2;
-          sp.v += (K * (goalS - sp.s) - D * sp.v) * h;
-          sp.s += sp.v * h;
-        }
-      }
-      const s0 = Math.max(0, sp.s);
-      const lin = Math.min(1, s0 * 1.35);
-      const amt = (this.solidAmt[id] = lin * lin * (3 - 2 * lin));
-      sol.root.visible = amt * this.params.alpha > 0.004;
-      const meshes = this.solidMeshes[id];
-      const cast = amt > 0.7;
-      if (meshes[0] && meshes[0].castShadow !== cast) meshes.forEach((m) => (m.castShadow = cast));
-      if (!sol.root.visible) continue;
-      const off = 1 - Math.min(1, s0);
-      sol.root.scale.setScalar(0.6 + 0.4 * s0);
-      sol.root.position.y = -0.45 * off;
-      sol.root.rotation.y = off * (isActive ? -0.85 : 0.5);
-      sol.update({ highlight: this.hlGroup, hlAmt: this.hlAmt, explode: this.params.explode, time: this.time, dark: this.params.dark, key: this.toKey, heroMotion: this.params.heroMotion, dt });
-      setSolidOpacity(sol, amt * this.params.alpha);
-    }
-    const hasSolid = !!activeId && this.params.solid > 0.5;
-    this.partVis = damp(this.partVis, hasSolid && forgetting < 0.02 ? 0 : 1, hasSolid ? 10 : 3, dt);
-    u.uAlpha.value = this.params.alpha * this.partVis;
-    // 14–22k points cost vertex work even fully transparent: take them out of the frame when they are not seen
-    this.points.visible = u.uAlpha.value > 0.004;
-    u.uWarp.value = this.reducedMotion ? 0 : this.warp;
-    u.uHalo.value = 0.06 + 0.29 * d;
-    (u.uInk.value as THREE.Color).lerpColors(THEME.light.ink, THEME.dark.ink, d);
-    (u.uDeep.value as THREE.Color).lerpColors(THEME.light.deep, THEME.dark.deep, d);
-    (u.uBright.value as THREE.Color).lerpColors(THEME.light.bright, THEME.dark.bright, d);
-    (u.uHot.value as THREE.Color).lerpColors(THEME.light.hot, THEME.dark.hot, d);
-    u.uInkAlpha.value = THEME.light.inkAlpha + (THEME.dark.inkAlpha - THEME.light.inkAlpha) * d;
-
-    // Give the particle mark enough contrast against the warm light hero without
-    // changing the palette used by the rest of the site's formations.
-    const lightHeroPresence = this.presence('heroLogo') * (1 - d);
-    (u.uInk.value as THREE.Color).lerp(THEME.light.heroInk, lightHeroPresence);
-    (u.uDeep.value as THREE.Color).lerp(THEME.light.heroDeep, lightHeroPresence);
-    (u.uBright.value as THREE.Color).lerp(THEME.light.heroBright, lightHeroPresence);
-    (u.uHot.value as THREE.Color).lerp(THEME.light.heroHot, lightHeroPresence);
-    u.uInkAlpha.value += (THEME.light.heroInkAlpha - u.uInkAlpha.value) * lightHeroPresence;
-
-    // The plinth: hidden everywhere so balls float in space
-    this.plinth.root.visible = false;
-
-    u.uCull.value = this.params.cull;
-    u.uDot.value = this.params.dot;
-    (u.uCenter.value as THREE.Vector3).set(p.x, p.y, p.z);
-
-    // The globe's body: centred on the formation, the planet's size, facing the camera.
-    const bu = this.bodyMat.uniforms;
-    bu.uOpacity.value = this.params.body * this.params.alpha * this.partVis * (this.toKey === 'globe' ? Math.min(1, this.progress * 1.4) : 0);
-    this.body.visible = bu.uOpacity.value > 0.003;
-    this.body.position.set(p.x, p.y, p.z);
-    this.body.scale.setScalar(GLOBE_R * p.s * 1.3);
-    (bu.uLit.value as THREE.Color).lerpColors(THEME.light.bodyLit, THEME.dark.bodyLit, d);
-    (bu.uShade.value as THREE.Color).lerpColors(THEME.light.bodyShade, THEME.dark.bodyShade, d);
-    (bu.uAtmos.value as THREE.Color).lerpColors(THEME.light.bodyAtmos, THEME.dark.bodyAtmos, d);
-    bu.uBodyAlpha.value = 0.92;
-    bu.uRimAlpha.value = 0.1 + 0.2 * d;
-    bu.uGlowAlpha.value = 0.08 + 0.14 * d;
-
-    const arc = this.arcMat.uniforms;
-    arc.uTime.value = this.time;
-    arc.uVisible.value = this.presence('globe') * this.params.alpha * 0.8 * (1 - (this.solidAmt.globe ?? 0));
-    (arc.uColor.value as THREE.Color).lerpColors(THEME.light.trail, THEME.dark.trail, d);
-
-    // Fully faded out (sections that put the particles away): draw the empty frame once, then stop paying for the GPU.
-    const idle = want.alpha === 0 && this.params.alpha < 0.004;
-    if (!idle || !this.idle) {
-      this.renderer.render(this.scene, this.camera);
-      this.watchFrames(now);
-    }
-    this.idle = idle;
-    this.listeners.forEach((fn) => fn());
-  };
-
-  // ── adaptive quality ──────────────────────────────────────────────────────
-
-  private lastFrame = 0;
-  /** Two seconds of slow frames (under ~45 fps) steps quality down once; it never steps back up mid-visit. */
-  private watchFrames(now: number) {
-    const gap = now - this.lastFrame;
-    this.lastFrame = now;
-    if (gap > 200 || this.quality === 0) return; // tab switches and pauses are not slowness
-    this.frameSamples.push(gap);
-    if (this.frameSamples.length < 120) return;
-    const sorted = [...this.frameSamples].sort((a, b) => a - b);
-    const median = sorted[sorted.length >> 1];
-    this.frameSamples.length = 0;
-    if (median > 22) this.degrade();
-  }
-
-  private degrade() {
-    this.quality -= 1;
-    document.documentElement.classList.add('lite');
-    if (this.renderer.shadowMap.enabled) {
-      this.renderer.shadowMap.enabled = false;
-      this.scene.traverse((o) => {
-        const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
-        (Array.isArray(m) ? m : m ? [m] : []).forEach((x) => (x.needsUpdate = true));
-      });
-    }
-    this.resize();
-  }
-
-  // ── input & lifecycle ─────────────────────────────────────────────────────
-
-  private resize = () => {
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
-    // full sharpness on capable machines; integrated GPUs render at 1× (or less, if they still struggle)
-    const pr = this.quality === 2 ? Math.min(window.devicePixelRatio, 2) : this.quality === 1 ? Math.min(window.devicePixelRatio, 1) : 0.8;
-    this.renderer.setPixelRatio(pr);
-    this.renderer.setSize(this.width, this.height, false);
-    this.camera.aspect = this.width / this.height;
-    // keep the composition width-stable on tall screens
-    this.camera.position.z = this.camera.aspect < 1 ? 7 / Math.max(0.62, this.camera.aspect) ** 0.55 : 7;
-    this.camera.updateProjectionMatrix();
-    this.material.uniforms.uPixelRatio.value = pr;
-    this.arcMat.uniforms.uPixelRatio.value = pr;
-  };
-
-  private updateMouseWorld() {
-    this.raycaster.setFromCamera(this.mouse, this.camera);
-    this.raycaster.ray.intersectPlane(this.plane, this.mouseWorld);
-  }
-
-  private onPointerMove = (e: PointerEvent) => {
-    if (this.dragging) {
-      const dx = (e.clientX - this.dragX) / this.width;
-      this.dragX = e.clientX;
-      this.dragSpin += dx * 4;
-      this.dragVel = dx * 240;
-    }
-    if (e.pointerType === 'touch') return;
-    this.mouse.set((e.clientX / this.width) * 2 - 1, -(e.clientY / this.height) * 2 + 1);
-    this.updateMouseWorld();
-  };
-
-  private onPointerLeave = () => this.mouse.set(10, 10);
-
-  private onPointerDown = (e: PointerEvent) => {
-    const el = e.target as HTMLElement;
-    if (el.closest('a, button, input, textarea, select, label, [data-no-pulse]')) return;
-    if (this.target.params?.drag) {
-      this.dragging = true;
-      this.dragX = e.clientX;
-      this.dragVel = 0;
-      const up = () => {
-        this.dragging = false;
-        window.removeEventListener('pointerup', up);
-        window.removeEventListener('pointercancel', up);
-      };
-      window.addEventListener('pointerup', up);
-      window.addEventListener('pointercancel', up);
-    }
-  };
-
-  private onVisibility = () => {
-    if (document.hidden) cancelAnimationFrame(this.raf);
-    else {
-      this.last = performance.now();
-      this.loop();
-    }
-  };
 }

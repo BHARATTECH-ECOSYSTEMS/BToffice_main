@@ -1,70 +1,167 @@
-import { useMemo, useState } from 'react';
-import { PageHero, Zone } from '../components/PageHero';
-import { Lines, Arrow } from '../components/Reveal';
-import { EMAIL, ROLES } from '../content';
+import { useEffect, useMemo, useState } from 'react';
+import { PageHero, Quiet } from '../components/PageHero';
+import { Arrow, Reveal, toneStyle } from '../components/ui';
+import { EMAIL, ROLES, VALUES } from '../content';
+import type { HueName } from '../gl/palette';
+import { Icon, type IconName } from '../components/fx';
+import { DomainArt } from '../components/art';
+
+const VALUE_ICONS: IconName[] = ['clock', 'layers', 'spark', 'rocket'];
+
+/** Every open role as a deck. Pointing at a card opens it out of the deck; left alone, the deck shows each in turn. */
+function CareersVisual() {
+  const [hover, setHover] = useState(-1);
+  const [auto, setAuto] = useState(0);
+  useEffect(() => {
+    if (hover >= 0 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const t = window.setInterval(() => setAuto((a) => (a + 1) % ROLES.length), 2600);
+    return () => window.clearInterval(t);
+  }, [hover]);
+  const open = hover >= 0 ? hover : auto;
+  return (
+    <div className="deck" onPointerLeave={() => setHover(-1)} style={{ '--n': ROLES.length } as React.CSSProperties}>
+      {ROLES.map((r, i) => (
+        <a
+          key={r.title}
+          href={applyHref(r)}
+          className="deck-card"
+          data-open={i === open || undefined}
+          data-below={i > open || undefined}
+          onPointerEnter={() => setHover(i)}
+          onFocus={() => setHover(i)}
+          style={{ '--i': i, ...toneStyle(DEPT_TONE[r.dept]) } as React.CSSProperties}
+        >
+          <span className="deck-dept">
+            <i />
+            {r.dept}
+          </span>
+          <b>{r.title}</b>
+          <span className="deck-more">
+            <span>
+              {r.focus} · {r.team}
+            </span>
+            <span>{r.location}</span>
+            <span className="deck-apply">
+              Apply <Arrow size={12} />
+            </span>
+          </span>
+        </a>
+      ))}
+      <div className="deck-badge" aria-hidden="true">
+        <b>{String(ROLES.length).padStart(2, '0')}</b>
+        open roles
+      </div>
+    </div>
+  );
+}
+
+const applyHref = (r: (typeof ROLES)[number]) => `mailto:${EMAIL}?subject=${encodeURIComponent(`Application: ${r.title}, ${r.focus}`)}`;
+
+/** Which research drawing each team gets on its role cards. */
+const TEAM_ART: Record<string, number> = {
+  'GI Rivinity': 0,
+  'Rivinity Core': 1,
+  'IoT Intelligence': 2,
+  'Geo Intelligence': 3,
+  'Defense Intelligence': 4,
+  Platform: 5,
+  Communications: 1,
+};
 
 const DEPTS = ['All', 'Research', 'Engineering', 'Operations'];
+const DEPT_TONE: Record<string, HueName> = { Research: 'emerald', Engineering: 'cobalt', Operations: 'tangerine' };
 
 export function Careers() {
   const [dept, setDept] = useState('All');
   const [q, setQ] = useState('');
   const roles = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return ROLES.filter(
-      (r) => (dept === 'All' || r.dept === dept) && (!s || `${r.title} ${r.focus} ${r.team} ${r.location}`.toLowerCase().includes(s)),
-    );
+    return ROLES.filter((r) => (dept === 'All' || r.dept === dept) && (!s || `${r.title} ${r.focus} ${r.team} ${r.location}`.toLowerCase().includes(s)));
   }, [dept, q]);
 
   return (
-    <div className="page">
+    <>
       <PageHero
+        eyebrow="Careers"
+        tone="tangerine"
         title={['Build the', 'foundation.']}
         lede="We hire researchers and engineers who would rather spend a decade on the right problem than a quarter on the easy one."
-        target={{ key: 'field', params: { alpha: 0 } }}
+        visual={<CareersVisual />}
       >
-        <a href="#roles" className="btn btn-solid" style={{ marginTop: 36 }} onClick={(e) => { e.preventDefault(); document.getElementById('roles')?.scrollIntoView({ behavior: 'smooth' }); }}>
+        <a href="#roles" className="btn btn-primary page-hero-cta" onClick={(e) => (e.preventDefault(), document.getElementById('roles')?.scrollIntoView({ behavior: 'smooth' }))}>
           {ROLES.length} open roles <Arrow dir="down" />
         </a>
       </PageHero>
 
-      <Zone target={{ key: 'field', params: { alpha: 0 } }} className="section careers-roles" id="roles">
+      <Quiet>
         <div className="wrap">
-          <div style={{ marginBottom: 40 }} className="careers-roles-head">
-            <Lines className="h2" lines={['Find your', 'problem.']} />
+          <div className="bento values-bento">
+            {VALUES.map((v, i) => (
+              <Reveal key={v.title} className="cell" delay={i * 60}>
+                <span className="icon-tile">
+                  <Icon name={VALUE_ICONS[i]} />
+                </span>
+                <h3>{v.title}</h3>
+                <p>{v.body}</p>
+              </Reveal>
+            ))}
           </div>
-          <div className="filters">
+        </div>
+      </Quiet>
+
+      <Quiet id="roles">
+        <div className="wrap">
+          <div className="roles-bar">
             <div className="segmented" role="group" aria-label="Department">
               {DEPTS.map((d) => (
-                <button key={d} aria-pressed={dept === d} onClick={() => setDept(d)}>
+                <button key={d} aria-pressed={dept === d} style={toneStyle(DEPT_TONE[d] ?? 'ink')} onClick={() => setDept(d)}>
+                  <i aria-hidden="true" />
                   {d}
+                  <small>{d === 'All' ? ROLES.length : ROLES.filter((r) => r.dept === d).length}</small>
                 </button>
               ))}
             </div>
             <label className="search">
-              <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <circle cx="7" cy="7" r="5.25" stroke="currentColor" strokeWidth="1.3" />
-                <path d="M11 11l3.5 3.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+              <svg viewBox="0 0 16 16" aria-hidden="true">
+                <circle cx="7" cy="7" r="5" />
+                <path d="M11 11l3.5 3.5" />
               </svg>
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search roles, teams, locations" aria-label="Search roles" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search roles, teams, places" aria-label="Search roles" />
             </label>
           </div>
-          <ul className="roles">
-            {roles.map((r) => (
-              <li key={r.title} className="role">
-                <a href={`mailto:${EMAIL}?subject=${encodeURIComponent(`Application: ${r.title}, ${r.focus}`)}`}>
-                  <span className="role-title">
-                    {r.title} <span>{r.focus}</span>
+          <ul className="role-grid">
+            {roles.map((r, i) => (
+              <Reveal as="li" key={r.title} delay={(i % 3) * 70} style={toneStyle(DEPT_TONE[r.dept])}>
+                <a href={applyHref(r)} className="role-card">
+                  <span className="role-art">
+                    <DomainArt index={TEAM_ART[r.team] ?? 0} />
+                    <span className="role-dept">
+                      <i aria-hidden="true" />
+                      {r.dept}
+                    </span>
                   </span>
-                  <span className="mono muted">{r.team}</span>
-                  <span className="mono muted">{r.location}</span>
-                  <Arrow />
+                  <span className="role-body">
+                    <b>{r.title}</b>
+                    <small>{r.focus}</small>
+                    <span className="role-facts">
+                      <span>{r.team}</span>
+                      <span>{r.location}</span>
+                    </span>
+                    <span className="role-go">
+                      Apply <Arrow />
+                    </span>
+                  </span>
                 </a>
-              </li>
+              </Reveal>
             ))}
           </ul>
-          {roles.length === 0 && <p className="empty mono">No roles match. Write to us anyway at {EMAIL}</p>}
+          {roles.length === 0 && (
+            <p className="empty">
+              No roles match. Write to us anyway at <a href={`mailto:${EMAIL}`}>{EMAIL}</a>
+            </p>
+          )}
         </div>
-      </Zone>
-    </div>
+      </Quiet>
+    </>
   );
 }

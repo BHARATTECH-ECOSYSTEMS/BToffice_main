@@ -1,15 +1,10 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createHashRouter, Outlet, RouterProvider, useLocation } from 'react-router';
 import { SceneProvider, useScene } from './gl/Scene';
 import { Nav } from './components/Nav';
-import { Rail } from './components/Rail';
 import { Footer } from './components/Footer';
-import { Opening } from './components/Opening';
-import { useScrollFx } from './components/ScrollFx';
-import { PageCurtain } from './components/PageCurtain';
 import { Home } from './pages/Home';
 import { About } from './pages/About';
-import { AboutTest } from './pages/AboutTest';
 import { Research } from './pages/Research';
 import { Careers } from './pages/Careers';
 import { Blog } from './pages/Blog';
@@ -17,130 +12,93 @@ import { Article } from './pages/Article';
 import { Contact } from './pages/Contact';
 import { Privacy, Terms } from './pages/Legal';
 import { NotFound } from './pages/NotFound';
+import { LogoMark } from './components/ui';
 
-// Each chapter tints the paper a little, the way a printed report changes stock between parts.
-const CHAPTER_TINT: Record<string, string> = {
-  top: 'cream',
-  intro: 'cream',
-  mission: 'blush',
-  capabilities: 'lilac',
-  how: 'mist',
-  architecture: 'lilac',
-  network: 'sage',
-  laboratory: 'sand',
-  audiences: 'blush',
-  builders: 'cream',
-  journal: 'sand',
-  faq: 'cream',
-  next: 'lilac',
-};
+/** A violet wipe with the mark, on every route change after the first page. */
+function Curtain({ pathname }: { pathname: string }) {
+  const first = useRef(true);
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (first.current) {
+      first.current = false;
+      return;
+    }
+    setN((x) => x + 1);
+  }, [pathname]);
+  return n ? <div className="curtain" key={n} aria-hidden="true"><LogoMark size={72} /></div> : null;
+}
+
+/** A hairline along the top of the window that fills as the page is read. */
+function ReadProgress() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    let raf = 0;
+    const tick = () => {
+      const max = document.documentElement.scrollHeight - window.innerHeight;
+      if (ref.current) ref.current.style.transform = `scaleX(${max > 0 ? window.scrollY / max : 0})`;
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return <div className="read-progress" ref={ref} aria-hidden="true" />;
+}
 
 function Layout() {
   const { pathname, state } = useLocation();
   const { scrollTo } = useScene();
-  useScrollFx(pathname);
 
+  // A new page starts at the top, or at the section a link asked for once it has laid out.
   useEffect(() => {
     const target = (state as { scrollTo?: string } | null)?.scrollTo;
     scrollTo(0, true);
-    if (target) {
-      let raf = 0;
-      let frame = 0;
-      let lastTop = -1;
-      const align = () => {
-        const el = document.getElementById(target);
-        if (!el) {
-          if (frame++ < 18) raf = requestAnimationFrame(align);
-          return;
-        }
-
-        // Pinned chapters calculate their full scroll height after mounting. Follow
-        // that measurement until it settles so navigation never lands mid-chapter.
-        const top = el.getBoundingClientRect().top + window.scrollY;
-        if (Math.abs(top - lastTop) > 0.5 || Math.abs(window.scrollY - top) > 1) {
-          scrollTo(top, true);
-          lastTop = top;
-        }
-        if (frame++ < 18) raf = requestAnimationFrame(align);
-      };
-      raf = requestAnimationFrame(align);
-      return () => cancelAnimationFrame(raf);
-    }
+    if (!target) return;
+    let raf = 0;
+    let frame = 0;
+    const align = () => {
+      const el = document.getElementById(target);
+      if (el) scrollTo(el.getBoundingClientRect().top + window.scrollY, true);
+      if (frame++ < 12) raf = requestAnimationFrame(align);
+    };
+    raf = requestAnimationFrame(align);
+    return () => cancelAnimationFrame(raf);
   }, [pathname, state, scrollTo]);
 
-  // The fill of solid buttons blooms from wherever the cursor enters.
+  // Cards and solid buttons light up where the cursor is.
   useEffect(() => {
-    const onMove = (e: PointerEvent) => {
-      const b = (e.target as HTMLElement).closest?.('.btn-solid') as HTMLElement | null;
-      if (!b) return;
-      const r = b.getBoundingClientRect();
-      b.style.setProperty('--mx', `${e.clientX - r.left}px`);
-      b.style.setProperty('--my', `${e.clientY - r.top}px`);
-    };
-    window.addEventListener('pointerover', onMove);
-    return () => window.removeEventListener('pointerover', onMove);
-  }, []);
-
-  // Chapter tint: whichever section holds the middle of the screen sets the paper colour.
-  useEffect(() => {
-    const root = document.documentElement;
-    const sections = Array.from(document.querySelectorAll<HTMLElement>('main section'));
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) root.style.setProperty('--tint', `var(--tint-${CHAPTER_TINT[e.target.id] ?? 'cream'})`);
-        }
-      },
-      { rootMargin: '-50% 0px -50% 0px' },
-    );
-    sections.forEach((s) => io.observe(s));
-    return () => io.disconnect();
-  }, [pathname]);
-
-  // Card cursor spotlight & sheen tracking (--gx, --gy) across all cards
-  useEffect(() => {
-    const selector =
-      '.bento, .problem-card, .cap-card, .lab-card, .aud-card, .net-list li, .faq-item, .stack, .stack-detail, .jobs-summary, .jobs-board, .scene-demo, .finale-cta, .hero-facts, .story-cover, .caps-base';
-    let rafId = 0;
-    let lastEvent: PointerEvent | null = null;
+    let raf = 0;
+    let last: PointerEvent | null = null;
     const update = () => {
-      rafId = 0;
-      const e = lastEvent;
-      const card = e?.target
-        ? ((e.target as HTMLElement).closest?.(selector) as HTMLElement | null)
-        : null;
-      if (!e || !card) return;
-      const rect = card.getBoundingClientRect();
-      card.style.setProperty('--gx', `${e.clientX - rect.left}px`);
-      card.style.setProperty('--gy', `${e.clientY - rect.top}px`);
+      raf = 0;
+      const t = (last?.target as HTMLElement | null)?.closest?.('.cell, .btn-primary, .nav-cta') as HTMLElement | null;
+      if (!t || !last) return;
+      const r = t.getBoundingClientRect();
+      t.style.setProperty('--mx', `${last.clientX - r.left}px`);
+      t.style.setProperty('--my', `${last.clientY - r.top}px`);
     };
-    const onPointerMove = (e: PointerEvent) => {
-      lastEvent = e;
-      if (!rafId) {
-        rafId = requestAnimationFrame(update);
-      }
+    const on = (e: PointerEvent) => {
+      last = e;
+      if (!raf) raf = requestAnimationFrame(update);
     };
-    window.addEventListener('pointermove', onPointerMove, { passive: true });
+    window.addEventListener('pointermove', on, { passive: true });
     return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener('pointermove', onPointerMove);
+      cancelAnimationFrame(raf);
+      window.removeEventListener('pointermove', on);
     };
   }, []);
 
   return (
     <div className="app">
-      <div className="grain" aria-hidden="true" />
-      <a className="skip" href="#main" onClick={(e) => { e.preventDefault(); document.getElementById('main')?.focus(); }}>
+      <a className="skip" href="#main" onClick={(e) => (e.preventDefault(), document.getElementById('main')?.focus())}>
         Skip to content
       </a>
+      <ReadProgress />
+      <Curtain pathname={pathname} />
       <Nav />
-      <Rail />
-      <main id="main" className="folio-main" tabIndex={-1} key={pathname} style={{ outline: 'none' }}>
+      <main id="main" tabIndex={-1} key={pathname} className="page-enter">
         <Outlet />
       </main>
       <Footer />
-      <PageCurtain />
-      <Opening />
     </div>
   );
 }
@@ -152,7 +110,6 @@ const router = createHashRouter([
     children: [
       { index: true, Component: Home },
       { path: 'about', Component: About },
-      { path: 'about-test', Component: AboutTest },
       { path: 'research', Component: Research },
       { path: 'careers', Component: Careers },
       { path: 'publications', Component: Blog },
