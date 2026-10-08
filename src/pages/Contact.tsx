@@ -28,7 +28,7 @@ export function Contact() {
         tone="violet"
         title={['Let’s build', 'what comes next.']}
         lede="Direct access to our research and engineering teams. Every message is read by a person."
-        object="mark"
+        align="center"
       />
       <Quiet>
         <div className="wrap">

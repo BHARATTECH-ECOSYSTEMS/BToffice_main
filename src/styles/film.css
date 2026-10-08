@@ -4,7 +4,7 @@
 .story {
   position: relative;
   height: calc(100svh + var(--beats) * var(--pace) * 100svh);
-  --studio: #F8F7F3;
+  --studio: var(--bg);
 }
 .story-anchor {
   position: absolute;
@@ -123,7 +123,7 @@
   margin: 22px 0 0;
   font-size: clamp(15px, 1.15vw, 17px);
   line-height: 1.55;
-  color: #2B2923;
+  color: var(--ink-2);
   font-weight: 450;
   transform: translate3d(calc(var(--d, 0) * -36px), 0, 0);
 }
@@ -134,7 +134,7 @@
   margin: 22px 0 0;
   padding: 9px 14px 9px 12px;
   border-radius: 999px;
-  background: rgb(255 253 249 / 0.9);
+  background: color-mix(in srgb, var(--paper) 90%, transparent);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 28%, transparent);
   font-family: var(--mono);
   font-size: 12px;
@@ -579,7 +579,7 @@
 .finale-film {
   position: relative;
   min-height: clamp(680px, 92svh, 900px);
-  background: #F8F7F3;
+  background: var(--bg);
 }
 .finale-pin {
   position: relative;
@@ -589,7 +589,7 @@
   overflow: hidden;
   background:
     radial-gradient(circle at 50% 42%, rgb(109 75 255 / 0.08), transparent 34%),
-    #F8F7F3;
+    var(--bg);
 }
 .finale-pin::after {
   position: absolute;

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { createHashRouter, Outlet, RouterProvider, useLocation } from 'react-router';
 import { SceneProvider, useScene } from './gl/Scene';
 import { Nav } from './components/Nav';
@@ -13,34 +13,6 @@ import { Contact } from './pages/Contact';
 import { Privacy, Terms } from './pages/Legal';
 import { NotFound } from './pages/NotFound';
 import { RouteSweep } from './components/RouteSweep';
-
-/** A hairline along the top of the window that fills as the page is read. */
-function ReadProgress() {
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    let raf = 0;
-    let max = 1;
-    const measureMax = () => {
-      max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
-    };
-    const update = () => {
-      raf = 0;
-      if (ref.current) ref.current.style.transform = `scaleX(${Math.min(1, Math.max(0, window.scrollY / max))})`;
-    };
-    const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-    measureMax();
-    update();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', () => { measureMax(); onScroll(); }, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('scroll', onScroll);
-    };
-  }, []);
-  return <div className="read-progress" ref={ref} aria-hidden="true" />;
-}
 
 function Layout() {
   const { pathname, state } = useLocation();
@@ -61,6 +33,22 @@ function Layout() {
     raf = requestAnimationFrame(align);
     return () => cancelAnimationFrame(raf);
   }, [pathname, state, scrollTo]);
+
+  // Dark mode trigger from URL: ?theme=dark, #/?theme=dark, or #/dark
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const searchTheme = searchParams.get('theme');
+    const hash = window.location.hash || '';
+    const isDark = searchTheme === 'dark' || hash.includes('theme=dark') || hash.includes('/dark') || pathname.startsWith('/dark');
+
+    if (isDark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+      document.body.classList.add('dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+      document.body.classList.remove('dark');
+    }
+  }, [pathname]);
 
   // Cards and solid buttons light up where the cursor is.
   useEffect(() => {
@@ -90,7 +78,6 @@ function Layout() {
       <a className="skip" href="#main" onClick={(e) => (e.preventDefault(), document.getElementById('main')?.focus())}>
         Skip to content
       </a>
-      <ReadProgress />
       <RouteSweep />
       <Nav />
       <main id="main" tabIndex={-1} key={pathname}>
@@ -107,6 +94,7 @@ const router = createHashRouter([
     Component: Layout,
     children: [
       { index: true, Component: Home },
+      { path: 'dark', Component: Home },
       { path: 'about', Component: About },
       { path: 'research', Component: Research },
       { path: 'careers', Component: Careers },

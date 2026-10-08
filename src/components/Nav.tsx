@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { Arrow, Brand, toneStyle } from './ui';
-import { CHAPTERS, EMAIL } from '../content';
+import { CHAPTERS, EMAIL, EMPLOYEE_LOGIN_URL } from '../content';
 import { useScene } from '../gl/Scene';
 import { NavPeek, type PeekId } from './NavPeek';
 import type { HueName } from '../gl/palette';
@@ -31,7 +31,7 @@ function usePeek() {
     (id: PeekId) => {
       window.clearTimeout(timer.current);
       if (current.current) set(id);
-      else timer.current = window.setTimeout(() => set(id), 90);
+      else timer.current = window.setTimeout(() => set(id), 40);
     },
     [set],
   );
@@ -39,7 +39,7 @@ function usePeek() {
     (now = false) => {
       window.clearTimeout(timer.current);
       if (now) set(null);
-      else timer.current = window.setTimeout(() => set(null), 220);
+      else timer.current = window.setTimeout(() => set(null), 140);
     },
     [set],
   );
@@ -54,32 +54,43 @@ function useChapterProgress(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     let raf = 0;
-    const measure = () => {
-      raf = 0;
-      const mid = window.scrollY + window.innerHeight * 0.5;
-      const starts = CHAPTERS.map((c) => {
+    let starts: number[] = [];
+    let end = 0;
+
+    const measureOffsets = () => {
+      starts = CHAPTERS.map((c) => {
         const el = document.getElementById(c.id);
         return el ? el.getBoundingClientRect().top + window.scrollY : Infinity;
       });
-      const end = (document.querySelector('.footer') as HTMLElement | null)?.offsetTop ?? document.body.scrollHeight;
+      end = (document.querySelector('.footer') as HTMLElement | null)?.offsetTop ?? document.body.scrollHeight;
+    };
+
+    measureOffsets();
+
+    const measure = () => {
+      raf = 0;
+      if (!starts.length) return;
+      const mid = window.scrollY + window.innerHeight * 0.5;
       let index = 0;
       const fills = starts.map((s, i) => {
         const e = i < starts.length - 1 ? starts[i + 1] : end;
         if (mid >= s) index = i;
         return Math.min(1, Math.max(0, (mid - s) / Math.max(1, e - s)));
       });
-      setState((p) => (p.index === index && p.fills.every((f, i) => Math.abs(f - fills[i]) < 0.004) ? p : { index, fills }));
+      setState((p) => (p.index === index && p.fills.every((f, i) => Math.abs(f - fills[i]) < 0.01) ? p : { index, fills }));
     };
     const on = () => {
       if (!raf) raf = requestAnimationFrame(measure);
     };
     measure();
     window.addEventListener('scroll', on, { passive: true });
-    window.addEventListener('resize', on);
+    window.addEventListener('resize', () => {
+      measureOffsets();
+      on();
+    }, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('scroll', on);
-      window.removeEventListener('resize', on);
     };
   }, [enabled]);
   return state;
@@ -110,13 +121,14 @@ export function Nav() {
       raf = requestAnimationFrame(() => {
         raf = 0;
         const y = window.scrollY;
-        setCompact(y > 24);
-        if (Math.abs(y - lastY) > 6) {
-          setHidden(y > 640 && y > lastY);
+        const isCompact = y > 24;
+        setCompact((p) => (p !== isCompact ? isCompact : p));
+
+        if (Math.abs(y - lastY) > 24) {
+          const shouldHide = y > 400 && y > lastY;
+          setHidden((p) => (p !== shouldHide ? shouldHide : p));
           lastY = y;
         }
-        const caps = document.getElementById('capabilities')?.getBoundingClientRect();
-        setInCaps(!!caps && caps.top < window.innerHeight * 0.5 && caps.bottom > window.innerHeight * 0.5);
       });
     };
     on();
@@ -126,6 +138,21 @@ export function Nav() {
       window.removeEventListener('scroll', on);
     };
   }, []);
+
+  // Capabilities observer without forced layout on scroll
+  useEffect(() => {
+    if (!home) return;
+    const el = document.getElementById('capabilities');
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]) setInCaps(entries[0].isIntersecting);
+      },
+      { rootMargin: '-20% 0px -20% 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [home]);
 
   useEffect(() => {
     setOpen(false);
@@ -260,12 +287,12 @@ export function Nav() {
         </nav>
 
         <div className="nav-end">
-          <Link to="/contact" className="nav-cta">
-            <span>Get in touch</span>
+          <a href={EMPLOYEE_LOGIN_URL} className="nav-cta" target="_blank" rel="noopener noreferrer">
+            <span>Employee login</span>
             <span className="nav-cta-icon">
               <Arrow dir="up-right" size={13} />
             </span>
-          </Link>
+          </a>
           <button className="nav-burger" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="nav-sheet" aria-label={open ? 'Close menu' : 'Open menu'}>
             <span />
             <span />
@@ -306,9 +333,9 @@ export function Nav() {
           ))}
         </ul>
         <div className="nav-sheet-foot" style={{ '--i': LINKS.length } as CSSProperties}>
-          <Link to="/contact" className="btn btn-primary" tabIndex={open ? 0 : -1}>
-            Get in touch <Arrow />
-          </Link>
+          <a href={EMPLOYEE_LOGIN_URL} className="btn btn-primary" tabIndex={open ? 0 : -1} target="_blank" rel="noopener noreferrer">
+            Employee login <Arrow />
+          </a>
           <a href={`mailto:${EMAIL}`} className="nav-sheet-mail" tabIndex={open ? 0 : -1}>
             {EMAIL}
           </a>

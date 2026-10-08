@@ -7,6 +7,17 @@
     <meta name="description" content="Bharattech Origin is an Indian deep-technology research company building a unified intelligence infrastructure designed to learn, remember, reason and evolve." />
     <meta name="theme-color" content="#FBF6EF" />
     <script>
+      (function () {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var hash = window.location.hash || '';
+          var path = window.location.pathname || '';
+          if (params.get('theme') === 'dark' || hash.indexOf('theme=dark') !== -1 || hash.indexOf('/dark') !== -1 || path.indexOf('/dark') !== -1) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
       // Modest machines (≤4 cores or ≤4 GB, or an integrated GPU) get the lighter render path before first paint.
       (function () {
         try {

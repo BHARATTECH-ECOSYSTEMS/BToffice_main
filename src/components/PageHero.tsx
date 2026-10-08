@@ -18,6 +18,7 @@ export function PageHero({
   object,
   visual,
   children,
+  align,
 }: {
   eyebrow: string;
   tone: HueName;
@@ -26,6 +27,7 @@ export function PageHero({
   object?: 'mark' | 'globe';
   visual?: ReactNode;
   children?: ReactNode;
+  align?: 'left' | 'center';
 }) {
   const ref = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -38,7 +40,7 @@ export function PageHero({
   useFormation(ref, () => (object === 'globe' ? { key: 'globe', pose: fitTo(stageRef.current, GLOBE_SIZE, 1), follow: 28 } : { key: 'none' }));
   const side = object || visual;
   return (
-    <section ref={ref} className={`page-hero ${side ? 'has-side' : ''}`} data-ready={ready || undefined}>
+    <section ref={ref} className={`page-hero ${side ? 'has-side' : ''} ${align === 'center' ? 'is-center' : ''}`} data-ready={ready || undefined}>
       <Aurora className="is-page" />
       <div className="hero-grid-bg" aria-hidden="true" />
       <div className="wrap page-hero-grid">

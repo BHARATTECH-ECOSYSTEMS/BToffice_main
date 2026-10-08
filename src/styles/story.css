@@ -834,6 +834,11 @@
   color: var(--ink);
   transform: translateX(10px);
 }
+:root[data-theme='dark'] .scene-recall [data-hit],
+.dark .scene-recall [data-hit] {
+  background: rgba(255, 255, 255, 0.22) !important;
+  color: #FFFFFF !important;
+}
 .scene-plan span {
   grid-template-columns: 24px 1fr;
   align-items: center;
@@ -851,6 +856,11 @@
   font-family: var(--mono);
   font-size: 11px;
   font-weight: 600;
+}
+:root[data-theme='dark'] .scene-plan i,
+.dark .scene-plan i {
+  background: rgba(255, 255, 255, 0.18) !important;
+  color: var(--tone) !important;
 }
 .scene-act .scene-core {
   left: 8%;
@@ -1808,12 +1818,13 @@
   width: min(860px, calc(100vw - 40px));
   opacity: 0;
   visibility: hidden;
-  transform: translateY(-8px) scale(0.98);
+  transform: translateY(-6px) scale(0.98);
   transform-origin: var(--caret) 0;
+  will-change: transform, opacity;
   transition:
-    opacity 0.2s var(--ease),
-    transform 0.42s var(--ease-expo),
-    visibility 0s 0.42s;
+    opacity 0.16s ease-out,
+    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    visibility 0s 0.22s;
 }
 .nav[data-compact] .nav-peek {
   top: 68px;
@@ -2214,6 +2225,12 @@
   color: #fff;
   box-shadow: none;
 }
+:root[data-theme='dark'] .peek-side-ink,
+.dark .peek-side-ink {
+  background: #151424 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #FAF9F6 !important;
+}
 .peek-side-ink .peek-side-label {
   margin-top: 0;
   font-size: 19px;
@@ -2221,13 +2238,27 @@
 .peek-side-ink .peek-side-blurb {
   color: rgb(255 255 255 / 0.72);
 }
+:root[data-theme='dark'] .peek-side-ink .peek-side-blurb,
+.dark .peek-side-ink .peek-side-blurb {
+  color: rgba(250, 249, 246, 0.72) !important;
+}
 .peek-side-ink .peek-go {
   background: #fff;
   color: var(--ink);
 }
+:root[data-theme='dark'] .peek-side-ink .peek-go,
+.dark .peek-side-ink .peek-go {
+  background: #FAF9F6 !important;
+  color: #0A0910 !important;
+}
 .peek-side-ink .peek-go:hover {
   background: var(--brand);
   color: #fff;
+}
+:root[data-theme='dark'] .peek-side-ink .peek-go:hover,
+.dark .peek-side-ink .peek-go:hover {
+  background: var(--brand) !important;
+  color: #FFFFFF !important;
 }
 .peek-mail {
   margin-top: 10px;
@@ -2659,6 +2690,17 @@
   background: #fff;
   color: var(--ink);
 }
+:root[data-theme='dark'] .btn-light,
+.dark .btn-light {
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #FFFFFF !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
 .btn-light:hover {
   background: var(--bg-2);
+}
+:root[data-theme='dark'] .btn-light:hover,
+.dark .btn-light:hover {
+  background: rgba(255, 255, 255, 0.2) !important;
+  color: #FFFFFF !important;
 }

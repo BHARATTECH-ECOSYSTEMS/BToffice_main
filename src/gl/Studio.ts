@@ -153,7 +153,7 @@ function logoTex() {
 }
 
 /** An endless paper sweep: floor, a soft curve, and a wall far behind. */
-function cyclorama() {
+function cyclorama(paperColor: THREE.Color, isDark = false) {
   const shape: [number, number][] = [];
   for (let z = 16; z > -6; z -= 1) shape.push([z, 0]);
   const rad = 4;
@@ -173,7 +173,7 @@ function cyclorama() {
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
   g.setIndex(idx);
   g.computeVertexNormals();
-  return new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: PAPER, emissive: PAPER, emissiveIntensity: 0.62, roughness: 1, side: THREE.DoubleSide }));
+  return new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: paperColor, emissive: paperColor, emissiveIntensity: isDark ? 0.05 : 0.62, roughness: 1, side: THREE.DoubleSide }));
 }
 
 // ── Particles ────────────────────────────────────────────────────────────────
@@ -298,17 +298,18 @@ export class Studio {
     this.renderer.toneMappingExposure = 1.0;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-    const ground = new THREE.Color(opts.bare ?? PAPER);
+    const isDark = typeof document !== 'undefined' && (document.documentElement.getAttribute('data-theme') === 'dark' || document.body.classList.contains('dark'));
+    const ground = new THREE.Color(opts.bare ?? (isDark ? '#0A0910' : PAPER));
     this.ground = ground;
     // bare: the page shows through; the colour is only what the glass refracts
     this.scene.background = this.bare ? null : ground;
     this.scene.fog = new THREE.Fog(ground, 18, 40);
-    const key = new THREE.DirectionalLight('#fff1df', 1.6);
+    const key = new THREE.DirectionalLight(isDark ? '#d4ccff' : '#fff1df', isDark ? 2.0 : 1.6);
     key.position.set(-5, 7, 5);
-    this.scene.add(key, new THREE.HemisphereLight('#ffffff', '#e6dccd', 1.1));
+    this.scene.add(key, new THREE.HemisphereLight(isDark ? '#2a2040' : '#ffffff', isDark ? '#0A0910' : '#e6dccd', isDark ? 1.4 : 1.1));
 
     if (!opts.bare) {
-      const cyc = cyclorama();
+      const cyc = cyclorama(ground, isDark);
       this.scene.add(cyc);
       this.trash.push(cyc.geometry, cyc.material as THREE.Material);
     }
