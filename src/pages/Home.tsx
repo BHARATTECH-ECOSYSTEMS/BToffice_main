@@ -1,6 +1,4 @@
-import { Hero } from '../sections/Hero';
-import { Problem } from '../sections/Problem';
-import { Answer } from '../sections/Answer';
+import { Story } from '../sections/Story';
 import { Capabilities } from '../sections/Capabilities';
 import { HowItWorks } from '../sections/HowItWorks';
 import { Architecture } from '../sections/Architecture';
@@ -14,9 +12,7 @@ import { Finale } from '../sections/Finale';
 export function Home() {
   return (
     <>
-      <Hero />
-      <Problem />
-      <Answer />
+      <Story />
       <Capabilities />
       <HowItWorks />
       <Architecture />

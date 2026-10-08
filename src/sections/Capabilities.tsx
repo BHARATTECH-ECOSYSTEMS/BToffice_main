@@ -1,80 +1,140 @@
-import { useRef, type CSSProperties } from 'react';
-import { fitTo, useFormation } from '../gl/Scene';
-import { MARK_SIZE } from '../gl/Engine';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useQuiet, useScene } from '../gl/Scene';
 import { Eyebrow, Headline } from '../components/ui';
-import { Chapter, StepTabs, Steps, usePinned } from '../components/Chapter';
-import { MetricsArt, SearchArt, WorkflowArt } from '../components/art';
 import { CAPABILITIES, CAPABILITY_GROUPS } from '../content';
 import type { HueName } from '../gl/palette';
 
-const ROOM = 1.35;
-
-/** Each family is one of the logo's threads; `thread` is its colour on the glaze. */
-const FAMILY: { tone: HueName; thread: string; line: string; Art: () => JSX.Element }[] = [
-  { tone: 'cobalt', thread: '#6d8cff', line: 'Read the world in any form: text, images, speech and the web.', Art: SearchArt },
-  { tone: 'violet', thread: '#d2c7ff', line: 'Compose agents and workflows that inherit everything the system knows.', Art: WorkflowArt },
-  { tone: 'emerald', thread: '#2fd39a', line: 'Run it on your data, under your governance, from cloud to edge.', Art: MetricsArt },
+const TONES: HueName[] = ['cobalt', 'violet', 'emerald'];
+const LINES = [
+  'Read the world in any form: text, images, speech and the web.',
+  'Compose agents and workflows that inherit everything the system knows.',
+  'Run it on your data, under your governance, from cloud to edge.',
 ];
+const N = CAPABILITIES.length;
+const STEP = 360 / N;
+/** Screens of scroll per capability. */
+const PACE = 0.32;
 
-/** Three families, three threads: the family being read lights its thread while the other two sink into the glaze. */
+/**
+ * Fifteen capabilities on one wheel. Scrolling turns it, and the capability that comes round to the
+ * pointer opens in the card beside it. The wheel's three coloured arcs are the three families.
+ */
 export function Capabilities() {
   const ref = useRef<HTMLElement>(null);
-  const stage = useRef<HTMLDivElement>(null);
-  const { step, goTo } = usePinned(ref, CAPABILITY_GROUPS.length);
-  const stepRef = useRef(0);
-  stepRef.current = step;
+  const wheel = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+  const { scrollTo } = useScene();
+  useQuiet(ref);
 
-  useFormation(ref, () => ({ key: 'mark', focus: stepRef.current, tint: FAMILY[stepRef.current].thread, flow: 0.6, pose: fitTo(stage.current, MARK_SIZE * ROOM, 0.95), follow: 30 }));
+  useEffect(() => {
+    let raf = 0;
+    const measure = () => {
+      raf = 0;
+      const el = ref.current;
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const run = Math.max(1, r.height - window.innerHeight);
+      const p = Math.min(1, Math.max(0, -r.top / run));
+      const pos = p * (N - 1);
+      // settle on each capability for a moment before turning on to the next
+      const i = Math.floor(pos);
+      const f = pos - i;
+      const eased = i + (f < 0.45 ? 0 : f > 0.85 ? 1 : (f - 0.45) / 0.4);
+      const k = Math.min(N - 1, eased);
+      wheel.current?.style.setProperty('--turn', `${-k * STEP}deg`);
+      setActive((a) => (a === Math.round(k) ? a : Math.round(k)));
+    };
+    const on = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener('scroll', on, { passive: true });
+    window.addEventListener('resize', on);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('scroll', on);
+      window.removeEventListener('resize', on);
+    };
+  }, []);
+
+  const go = (i: number) => {
+    const el = ref.current;
+    if (!el) return;
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    scrollTo(top + ((i + 0.2) / (N - 1)) * (el.offsetHeight - window.innerHeight));
+  };
+
+  const cap = CAPABILITIES[active];
+  const fam = Math.floor(active / 5);
 
   return (
-    <Chapter id="capabilities" innerRef={ref} n={CAPABILITY_GROUPS.length} tone="cobalt" className="ch-caps">
-      <div className="wrap caps-frame">
-        <div className="caps-head">
-          <div>
+    <section id="capabilities" ref={ref} className="wheel-sec" style={{ '--count': N, '--pace': PACE } as CSSProperties}>
+      <div className="wheel-pin">
+        <div className="wrap wheel-grid">
+          <div className="wheel-copy">
             <Eyebrow tone="cobalt">Capabilities</Eyebrow>
             <Headline tone="cobalt" lines={['One intelligence.', 'Fifteen capabilities.']} />
-          </div>
-          <StepTabs labels={CAPABILITY_GROUPS} step={step} goTo={goTo} tones={FAMILY.map((f) => f.tone)} />
-        </div>
-        <div className="caps-body">
-          <Steps step={step} className="chapter-steps caps-copy">
-            {CAPABILITY_GROUPS.map((g, gi) => {
-              const f = FAMILY[gi];
-              return (
-                <div key={g} className="chapter-step cap-step" style={{ '--tone': `var(--${f.tone})` } as CSSProperties}>
-                  <span className="chapter-step-num">
-                    {String(gi + 1).padStart(2, '0')} · {g}
-                  </span>
-                  <h3>{f.line}</h3>
-                  <ul className="cap-specs">
-                    {CAPABILITIES.slice(gi * 5, gi * 5 + 5).map((c, k) => (
-                      <li key={c.name} style={{ '--k': k } as CSSProperties}>
-                        <b>{c.name}</b>
-                        <span>{c.body}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              );
-            })}
-          </Steps>
-          <div className="chapter-stage cap-stage" ref={stage} aria-hidden="true">
-            <ol className="thread-key">
-              {CAPABILITY_GROUPS.map((g, i) => (
-                <li key={g} data-on={i === step || undefined} style={{ '--tone': `var(--${FAMILY[i].tone})` } as CSSProperties}>
+
+            <div className="wheel-card" style={{ '--tone': `var(--${TONES[fam]})` } as CSSProperties} aria-live="polite">
+              <div className="wheel-card-top">
+                <span className="wheel-fam">
                   <i />
-                  Thread {String(i + 1).padStart(2, '0')} · {g}
+                  {CAPABILITY_GROUPS[fam]}
+                </span>
+                <span className="wheel-num">
+                  {String(active + 1).padStart(2, '0')} <em>/ {N}</em>
+                </span>
+              </div>
+              <div className="wheel-card-body" key={active}>
+                <h3>{cap.name}</h3>
+                <p>{cap.body}</p>
+              </div>
+              <p className="wheel-line">{LINES[fam]}</p>
+            </div>
+
+            <ul className="wheel-fams">
+              {CAPABILITY_GROUPS.map((g, i) => (
+                <li key={g} data-on={i === fam || undefined} style={{ '--tone': `var(--${TONES[i]})` } as CSSProperties}>
+                  <button type="button" onClick={() => go(i * 5)}>
+                    <i />
+                    {g}
+                    <span>05</span>
+                  </button>
                 </li>
               ))}
-            </ol>
+            </ul>
           </div>
-          <Steps step={step} className="cap-art-steps">
-            {FAMILY.map(({ Art }, i) => (
-              <Art key={i} />
+        </div>
+
+        <div className="wheel" ref={wheel} aria-hidden="true">
+          <svg className="wheel-ring" viewBox="-100 -100 200 200">
+            <circle r="99.5" className="wheel-outer" />
+            {TONES.map((t, i) => (
+              <circle
+                key={t}
+                r="97"
+                className="wheel-arc"
+                pathLength={360}
+                style={{ stroke: `var(--${t})`, strokeDasharray: `${5 * STEP - 3} ${360 - 5 * STEP + 3}`, strokeDashoffset: `${-(i * 5 * STEP - STEP / 2 + 1.5)}` } as CSSProperties}
+              />
             ))}
-          </Steps>
+            {Array.from({ length: N * 4 }, (_, k) => {
+              const a = (k / (N * 4)) * Math.PI * 2;
+              const long = k % 4 === 0;
+              return <line key={k} x1={Math.cos(a) * 64} y1={Math.sin(a) * 64} x2={Math.cos(a) * (long ? 58 : 61)} y2={Math.sin(a) * (long ? 58 : 61)} className={long ? 'wheel-tick is-long' : 'wheel-tick'} />;
+            })}
+            <circle r="50" className="wheel-inner" />
+          </svg>
+          {CAPABILITIES.map((c, i) => (
+            <span key={c.name} className="wheel-chip" data-on={i === active || undefined} style={{ '--a': `${i * STEP}deg`, '--tone': `var(--${TONES[Math.floor(i / 5)]})` } as CSSProperties}>
+              <span>
+                <b>{String(i + 1).padStart(2, '0')}</b>
+                {c.name}
+              </span>
+            </span>
+          ))}
         </div>
       </div>
-    </Chapter>
+    </section>
   );
 }

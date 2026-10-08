@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { fitTo, useFormation, useQuiet } from '../gl/Scene';
-import { GLOBE_SIZE, MARK_SIZE } from '../gl/Engine';
+import { GLOBE_SIZE } from '../gl/Engine';
 import type { HueName } from '../gl/palette';
 import { Eyebrow, Headline } from './ui';
 import { Aurora } from './fx';
+import { LogoGlass } from './LogoGlass';
 
 /**
  * Every inner page opens the same way: a label, a two-line headline, a lede, and on the right either one of
@@ -33,11 +34,8 @@ export function PageHero({
     const t = setTimeout(() => setReady(true), 60);
     return () => clearTimeout(t);
   }, []);
-  useFormation(ref, () =>
-    object
-      ? { key: object, pose: fitTo(stageRef.current, object === 'mark' ? MARK_SIZE : GLOBE_SIZE, object === 'mark' ? 0.9 : 1), follow: 28 }
-      : { key: 'none' },
-  );
+  // the globe is drawn by the shared particle scene; the mark is its own piece of glass, as on the home page
+  useFormation(ref, () => (object === 'globe' ? { key: 'globe', pose: fitTo(stageRef.current, GLOBE_SIZE, 1), follow: 28 } : { key: 'none' }));
   const side = object || visual;
   return (
     <section ref={ref} className={`page-hero ${side ? 'has-side' : ''}`} data-ready={ready || undefined}>
@@ -50,7 +48,12 @@ export function PageHero({
           <p className="lede page-hero-lede">{lede}</p>
           {children}
         </div>
-        {object && <div className="page-hero-stage" ref={stageRef} aria-hidden="true" />}
+        {object === 'globe' && <div className="page-hero-stage" ref={stageRef} aria-hidden="true" />}
+        {object === 'mark' && (
+          <div className="page-hero-stage" aria-hidden="true">
+            <LogoGlass />
+          </div>
+        )}
         {!object && visual && <div className="page-hero-visual">{visual}</div>}
       </div>
     </section>

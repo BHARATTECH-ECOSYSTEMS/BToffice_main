@@ -155,7 +155,7 @@ export function Beams({ nodes, size = 460 }: { nodes: { label: string; icon: Rea
 }
 
 /** Small line icons for tools and capabilities. */
-const ICON_PATHS: Record<string, string> = {
+export const ICON_PATHS: Record<string, string> = {
   chat: 'M4 5h16v11H9l-5 4z',
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4',
   docs: 'M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5',
