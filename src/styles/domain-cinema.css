@@ -2,6 +2,7 @@
    Bharattech Origin — Demaze Homescreen Card Stack & Reel Cinema Engine
    Adapted after https://d-50-production.up.railway.app/ (Featured Projects Deck)
    Strict Light Studio Palette · Crisp Ink Typography · Zero 3D Model Overlap
+   Scroll-Driven GSAP Stacking Deck Mechanics
    ══════════════════════════════════════════════════════════════════════════════ */
 
 /* ── 1. The Deck Section Container ────────────────────────────────────────── */
@@ -10,7 +11,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 22px;
+  gap: 20px;
   position: relative;
 }
 
@@ -22,7 +23,7 @@
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 
 .deck-nav__tabs {
@@ -46,7 +47,7 @@
   letter-spacing: 0.03em;
   padding: 7px 14px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.85);
   border: 1px solid rgba(20, 19, 15, 0.09);
   color: #475569;
   display: inline-flex;
@@ -144,39 +145,30 @@
   height: 15px;
 }
 
-.deck-auto-btn {
+.deck-scroll-hint {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   font-family: var(--mono, ui-monospace, monospace);
   font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.03em;
   padding: 6px 12px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.85);
-  border: 1px solid rgba(20, 19, 15, 0.1);
+  border: 1px solid rgba(20, 19, 15, 0.09);
   color: #64748b;
-  cursor: pointer;
-  transition: all 0.2s ease;
+  box-shadow: 0 1px 3px rgba(20, 19, 15, 0.03);
 }
 
-.deck-auto-btn:hover {
-  background: #ffffff;
-  color: #0f172a;
+.deck-scroll-hint svg {
+  color: var(--tint-strong, #6d28d9);
+  animation: bounceDown 1.8s ease-in-out infinite;
 }
 
-.deck-auto-btn.is-active {
-  background: #ecfdf5;
-  border-color: rgba(16, 185, 129, 0.35);
-  color: #047857;
-}
-
-.deck-auto-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: currentColor;
+@keyframes bounceDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
 }
 
 /* ── 3. The Demaze Card Stack Deck Container (.stack.is-deck) ─────────────── */
@@ -185,7 +177,7 @@
   display: block;
   position: relative;
   width: 100%;
-  height: clamp(540px, 72vh, 660px);
+  height: clamp(520px, calc(100svh - 260px), 640px);
   overflow: clip;
   border-radius: 28px;
 }
@@ -195,9 +187,12 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  transition: transform 0.65s cubic-bezier(0.16, 1, 0.3, 1),
-              opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform, opacity;
+  will-change: transform;
+}
+
+/* Initial fallback before GSAP hydration */
+.stack.is-deck .stack-card:not(:first-child) {
+  transform: translate3d(0, 108%, 0);
 }
 
 /* ── 4. Inner Card Structure (.stack-card__inner) ─────────────────────────── */
@@ -217,16 +212,19 @@
   gap: clamp(24px, 3.5vw, 52px);
   align-items: center;
   padding: clamp(24px, 3.2vw, 44px);
+  transform-origin: 50% 0;
+  will-change: transform;
 }
 
+/* Demaze depth shading mask on stacked cards */
 .stack-card__shade {
   position: absolute;
   inset: 0;
   z-index: 8;
-  background: var(--bg, #f8f7f3);
+  background: #0f172a;
   opacity: 0;
   pointer-events: none;
-  transition: opacity 0.5s ease;
+  will-change: opacity;
 }
 
 /* ── 5. Left Column: Copy & Interactive Chapter Controller ────────────────── */
@@ -607,40 +605,58 @@
   transition: transform 0.05s linear;
 }
 
-/* ── 9. Responsive Layout Fitting ─────────────────────────────────────────── */
+/* ── 9. Responsive Mobile Layout ──────────────────────────────────────────── */
 
-@media (max-width: 980px) {
+@media (max-width: 860px) {
   .stack.is-deck {
-    height: auto;
-    min-height: unset;
     display: flex;
-    flex-direction: column;
-    gap: 24px;
-    overflow: visible;
+    gap: 16px;
+    height: auto;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 0;
   }
 
-  .stack-card {
+  .stack.is-deck::-webkit-scrollbar {
+    display: none;
+  }
+
+  .stack.is-deck .stack-card {
     position: relative !important;
     inset: auto !important;
+    flex: 0 0 92%;
+    scroll-snap-align: center;
     transform: none !important;
     opacity: 1 !important;
-    pointer-events: auto !important;
+    height: auto;
+  }
+
+  .stack.is-deck .stack-card:not(:first-child) {
+    transform: none !important;
   }
 
   .stack-card__inner {
     grid-template-columns: 1fr;
+    height: auto;
     padding: 22px 20px;
     gap: 20px;
+    transform: none !important;
   }
 
   .stack-card__media {
-    aspect-ratio: 16 / 10;
-    min-height: 300px;
     order: -1;
+    aspect-ratio: 16 / 10;
+    min-height: 280px;
+  }
+
+  .stack-card__shade {
+    display: none !important;
   }
 
   .deck-arrows,
-  .deck-auto-btn {
+  .deck-scroll-hint {
     display: none;
   }
 }

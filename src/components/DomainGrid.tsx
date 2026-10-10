@@ -1,10 +1,15 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { CSSProperties, WheelEvent } from 'react';
+import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { DomainCardReel } from './DomainCardReel';
 import { DOMAINS } from '../content';
 import { DOMAIN_REELS } from '../data/reelScreenplays';
+import { useScene } from '../gl/Scene';
 import '../styles/domain-cinema.css';
+
+gsap.registerPlugin(ScrollTrigger);
 
 export interface DomainMeta {
   tone: string;
@@ -69,33 +74,25 @@ export const DOMAIN_STACK_META: DomainMeta[] = [
 export const DOMAIN_TONES = DOMAIN_STACK_META.map((m) => m.tone);
 
 /**
- * Demaze Homescreen Card Stack Layout Architecture.
- * Features:
- * 1. Clean, luxury light studio aesthetic (warm paper / crisp ink, no dark mode clash).
- * 2. 100% visible, high-contrast typography with zero overlap over the 3D model.
- * 3. Dedicated 2-column card structure: left copy & act controller, right unobstructed 3D reel stage.
- * 4. Stacking deck transitions with interactive pill tabs, prev/next arrows, and keyboard/wheel support.
+ * Demaze Homescreen Scroll-Driven Card Stack Architecture.
+ *
+ * SCROLL-BASED INTERACTION:
+ * - The section pins when reaching the viewport.
+ * - Scrolling the page scrubs each card up over the previous one in real time.
+ * - Previous cards scale down to 0.94 and receive subtle depth shading.
+ * - Scrolling backwards peels cards off in reverse.
+ * - Real-time synchronization: the top tabs and counter update automatically on scroll.
+ * - Clicking a tab or arrow button smoothly scrolls to that card's exact position.
+ * - Dedicated 2-column layout: copy on left, unobstructed 3D reel on right (zero overlap).
  */
 export function DomainGrid({ link = true }: { link?: boolean }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [actIndices, setActIndices] = useState<number[]>([0, 0, 0, 0, 0, 0]);
-  const [isAutoPlay, setIsAutoPlay] = useState(false);
   const deckRef = useRef<HTMLDivElement>(null);
-  const lastScrollTime = useRef(0);
+  const scrollTriggerRef = useRef<ScrollTrigger | null>(null);
+  const { lenis } = useScene();
 
   const totalCards = DOMAINS.length;
-
-  const handleNext = useCallback(() => {
-    setActiveIdx((prev) => (prev + 1) % totalCards);
-  }, [totalCards]);
-
-  const handlePrev = useCallback(() => {
-    setActiveIdx((prev) => (prev - 1 + totalCards) % totalCards);
-  }, [totalCards]);
-
-  const handleSelectCard = useCallback((i: number) => {
-    setActiveIdx(i);
-  }, []);
 
   const handleActChange = useCallback((cardIndex: number, newAct: number) => {
     setActIndices((prev) => {
@@ -105,47 +102,125 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
     });
   }, []);
 
-  // Smooth wheel navigation across cards with 650ms debounce
-  const handleWheel = useCallback(
-    (e: WheelEvent<HTMLDivElement>) => {
-      const now = performance.now();
-      if (now - lastScrollTime.current < 650) return;
-
-      if (Math.abs(e.deltaY) > 35) {
-        if (e.deltaY > 0 && activeIdx < totalCards - 1) {
-          lastScrollTime.current = now;
-          setActiveIdx((prev) => prev + 1);
-        } else if (e.deltaY < 0 && activeIdx > 0) {
-          lastScrollTime.current = now;
-          setActiveIdx((prev) => prev - 1);
+  // Smoothly scroll page to a specific card index
+  const scrollToCard = useCallback(
+    (targetIdx: number) => {
+      setActiveIdx(targetIdx);
+      const st = scrollTriggerRef.current;
+      if (st) {
+        const progress = targetIdx / (totalCards - 1);
+        const targetScroll = st.start + progress * (st.end - st.start);
+        if (lenis) {
+          lenis.scrollTo(targetScroll, { duration: 0.8 });
+        } else {
+          window.scrollTo({ top: targetScroll, behavior: 'smooth' });
         }
       }
     },
-    [activeIdx, totalCards]
+    [totalCards, lenis]
   );
 
-  // Keyboard navigation support
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (document.activeElement?.tagName === 'INPUT' || document.activeElement?.tagName === 'TEXTAREA') return;
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-        handleNext();
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-        handlePrev();
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleNext, handlePrev]);
+  const handleNext = useCallback(() => {
+    const next = (activeIdx + 1) % totalCards;
+    scrollToCard(next);
+  }, [activeIdx, totalCards, scrollToCard]);
 
-  // Optional auto-play advancement
+  const handlePrev = useCallback(() => {
+    const prev = (activeIdx - 1 + totalCards) % totalCards;
+    scrollToCard(prev);
+  }, [activeIdx, totalCards, scrollToCard]);
+
+  // ── GSAP ScrollTrigger Pinned Deck Timeline (Demaze Homescreen Mechanics) ──
   useEffect(() => {
-    if (!isAutoPlay) return;
-    const timer = setInterval(() => {
-      handleNext();
-    }, 11500);
-    return () => clearInterval(timer);
-  }, [isAutoPlay, handleNext]);
+    const deck = deckRef.current;
+    if (!deck) return;
+
+    const section = deck.closest('section') as HTMLElement | null;
+    const triggerTarget = section || deck;
+
+    const ctx = gsap.context(() => {
+      ScrollTrigger.matchMedia({
+        // Desktop (>= 861px): Pinned scroll-driven card deck
+        '(min-width: 861px)': () => {
+          const cards = gsap.utils.toArray<HTMLElement>('[data-stack-card]', deck);
+          if (cards.length === 0) return;
+
+          deck.classList.add('is-deck');
+
+          // Initialize card positions: card 0 at top, cards 1..5 positioned below
+          cards.forEach((card, i) => {
+            if (i > 0) {
+              gsap.set(card, { yPercent: 108 });
+            } else {
+              gsap.set(card, { yPercent: 0 });
+            }
+          });
+
+          // Scroll distance: 0.85 screen height per card transition
+          const scrollDistance = window.innerHeight * 0.85 * (cards.length - 1);
+
+          const tl = gsap.timeline({
+            scrollTrigger: {
+              trigger: triggerTarget,
+              pin: true,
+              scrub: 0.6,
+              invalidateOnRefresh: true,
+              start: () =>
+                triggerTarget.offsetHeight > window.innerHeight
+                  ? 'bottom bottom'
+                  : 'top top',
+              end: () => `+=${scrollDistance}`,
+              onUpdate: (self) => {
+                const prog = self.progress;
+                const cur = Math.min(
+                  cards.length - 1,
+                  Math.round(prog * (cards.length - 1))
+                );
+                setActiveIdx(cur);
+              },
+            },
+          });
+
+          scrollTriggerRef.current = tl.scrollTrigger ?? null;
+
+          // Build Demaze sequential card stacking steps
+          cards.forEach((card, i) => {
+            if (i === 0) return;
+            const prevCard = cards[i - 1];
+            const prevInner = prevCard.querySelector('.stack-card__inner');
+            const prevShade = prevCard.querySelector('.stack-card__shade');
+
+            tl.fromTo(
+              card,
+              { yPercent: 108 },
+              { yPercent: 0, ease: 'none' },
+              i - 1
+            )
+            .to(
+              prevInner,
+              { scale: 0.94, ease: 'none' },
+              i - 1
+            )
+            .to(
+              prevShade,
+              { opacity: 0.3, ease: 'none' },
+              i - 1
+            );
+          });
+        },
+      });
+    }, deckRef);
+
+    // Refresh after layout settles
+    const refreshTimer = setTimeout(() => {
+      ScrollTrigger.refresh();
+    }, 250);
+
+    return () => {
+      clearTimeout(refreshTimer);
+      ctx.revert();
+    };
+  }, []);
 
   return (
     <div className="domain-deck-section">
@@ -170,7 +245,7 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
                     '--pill-strong': meta.tintStrong,
                   } as CSSProperties
                 }
-                onClick={() => handleSelectCard(i)}
+                onClick={() => scrollToCard(i)}
               >
                 <span className="deck-pill__num">0{i + 1}</span>
                 <span className="deck-pill__name">{meta.shortLabel}</span>
@@ -191,7 +266,7 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
               className="deck-arrow-btn"
               onClick={handlePrev}
               aria-label="Previous Domain Card"
-              title="Previous Domain Card (←)"
+              title="Previous Domain Card"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M19 12H5M12 19l-7-7 7-7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -202,7 +277,7 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
               className="deck-arrow-btn"
               onClick={handleNext}
               aria-label="Next Domain Card"
-              title="Next Domain Card (→)"
+              title="Next Domain Card"
             >
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M5 12h14M12 5l7 7-7 7" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -210,16 +285,12 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
             </button>
           </div>
 
-          <button
-            type="button"
-            className={`deck-auto-btn ${isAutoPlay ? 'is-active' : ''}`}
-            onClick={() => setIsAutoPlay((prev) => !prev)}
-            title={isAutoPlay ? 'Disable Auto-Tour' : 'Enable Auto-Tour through Domains'}
-            aria-label="Toggle Auto Tour"
-          >
-            <span className="deck-auto-dot" />
-            <span>{isAutoPlay ? 'Tour Active' : 'Auto Tour'}</span>
-          </button>
+          <div className="deck-scroll-hint" aria-hidden="true">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 5v14M19 12l-7 7-7-7" />
+            </svg>
+            <span>Scroll to Stack</span>
+          </div>
         </div>
       </div>
 
@@ -228,46 +299,18 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
         ref={deckRef}
         className="stack is-deck"
         data-deck
-        onWheel={handleWheel}
       >
         {DOMAINS.map((d, i) => {
           const meta = DOMAIN_STACK_META[i] ?? DOMAIN_STACK_META[0];
           const reelData = DOMAIN_REELS[i] ?? DOMAIN_REELS[0];
           const curActIdx = actIndices[i] ?? 0;
           const currentChapter = reelData.chapters[curActIdx] ?? reelData.chapters[0];
-          const isCurrent = i === activeIdx;
-          const isPrev = i < activeIdx;
-          const offset = activeIdx - i;
-
-          // Demaze card stack transform calculations
-          let transformStyle = '';
-          let opacityVal = 1;
-          let zIndexVal = 1;
-          let pointerEventsVal: CSSProperties['pointerEvents'] = 'none';
-
-          if (isCurrent) {
-            transformStyle = 'translate3d(0, 0%, 0) scale(1)';
-            opacityVal = 1;
-            zIndexVal = 10;
-            pointerEventsVal = 'auto';
-          } else if (isPrev) {
-            // Previous cards stack slightly scaled down behind the active card
-            const yOffsetPx = -offset * 14;
-            const scaleVal = Math.max(0.92, 1 - offset * 0.035);
-            transformStyle = `translate3d(0, ${yOffsetPx}px, 0) scale(${scaleVal})`;
-            opacityVal = offset === 1 ? 0.4 : 0;
-            zIndexVal = 10 - offset;
-          } else {
-            // Upcoming cards slide in from below
-            transformStyle = 'translate3d(0, 108%, 0) scale(1)';
-            opacityVal = 0;
-            zIndexVal = 1;
-          }
+          const isNear = Math.abs(i - activeIdx) <= 1;
 
           return (
             <article
               key={d.id}
-              className={`stack-card ${isCurrent ? 'is-active' : ''} ${isPrev ? 'is-prev' : ''}`}
+              className={`stack-card ${i === activeIdx ? 'is-active' : ''}`}
               data-stack-card
               style={
                 {
@@ -276,22 +319,15 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
                   '--tint-border': meta.tintBorder,
                   '--tint-strong': meta.tintStrong,
                   '--i': i,
-                  transform: transformStyle,
-                  opacity: opacityVal,
-                  zIndex: zIndexVal,
-                  pointerEvents: pointerEventsVal,
+                  zIndex: i + 1,
                 } as CSSProperties
               }
             >
               <div className="stack-card__inner">
-                {/* Soft daylight shade overlay when card is stacked behind */}
-                <i
-                  className="stack-card__shade"
-                  aria-hidden="true"
-                  style={{ opacity: isPrev ? 0.28 : 0 }}
-                />
+                {/* Demaze depth shading mask when card is stacked behind */}
+                <i className="stack-card__shade" aria-hidden="true" />
 
-                {/* ── Left Column: Typography, Tags, Chapter Controls (100% Readable) ── */}
+                {/* ── Left Column: Typography, Tags, Chapter Controls (100% Visible) ── */}
                 <div className="stack-card__copy">
                   {/* Category Kicker & Index */}
                   <div className="stack-card__kicker">
@@ -368,14 +404,9 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
                 <figure className="stack-card__media shot">
                   <DomainCardReel
                     index={i}
-                    isActive={isCurrent}
+                    isActive={isNear}
                     externalAct={curActIdx}
                     onActChange={(newAct) => handleActChange(i, newAct)}
-                    onReelComplete={() => {
-                      if (isAutoPlay) {
-                        handleNext();
-                      }
-                    }}
                   />
                 </figure>
               </div>
