@@ -1,41 +1,66 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
-import { Arrow, Reveal } from './ui';
+import { Reveal } from './ui';
 import { DomainCardReel } from './DomainCardReel';
 import { DOMAINS } from '../content';
 
-export const DOMAIN_TONES = ['var(--violet)', 'var(--tangerine)', 'var(--saffron)', 'var(--violet)', 'var(--tangerine)', 'var(--saffron)'];
-const SPANS = [8, 4, 4, 4, 4, 12];
+export const DOMAIN_TONES = [
+  'var(--violet)',
+  'var(--tangerine)',
+  'var(--saffron)',
+  'var(--violet)',
+  'var(--tangerine)',
+  'var(--saffron)',
+];
 
-/** The six research domains as a bento, each with an interactive 4-scene narrative 3D video reel. */
+// Demaze-grade structured layout: 2 Featured Lead Cards (6+6) + 3 Standard Cards (4+4+4) + 1 Wide Showcase (12)
+const SPANS = [6, 6, 4, 4, 4, 12];
+
+/**
+ * Six research domains adapted after the Demaze Projects layout & transition architecture.
+ * Features 2 prominent lead cards, 3 capability cards, and 1 panoramic edge silicon showcase.
+ */
 export function DomainGrid({ link = true }: { link?: boolean }) {
   return (
-    <div className="bento domain-bento">
+    <div className="pgrid domain-pgrid">
       {DOMAINS.map((d, i) => (
         <Reveal
           key={d.id}
           id={d.id}
-          className={`cell domain-cell ${i === 0 ? 'is-lead' : ''} ${SPANS[i] === 12 ? 'is-wide' : ''}`}
+          className={`pcard ${i < 2 ? 'pcard--featured' : ''} ${SPANS[i] === 12 ? 'pcard--wide' : ''}`}
           style={{ gridColumn: `span ${SPANS[i]}`, '--tone': DOMAIN_TONES[i] } as CSSProperties}
           delay={(i % 3) * 80}
         >
-          <div className="domain-visual">
+          {/* Demaze Media Stage with Real-Time 3D WebGL Cinema Reel */}
+          <div className="pcard__media shot">
             <DomainCardReel index={i} />
           </div>
-          <div className="domain-copy">
-            <p className="cell-label">
-              {d.field}
-            </p>
+
+          {/* Demaze Card Body with Category Kicker, Title, Description, Tags, and Glide Arrow */}
+          <div className="pcard__body">
+            <span className="pcard__num">
+              0{i + 1} · {d.field}
+            </span>
             <h3>{d.name}</h3>
             <p>{d.body}</p>
-            <ul className="mini-tags">
-              {d.focus.slice(0, i === 0 || SPANS[i] === 12 ? 5 : 3).map((f) => (
+            <ul className="pcard__tags">
+              {d.focus.slice(0, i < 2 || SPANS[i] === 12 ? 5 : 3).map((f) => (
                 <li key={f}>{f}</li>
               ))}
             </ul>
-            {link && i === 0 && (
-              <Link to="/research" className="text-link">
-                Read about Rivinity <Arrow size={12} />
+            {link && (
+              <Link to="/research" className="pcard__more">
+                <span>Explore Research Architecture</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path
+                    d="M5 12h14M13 6l6 6-6 6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
               </Link>
             )}
           </div>

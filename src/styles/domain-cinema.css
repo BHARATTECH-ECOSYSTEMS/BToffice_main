@@ -1,38 +1,180 @@
-/* Bharattech Origin — Precision Three.js 3D Generative Product Reels */
+/* ══════════════════════════════════════════════════════════════════════════════
+   Bharattech Origin — Demaze Projects Architecture & Cinema Reel Engine
+   Adapted after https://d-50-production.up.railway.app/projects (pcard & reel.js)
+   ══════════════════════════════════════════════════════════════════════════════ */
 
-.domain-visual {
-  position: relative;
-  display: block;
+/* ── 1. The Demaze Grid Layout ────────────────────────────────────────────── */
+
+.domain-pgrid {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 22px;
   width: 100%;
-  height: 310px;
-  background: radial-gradient(circle at 50% 45%, #22283a 0%, #111522 55%, #080a11 100%);
-  border-bottom: 1px solid var(--line, rgba(26, 28, 30, 0.12));
+}
+
+/* ── 2. The Demaze Project Card (.pcard) ───────────────────────────────────── */
+
+.pcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  background: rgba(14, 18, 28, 0.78);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
   overflow: hidden;
+  transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 400ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 400ms ease;
 }
 
-.domain-cell.is-lead .domain-visual {
-  height: 400px;
+@media (hover: hover) and (pointer: fine) {
+  .pcard:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 24px 52px -12px rgba(0, 0, 0, 0.75),
+                0 0 0 1px color-mix(in srgb, var(--tone, #f59e0b) 45%, transparent);
+    border-color: color-mix(in srgb, var(--tone, #f59e0b) 50%, rgba(255, 255, 255, 0.22));
+  }
 }
 
-.domain-cell.is-wide .domain-visual {
+.pcard:active {
+  transform: scale(0.995);
+}
+
+/* ── 3. The Demaze Media Stage (.pcard__media) ────────────────────────────── */
+
+.pcard__media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  display: block;
+  overflow: hidden;
+  background: radial-gradient(110% 90% at 50% 50%, #22283a 0%, #111522 55%, #080a11 100%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Featured Lead Cards: Taller, Panoramic Viewport */
+.pcard--featured .pcard__media {
+  aspect-ratio: 16 / 10;
+  min-height: 330px;
+}
+
+/* Wide Horizontal Split Card (Domain 5) */
+.pcard--wide {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+}
+
+.pcard--wide .pcard__media {
   height: 100%;
   min-height: 330px;
   border-bottom: 0;
-  border-right: 1px solid var(--line, rgba(26, 28, 30, 0.12));
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.domain-reel-stage {
-  position: relative;
-  width: 100%;
-  height: 100%;
+.pcard--wide .pcard__body {
+  justify-content: center;
+  padding: clamp(24px, 3.2vw, 40px);
+}
+
+/* ── 4. The Demaze Card Body (.pcard__body) ────────────────────────────────── */
+
+.pcard__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 22px 24px 24px;
+}
+
+.pcard__num {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--tone, #f59e0b) 80%, #ffffff);
+  font-variant-numeric: tabular-nums;
+}
+
+.pcard h3 {
+  font-size: clamp(1.2rem, 1.5vw, 1.45rem);
+  line-height: 1.22;
+  letter-spacing: -0.025em;
+  margin: 0;
+  color: #ffffff;
+}
+
+.pcard p {
+  color: var(--ink-soft, rgba(255, 255, 255, 0.65));
+  font-size: 0.92rem;
+  line-height: 1.55;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.pcard__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0;
+}
+
+.pcard__tags li {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.pcard__more {
+  margin-top: auto;
+  padding-top: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--tone, #f59e0b);
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.pcard__more svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pcard:hover .pcard__more svg {
+    transform: translateX(4px);
+  }
+}
+
+/* ── 5. The Demaze Reel Cinema Stage (.reel) ──────────────────────────────── */
+
+.reel {
+  position: absolute;
+  inset: 0;
   overflow: hidden;
   user-select: none;
-  background: transparent;
+  background: radial-gradient(100% 80% at 50% 50%, #202638 0%, #101422 60%, #070910 100%);
 }
 
-/* ── Layer 1: Pure Three.js WebGL Canvas ──────────────────────────────────── */
-
-.domain-reel-canvas {
+.reel__canvas {
   position: absolute;
   inset: 0;
   width: 100% !important;
@@ -42,9 +184,35 @@
   z-index: 1;
 }
 
-/* ── Layer 2: Precision Viewfinder Corner Crosshairs ─────────────────────── */
+/* Demaze Signature White Flash Cut */
+.reel__flash {
+  position: absolute;
+  inset: 0;
+  background: #ffffff;
+  opacity: 0;
+  z-index: 4;
+  pointer-events: none;
+  transition: opacity 60ms ease;
+}
 
-.reel-viewfinder-hud {
+/* Demaze Concentric Orbit Rings */
+.reel__rings {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 1;
+  stroke-dasharray: 2 6;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.35;
+}
+
+/* Precision Viewfinder Corner Crosshairs */
+.reel__viewfinder {
   position: absolute;
   inset: 12px 14px;
   pointer-events: none;
@@ -61,129 +229,71 @@
   user-select: none;
 }
 
-.vf-tl {
-  top: 0;
-  left: 0;
-}
-.vf-tr {
-  top: 0;
-  right: 0;
-}
-.vf-bl {
-  bottom: 0;
-  left: 0;
-}
-.vf-br {
-  bottom: 0;
-  right: 0;
-}
+.vf-tl { top: 0; left: 0; }
+.vf-tr { top: 0; right: 0; }
+.vf-bl { bottom: 0; left: 0; }
+.vf-br { bottom: 0; right: 0; }
 
-/* ── Layer 3: Concentric Calibration Grid ─────────────────────────────────── */
+/* ── 6. Demaze Header Bar (.reel__head) ───────────────────────────────────── */
 
-.reel-rings {
+.reel__head {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0.3;
-}
-
-.reel-rings circle {
-  fill: none;
-  stroke: rgba(255, 255, 255, 0.28);
-  stroke-width: 0.75;
-  stroke-dasharray: 2 6;
-}
-
-.reel-rings line {
-  stroke: rgba(255, 255, 255, 0.4);
-  stroke-width: 1;
-}
-
-/* ── Layer 4: Top Telemetry Bar ───────────────────────────────────────────── */
-
-.reel-top-bar {
-  position: absolute;
-  top: 12px;
-  left: 14px;
-  right: 14px;
+  left: 16px;
+  right: 16px;
+  top: 14px;
+  z-index: 6;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  z-index: 6;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.8);
   pointer-events: none;
 }
 
-.reel-badge {
+.reel__chap {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
+  gap: 6px;
   background: rgba(10, 14, 24, 0.82);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 999px;
   padding: 4px 10px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
-.reel-rec-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #ef4444;
-  box-shadow: 0 0 8px #ef4444;
-  animation: reelRecBlink 1.4s ease-in-out infinite;
-}
-
-@keyframes reelRecBlink {
-  0%, 100% {
-    opacity: 0.4;
-    transform: scale(0.85);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1.2);
-  }
-}
-
-.reel-act-code {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+.reel__chap b {
   color: #ffffff;
+  font-variant-numeric: tabular-nums;
 }
 
-.reel-divider {
+.reel__chap em {
+  font-style: normal;
   color: rgba(255, 255, 255, 0.35);
-  font-size: 9.5px;
 }
 
-.reel-tag-text {
-  font-family: var(--font-mono, ui-monospace, monospace);
+.reel__chap span {
   font-size: 9px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.88);
-  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.85);
 }
 
-.reel-top-actions {
+.reel__head-actions {
   display: flex;
   align-items: center;
   gap: 8px;
   pointer-events: auto;
 }
 
-.reel-status-pill {
-  font-family: var(--font-mono, ui-monospace, monospace);
+.reel__status {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.06em;
-  text-transform: uppercase;
   padding: 3px 8px;
   border-radius: 6px;
   backdrop-filter: blur(12px);
@@ -192,31 +302,31 @@
   transition: all 0.25s ease;
 }
 
-.reel-status-pill.is-standby {
+.reel__status.is-standby {
   background: rgba(148, 163, 184, 0.2);
   border: 1px solid rgba(148, 163, 184, 0.5);
   color: #e2e8f0;
 }
 
-.reel-status-pill.is-deploy {
+.reel__status.is-deploy {
   background: rgba(168, 85, 247, 0.25);
   border: 1px solid rgba(168, 85, 247, 0.65);
   color: #e9d5ff;
 }
 
-.reel-status-pill.is-active {
+.reel__status.is-active {
   background: rgba(16, 185, 129, 0.25);
   border: 1px solid rgba(16, 185, 129, 0.65);
   color: #a7f3d0;
 }
 
-.reel-status-pill.is-verified {
+.reel__status.is-verified {
   background: rgba(245, 158, 11, 0.28);
   border: 1px solid rgba(245, 158, 11, 0.75);
   color: #fde047;
 }
 
-.reel-play-toggle {
+.reel__toggle {
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -232,46 +342,30 @@
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.reel-play-toggle:hover {
+.reel__toggle:hover {
   transform: scale(1.1);
   background: rgba(255, 255, 255, 0.22);
 }
 
-/* ── Layer 5: Clean, Low-Profile Bottom Bar & Telemetry ────────────────────── */
+/* ── 7. Demaze Hairline Progress Line (.reel__progress) ───────────────────── */
 
-.reel-bottom-bar {
+.reel__progress {
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  padding: 10px 14px 10px;
-  background: linear-gradient(
-    to top,
-    rgba(8, 10, 18, 0.92) 0%,
-    rgba(8, 10, 18, 0.65) 60%,
-    rgba(8, 10, 18, 0) 100%
-  );
+  left: 16px;
+  right: 16px;
+  top: 40px;
+  height: 2px;
   z-index: 6;
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   pointer-events: auto;
 }
 
-/* 4-Segment Hairline Scrubber */
-
-.reel-segment-track {
-  display: flex;
-  gap: 4px;
-  width: 100%;
-  align-items: center;
-}
-
-.reel-seg-pill {
+.reel__progress-seg {
   flex: 1;
-  height: 3px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.16);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.2);
   overflow: hidden;
   cursor: pointer;
   border: none;
@@ -279,25 +373,32 @@
   transition: height 0.15s ease, background-color 0.15s ease;
 }
 
-.reel-seg-pill:hover {
-  height: 4.5px;
-  background: rgba(255, 255, 255, 0.35);
+.reel__progress-seg:hover {
+  height: 3px;
+  background: rgba(255, 255, 255, 0.32);
 }
 
-.reel-seg-pill.is-active {
-  background: rgba(255, 255, 255, 0.28);
+.reel__progress-seg.is-active {
+  background: rgba(255, 255, 255, 0.24);
 }
 
-.reel-seg-fill {
+.reel__progress-seg em {
+  display: block;
   height: 100%;
   background: var(--tone, #f59e0b);
+  transform-origin: left;
   border-radius: 999px;
-  transition: width 0.05s linear;
+  transition: transform 0.05s linear;
 }
 
-/* Minimal Monospace Sub-Bar */
+/* ── 8. Minimalist Lower Monospace Telemetry (.reel__foot) ────────────────── */
 
-.reel-telemetry-row {
+.reel__foot {
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  bottom: 12px;
+  z-index: 6;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -305,26 +406,33 @@
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 9.5px;
   line-height: 1;
+  background: rgba(10, 14, 24, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  padding: 6px 11px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
 }
 
-.reel-chapter-mono {
-  color: rgba(255, 255, 255, 0.88);
+.reel__foot-title {
+  color: #ffffff;
   font-weight: 600;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-transform: uppercase;
 }
 
-.reel-metric-mono {
+.reel__foot-metric {
   color: rgba(255, 255, 255, 0.6);
   white-space: nowrap;
   letter-spacing: 0.02em;
   font-variant-numeric: tabular-nums;
 }
 
-.reel-metric-mono b {
+.reel__foot-metric b {
   color: #ffffff;
   font-weight: 700;
 }
@@ -333,18 +441,35 @@
   color: rgba(255, 255, 255, 0.45);
 }
 
-/* Mobile Responsiveness */
+/* ── 9. Responsive Layout Fitting ─────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .pcard {
+    grid-column: span 6 !important;
+  }
+  .pcard--wide {
+    grid-column: span 12 !important;
+  }
+}
+
 @media (max-width: 768px) {
-  .domain-visual {
-    height: 250px;
+  .domain-pgrid {
+    gap: 16px;
   }
-  .domain-cell.is-lead .domain-visual {
-    height: 290px;
+  .pcard {
+    grid-column: span 12 !important;
   }
-  .domain-cell.is-wide .domain-visual {
+  .pcard--wide {
+    display: flex;
+    flex-direction: column;
+  }
+  .pcard--wide .pcard__media {
+    aspect-ratio: 16 / 10;
     min-height: 250px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   }
-  .reel-metric-mono {
+  .reel__foot-metric {
     display: none;
   }
   .vf-cross {

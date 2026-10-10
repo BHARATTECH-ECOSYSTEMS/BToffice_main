@@ -8,21 +8,22 @@ import {
 import { DOMAIN_REELS } from '../data/reelScreenplays';
 import '../styles/domain-cinema.css';
 
-// Snappy, cinematic pacing: 2.8s per act (11.2s total loop)
+// Demaze cinematic pacing: 2.8s per chapter (11.2s total loop)
 const SCENE_DURATION_SEC = 2.8;
 const TOTAL_SCENES = 4;
 
-// Cinematic camera keyframe offsets per act
-const CAMERA_KEYFRAMES = [
-  { x: 0, y: 0.34, z: 3.32 }, // Act 0: Hermetic / Standby
-  { x: 0, y: 0.27, z: 3.02 }, // Act 1: Kinematic Unlatch (dolly in)
-  { x: 0, y: 0.42, z: 3.12 }, // Act 2: Active Operation (elevated dynamic view)
-  { x: 0, y: 0.36, z: 3.52 }, // Act 3: Exploded Architecture (pull back for wide perspective)
+// Base camera anchor per chapter
+const CAMERA_BASE = [
+  { x: 0, y: 0.35, z: 3.32 }, // Act 0: Sealed / Standby
+  { x: 0, y: 0.28, z: 3.06 }, // Act 1: Kinematic Unlatch (dolly in)
+  { x: 0, y: 0.42, z: 3.14 }, // Act 2: Active High-Speed Operation (elevated)
+  { x: 0, y: 0.36, z: 3.54 }, // Act 3: Exploded Architecture (pull back)
 ];
 
 export function DomainCardReel({ index }: { index: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const flashRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
   const [activeSceneIdx, setActiveSceneIdx] = useState(0);
   const [sceneProgress, setSceneProgress] = useState(0);
@@ -31,6 +32,7 @@ export function DomainCardReel({ index }: { index: number }) {
   const isPlayingRef = useRef(true);
   const animTimeRef = useRef(0);
   const pointerRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
+  const lastSceneRef = useRef(0);
 
   const domain = useMemo(() => DOMAIN_REELS[index] ?? DOMAIN_REELS[0], [index]);
   const currentChapter = useMemo(
@@ -42,11 +44,20 @@ export function DomainCardReel({ index }: { index: number }) {
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
+  const triggerFlashCut = useCallback(() => {
+    if (!flashRef.current) return;
+    flashRef.current.style.opacity = '0.22';
+    setTimeout(() => {
+      if (flashRef.current) flashRef.current.style.opacity = '0';
+    }, 60);
+  }, []);
+
   const handleSeek = useCallback((sceneIdx: number) => {
     setActiveSceneIdx(sceneIdx);
     setSceneProgress(0);
     animTimeRef.current = sceneIdx * SCENE_DURATION_SEC;
-  }, []);
+    triggerFlashCut();
+  }, [triggerFlashCut]);
 
   const togglePlay = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -73,15 +84,15 @@ export function DomainCardReel({ index }: { index: number }) {
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
 
-    const width = container.clientWidth || 360;
-    const height = container.clientHeight || 300;
+    const width = container.clientWidth || 400;
+    const height = container.clientHeight || 280;
 
     // 1. Scene & Camera
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 50);
-    const initialCam = CAMERA_KEYFRAMES[0];
+    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 50);
+    const initialCam = CAMERA_BASE[0];
     camera.position.set(initialCam.x, initialCam.y, initialCam.z);
-    camera.lookAt(0, -0.05, 0);
+    camera.lookAt(0, -0.04, 0);
 
     // 2. High-End WebGL Renderer with ACES Tone Mapping
     const renderer = new THREE.WebGLRenderer({
@@ -95,11 +106,11 @@ export function DomainCardReel({ index }: { index: number }) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.34;
 
-    // Assign Studio Environment Map (PBR specular reflections)
+    // Assign Studio Environment Map
     const envMap = getOrCreateStudioEnvironment(renderer);
     scene.environment = envMap;
 
-    // 3. Studio Illumination Rig (Key, Fill, Rim, Ambient)
+    // 3. Studio Illumination Rig
     const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
     scene.add(ambientLight);
 
@@ -127,7 +138,7 @@ export function DomainCardReel({ index }: { index: number }) {
     const artifact = createMultiSceneArtifact(index);
     scene.add(artifact.group);
 
-    // 5. Observers: Responsive Resizing
+    // 5. Responsive Resize & Intersection Observers
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const w = entry.contentRect.width;
@@ -149,10 +160,9 @@ export function DomainCardReel({ index }: { index: number }) {
     );
     intersectionObserver.observe(container);
 
-    // 6. Animation Render Loop
+    // 6. Demaze Motion & Animation Loop
     let animationId: number;
     let lastTime = performance.now();
-
     const currentCamPos = new THREE.Vector3(initialCam.x, initialCam.y, initialCam.z);
 
     const loop = (now: number) => {
@@ -160,7 +170,7 @@ export function DomainCardReel({ index }: { index: number }) {
       const delta = Math.min((now - lastTime) / 1000, 0.1);
       lastTime = now;
 
-      // Inertial pointer smoothing
+      // Pointer smoothing
       pointerRef.current.x += (pointerRef.current.targetX - pointerRef.current.x) * 0.08;
       pointerRef.current.y += (pointerRef.current.targetY - pointerRef.current.y) * 0.08;
 
@@ -175,14 +185,41 @@ export function DomainCardReel({ index }: { index: number }) {
       const curIdx = Math.floor(t / SCENE_DURATION_SEC);
       const curProg = (t % SCENE_DURATION_SEC) / SCENE_DURATION_SEC;
 
+      // Trigger Demaze flash cut on act boundary
+      if (curIdx !== lastSceneRef.current) {
+        lastSceneRef.current = curIdx;
+        triggerFlashCut();
+      }
+
       setActiveSceneIdx(curIdx);
       setSceneProgress(curProg);
 
-      // Smooth Cinematic Camera Choreography
-      const targetCam = CAMERA_KEYFRAMES[curIdx] ?? CAMERA_KEYFRAMES[0];
-      currentCamPos.x += (targetCam.x + pointerRef.current.x * 0.28 - currentCamPos.x) * 0.06;
-      currentCamPos.y += (targetCam.y + pointerRef.current.y * 0.22 - currentCamPos.y) * 0.06;
-      currentCamPos.z += (targetCam.z - currentCamPos.z) * 0.06;
+      // ── Demaze Signature Transition Dynamics: Land → Drift → Punch Cut ──────
+      // 1. Landing (0 to 0.22): Arrives from slightly closer with spring ease
+      // 2. Cinematic Drift (0.22 to 0.86): Slow steady push-in dolly
+      // 3. Punch Cut (0.86 to 1.0): Accelerates into cut
+      const targetAnchor = CAMERA_BASE[curIdx] ?? CAMERA_BASE[0];
+
+      let dynamicZOffset = 0;
+      if (curProg < 0.22) {
+        const landT = curProg / 0.22;
+        const landEase = 1 - Math.pow(1 - landT, 3);
+        dynamicZOffset = (1 - landEase) * 0.18;
+      } else if (curProg < 0.86) {
+        const driftT = (curProg - 0.22) / 0.64;
+        dynamicZOffset = -driftT * 0.09;
+      } else {
+        const punchT = (curProg - 0.86) / 0.14;
+        dynamicZOffset = -0.09 - punchT * punchT * 0.08;
+      }
+
+      const targetX = targetAnchor.x + pointerRef.current.x * 0.25;
+      const targetY = targetAnchor.y + pointerRef.current.y * 0.2;
+      const targetZ = targetAnchor.z + dynamicZOffset;
+
+      currentCamPos.x += (targetX - currentCamPos.x) * 0.07;
+      currentCamPos.y += (targetY - currentCamPos.y) * 0.07;
+      currentCamPos.z += (targetZ - currentCamPos.z) * 0.07;
 
       camera.position.copy(currentCamPos);
       camera.lookAt(0, -0.04, 0);
@@ -210,7 +247,7 @@ export function DomainCardReel({ index }: { index: number }) {
       scene.remove(shadowMesh);
       renderer.dispose();
     };
-  }, [index]);
+  }, [index, triggerFlashCut]);
 
   const getFillPct = (sIdx: number) => {
     if (sIdx < activeSceneIdx) return 100;
@@ -221,46 +258,47 @@ export function DomainCardReel({ index }: { index: number }) {
   return (
     <div
       ref={containerRef}
-      className={`domain-reel-stage act-${activeSceneIdx}`}
+      className={`reel reel--noir act-${activeSceneIdx}`}
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
       {/* ── Layer 1: Pure Three.js WebGL Real-Time 3D Canvas ── */}
-      <canvas ref={canvasRef} className="domain-reel-canvas" />
+      <canvas ref={canvasRef} className="reel__canvas" />
 
-      {/* ── Layer 2: Precision Viewfinder Corner Crosshairs ── */}
-      <div className="reel-viewfinder-hud" aria-hidden="true">
+      {/* ── Layer 2: Demaze White Flash on Cut ── */}
+      <div ref={flashRef} className="reel__flash" aria-hidden="true" />
+
+      {/* ── Layer 3: Demaze Concentric Orbit Rings Background ── */}
+      <svg className="reel__rings" viewBox="0 0 640 440" aria-hidden="true">
+        <circle cx="320" cy="220" r="90" />
+        <circle cx="320" cy="220" r="160" />
+        <circle cx="320" cy="220" r="240" />
+        <circle cx="320" cy="220" r="330" />
+      </svg>
+
+      {/* ── Layer 4: Precision Viewfinder Corner Crosshairs ── */}
+      <div className="reel__viewfinder" aria-hidden="true">
         <span className="vf-cross vf-tl">+</span>
         <span className="vf-cross vf-tr">+</span>
         <span className="vf-cross vf-bl">+</span>
         <span className="vf-cross vf-br">+</span>
       </div>
 
-      {/* ── Layer 3: Concentric Optical Calibration Grid ── */}
-      <svg className="reel-rings" viewBox="0 0 400 300" aria-hidden="true">
-        <circle cx="200" cy="150" r="60" />
-        <circle cx="200" cy="150" r="110" />
-        <circle cx="200" cy="150" r="160" />
-        <line x1="192" y1="150" x2="208" y2="150" />
-        <line x1="200" y1="142" x2="200" y2="158" />
-      </svg>
-
-      {/* ── Layer 4: Top Precision Telemetry Bar ── */}
-      <div className="reel-top-bar">
-        <div className="reel-badge">
-          <span className="reel-rec-dot" />
-          <span className="reel-act-code">{currentChapter.act}</span>
-          <span className="reel-divider">·</span>
-          <span className="reel-tag-text">{currentChapter.tag}</span>
+      {/* ── Layer 5: Demaze Precision Header (.reel__head) ── */}
+      <div className="reel__head">
+        <div className="reel__chap">
+          <b>0{activeSceneIdx + 1} / 04</b>
+          <em>·</em>
+          <span>{currentChapter.tag}</span>
         </div>
 
-        <div className="reel-top-actions">
-          <span className={`reel-status-pill is-${currentChapter.statusType}`}>
+        <div className="reel__head-actions">
+          <span className={`reel__status is-${currentChapter.statusType}`}>
             {currentChapter.statusPill}
           </span>
           <button
             type="button"
-            className="reel-play-toggle"
+            className="reel__toggle"
             onClick={togglePlay}
             aria-label={isPlaying ? 'Pause Reel' : 'Play Reel'}
           >
@@ -278,39 +316,33 @@ export function DomainCardReel({ index }: { index: number }) {
         </div>
       </div>
 
-      {/* ── Layer 5: Clean, Low-Profile Bottom Scrubber & Telemetry ── */}
-      <div className="reel-bottom-bar">
-        {/* 4-Segmented Hairline Progress Scrubber */}
-        <div className="reel-segment-track">
-          {domain.chapters.map((ch, idx) => (
-            <button
-              key={idx}
-              type="button"
-              className={`reel-seg-pill ${idx === activeSceneIdx ? 'is-active' : ''}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleSeek(idx);
-              }}
-              title={`${ch.act}: ${ch.title}`}
-            >
-              <div
-                className="reel-seg-fill"
-                style={{ width: `${getFillPct(idx)}%` }}
-              />
-            </button>
-          ))}
-        </div>
+      {/* ── Layer 6: Demaze Hairline Segment Progress Bar (.reel__progress) ── */}
+      <div className="reel__progress">
+        {domain.chapters.map((ch, idx) => (
+          <button
+            key={idx}
+            type="button"
+            className={`reel__progress-seg ${idx === activeSceneIdx ? 'is-active' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleSeek(idx);
+            }}
+            title={`${ch.act}: ${ch.title}`}
+          >
+            <em style={{ transform: `scaleX(${getFillPct(idx) / 100})` }} />
+          </button>
+        ))}
+      </div>
 
-        {/* Minimal Monospace Sub-Bar: Chapter & Live Telemetry */}
-        <div className="reel-telemetry-row">
-          <span className="reel-chapter-mono">
-            0{activeSceneIdx + 1} // {currentChapter.title}
-          </span>
-          <span className="reel-metric-mono">
-            <span className="metric-tag">{currentChapter.metric.label}:</span>{' '}
-            <b>{currentChapter.metric.value}</b>
-          </span>
-        </div>
+      {/* ── Layer 7: Minimalist Lower Monospace Telemetry (.reel__foot) ── */}
+      <div className="reel__foot">
+        <span className="reel__foot-title">
+          {currentChapter.title}
+        </span>
+        <span className="reel__foot-metric">
+          <span className="metric-tag">{currentChapter.metric.label}:</span>{' '}
+          <b>{currentChapter.metric.value}</b>
+        </span>
       </div>
     </div>
   );
