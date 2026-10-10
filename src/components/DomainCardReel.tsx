@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import * as THREE from 'three';
-import { createMultiSceneArtifact, createContactShadow } from '../gl/domainCardReelEngine';
+import {
+  createMultiSceneArtifact,
+  createContactShadow,
+  getOrCreateStudioEnvironment,
+} from '../gl/domainCardReelEngine';
 import { DOMAIN_REELS } from '../data/reelScreenplays';
 import '../styles/domain-cinema.css';
 
@@ -79,22 +83,34 @@ export function DomainCardReel({ index }: { index: number }) {
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(width, height);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.15;
+    renderer.toneMappingExposure = 1.32;
 
-    // 3. Studio Illumination: Soft Natural Daylight + Warm Rim Light
-    const ambientLight = new THREE.AmbientLight(0xffffff, 1.4);
+    // Assign Studio Environment Map (Prevents PBR metals from reflecting black!)
+    const envMap = getOrCreateStudioEnvironment(renderer);
+    scene.environment = envMap;
+
+    // 3. Studio Illumination: Soft Natural Daylight + Warm/Cool Rim Lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xfff7ed, 2.4);
-    keyLight.position.set(3.5, 4.8, 3.8);
+    const keyLight = new THREE.DirectionalLight(0xfffbeb, 3.2);
+    keyLight.position.set(3.5, 5.0, 4.0);
     scene.add(keyLight);
 
-    const rimLight = new THREE.DirectionalLight(0xdbeafe, 1.2);
-    rimLight.position.set(-3.5, 1.5, -2.8);
+    const fillLight = new THREE.DirectionalLight(0xe0f2fe, 1.8);
+    fillLight.position.set(-3.5, 2.0, 3.0);
+    scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0xffedd5, 2.4);
+    rimLight.position.set(-2.5, 4.0, -3.5);
     scene.add(rimLight);
 
+    const bounceLight = new THREE.DirectionalLight(0x94a3b8, 1.2);
+    bounceLight.position.set(0, -3.0, 0);
+    scene.add(bounceLight);
+
     // Contact floor shadow
-    const shadowMesh = createContactShadow(2.8, 2.8, 0.38);
+    const shadowMesh = createContactShadow(2.8, 2.8, 0.4);
     scene.add(shadowMesh);
 
     // 4. Procedural 3D Generative Artifact
@@ -160,7 +176,8 @@ export function DomainCardReel({ index }: { index: number }) {
         animTimeRef.current,
         curIdx,
         curProg,
-        pointerRef.current
+        pointerRef.current,
+        camera
       );
 
       renderer.render(scene, camera);
