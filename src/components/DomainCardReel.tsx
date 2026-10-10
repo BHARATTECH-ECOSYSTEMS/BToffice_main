@@ -24,19 +24,21 @@ export interface DomainCardReelProps {
   index: number;
   isActive?: boolean;
   selectedAct?: number;
+  onActChange?: (actIndex: number) => void;
 }
 
 /**
  * High-Performance 60fps 3D WebGL Reel Stage.
- * - Only runs RAF rendering when active (prevents multi-renderer GPU bottleneck).
- * - Draws initial frame on mount so inactive cards show full 3D graphics with 0 GPU drain.
- * - No flashing or re-render cascades.
+ * - Runs continuous WebGL kinematics across full scene duration.
+ * - Viewport-aware rendering ensures all cards animate smoothly with 0 GPU waste.
+ * - Real-time synchronization with chapter controllers.
  * - Pristine daylight studio lighting.
  */
 export function DomainCardReel({
   index,
   isActive = true,
   selectedAct,
+  onActChange,
 }: DomainCardReelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -47,6 +49,8 @@ export function DomainCardReel({
   const isPlayingRef = useRef(true);
   const animTimeRef = useRef((selectedAct ?? 0) * SCENE_DURATION_SEC);
   const pointerRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
+  const lastReportedActRef = useRef<number>(selectedAct ?? 0);
+  const isIntersectingRef = useRef(true);
 
   const domain = useMemo(() => DOMAIN_REELS[index] ?? DOMAIN_REELS[0], [index]);
 
@@ -54,20 +58,31 @@ export function DomainCardReel({
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
-  // Synchronize when user manually seeks chapter
+  // Synchronize when user manually seeks chapter from external buttons
   useEffect(() => {
     if (selectedAct !== undefined) {
-      animTimeRef.current = selectedAct * SCENE_DURATION_SEC;
-      setActiveSceneIdx(selectedAct);
-      setSceneProgress(0);
+      const curIdx = Math.floor(
+        (animTimeRef.current % (TOTAL_SCENES * SCENE_DURATION_SEC)) / SCENE_DURATION_SEC
+      );
+      if (selectedAct !== curIdx) {
+        animTimeRef.current = selectedAct * SCENE_DURATION_SEC;
+        lastReportedActRef.current = selectedAct;
+        setActiveSceneIdx(selectedAct);
+        setSceneProgress(0);
+      }
     }
   }, [selectedAct]);
 
-  const handleSeek = useCallback((sceneIdx: number) => {
-    setActiveSceneIdx(sceneIdx);
-    setSceneProgress(0);
-    animTimeRef.current = sceneIdx * SCENE_DURATION_SEC;
-  }, []);
+  const handleSeek = useCallback(
+    (sceneIdx: number) => {
+      setActiveSceneIdx(sceneIdx);
+      setSceneProgress(0);
+      lastReportedActRef.current = sceneIdx;
+      animTimeRef.current = sceneIdx * SCENE_DURATION_SEC;
+      onActChange?.(sceneIdx);
+    },
+    [onActChange]
+  );
 
   const togglePlay = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -151,7 +166,7 @@ export function DomainCardReel({
     // Render 1 initial static frame immediately
     renderer.render(scene, camera);
 
-    // 5. Resize Observer
+    // 5. Resize & Intersection Observers
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const w = entry.contentRect.width;
@@ -166,7 +181,15 @@ export function DomainCardReel({
     });
     resizeObserver.observe(container);
 
-    // 6. Only run RAF loop if isActive is true
+    const intersectionObserver = new IntersectionObserver(
+      ([entry]) => {
+        isIntersectingRef.current = entry.isIntersecting;
+      },
+      { threshold: 0.02 }
+    );
+    intersectionObserver.observe(container);
+
+    // 6. Continuous 60fps RAF Kinematic Loop across full duration
     let animationId: number = 0;
     let lastTime = performance.now();
     const currentCamPos = new THREE.Vector3(initialCam.x, initialCam.y, initialCam.z);
@@ -193,6 +216,11 @@ export function DomainCardReel({
 
         setActiveSceneIdx(curIdx);
         setSceneProgress(curProg);
+
+        if (curIdx !== lastReportedActRef.current) {
+          lastReportedActRef.current = curIdx;
+          onActChange?.(curIdx);
+        }
 
         // Smooth camera drift
         const targetAnchor = CAMERA_BASE[curIdx] ?? CAMERA_BASE[0];
@@ -230,7 +258,9 @@ export function DomainCardReel({
           camera
         );
 
-        renderer.render(scene, camera);
+        if (isIntersectingRef.current) {
+          renderer.render(scene, camera);
+        }
       };
 
       animationId = requestAnimationFrame(loop);
@@ -239,6 +269,7 @@ export function DomainCardReel({
     return () => {
       if (animationId) cancelAnimationFrame(animationId);
       resizeObserver.disconnect();
+      intersectionObserver.disconnect();
       artifact.dispose();
       scene.remove(artifact.group);
       scene.remove(shadowMesh);

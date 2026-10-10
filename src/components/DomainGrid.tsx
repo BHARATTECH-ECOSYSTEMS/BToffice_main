@@ -21,60 +21,60 @@ export interface DomainMeta {
 export const DOMAIN_STACK_META: DomainMeta[] = [
   {
     tone: 'var(--violet)',
-    tint: '#7c3aed',
-    tintSoft: '#f5f3ff',
-    tintBorder: 'rgba(124, 58, 237, 0.22)',
-    tintStrong: '#6d28d9',
+    tint: '#6E58F5',
+    tintSoft: 'rgba(110, 88, 245, 0.08)',
+    tintBorder: 'rgba(110, 88, 245, 0.22)',
+    tintStrong: '#5B45E8',
     shortLabel: 'GI Rivinity',
     specCode: 'VAULT-OPT-01',
     classification: 'PHYSICAL REASONING SUBSTRATE',
   },
   {
     tone: 'var(--tangerine)',
-    tint: '#ea580c',
-    tintSoft: '#fff7ed',
-    tintBorder: 'rgba(234, 88, 12, 0.22)',
-    tintStrong: '#c2410c',
+    tint: '#FF8643',
+    tintSoft: 'rgba(255, 134, 67, 0.08)',
+    tintBorder: 'rgba(255, 134, 67, 0.22)',
+    tintStrong: '#F06E28',
     shortLabel: 'Rivinity Core',
     specCode: 'UNIBODY-OS-02',
     classification: 'UNIVERSAL DISTRIBUTED FABRIC',
   },
   {
-    tone: '#059669',
-    tint: '#059669',
-    tintSoft: '#ecfdf5',
-    tintBorder: 'rgba(5, 150, 105, 0.22)',
-    tintStrong: '#047857',
+    tone: 'var(--saffron)',
+    tint: '#F59E00',
+    tintSoft: 'rgba(245, 158, 0, 0.08)',
+    tintBorder: 'rgba(245, 158, 0, 0.22)',
+    tintStrong: '#D98200',
     shortLabel: 'IoT Intelligence',
     specCode: 'LIDAR-SPATIAL-03',
     classification: 'VOLUMETRIC SENSOR FUSION',
   },
   {
-    tone: '#0284c7',
-    tint: '#0284c7',
-    tintSoft: '#f0f9ff',
-    tintBorder: 'rgba(2, 132, 199, 0.22)',
-    tintStrong: '#0369a1',
+    tone: 'var(--violet)',
+    tint: '#6E58F5',
+    tintSoft: 'rgba(110, 88, 245, 0.08)',
+    tintBorder: 'rgba(110, 88, 245, 0.22)',
+    tintStrong: '#5B45E8',
     shortLabel: 'Geo Intelligence',
     specCode: 'GEODESIC-GIS-04',
     classification: 'TOPOGRAPHIC SPATIAL MATRIX',
   },
   {
-    tone: '#e11d48',
-    tint: '#e11d48',
-    tintSoft: '#fff1f2',
-    tintBorder: 'rgba(225, 29, 72, 0.22)',
-    tintStrong: '#be123c',
+    tone: 'var(--tangerine)',
+    tint: '#FF8643',
+    tintSoft: 'rgba(255, 134, 67, 0.08)',
+    tintBorder: 'rgba(255, 134, 67, 0.22)',
+    tintStrong: '#F06E28',
     shortLabel: 'Defense AI',
     specCode: 'ENCLAVE-ZK-05',
     classification: 'CRYPTO HARDWARE ENCLAVE',
   },
   {
     tone: 'var(--saffron)',
-    tint: '#d97706',
-    tintSoft: '#fffbeb',
-    tintBorder: 'rgba(217, 119, 6, 0.25)',
-    tintStrong: '#b45309',
+    tint: '#F59E00',
+    tintSoft: 'rgba(245, 158, 0, 0.08)',
+    tintBorder: 'rgba(245, 158, 0, 0.22)',
+    tintStrong: '#D98200',
     shortLabel: 'Miniature AI',
     specCode: 'SILICON-SOC-06',
     classification: 'ULTRA LOW-POWER EDGE NEURAL',
@@ -102,6 +102,7 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
 
   const handleActChange = useCallback((cardIndex: number, newAct: number) => {
     setActIndices((prev) => {
+      if (prev[cardIndex] === newAct) return prev;
       const next = [...prev];
       next[cardIndex] = newAct;
       return next;
@@ -376,8 +377,9 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
                   <figure className="stack-card__media shot">
                     <DomainCardReel
                       index={i}
-                      isActive={i === activeIdx}
+                      isActive={true}
                       selectedAct={curActIdx}
+                      onActChange={(newAct) => handleActChange(i, newAct)}
                     />
                   </figure>
                 </div>

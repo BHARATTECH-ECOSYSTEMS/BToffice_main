@@ -1,31 +1,734 @@
-.company-about-page .company-about-hero { min-height: 60svh; padding: calc(var(--nav-h) + 100px) 0 100px; text-align: center; }
-.company-about-hero h1,.company-awards-head h2 { font: 600 clamp(44px,5.6vw,76px)/1.08 var(--display); letter-spacing: -.055em; margin: 0 0 24px; }
-.company-about-hero p { max-width: 720px; margin: 0 auto; font-size: clamp(17px,1.5vw,20px); line-height: 1.6; color: var(--ink-2); }
-.company-story-section { padding-top: clamp(64px,8vw,116px); padding-bottom: clamp(76px,9vw,132px); }
-.company-story-grid { display: grid; grid-template-columns: repeat(12,minmax(0,1fr)); column-gap: 24px; row-gap: 48px; align-items: start; }
-.company-story-index { grid-column: 1 / span 3; position: sticky; top: calc(var(--nav-h) + 36px); display: grid; gap: 16px; padding: 7px clamp(18px,3vw,46px) 0 0; color: var(--ink-2); }
-.company-story-index span { color: var(--violet); font: 11px var(--mono); text-transform: uppercase; letter-spacing: .12em; }
-.company-story-index p { max-width: 220px; font-size: 14.5px; line-height: 1.65; margin: 0; }
-.company-story-copy { grid-column: 4 / span 9; display: grid; gap: clamp(76px,8vw,116px); padding-left: clamp(0px,2vw,28px); }
-.company-story-block { display: grid; gap: 22px; max-width: 920px; padding-top: clamp(24px,3vw,38px); border-top: 1px solid var(--line); }
-.company-story-block h2 { font: 600 clamp(32px,3.9vw,52px)/1.08 var(--display); letter-spacing: -.045em; margin: 0; }
-.company-story-block p { max-width: 840px; font-size: clamp(1.05rem,1.35vw,1.22rem); line-height: 1.7; color: var(--ink-2); margin: 0; }
-.company-awards-section { padding-top: clamp(76px,9vw,128px); padding-bottom: clamp(88px,10vw,148px); border-top: 1px solid var(--line); }
-.company-awards-head { display: flex; flex-direction: column; align-items: center; gap: 24px; text-align: center; margin-bottom: clamp(38px,5vw,64px); }
-.company-awards-head h2 { margin: 0; }
-.company-awards-head p { max-width: 620px; margin: 0; font-size: 18px; line-height: 1.6; color: var(--ink-2); }
-.company-awards-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: clamp(14px,2vw,24px); }
-.company-award-card { min-height: 264px; display: grid; align-content: start; grid-template-rows: auto minmax(2.3em,auto) 1fr; gap: 20px; padding: clamp(24px,3vw,38px); border-radius: var(--r-lg); background: color-mix(in srgb,var(--paper) 90%,transparent); box-shadow: var(--shadow-sm); }
-.company-award-year { color: var(--violet); font: 12px var(--mono); letter-spacing: .12em; }
-.company-award-card h3 { max-width: 440px; font-size: clamp(1.35rem,2vw,1.85rem); line-height: 1.15; letter-spacing: -.03em; margin: 0; }
-.company-award-card p { max-width: 470px; line-height: 1.65; color: var(--ink-2); margin: 0; }
-@media(max-width:900px) {
-  .company-about-page .company-about-hero { padding: calc(var(--nav-h) + 70px) 0 72px; }
-  .company-story-grid { grid-template-columns: 1fr; }
-  .company-story-index,.company-story-copy { grid-column: 1 / -1; }
-  .company-story-index { position: static; padding: 0 0 28px; border-bottom: 1px solid var(--line); }
-  .company-story-copy { gap: 58px; padding-left: 0; }
-  .company-story-block { padding-top: 0; border-top: 0; gap: 20px; }
-  .company-awards-grid { grid-template-columns: 1fr; gap: 14px; }
-  .company-award-card { min-height: 0; grid-template-rows: auto; gap: 16px; padding: 24px; }
+/* ═══════════════════════════════════════════════════════════════════════════
+   BHARATTECH ORIGIN — ABOUT US
+   Natural background harmony, Swiss-editorial layout, and scroll-pinned pipeline canvas.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.company-about-page {
+  position: relative;
+  overflow-x: clip;
+  background-color: var(--bg);
+  color: var(--ink);
+  padding-bottom: clamp(60px, 8vw, 120px);
+}
+
+/* ── Common Eyebrows & Typography ── */
+.about-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--violet);
+  margin-bottom: 12px;
+}
+
+.about-eyebrow-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--violet);
+  box-shadow: 0 0 8px rgba(110, 88, 245, 0.45);
+  display: inline-block;
+}
+
+/* ── 1. CLEAN EDITORIAL HERO (NATURAL BACKGROUND) ── */
+.about-hero-section {
+  padding-top: calc(var(--nav-h) + clamp(48px, 6vw, 84px));
+  padding-bottom: clamp(60px, 7vw, 96px);
+  text-align: center;
+}
+
+.about-hero-content {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+.about-hero-title {
+  font-family: var(--display);
+  font-size: clamp(40px, 5.8vw, 76px);
+  font-weight: 750;
+  line-height: 1.06;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  margin: 0 0 24px;
+}
+
+.about-hero-title .hero-accent,
+.about-hero-title em {
+  font-style: normal;
+  font-weight: 800;
+  color: var(--violet);
+  background: linear-gradient(135deg, var(--violet) 0%, color-mix(in srgb, var(--violet) 80%, #9D8CFF) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
+  letter-spacing: -0.04em;
+}
+
+.about-hero-lead {
+  font-size: clamp(17px, 1.6vw, 20px);
+  line-height: 1.62;
+  color: var(--ink-soft);
+  max-width: 740px;
+  margin: 0 auto;
+}
+
+/* ── 2. SECTION: WHO WE ARE & WHAT DRIVES US ── */
+.about-overview-section {
+  padding: clamp(72px, 8vw, 112px) 0;
+}
+
+.about-overview-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  gap: clamp(36px, 6vw, 72px);
+  align-items: start;
+}
+
+.about-who-sticky {
+  position: sticky;
+  top: calc(var(--nav-h) + 28px);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.about-section-h2 {
+  font-family: var(--display);
+  font-size: clamp(32px, 4vw, 50px);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.about-who-lead {
+  font-size: clamp(17px, 1.7vw, 20px);
+  line-height: 1.58;
+  color: var(--ink);
+  font-weight: 500;
+  margin: 0;
+}
+
+.about-who-sub {
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.about-callout-card {
+  padding: 18px 20px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--violet) 6%, var(--paper));
+  border: 1px solid color-mix(in srgb, var(--violet) 18%, transparent);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 6px;
+}
+
+.about-callout-icon {
+  flex-shrink: 0;
+  color: var(--violet);
+  margin-top: 2px;
+}
+
+.about-callout-text {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  margin: 0;
+  font-weight: 550;
+}
+
+.about-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.about-chip {
+  padding: 6px 13px;
+  border-radius: 20px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--paper);
+  color: var(--ink-2);
+  border: 1px solid var(--line-strong);
+}
+
+/* What drives us cards list */
+.about-drives-col {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(16px, 2.5vw, 24px);
+}
+
+.about-drives-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: clamp(22px, 2.6vw, 30px);
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s var(--ease);
+}
+
+.about-drives-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow: 0 10px 24px -6px rgba(0, 0, 0, 0.06), var(--shadow-sm);
+}
+
+.about-drives-card h3 {
+  font-family: var(--display);
+  font-size: clamp(19px, 2.1vw, 23px);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin: 0 0 8px;
+}
+
+.about-drives-card p {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* ── 3. SECTION: WHY CHOOSE US (EDITORIAL REASON MATRIX) ── */
+.about-why-section {
+  padding: clamp(72px, 8vw, 112px) 0;
+}
+
+.about-why-header {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto clamp(36px, 5vw, 60px);
+}
+
+.about-why-header h2 {
+  font-family: var(--display);
+  font-size: clamp(32px, 4.2vw, 52px);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  margin: 0 0 14px;
+}
+
+.about-why-header p {
+  font-size: 16.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.about-reasons-matrix {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: clamp(16px, 2.2vw, 24px);
+}
+
+.about-reason-col {
+  padding: clamp(28px, 3.2vw, 36px) clamp(20px, 2.6vw, 30px);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s var(--ease);
+}
+
+.about-reason-col:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow: 0 10px 24px -6px rgba(0, 0, 0, 0.06), var(--shadow-sm);
+}
+
+.about-reason-col h3 {
+  font-family: var(--display);
+  font-size: clamp(20px, 2.2vw, 24px);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.about-reason-col p {
+  font-size: 14.5px;
+  line-height: 1.68;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* ── 4. SECTION: LEADERSHIP MANIFESTO QUOTE (NATURAL CARD) ── */
+.about-quote-section {
+  padding: clamp(64px, 7vw, 96px) 0;
+}
+
+.about-quote-panel {
+  padding: clamp(40px, 5vw, 68px) clamp(24px, 4vw, 56px);
+  border-radius: var(--r-xl);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.about-quote-glyph {
+  font-family: var(--display);
+  font-size: clamp(48px, 6vw, 76px);
+  line-height: 0.5;
+  color: var(--violet);
+  opacity: 0.4;
+  display: block;
+  margin-bottom: 20px;
+}
+
+.about-quote-text {
+  font-family: var(--display);
+  font-size: clamp(20px, 2.6vw, 32px);
+  font-weight: 550;
+  line-height: 1.38;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  max-width: 860px;
+  margin: 0 auto clamp(24px, 3.5vw, 36px);
+}
+
+.about-quote-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 4%, var(--paper));
+  border: 1px solid var(--line);
+}
+
+.about-author-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--violet);
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-weight: 700;
+  font-size: 14px;
+  color: #FFFFFF;
+}
+
+.about-author-info {
+  text-align: left;
+}
+
+.about-author-name {
+  font-weight: 650;
+  font-size: 14px;
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.about-author-role {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   5. SCROLL-PINNED HOW WE WORK PIPELINE
+   ═══════════════════════════════════════════════════════════════════════════ */
+.about-process-section {
+  position: relative;
+  padding: clamp(48px, 6vw, 84px) 0;
+}
+
+.how-scroll-track {
+  position: relative;
+  height: 300vh;
+}
+
+.how-sticky-frame {
+  position: sticky;
+  top: calc(var(--nav-h) + 12px);
+  height: calc(100svh - var(--nav-h) - 24px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.how-pinned-card {
+  width: 100%;
+  max-width: var(--content);
+  margin: 0 auto;
+  border-radius: var(--r-xl);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  padding: clamp(18px, 2.2vw, 28px);
+  height: 100%;
+  max-height: 840px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: clamp(12px, 1.8vh, 18px);
+  box-sizing: border-box;
+}
+
+/* Card Header */
+.how-pinned-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+.how-pinned-title {
+  font-family: var(--display);
+  font-size: clamp(24px, 2.8vw, 38px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  margin: 0;
+}
+
+.how-pinned-meta {
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--violet) 8%, var(--paper));
+  border: 1px solid color-mix(in srgb, var(--violet) 20%, transparent);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--violet);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* Panoramic Canvas Stage */
+.how-pinned-stage {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 200px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--ink) 2%, var(--paper));
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.how-pinned-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* 4 Step Cards at the bottom */
+.how-pinned-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(10px, 1.5vw, 16px);
+}
+
+.how-pinned-step {
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 14px 14px;
+  cursor: pointer;
+  transition: all 0.25s var(--ease);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.how-pinned-step:hover {
+  border-color: var(--line-strong);
+  background: color-mix(in srgb, var(--violet) 2%, transparent);
+}
+
+.how-pinned-step.is-active {
+  border-color: var(--violet);
+  background: color-mix(in srgb, var(--violet) 5%, var(--paper));
+  box-shadow: 0 4px 16px -4px rgba(110, 88, 245, 0.25);
+}
+
+/* Step Progress Rail on top of each card */
+.how-step-rail {
+  width: 100%;
+  height: 3px;
+  background: var(--line);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.how-step-fill {
+  height: 100%;
+  background: var(--violet);
+  transition: width 0.1s linear;
+}
+
+.how-step-num-row {
+  display: flex;
+  align-items: center;
+}
+
+.how-step-phase {
+  font-size: 11px;
+  font-family: var(--mono);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--violet);
+}
+
+.how-step-title {
+  font-family: var(--display);
+  font-size: 14.5px;
+  font-weight: 650;
+  color: var(--ink);
+  margin: 0;
+  line-height: 1.25;
+}
+
+.how-step-desc {
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* ── 6. SECTION: NATIONAL AWARDS & HONORS ── */
+.about-awards-section {
+  padding: clamp(72px, 8vw, 112px) 0;
+}
+
+.about-awards-head {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto clamp(36px, 5vw, 56px);
+}
+
+.about-awards-head h2 {
+  font-family: var(--display);
+  font-size: clamp(32px, 4.2vw, 52px);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  margin: 0 0 14px;
+}
+
+.about-awards-head p {
+  font-size: 16.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.about-awards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(16px, 2.2vw, 24px);
+}
+
+.about-award-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(24px, 3.2vw, 36px);
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s var(--ease);
+}
+
+.about-award-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--line-strong);
+  box-shadow: 0 8px 22px -6px rgba(0, 0, 0, 0.08), var(--shadow-sm);
+}
+
+.about-award-top {
+  display: flex;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.about-award-badge-icon {
+  color: var(--saffron);
+}
+
+.about-award-card h3 {
+  font-family: var(--display);
+  font-size: clamp(19px, 2.2vw, 24px);
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin: 0 0 10px;
+  line-height: 1.25;
+}
+
+.about-award-card p {
+  font-size: 14.5px;
+  line-height: 1.68;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* ── 7. SECTION: CONTACT & CONNECTIVITY (NATURAL ELEGANCE) ── */
+.about-contact-section {
+  padding: clamp(72px, 8vw, 112px) 0;
+}
+
+.about-contact-card {
+  border-radius: var(--r-xl);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm);
+  padding: clamp(36px, 5vw, 64px) clamp(24px, 4vw, 56px);
+}
+
+.about-contact-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: clamp(32px, 5vw, 56px);
+  align-items: center;
+}
+
+.about-contact-copy h2 {
+  font-family: var(--display);
+  font-size: clamp(30px, 4vw, 48px);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  color: var(--ink);
+  margin: 0 0 16px;
+}
+
+.about-contact-copy p {
+  font-size: clamp(15.5px, 1.5vw, 17.5px);
+  line-height: 1.65;
+  color: var(--ink-soft);
+  margin: 0 0 28px;
+  max-width: 540px;
+}
+
+.about-contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.about-contact-details {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: color-mix(in srgb, var(--ink) 2%, var(--paper));
+  border: 1px solid var(--line);
+  padding: clamp(20px, 2.5vw, 28px);
+  border-radius: var(--r-lg);
+}
+
+.about-detail-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.about-detail-icon {
+  color: var(--violet);
+  margin-top: 3px;
+  flex-shrink: 0;
+}
+
+.about-detail-text span {
+  display: block;
+  font-size: 11.5px;
+  font-family: var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+  margin-bottom: 2px;
+}
+
+.about-detail-text a,
+.about-detail-text p {
+  font-size: 14.5px;
+  font-weight: 550;
+  color: var(--ink);
+  margin: 0;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.about-detail-text a:hover {
+  color: var(--violet);
+}
+
+/* ── RESPONSIVE DESIGN ── */
+@media (max-width: 1024px) {
+  .about-overview-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .about-who-sticky {
+    position: static;
+  }
+  .about-reasons-matrix {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .how-pinned-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .how-pinned-card {
+    max-height: none;
+    height: auto;
+  }
+  .how-scroll-track {
+    height: auto;
+  }
+  .how-sticky-frame {
+    position: static;
+    height: auto;
+  }
+  .about-contact-grid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+}
+
+@media (max-width: 768px) {
+  .about-awards-grid {
+    grid-template-columns: 1fr;
+  }
+  .how-pinned-steps {
+    grid-template-columns: 1fr;
+  }
+  .how-pinned-head {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
 }

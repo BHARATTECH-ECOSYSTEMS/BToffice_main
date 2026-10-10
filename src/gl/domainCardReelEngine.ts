@@ -827,7 +827,7 @@ export function createLidarPointcloudReel(): MultiSceneArtifact {
     'SOLID-STATE LiDAR // 360°',
     'TIME-OF-FLIGHT SENSOR UNIT',
     'DENSITY: 1.2M PTS/SEC',
-    '#10b981',
+    '#F59E00',
     false
   );
   const shellGeo = new THREE.CylinderGeometry(0.68, 0.72, 0.35, 48);
@@ -857,15 +857,15 @@ export function createLidarPointcloudReel(): MultiSceneArtifact {
   const barrel = new THREE.Mesh(barrelGeo, barrelMat);
   barrelGroup.add(barrel);
 
-  // Optical Germanium Aperture Window (Glowing Emerald Glass)
+  // Optical Germanium Aperture Window (Glowing Saffron Glass)
   const windowGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.06, 48);
   const windowMat = new THREE.MeshPhysicalMaterial({
-    color: 0x10b981,
+    color: 0xf59e00,
     transmission: 0.88,
     roughness: 0.04,
     ior: 1.6,
-    emissive: 0x059669,
-    emissiveIntensity: 0.3,
+    emissive: 0xd97706,
+    emissiveIntensity: 0.35,
   });
   const windowMesh = new THREE.Mesh(windowGeo, windowMat);
   windowMesh.position.y = 0.28;
@@ -882,10 +882,10 @@ export function createLidarPointcloudReel(): MultiSceneArtifact {
   prism.position.y = 0.12;
   barrelGroup.add(prism);
 
-  // 360° Planar Laser Fan Cone (Sweeping Emerald Sheet)
+  // 360° Planar Laser Fan Cone (Sweeping Saffron Sheet)
   const fanGeo = new THREE.ConeGeometry(2.4, 0.08, 32, 1, true, 0, Math.PI * 0.45);
   const fanMat = new THREE.MeshBasicMaterial({
-    color: 0x10b981,
+    color: 0xf59e00,
     transparent: true,
     opacity: 0.25,
     side: THREE.DoubleSide,
@@ -899,7 +899,7 @@ export function createLidarPointcloudReel(): MultiSceneArtifact {
   // Spherical Expanding ToF Pulse Wave Ring
   const pulseGeo = new THREE.RingGeometry(0.1, 0.12, 64);
   const pulseMat = new THREE.MeshBasicMaterial({
-    color: 0x34d399,
+    color: 0xfbbf24,
     transparent: true,
     opacity: 0.8,
     side: THREE.DoubleSide,
@@ -912,13 +912,13 @@ export function createLidarPointcloudReel(): MultiSceneArtifact {
 
   group.add(barrelGroup);
 
-  // 3D Point-Cloud Voxels (Emerald to Cyan to Violet Depth Gradient)
+  // 3D Point-Cloud Voxels (Saffron to Gold Depth Gradient)
   const ptCount = 2500;
   const pPos = new Float32Array(ptCount * 3);
   const pCols = new Float32Array(ptCount * 3);
-  const cGreen = new THREE.Color(0x10b981);
-  const cCyan = new THREE.Color(0x06b6d4);
-  const cPurple = new THREE.Color(0xa855f7);
+  const cSaffron = new THREE.Color(0xf59e00);
+  const cGold = new THREE.Color(0xfbbf24);
+  const cAmber = new THREE.Color(0xd97706);
 
   for (let i = 0; i < ptCount; i++) {
     const ang = Math.random() * Math.PI * 2;
@@ -928,7 +928,7 @@ export function createLidarPointcloudReel(): MultiSceneArtifact {
     pPos[i * 3 + 1] = y;
     pPos[i * 3 + 2] = Math.sin(ang) * dist;
 
-    const col = dist > 1.8 ? cPurple : dist > 1.3 ? cCyan : cGreen;
+    const col = dist > 1.8 ? cAmber : dist > 1.3 ? cGold : cSaffron;
     pCols[i * 3] = col.r;
     pCols[i * 3 + 1] = col.g;
     pCols[i * 3 + 2] = col.b;
@@ -947,8 +947,8 @@ export function createLidarPointcloudReel(): MultiSceneArtifact {
   group.add(pointCloud);
 
   // 3D Callout Pins
-  const pin1 = createCalloutPin('Germanium Optical Aperture', [0, 0.28, 0.42], [0.35, 0.55, 0.7], '#10b981');
-  const pin2 = createCalloutPin('6,000 RPM Polygon Scanner', [0, 0.12, 0.18], [0.45, 0.35, 0.3], '#38bdf8');
+  const pin1 = createCalloutPin('Germanium Optical Aperture', [0, 0.28, 0.42], [0.35, 0.55, 0.7], '#F59E00');
+  const pin2 = createCalloutPin('6,000 RPM Polygon Scanner', [0, 0.12, 0.18], [0.45, 0.35, 0.3], '#FF8643');
   const pin3 = createCalloutPin('Telescoping Sensor Cowling', [0, 0.55, 0], [0, 0.85, 0], '#94a3b8');
   calloutGroup.add(pin1.group, pin2.group, pin3.group);
   const pins = [pin1, pin2, pin3];
@@ -1039,7 +1039,7 @@ export function createProceduralTerrainReel(): MultiSceneArtifact {
     'GEOSPATIAL AI // MORPHOLOGY',
     'DATUM: WGS-84 // 28°36\'N 77°12\'E',
     'TIERS: 8 STEPPED CONTOURS',
-    '#0ea5e9',
+    '#6E58F5',
     false
   );
   const basePlinthGeo = createBeveledBoxGeometry(1.6, 0.12, 1.6, 0.03, 0.01);
@@ -1082,19 +1082,19 @@ export function createProceduralTerrainReel(): MultiSceneArtifact {
     group.add(hinge);
   });
 
-  // 8 Distinct Stepped Topographic Relief Slabs (Realistic GIS Elevation Gradient)
+  // 8 Distinct Stepped Topographic Relief Slabs (Violet Elevation Gradient)
   const layers = 8;
   const terraceMeshes: THREE.Mesh[] = [];
   const targetHeights = [-0.45, -0.34, -0.22, -0.1, 0.02, 0.15, 0.28, 0.42];
 
   const layerColors = [
-    0x0369a1, // Deep Oceanic Datum
-    0x0284c7, // River Estuary
-    0x0ea5e9, // Lowland Valley
-    0x38bdf8, // Mid Plateau
-    0x7dd3fc, // High Ridge
-    0xba68c8, // Mountain Pass
-    0xe0f2fe, // Sub-Alpine Limestone
+    0x3b0764, // Deep Violet Datum
+    0x581c87, // Dark Violet
+    0x6e58f5, // Origin Violet
+    0x7c3aed, // Mid Violet
+    0x8b5cf6, // Bright Violet
+    0xa855f7, // Lavender
+    0xc084fc, // Soft Violet
     0xffffff, // Glacial Summit Peak
   ];
 
@@ -1112,9 +1112,9 @@ export function createProceduralTerrainReel(): MultiSceneArtifact {
     // Glowing Contour Line on Perimeter of Each Tier
     const edgeGeo = new THREE.EdgesGeometry(tGeo);
     const edgeMat = new THREE.LineBasicMaterial({
-      color: 0x38bdf8,
+      color: 0x8b5cf6,
       transparent: true,
-      opacity: 0.6,
+      opacity: 0.65,
     });
     const edgeLine = new THREE.LineSegments(edgeGeo, edgeMat);
     tMesh.add(edgeLine);
@@ -1136,12 +1136,12 @@ export function createProceduralTerrainReel(): MultiSceneArtifact {
   arrow.scale.set(0.6, 0.6, 0.6);
   group.add(arrow);
 
-  // Vertical Cyan Elevation Laser Probe Beam
+  // Vertical Violet Elevation Laser Probe Beam
   const probeGeo = new THREE.CylinderGeometry(0.006, 0.006, 1.2, 12);
   const probeMat = new THREE.MeshBasicMaterial({
-    color: 0x38bdf8,
+    color: 0x8b5cf6,
     transparent: true,
-    opacity: 0.8,
+    opacity: 0.85,
     blending: THREE.AdditiveBlending,
   });
   const probe = new THREE.Mesh(probeGeo, probeMat);
@@ -1149,9 +1149,10 @@ export function createProceduralTerrainReel(): MultiSceneArtifact {
   group.add(probe);
 
   // 3D Callout Pins
-  const pin1 = createCalloutPin('8-Tier Geomorphic Elevation', [0, 0.42, 0], [0.35, 0.68, 0.4], '#0ea5e9');
-  const pin2 = createCalloutPin('Hinged Retention Walls', [0.74, -0.22, 0], [0.95, 0.1, 0], '#64748b');
-  const pin3 = createCalloutPin('WGS-84 Azimuth Orientation', [0, 0.54, 0], [-0.35, 0.78, 0], '#fbbf24');
+  const pin1 = createCalloutPin('WGS-84 Elevation Datum', [0, -0.45, 0.75], [0.35, -0.15, 0.95], '#6E58F5');
+  const pin2 = createCalloutPin('Hinged Retaining Wall', [-0.74, -0.22, 0], [-0.95, 0.15, 0], '#94a3b8');
+  const pin3 = createCalloutPin('Azimuth True-North Needle', [0, 0.54, 0], [0.35, 0.72, 0], '#fbbf24');
+
   calloutGroup.add(pin1.group, pin2.group, pin3.group);
   const pins = [pin1, pin2, pin3];
 
@@ -1236,7 +1237,7 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
     'SOVEREIGN ENCLAVE // AIR-GAPPED',
     'ZK-PROOF HARDWARE MODULE',
     'SECURITY LEVEL: SOV-1 // CLASSIFIED',
-    '#ef4444',
+    '#FF8643',
     true
   );
   const baseChassisGeo = createBeveledBoxGeometry(1.35, 0.22, 1.35, 0.04, 0.015);
@@ -1279,11 +1280,11 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
     group.add(bolt);
   });
 
-  // Central Cryptographic Processor Die (Illuminated Emerald Quantum Core)
+  // Central Cryptographic Processor Die (Illuminated Tangerine Quantum Core)
   const dieGeo = createBeveledBoxGeometry(0.48, 0.08, 0.48, 0.02, 0.008);
   const dieMat = new THREE.MeshStandardMaterial({
-    color: 0x22c55e,
-    emissive: 0x15803d,
+    color: 0xff8643,
+    emissive: 0xea580c,
     emissiveIntensity: 0.6,
     metalness: 0.88,
     roughness: 0.15,
@@ -1295,7 +1296,7 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
   // Dual Counter-Rotating Geodesic Quantum Tripwire Cages
   const outerCageGeo = new THREE.IcosahedronGeometry(0.68, 1);
   const cageMat = new THREE.MeshBasicMaterial({
-    color: 0x22c55e,
+    color: 0xff8643,
     wireframe: true,
     transparent: true,
     opacity: 0.45,
@@ -1306,7 +1307,7 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
 
   const innerCageGeo = new THREE.IcosahedronGeometry(0.48, 1);
   const innerCageMat = new THREE.MeshBasicMaterial({
-    color: 0x86efac,
+    color: 0xfb923c,
     wireframe: true,
     transparent: true,
     opacity: 0.5,
@@ -1315,9 +1316,9 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
   innerCage.position.y = -0.15;
   group.add(innerCage);
 
-  // Diagonal Crimson Laser Tripwires Crossing Perimeter
+  // Diagonal Tangerine Laser Tripwires Crossing Perimeter
   const tripwireMat = new THREE.LineBasicMaterial({
-    color: 0xef4444,
+    color: 0xff8643,
     transparent: true,
     opacity: 0.85,
   });
@@ -1333,7 +1334,7 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
   // 3D Callout Pins
   const pin1 = createCalloutPin('Tungsten Armor Lid (19.3 g/cm³)', [0, 0.18, 0], [0.35, 0.45, 0.4], '#64748b');
   const pin2 = createCalloutPin('24k Gold Torx Fasteners', [0.52, 0.18, 0.52], [0.75, 0.35, 0.75], '#fbbf24');
-  const pin3 = createCalloutPin('ZK Quantum Tripwire Cage', [0, -0.15, 0.48], [0, 0.15, 0.8], '#22c55e');
+  const pin3 = createCalloutPin('ZK Quantum Tripwire Cage', [0, -0.15, 0.48], [0, 0.15, 0.8], '#FF8643');
   calloutGroup.add(pin1.group, pin2.group, pin3.group);
   const pins = [pin1, pin2, pin3];
 
@@ -1426,7 +1427,7 @@ export function createNeuromorphicDieReel(): MultiSceneArtifact {
     'BHARATTECH BGA-3NM // EDGE AI',
     'NEUROMORPHIC RUNTIME CORE',
     'TDP: 0.8W // 62 TOK/SEC',
-    '#eab308',
+    '#F59E00',
     false
   );
   const substrateGeo = createBeveledBoxGeometry(1.35, 0.08, 1.35, 0.04, 0.015);

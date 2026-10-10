@@ -20,12 +20,12 @@ export interface DomainReelData {
 }
 
 export const DOMAIN_REELS: DomainReelData[] = [
-  // 0. GI Rivinity
+  // 0. GI Rivinity (Violet)
   {
     id: 'gi-rivinity',
     name: 'GI Rivinity',
     field: 'Generative Intelligence',
-    accent: '#8b5cf6',
+    accent: '#6E58F5',
     chapters: [
       {
         act: 'ACT 01 / 04',
@@ -66,12 +66,12 @@ export const DOMAIN_REELS: DomainReelData[] = [
     ],
   },
 
-  // 1. Rivinity Core
+  // 1. Rivinity Core (Tangerine)
   {
     id: 'rivinity-core',
     name: 'Rivinity Core',
     field: 'Universal Intelligence OS',
-    accent: '#f59e0b',
+    accent: '#FF8643',
     chapters: [
       {
         act: 'ACT 01 / 04',
@@ -112,12 +112,12 @@ export const DOMAIN_REELS: DomainReelData[] = [
     ],
   },
 
-  // 2. IoT Intelligence
+  // 2. IoT Intelligence (Saffron)
   {
     id: 'iot-intelligence',
     name: 'IoT Intelligence',
     field: 'Embedded & Physical AI',
-    accent: '#10b981',
+    accent: '#F59E00',
     chapters: [
       {
         act: 'ACT 01 / 04',
@@ -158,12 +158,12 @@ export const DOMAIN_REELS: DomainReelData[] = [
     ],
   },
 
-  // 3. Geo Intelligence
+  // 3. Geo Intelligence (Violet)
   {
     id: 'geo-intelligence',
     name: 'Geo Intelligence',
     field: 'Spatial Computing',
-    accent: '#0ea5e9',
+    accent: '#6E58F5',
     chapters: [
       {
         act: 'ACT 01 / 04',
@@ -204,12 +204,12 @@ export const DOMAIN_REELS: DomainReelData[] = [
     ],
   },
 
-  // 4. Defense Intelligence
+  // 4. Defense Intelligence (Tangerine)
   {
     id: 'defense-intelligence',
     name: 'Defense Intelligence',
     field: 'Critical Infrastructure',
-    accent: '#ef4444',
+    accent: '#FF8643',
     chapters: [
       {
         act: 'ACT 01 / 04',
@@ -250,12 +250,12 @@ export const DOMAIN_REELS: DomainReelData[] = [
     ],
   },
 
-  // 5. Miniature Intelligence
+  // 5. Miniature Intelligence (Saffron)
   {
     id: 'miniature-intelligence',
     name: 'Miniature Intelligence',
     field: 'Edge & Embedded Systems',
-    accent: '#eab308',
+    accent: '#F59E00',
     chapters: [
       {
         act: 'ACT 01 / 04',
