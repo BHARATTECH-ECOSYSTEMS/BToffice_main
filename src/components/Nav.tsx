@@ -12,7 +12,7 @@ const LINKS: { label: string; to: string; section?: string; tone: HueName; peek?
   { label: 'Capabilities', to: '/', section: 'capabilities', tone: 'tangerine', peek: 'capabilities' },
   { label: 'Careers', to: '/careers', tone: 'saffron', peek: 'careers' },
   { label: 'About', to: '/about', tone: 'violet', peek: 'about' },
-  { label: 'Contact', to: '/contact', tone: 'tangerine' },
+  { label: 'Contact', to: '/contact', tone: 'tangerine', peek: 'contact' },
 ];
 
 const fine = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;

@@ -663,16 +663,17 @@
   outline-color: var(--brand);
 }
 .btn-primary::before {
-  background: linear-gradient(135deg, #14130F, #2B2923);
+  background: linear-gradient(135deg, #7B68EE, #6E58F5);
 }
 .btn-primary:hover::before {
-  background: linear-gradient(135deg, #FF8643, #F59E00);
+  background: linear-gradient(135deg, #7B68EE, #6E58F5);
 }
 .btn-primary {
-  box-shadow: 0 10px 24px -10px rgb(20 19 15 / 0.35);
+  border: 1px solid rgb(110 88 245 / 0.35);
+  box-shadow: 0 10px 25px -8px rgb(110 88 245 / 0.45);
 }
 .btn-primary:hover {
-  box-shadow: 0 14px 28px -10px rgb(255 134 67 / 0.55);
+  box-shadow: 0 14px 30px -10px rgb(110 88 245 / 0.55);
 }
 .btn-ghost {
   backdrop-filter: blur(10px);

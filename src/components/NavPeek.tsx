@@ -2,11 +2,11 @@ import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties } from 
 import { Arrow, toneStyle } from './ui';
 import { Cover, DomainArt, MetricsArt, SearchArt, WorkflowArt } from './art';
 import { Icon, type IconName } from './fx';
-import { AWARDS, CAPABILITIES, CAPABILITY_GROUPS, DOMAINS, EMAIL, POSTS, PRINCIPLES, ROLES } from '../content';
+import { AWARDS, CAPABILITIES, CAPABILITY_GROUPS, DOMAINS, EMAIL, HQ, POSTS, PRINCIPLES, PRIVACY_EMAIL, ROLES } from '../content';
 import type { HueName } from '../gl/palette';
 
-export type PeekId = 'research' | 'capabilities' | 'publications' | 'careers' | 'about';
-export const PEEK_ORDER: PeekId[] = ['research', 'capabilities', 'publications', 'careers', 'about'];
+export type PeekId = 'research' | 'capabilities' | 'publications' | 'careers' | 'about' | 'contact';
+export const PEEK_ORDER: PeekId[] = ['research', 'capabilities', 'publications', 'careers', 'about', 'contact'];
 
 const DOMAIN_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
 const FAMILY_TONES: HueName[] = ['violet', 'tangerine', 'saffron'];
@@ -96,6 +96,7 @@ export function NavPeek({
               {id === 'publications' && <PublicationsPeek go={go} />}
               {id === 'careers' && <CareersPeek go={go} />}
               {id === 'about' && <AboutPeek go={go} />}
+              {id === 'contact' && <ContactPeek go={go} />}
             </Fragment>
           </div>
         ))}
@@ -264,6 +265,59 @@ function AboutPeek({ go }: { go: Go }) {
         <p className="peek-side-blurb">Joint research, fellowships and early deployments. Every message is read by a person.</p>
         <button className="peek-go" onClick={go('/contact')}>
           Start a conversation <Arrow size={13} />
+        </button>
+        <a className="peek-mail" href={`mailto:${EMAIL}`}>
+          {EMAIL}
+        </a>
+      </div>
+    </div>
+  );
+}
+
+const CONTACT_ROWS: { icon: IconName; title: string; body: string; tone: HueName; href?: string; to?: string }[] = [
+  { icon: 'mail', title: EMAIL, body: 'General inquiries, briefings & early access.', tone: 'violet', href: `mailto:${EMAIL}` },
+  { icon: 'flask', title: 'Research collaboration', body: 'For universities, fellows & foundational partners.', tone: 'saffron', to: '/contact' },
+  { icon: 'shield', title: PRIVACY_EMAIL, body: 'Data governance, security & compliance queries.', tone: 'tangerine', href: `mailto:${PRIVACY_EMAIL}` },
+  { icon: 'pin', title: HQ, body: 'Engineered in Bharat for the world.', tone: 'violet', to: '/about' },
+];
+
+function ContactPeek({ go }: { go: Go }) {
+  return (
+    <div className="peek-grid">
+      <ul className="peek-list">
+        {CONTACT_ROWS.map((r, k) => (
+          <li key={r.title} style={toneStyle(r.tone, { '--k': k } as CSSProperties)}>
+            {r.href ? (
+              <a className="peek-row" href={r.href}>
+                <span className="peek-icon">
+                  <Icon name={r.icon} size={16} />
+                </span>
+                <span className="peek-row-text">
+                  <b>{r.title}</b>
+                  <small>{r.body}</small>
+                </span>
+                <Arrow size={13} dir="up-right" />
+              </a>
+            ) : (
+              <button className="peek-row" onClick={go(r.to || '/contact')}>
+                <span className="peek-icon">
+                  <Icon name={r.icon} size={16} />
+                </span>
+                <span className="peek-row-text">
+                  <b>{r.title}</b>
+                  <small>{r.body}</small>
+                </span>
+                <Arrow size={13} />
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+      <div className="peek-side peek-side-ink" style={{ '--k': 5 } as CSSProperties}>
+        <p className="peek-side-label">Direct communication</p>
+        <p className="peek-side-blurb">Every message is read directly by our research and engineering teams. Tell us what you are building.</p>
+        <button className="peek-go" onClick={go('/contact')}>
+          Send a brief <Arrow size={13} />
         </button>
         <a className="peek-mail" href={`mailto:${EMAIL}`}>
           {EMAIL}

@@ -15,7 +15,8 @@ const ICONS = [
 
 /** One small diagram per step, drawn for the groundwater request the console narrates. */
 function Scene({ i }: { i: number }) {
-  if (i === 0)
+  if (i === 0) {
+    const yTargets = [22, 40.67, 59.33, 78];
     return (
       <div className="how-scene scene-inputs">
         {(['chat', 'voice', 'docs', 'vision'] as const).map((n, k) => (
@@ -23,14 +24,15 @@ function Scene({ i }: { i: number }) {
             <Icon name={n} size={16} />
           </span>
         ))}
-        <svg viewBox="0 0 200 140" aria-hidden="true">
-          {[22, 54, 86, 118].map((y, k) => (
-            <path key={y} d={`M46 ${y} C110 ${y} 110 70 150 70`} pathLength={1} style={{ '--k': k } as CSSProperties} />
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          {yTargets.map((y, k) => (
+            <path key={y} d={`M 21 ${y} C 44 ${y} 48 50 67 50`} pathLength={1} style={{ '--k': k } as CSSProperties} />
           ))}
         </svg>
         <b className="scene-core">Request</b>
       </div>
     );
+  }
   if (i === 1)
     return (
       <div className="how-scene scene-recall">
@@ -53,7 +55,8 @@ function Scene({ i }: { i: number }) {
         ))}
       </div>
     );
-  if (i === 3)
+  if (i === 3) {
+    const yTargets = [24, 50, 76];
     return (
       <div className="how-scene scene-act">
         <b className="scene-core">Agent</b>
@@ -62,13 +65,14 @@ function Scene({ i }: { i: number }) {
             {t}
           </span>
         ))}
-        <svg viewBox="0 0 200 140" aria-hidden="true">
-          {[24, 70, 116].map((y, k) => (
-            <path key={y} d={`M72 70 C110 70 110 ${y} 140 ${y}`} pathLength={1} style={{ '--k': k } as CSSProperties} />
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+          {yTargets.map((y, k) => (
+            <path key={y} d={`M 31 50 C 46 50 48 ${y} 66 ${y}`} pathLength={1} style={{ '--k': k } as CSSProperties} />
           ))}
         </svg>
       </div>
     );
+  }
   return (
     <div className="how-scene scene-learn">
       <svg viewBox="0 0 200 140" aria-hidden="true">
