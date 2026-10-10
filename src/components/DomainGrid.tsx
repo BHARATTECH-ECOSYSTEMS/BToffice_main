@@ -84,14 +84,13 @@ export const DOMAIN_STACK_META: DomainMeta[] = [
 export const DOMAIN_TONES = DOMAIN_STACK_META.map((m) => m.tone);
 
 /**
- * State-of-the-Art Sticky Stacking Card Deck Architecture.
+ * Optimized Sticky Stacking Deck Architecture.
  *
- * KEY FEATURES:
- * 1. 100% Scroll-Driven: Scrolling the page naturally stacks each card on top of the previous one.
- * 2. Continuous 3D Kinematics: Real-time 60fps WebGL rendering that NEVER freezes or stops during scroll.
- * 3. Pure Daylight Studio Aesthetic: White/warm paper surfaces with subtle domain tints. Zero dark overlays.
- * 4. Zero Overlap on 3D Stage: 2-column layout strictly separates copy from the 3D machine.
- * 5. Rich Decorations: Technical serial headers, precision corner crosshairs, active act controllers.
+ * PERFORMANCE & FIXES:
+ * 1. Only 1 WebGL renderer active at a time (zero GPU choke, 60fps fluid).
+ * 2. Zero flashing / stuttering: isolated local chapter state with no re-render storm.
+ * 3. Clear vertical headroom: cards stick at 150px, completely below the 60px nav bar with zero overlap.
+ * 4. Throttled scroll observer: updates active tab smoothly using requestAnimationFrame.
  */
 export function DomainGrid({ link = true }: { link?: boolean }) {
   const [activeIdx, setActiveIdx] = useState(0);
@@ -109,13 +108,13 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
     });
   }, []);
 
-  // Smoothly scroll the window to a selected card
+  // Smooth scroll to card
   const scrollToCard = useCallback(
     (targetIdx: number) => {
       const el = cardRefs.current[targetIdx];
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      const targetTop = window.scrollY + rect.top - (110 + targetIdx * 14);
+      const targetTop = window.scrollY + rect.top - (145 + targetIdx * 12);
       if (lenis) {
         lenis.scrollTo(targetTop, { duration: 0.8 });
       } else {
@@ -135,22 +134,27 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
     scrollToCard(prev);
   }, [activeIdx, totalCards, scrollToCard]);
 
-  // Real-time scroll listener: tracks which card is currently stacked at top
+  // Throttled 60fps scroll listener: tracks active card without re-rendering continuously
   useEffect(() => {
+    let rafId = 0;
+
     const onScroll = () => {
-      const vh = window.innerHeight;
-      const threshold = vh * 0.38;
-      let current = 0;
+      if (rafId) return;
+      rafId = requestAnimationFrame(() => {
+        rafId = 0;
+        const stickyThreshold = 180;
+        let current = 0;
 
-      cardRefs.current.forEach((el, idx) => {
-        if (!el) return;
-        const rect = el.getBoundingClientRect();
-        if (rect.top <= threshold + idx * 14) {
-          current = idx;
-        }
+        cardRefs.current.forEach((el, idx) => {
+          if (!el) return;
+          const rect = el.getBoundingClientRect();
+          if (rect.top <= stickyThreshold + idx * 12) {
+            current = idx;
+          }
+        });
+
+        setActiveIdx((prev) => (prev !== current ? current : prev));
       });
-
-      setActiveIdx(current);
     };
 
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -160,6 +164,7 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
     onScroll();
 
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener('scroll', onScroll);
       if (lenis) {
         lenis.off('scroll', onScroll);
@@ -169,7 +174,7 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
 
   return (
     <div className="domain-sticky-deck">
-      {/* ── 1. Sticky Top Navigation Bar: Domain Pills + Action Controls ── */}
+      {/* ── 1. Sticky Navigation Bar: Distinct Docking Zone (Zero Overlap with Cards) ── */}
       <div className="deck-nav is-sticky">
         <div className="deck-nav__tabs" role="tablist" aria-label="Research Domains">
           {DOMAINS.map((d, i) => {
@@ -234,12 +239,12 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M12 5v14M19 12l-7 7-7-7" />
             </svg>
-            <span>Scroll Down to Stack</span>
+            <span>Scroll to Stack</span>
           </div>
         </div>
       </div>
 
-      {/* ── 2. Sticky Stacking Cards List ── */}
+      {/* ── 2. Sticky Stacking Cards List (Clean Vertical Clearance) ── */}
       <div className="sticky-deck-cards">
         {DOMAINS.map((d, i) => {
           const meta = DOMAIN_STACK_META[i] ?? DOMAIN_STACK_META[0];
@@ -261,13 +266,13 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
                   '--tint-border': meta.tintBorder,
                   '--tint-strong': meta.tintStrong,
                   '--i': i,
-                  top: `calc(clamp(115px, 14vh, 140px) + ${i * 14}px)`,
+                  top: `calc(clamp(142px, 18vh, 168px) + ${i * 12}px)`,
                   zIndex: i + 1,
                 } as CSSProperties
               }
             >
               <div className="stack-card__inner">
-                {/* ── Card Top Technical Header Strip (Decorated) ── */}
+                {/* ── Card Top Technical Header Strip ── */}
                 <div className="stack-card__tech-bar">
                   <div className="tech-bar__left">
                     <span className="tech-bar__dot" style={{ background: meta.tint }} />
@@ -276,13 +281,13 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
                     <span className="tech-bar__class">{meta.classification}</span>
                   </div>
                   <div className="tech-bar__right">
-                    <span className="tech-bar__stamp">REV 4.2 · IP68 HERMETIC · DAYLIGHT CALIBRATED</span>
+                    <span className="tech-bar__stamp">REV 4.2 · IP68 HERMETIC · DAYLIGHT STUDIO</span>
                   </div>
                 </div>
 
-                {/* ── 2-Column Main Body ── */}
+                {/* ── 2-Column Main Body (Zero 3D Model Overlap) ── */}
                 <div className="stack-card__columns">
-                  {/* Left Column: Typography, Tags, Chapter Controls (100% Readable) */}
+                  {/* Left Column: Typography, Tags, Chapter Controls */}
                   <div className="stack-card__copy">
                     {/* Category Kicker & Index */}
                     <div className="stack-card__kicker">
@@ -359,8 +364,8 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
                   <figure className="stack-card__media shot">
                     <DomainCardReel
                       index={i}
-                      externalAct={curActIdx}
-                      onActChange={(newAct) => handleActChange(i, newAct)}
+                      isActive={i === activeIdx}
+                      selectedAct={curActIdx}
                     />
                   </figure>
                 </div>

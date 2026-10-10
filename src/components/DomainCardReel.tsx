@@ -8,7 +8,7 @@ import {
 import { DOMAIN_REELS } from '../data/reelScreenplays';
 import '../styles/domain-cinema.css';
 
-// Pacing: 2.8s per chapter (11.2s total continuous loop)
+// Cinematic pacing: 2.8s per chapter (11.2s total continuous loop)
 const SCENE_DURATION_SEC = 2.8;
 const TOTAL_SCENES = 4;
 
@@ -23,35 +23,30 @@ const CAMERA_BASE = [
 export interface DomainCardReelProps {
   index: number;
   isActive?: boolean;
-  externalAct?: number;
-  onActChange?: (actIdx: number, progress: number) => void;
-  onReelComplete?: () => void;
+  selectedAct?: number;
 }
 
 /**
- * Continuous 60fps 3D WebGL Cinema Reel Stage.
- * - Always renders smoothly without stuttering or stopping during scroll.
- * - Pristine daylight studio illumination (key, fill, rim, bounce, PMREM reflection).
- * - Zero overlapping text blocks over the 3D model.
+ * High-Performance 60fps 3D WebGL Reel Stage.
+ * - Only runs RAF rendering when active (prevents multi-renderer GPU bottleneck).
+ * - Draws initial frame on mount so inactive cards show full 3D graphics with 0 GPU drain.
+ * - No flashing or re-render cascades.
+ * - Pristine daylight studio lighting.
  */
 export function DomainCardReel({
   index,
-  externalAct,
-  onActChange,
-  onReelComplete,
+  isActive = true,
+  selectedAct,
 }: DomainCardReelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const flashRef = useRef<HTMLDivElement>(null);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [activeSceneIdx, setActiveSceneIdx] = useState(externalAct ?? 0);
+  const [activeSceneIdx, setActiveSceneIdx] = useState(selectedAct ?? 0);
   const [sceneProgress, setSceneProgress] = useState(0);
 
   const isPlayingRef = useRef(true);
-  const animTimeRef = useRef((externalAct ?? 0) * SCENE_DURATION_SEC);
+  const animTimeRef = useRef((selectedAct ?? 0) * SCENE_DURATION_SEC);
   const pointerRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
-  const lastSceneRef = useRef(externalAct ?? 0);
-  const hasCompletedRef = useRef(false);
 
   const domain = useMemo(() => DOMAIN_REELS[index] ?? DOMAIN_REELS[0], [index]);
 
@@ -59,40 +54,20 @@ export function DomainCardReel({
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
 
-  // Synchronize when external act changes (e.g. user clicked chapter button on left copy)
+  // Synchronize when user manually seeks chapter
   useEffect(() => {
-    if (externalAct !== undefined && externalAct !== activeSceneIdx) {
-      animTimeRef.current = externalAct * SCENE_DURATION_SEC;
-      setActiveSceneIdx(externalAct);
+    if (selectedAct !== undefined) {
+      animTimeRef.current = selectedAct * SCENE_DURATION_SEC;
+      setActiveSceneIdx(selectedAct);
       setSceneProgress(0);
-      lastSceneRef.current = externalAct;
-      if (flashRef.current) {
-        flashRef.current.style.opacity = '0.15';
-        setTimeout(() => {
-          if (flashRef.current) flashRef.current.style.opacity = '0';
-        }, 60);
-      }
     }
-  }, [externalAct]);
+  }, [selectedAct]);
 
-  const triggerFlashCut = useCallback(() => {
-    if (!flashRef.current) return;
-    flashRef.current.style.opacity = '0.15';
-    setTimeout(() => {
-      if (flashRef.current) flashRef.current.style.opacity = '0';
-    }, 60);
+  const handleSeek = useCallback((sceneIdx: number) => {
+    setActiveSceneIdx(sceneIdx);
+    setSceneProgress(0);
+    animTimeRef.current = sceneIdx * SCENE_DURATION_SEC;
   }, []);
-
-  const handleSeek = useCallback(
-    (sceneIdx: number) => {
-      setActiveSceneIdx(sceneIdx);
-      setSceneProgress(0);
-      animTimeRef.current = sceneIdx * SCENE_DURATION_SEC;
-      onActChange?.(sceneIdx, 0);
-      triggerFlashCut();
-    },
-    [onActChange, triggerFlashCut]
-  );
 
   const togglePlay = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -113,7 +88,7 @@ export function DomainCardReel({
     pointerRef.current.targetY = 0;
   }, []);
 
-  // ── Pure Three.js WebGL 3D Scene Initialization ────────────────────────────
+  // ── WebGL 3D Scene Initialization & Loop ──────────────────────────────────
   useEffect(() => {
     const container = containerRef.current;
     const canvas = canvasRef.current;
@@ -129,23 +104,23 @@ export function DomainCardReel({
     camera.position.set(initialCam.x, initialCam.y, initialCam.z);
     camera.lookAt(0, -0.04, 0);
 
-    // 2. High-End WebGL Renderer with ACES Tone Mapping for Bright Daylight Studio
+    // 2. High-Performance WebGL Renderer (Clamped 1.75 Pixel Ratio)
     const renderer = new THREE.WebGLRenderer({
       canvas,
       antialias: true,
       alpha: true,
       powerPreference: 'high-performance',
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     renderer.setSize(width, height);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.36;
 
-    // Assign Studio Environment Map
+    // Studio Environment Map
     const envMap = getOrCreateStudioEnvironment(renderer);
     scene.environment = envMap;
 
-    // 3. Daylight Studio Illumination Rig
+    // 3. Daylight Studio Lighting Rig
     const ambientLight = new THREE.AmbientLight(0xffffff, 2.2);
     scene.add(ambientLight);
 
@@ -173,7 +148,10 @@ export function DomainCardReel({
     const artifact = createMultiSceneArtifact(index);
     scene.add(artifact.group);
 
-    // 5. Responsive Resize Observer
+    // Render 1 initial static frame immediately
+    renderer.render(scene, camera);
+
+    // 5. Resize Observer
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const w = entry.contentRect.width;
@@ -182,105 +160,91 @@ export function DomainCardReel({
           camera.aspect = w / h;
           camera.updateProjectionMatrix();
           renderer.setSize(w, h);
+          renderer.render(scene, camera);
         }
       }
     });
     resizeObserver.observe(container);
 
-    // 6. Continuous 60fps Motion & Animation Loop (NEVER STOPS DURING SCROLL)
-    let animationId: number;
+    // 6. Only run RAF loop if isActive is true
+    let animationId: number = 0;
     let lastTime = performance.now();
     const currentCamPos = new THREE.Vector3(initialCam.x, initialCam.y, initialCam.z);
 
-    const loop = (now: number) => {
-      animationId = requestAnimationFrame(loop);
+    if (isActive) {
+      const loop = (now: number) => {
+        animationId = requestAnimationFrame(loop);
 
-      const delta = Math.min((now - lastTime) / 1000, 0.1);
-      lastTime = now;
+        const delta = Math.min((now - lastTime) / 1000, 0.1);
+        lastTime = now;
 
-      // Pointer smoothing
-      pointerRef.current.x += (pointerRef.current.targetX - pointerRef.current.x) * 0.08;
-      pointerRef.current.y += (pointerRef.current.targetY - pointerRef.current.y) * 0.08;
+        // Pointer smoothing
+        pointerRef.current.x += (pointerRef.current.targetX - pointerRef.current.x) * 0.08;
+        pointerRef.current.y += (pointerRef.current.targetY - pointerRef.current.y) * 0.08;
 
-      if (isPlayingRef.current) {
-        animTimeRef.current += delta;
-      }
-
-      const totalLoop = TOTAL_SCENES * SCENE_DURATION_SEC;
-      const t = animTimeRef.current % totalLoop;
-      const curIdx = Math.floor(t / SCENE_DURATION_SEC);
-      const curProg = (t % SCENE_DURATION_SEC) / SCENE_DURATION_SEC;
-
-      // Check full reel completion
-      if (curIdx === TOTAL_SCENES - 1 && curProg > 0.96) {
-        if (!hasCompletedRef.current) {
-          hasCompletedRef.current = true;
-          onReelComplete?.();
+        if (isPlayingRef.current) {
+          animTimeRef.current += delta;
         }
-      } else {
-        hasCompletedRef.current = false;
-      }
 
-      // Trigger flash cut on act boundary
-      if (curIdx !== lastSceneRef.current) {
-        lastSceneRef.current = curIdx;
-        triggerFlashCut();
-        onActChange?.(curIdx, curProg);
-      }
+        const totalLoop = TOTAL_SCENES * SCENE_DURATION_SEC;
+        const t = animTimeRef.current % totalLoop;
+        const curIdx = Math.floor(t / SCENE_DURATION_SEC);
+        const curProg = (t % SCENE_DURATION_SEC) / SCENE_DURATION_SEC;
 
-      setActiveSceneIdx(curIdx);
-      setSceneProgress(curProg);
+        setActiveSceneIdx(curIdx);
+        setSceneProgress(curProg);
 
-      // Camera motion & drift
-      const targetAnchor = CAMERA_BASE[curIdx] ?? CAMERA_BASE[0];
+        // Smooth camera drift
+        const targetAnchor = CAMERA_BASE[curIdx] ?? CAMERA_BASE[0];
 
-      let dynamicZOffset = 0;
-      if (curProg < 0.22) {
-        const landT = curProg / 0.22;
-        const landEase = 1 - Math.pow(1 - landT, 3);
-        dynamicZOffset = (1 - landEase) * 0.18;
-      } else if (curProg < 0.86) {
-        const driftT = (curProg - 0.22) / 0.64;
-        dynamicZOffset = -driftT * 0.09;
-      } else {
-        const punchT = (curProg - 0.86) / 0.14;
-        dynamicZOffset = -0.09 - punchT * punchT * 0.08;
-      }
+        let dynamicZOffset = 0;
+        if (curProg < 0.22) {
+          const landT = curProg / 0.22;
+          const landEase = 1 - Math.pow(1 - landT, 3);
+          dynamicZOffset = (1 - landEase) * 0.16;
+        } else if (curProg < 0.86) {
+          const driftT = (curProg - 0.22) / 0.64;
+          dynamicZOffset = -driftT * 0.08;
+        } else {
+          const punchT = (curProg - 0.86) / 0.14;
+          dynamicZOffset = -0.08 - punchT * punchT * 0.08;
+        }
 
-      const targetX = targetAnchor.x + pointerRef.current.x * 0.22;
-      const targetY = targetAnchor.y + pointerRef.current.y * 0.18;
-      const targetZ = targetAnchor.z + dynamicZOffset;
+        const targetX = targetAnchor.x + pointerRef.current.x * 0.22;
+        const targetY = targetAnchor.y + pointerRef.current.y * 0.18;
+        const targetZ = targetAnchor.z + dynamicZOffset;
 
-      currentCamPos.x += (targetX - currentCamPos.x) * 0.07;
-      currentCamPos.y += (targetY - currentCamPos.y) * 0.07;
-      currentCamPos.z += (targetZ - currentCamPos.z) * 0.07;
+        currentCamPos.x += (targetX - currentCamPos.x) * 0.07;
+        currentCamPos.y += (targetY - currentCamPos.y) * 0.07;
+        currentCamPos.z += (targetZ - currentCamPos.z) * 0.07;
 
-      camera.position.copy(currentCamPos);
-      camera.lookAt(0, -0.04, 0);
+        camera.position.copy(currentCamPos);
+        camera.lookAt(0, -0.04, 0);
 
-      // Update 3D procedural artifact
-      artifact.update(
-        animTimeRef.current,
-        curIdx,
-        curProg,
-        pointerRef.current,
-        camera
-      );
+        // Update 3D procedural artifact
+        artifact.update(
+          animTimeRef.current,
+          curIdx,
+          curProg,
+          pointerRef.current,
+          camera
+        );
 
-      renderer.render(scene, camera);
-    };
+        renderer.render(scene, camera);
+      };
 
-    animationId = requestAnimationFrame(loop);
+      animationId = requestAnimationFrame(loop);
+    }
 
     return () => {
-      cancelAnimationFrame(animationId);
+      if (animationId) cancelAnimationFrame(animationId);
       resizeObserver.disconnect();
       artifact.dispose();
       scene.remove(artifact.group);
       scene.remove(shadowMesh);
       renderer.dispose();
     };
-  }, [index, triggerFlashCut, onActChange, onReelComplete]);
+  }, [index, isActive]);
 
   const getFillPct = (sIdx: number) => {
     if (sIdx < activeSceneIdx) return 100;
@@ -298,10 +262,7 @@ export function DomainCardReel({
       {/* ── Layer 1: Pure Three.js WebGL Real-Time 3D Canvas (Unobstructed) ── */}
       <canvas ref={canvasRef} className="reel__canvas" />
 
-      {/* ── Layer 2: Subtle Daylight Studio Flash Cut ── */}
-      <div ref={flashRef} className="reel__flash" aria-hidden="true" />
-
-      {/* ── Layer 3: Technical Concentric Orbit Rings (Daylight Studio Tones) ── */}
+      {/* ── Layer 2: Technical Concentric Orbit Rings (Daylight Studio Tones) ── */}
       <svg className="reel__rings" viewBox="0 0 640 440" aria-hidden="true">
         <circle cx="320" cy="220" r="90" />
         <circle cx="320" cy="220" r="160" />
@@ -309,7 +270,7 @@ export function DomainCardReel({
         <circle cx="320" cy="220" r="330" />
       </svg>
 
-      {/* ── Layer 4: Viewfinder Corner Crosshairs (Crisp Daylight Ink) ── */}
+      {/* ── Layer 3: Viewfinder Corner Crosshairs (Crisp Daylight Ink) ── */}
       <div className="reel__viewfinder" aria-hidden="true">
         <span className="vf-cross vf-tl">+</span>
         <span className="vf-cross vf-tr">+</span>
@@ -317,7 +278,7 @@ export function DomainCardReel({
         <span className="vf-cross vf-br">+</span>
       </div>
 
-      {/* ── Layer 5: Top Right Play / Pause Toggle ── */}
+      {/* ── Layer 4: Top Right Play / Pause Toggle ── */}
       <div className="reel__corner-ctrl">
         <button
           type="button"
@@ -339,7 +300,7 @@ export function DomainCardReel({
         </button>
       </div>
 
-      {/* ── Layer 6: Lower Hairline Progress Track (Zero Model Obstruction) ── */}
+      {/* ── Layer 5: Lower Hairline Progress Track (Zero Model Obstruction) ── */}
       <div className="reel__progress">
         {domain.chapters.map((ch, idx) => (
           <button
