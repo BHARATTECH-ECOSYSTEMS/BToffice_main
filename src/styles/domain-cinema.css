@@ -1,29 +1,39 @@
 /* ══════════════════════════════════════════════════════════════════════════════
-   Bharattech Origin — Demaze Homescreen Card Stack & Reel Cinema Engine
+   Bharattech Origin — Demaze Homescreen Card Stack & Continuous 3D Reel Engine
    Adapted after https://d-50-production.up.railway.app/ (Featured Projects Deck)
    Strict Light Studio Palette · Crisp Ink Typography · Zero 3D Model Overlap
-   Scroll-Driven GSAP Stacking Deck Mechanics
+   Sticky Stacking Deck Architecture · Uninterrupted 60fps WebGL Kinematics
    ══════════════════════════════════════════════════════════════════════════════ */
 
 /* ── 1. The Deck Section Container ────────────────────────────────────────── */
 
-.domain-deck-section {
+.domain-sticky-deck {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 22px;
   position: relative;
 }
 
-/* ── 2. Top Navigation Bar: Domain Pills + Action Controls ────────────────── */
+/* ── 2. Sticky Top Navigation Bar: Domain Pills + Action Controls ─────────── */
 
-.deck-nav {
+.deck-nav.is-sticky {
+  position: sticky;
+  top: clamp(66px, 8.5vh, 80px);
+  z-index: 40;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 16px;
   flex-wrap: wrap;
-  padding-bottom: 2px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(248, 247, 243, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(20, 19, 15, 0.08);
+  box-shadow: 0 4px 20px -4px rgba(20, 19, 15, 0.06);
+  margin-bottom: 12px;
 }
 
 .deck-nav__tabs {
@@ -33,7 +43,7 @@
   overflow-x: auto;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  padding: 4px 2px;
+  padding: 2px 0;
 }
 
 .deck-nav__tabs::-webkit-scrollbar {
@@ -115,8 +125,8 @@
 }
 
 .deck-arrow-btn {
-  width: 34px;
-  height: 34px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: #ffffff;
   border: 1px solid rgba(20, 19, 15, 0.1);
@@ -141,8 +151,8 @@
 }
 
 .deck-arrow-btn svg {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 
 .deck-scroll-hint {
@@ -153,9 +163,9 @@
   font-size: 0.72rem;
   font-weight: 600;
   letter-spacing: 0.03em;
-  padding: 6px 12px;
+  padding: 5px 11px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(20, 19, 15, 0.09);
   color: #64748b;
   box-shadow: 0 1px 3px rgba(20, 19, 15, 0.03);
@@ -171,70 +181,110 @@
   50% { transform: translateY(3px); }
 }
 
-/* ── 3. The Demaze Card Stack Deck Container (.stack.is-deck) ─────────────── */
+/* ── 3. Sticky Stacking Cards Container ───────────────────────────────────── */
 
-.stack.is-deck {
-  display: block;
-  position: relative;
+.sticky-deck-cards {
+  display: flex;
+  flex-direction: column;
   width: 100%;
-  height: clamp(520px, calc(100svh - 260px), 640px);
-  overflow: clip;
-  border-radius: 28px;
+  position: relative;
 }
 
 .stack-card {
-  position: absolute;
-  inset: 0;
+  position: sticky;
   width: 100%;
-  height: 100%;
+  margin-bottom: clamp(64px, 10vh, 96px);
+  transform-origin: 50% 0;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.4s ease;
   will-change: transform;
 }
 
-/* Initial fallback before GSAP hydration */
-.stack.is-deck .stack-card:not(:first-child) {
-  transform: translate3d(0, 108%, 0);
+/* Dynamic depth when stacked behind */
+.stack-card.is-stacked-behind {
+  transform: scale(0.978);
+  box-shadow: 0 10px 24px -10px rgba(20, 19, 15, 0.05);
 }
 
 /* ── 4. Inner Card Structure (.stack-card__inner) ─────────────────────────── */
 
 .stack-card__inner {
   position: relative;
-  height: 100%;
   border-radius: 28px;
   overflow: hidden;
-  background: linear-gradient(135deg, color-mix(in srgb, var(--tint) 6%, #ffffff) 0%, #ffffff 75%);
-  border: 1px solid rgba(20, 19, 15, 0.08);
-  box-shadow: 0 24px 50px -20px rgba(20, 19, 15, 0.08),
-              0 4px 16px -4px rgba(20, 19, 15, 0.03),
-              inset 0 1px 0 rgba(255, 255, 255, 0.95);
+  background: linear-gradient(145deg, #ffffff 0%, color-mix(in srgb, var(--tint) 5%, #ffffff) 60%, #ffffff 100%);
+  border: 1px solid rgba(20, 19, 15, 0.09);
+  box-shadow: 0 -4px 20px rgba(20, 19, 15, 0.02),
+              0 24px 56px -16px rgba(20, 19, 15, 0.08),
+              inset 0 1px 0 rgba(255, 255, 255, 0.95),
+              0 0 0 1px color-mix(in srgb, var(--tint) 14%, transparent);
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── 5. Decorated Technical Header Bar ────────────────────────────────────── */
+
+.stack-card__tech-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 24px;
+  border-bottom: 1px solid rgba(20, 19, 15, 0.07);
+  background: color-mix(in srgb, var(--tint) 4%, rgba(255, 255, 255, 0.75));
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+}
+
+.tech-bar__left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tech-bar__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  box-shadow: 0 0 6px currentColor;
+}
+
+.tech-bar__code {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.tech-bar__divider {
+  opacity: 0.35;
+}
+
+.tech-bar__class {
+  color: #64748b;
+  font-weight: 600;
+}
+
+.tech-bar__stamp {
+  color: #64748b;
+  font-size: 0.68rem;
+  font-weight: 500;
+}
+
+/* ── 6. Two-Column Layout (.stack-card__columns) ──────────────────────────── */
+
+.stack-card__columns {
   display: grid;
   grid-template-columns: 1fr 1.15fr;
   gap: clamp(24px, 3.5vw, 52px);
   align-items: center;
-  padding: clamp(24px, 3.2vw, 44px);
-  transform-origin: 50% 0;
-  will-change: transform;
+  padding: clamp(24px, 3vw, 40px);
 }
 
-/* Demaze depth shading mask on stacked cards */
-.stack-card__shade {
-  position: absolute;
-  inset: 0;
-  z-index: 8;
-  background: #0f172a;
-  opacity: 0;
-  pointer-events: none;
-  will-change: opacity;
-}
-
-/* ── 5. Left Column: Copy & Interactive Chapter Controller ────────────────── */
+/* ── 7. Left Column: Copy & Interactive Chapter Controller ────────────────── */
 
 .stack-card__copy {
   display: flex;
   flex-direction: column;
   gap: 13px;
-  z-index: 2;
-  height: 100%;
   justify-content: center;
   min-width: 0;
 }
@@ -249,10 +299,6 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--tint-strong, #6d28d9);
-}
-
-.stack-card__divider {
-  opacity: 0.4;
 }
 
 .stack-card__field {
@@ -303,7 +349,7 @@
   font-weight: 500;
 }
 
-/* ── 6. Interactive 4-Act Chapter Controller (Left Column) ────────────────── */
+/* ── 8. Interactive 4-Act Chapter Controller (Left Column) ────────────────── */
 
 .stack-card__reel-ctrl {
   display: flex;
@@ -451,22 +497,22 @@
   transform: translateX(4px);
 }
 
-/* ── 7. Right Column: Dedicated 3D Canvas Stage (Unobstructed) ────────────── */
+/* ── 9. Right Column: Dedicated 3D Canvas Stage (Unobstructed) ────────────── */
 
 .stack-card__media {
   height: 100%;
-  min-height: 440px;
+  min-height: 460px;
   position: relative;
   border-radius: 20px;
   overflow: hidden;
   background: radial-gradient(120% 100% at 50% 45%, #ffffff 0%, #f8fafc 65%, #edf2f7 100%);
   border: 1px solid rgba(20, 19, 15, 0.08);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8),
-              0 8px 24px -10px rgba(20, 19, 15, 0.06);
+              0 8px 24px -10px rgba(20, 19, 15, 0.05);
   margin: 0;
 }
 
-/* ── 8. The Demaze Reel Cinema Stage (.reel) ──────────────────────────────── */
+/* ── 10. The Demaze Reel Cinema Stage (.reel) ─────────────────────────────── */
 
 .reel {
   position: absolute;
@@ -605,54 +651,41 @@
   transition: transform 0.05s linear;
 }
 
-/* ── 9. Responsive Mobile Layout ──────────────────────────────────────────── */
+/* ── 11. Responsive Mobile Layout ─────────────────────────────────────────── */
 
-@media (max-width: 860px) {
-  .stack.is-deck {
-    display: flex;
-    gap: 16px;
-    height: auto;
-    overflow-x: auto;
-    scroll-snap-type: x mandatory;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 0;
+@media (max-width: 900px) {
+  .deck-nav.is-sticky {
+    border-radius: 20px;
+    top: 60px;
+    padding: 8px 10px;
   }
 
-  .stack.is-deck::-webkit-scrollbar {
+  .stack-card {
+    position: relative !important;
+    top: auto !important;
+    margin-bottom: 24px;
+    transform: none !important;
+  }
+
+  .stack-card__tech-bar {
+    padding: 10px 16px;
+    font-size: 0.68rem;
+  }
+
+  .tech-bar__stamp {
     display: none;
   }
 
-  .stack.is-deck .stack-card {
-    position: relative !important;
-    inset: auto !important;
-    flex: 0 0 92%;
-    scroll-snap-align: center;
-    transform: none !important;
-    opacity: 1 !important;
-    height: auto;
-  }
-
-  .stack.is-deck .stack-card:not(:first-child) {
-    transform: none !important;
-  }
-
-  .stack-card__inner {
+  .stack-card__columns {
     grid-template-columns: 1fr;
-    height: auto;
-    padding: 22px 20px;
+    padding: 20px 16px;
     gap: 20px;
-    transform: none !important;
   }
 
   .stack-card__media {
-    order: -1;
     aspect-ratio: 16 / 10;
     min-height: 280px;
-  }
-
-  .stack-card__shade {
-    display: none !important;
+    order: -1;
   }
 
   .deck-arrows,
@@ -671,7 +704,7 @@
   }
 
   .stack-card__inner {
-    padding: 16px;
+    border-radius: 20px;
   }
 
   .stack-card__media {

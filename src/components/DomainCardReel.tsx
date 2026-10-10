@@ -8,7 +8,7 @@ import {
 import { DOMAIN_REELS } from '../data/reelScreenplays';
 import '../styles/domain-cinema.css';
 
-// Demaze cinematic pacing: 2.8s per chapter (11.2s total loop)
+// Pacing: 2.8s per chapter (11.2s total continuous loop)
 const SCENE_DURATION_SEC = 2.8;
 const TOTAL_SCENES = 4;
 
@@ -29,13 +29,13 @@ export interface DomainCardReelProps {
 }
 
 /**
- * Pure 3D WebGL Reel Stage for Demaze-grade Card Stack.
- * Dedicated to unobstructed, 100% visible 3D kinematic visualization in bright daylight studio.
- * Zero overlapping text blocks over the 3D model.
+ * Continuous 60fps 3D WebGL Cinema Reel Stage.
+ * - Always renders smoothly without stuttering or stopping during scroll.
+ * - Pristine daylight studio illumination (key, fill, rim, bounce, PMREM reflection).
+ * - Zero overlapping text blocks over the 3D model.
  */
 export function DomainCardReel({
   index,
-  isActive = true,
   externalAct,
   onActChange,
   onReelComplete,
@@ -47,7 +47,6 @@ export function DomainCardReel({
   const [activeSceneIdx, setActiveSceneIdx] = useState(externalAct ?? 0);
   const [sceneProgress, setSceneProgress] = useState(0);
 
-  const isVisibleRef = useRef(false);
   const isPlayingRef = useRef(true);
   const animTimeRef = useRef((externalAct ?? 0) * SCENE_DURATION_SEC);
   const pointerRef = useRef({ x: 0, y: 0, targetX: 0, targetY: 0 });
@@ -68,7 +67,7 @@ export function DomainCardReel({
       setSceneProgress(0);
       lastSceneRef.current = externalAct;
       if (flashRef.current) {
-        flashRef.current.style.opacity = '0.18';
+        flashRef.current.style.opacity = '0.15';
         setTimeout(() => {
           if (flashRef.current) flashRef.current.style.opacity = '0';
         }, 60);
@@ -78,19 +77,22 @@ export function DomainCardReel({
 
   const triggerFlashCut = useCallback(() => {
     if (!flashRef.current) return;
-    flashRef.current.style.opacity = '0.18';
+    flashRef.current.style.opacity = '0.15';
     setTimeout(() => {
       if (flashRef.current) flashRef.current.style.opacity = '0';
     }, 60);
   }, []);
 
-  const handleSeek = useCallback((sceneIdx: number) => {
-    setActiveSceneIdx(sceneIdx);
-    setSceneProgress(0);
-    animTimeRef.current = sceneIdx * SCENE_DURATION_SEC;
-    onActChange?.(sceneIdx, 0);
-    triggerFlashCut();
-  }, [onActChange, triggerFlashCut]);
+  const handleSeek = useCallback(
+    (sceneIdx: number) => {
+      setActiveSceneIdx(sceneIdx);
+      setSceneProgress(0);
+      animTimeRef.current = sceneIdx * SCENE_DURATION_SEC;
+      onActChange?.(sceneIdx, 0);
+      triggerFlashCut();
+    },
+    [onActChange, triggerFlashCut]
+  );
 
   const togglePlay = useCallback((e: React.MouseEvent) => {
     e.stopPropagation();
@@ -134,7 +136,7 @@ export function DomainCardReel({
       alpha: true,
       powerPreference: 'high-performance',
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(width, height);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.36;
@@ -171,7 +173,7 @@ export function DomainCardReel({
     const artifact = createMultiSceneArtifact(index);
     scene.add(artifact.group);
 
-    // 5. Responsive Resize & Intersection Observers
+    // 5. Responsive Resize Observer
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const w = entry.contentRect.width;
@@ -185,24 +187,13 @@ export function DomainCardReel({
     });
     resizeObserver.observe(container);
 
-    const intersectionObserver = new IntersectionObserver(
-      (entries) => {
-        isVisibleRef.current = entries[0].isIntersecting;
-      },
-      { threshold: 0.05 }
-    );
-    intersectionObserver.observe(container);
-
-    // 6. Demaze Motion & Animation Loop
+    // 6. Continuous 60fps Motion & Animation Loop (NEVER STOPS DURING SCROLL)
     let animationId: number;
     let lastTime = performance.now();
     const currentCamPos = new THREE.Vector3(initialCam.x, initialCam.y, initialCam.z);
 
     const loop = (now: number) => {
       animationId = requestAnimationFrame(loop);
-
-      // Only perform work when active and visible
-      if (!isActive || !isVisibleRef.current) return;
 
       const delta = Math.min((now - lastTime) / 1000, 0.1);
       lastTime = now;
@@ -240,7 +231,7 @@ export function DomainCardReel({
       setActiveSceneIdx(curIdx);
       setSceneProgress(curProg);
 
-      // ── Demaze Signature Transition Dynamics: Land → Drift → Punch Cut ──────
+      // Camera motion & drift
       const targetAnchor = CAMERA_BASE[curIdx] ?? CAMERA_BASE[0];
 
       let dynamicZOffset = 0;
@@ -284,13 +275,12 @@ export function DomainCardReel({
     return () => {
       cancelAnimationFrame(animationId);
       resizeObserver.disconnect();
-      intersectionObserver.disconnect();
       artifact.dispose();
       scene.remove(artifact.group);
       scene.remove(shadowMesh);
       renderer.dispose();
     };
-  }, [index, isActive, triggerFlashCut, onActChange, onReelComplete]);
+  }, [index, triggerFlashCut, onActChange, onReelComplete]);
 
   const getFillPct = (sIdx: number) => {
     if (sIdx < activeSceneIdx) return 100;
@@ -308,7 +298,7 @@ export function DomainCardReel({
       {/* ── Layer 1: Pure Three.js WebGL Real-Time 3D Canvas (Unobstructed) ── */}
       <canvas ref={canvasRef} className="reel__canvas" />
 
-      {/* ── Layer 2: Demaze Subtle White Flash on Cut ── */}
+      {/* ── Layer 2: Subtle Daylight Studio Flash Cut ── */}
       <div ref={flashRef} className="reel__flash" aria-hidden="true" />
 
       {/* ── Layer 3: Technical Concentric Orbit Rings (Daylight Studio Tones) ── */}

@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Lenis from 'lenis';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { Engine, type Target } from './Engine';
 
 interface Entry {
@@ -96,9 +95,6 @@ export function SceneProvider({ children }: { children: ReactNode }) {
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     // Snappy, responsive smooth scrolling (0.6s duration instead of 1.1s lag)
     const lenis = reduced || isCompact() ? null : new Lenis({ duration: 0.6, smoothWheel: true, wheelMultiplier: 1.0, touchMultiplier: 1.2 });
-    if (lenis) {
-      lenis.on('scroll', ScrollTrigger.update);
-    }
     let raf = 0;
     let lastY = window.scrollY;
     let lastPickedY = -999999;
