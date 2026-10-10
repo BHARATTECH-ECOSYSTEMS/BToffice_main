@@ -8,8 +8,17 @@ import {
 import { DOMAIN_REELS } from '../data/reelScreenplays';
 import '../styles/domain-cinema.css';
 
-const SCENE_DURATION_SEC = 4.2;
+// Snappy, cinematic pacing: 2.8s per act (11.2s total loop)
+const SCENE_DURATION_SEC = 2.8;
 const TOTAL_SCENES = 4;
+
+// Cinematic camera keyframe offsets per act
+const CAMERA_KEYFRAMES = [
+  { x: 0, y: 0.34, z: 3.32 }, // Act 0: Hermetic / Standby
+  { x: 0, y: 0.27, z: 3.02 }, // Act 1: Kinematic Unlatch (dolly in)
+  { x: 0, y: 0.42, z: 3.12 }, // Act 2: Active Operation (elevated dynamic view)
+  { x: 0, y: 0.36, z: 3.52 }, // Act 3: Exploded Architecture (pull back for wide perspective)
+];
 
 export function DomainCardReel({ index }: { index: number }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -65,12 +74,13 @@ export function DomainCardReel({ index }: { index: number }) {
     if (!container || !canvas) return;
 
     const width = container.clientWidth || 360;
-    const height = container.clientHeight || 260;
+    const height = container.clientHeight || 300;
 
     // 1. Scene & Camera
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 50);
-    camera.position.set(0, 0.35, 3.4);
+    const initialCam = CAMERA_KEYFRAMES[0];
+    camera.position.set(initialCam.x, initialCam.y, initialCam.z);
     camera.lookAt(0, -0.05, 0);
 
     // 2. High-End WebGL Renderer with ACES Tone Mapping
@@ -80,16 +90,16 @@ export function DomainCardReel({ index }: { index: number }) {
       alpha: true,
       powerPreference: 'high-performance',
     });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
     renderer.setSize(width, height);
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.32;
+    renderer.toneMappingExposure = 1.34;
 
-    // Assign Studio Environment Map (Prevents PBR metals from reflecting black!)
+    // Assign Studio Environment Map (PBR specular reflections)
     const envMap = getOrCreateStudioEnvironment(renderer);
     scene.environment = envMap;
 
-    // 3. Studio Illumination: Soft Natural Daylight + Warm/Cool Rim Lights
+    // 3. Studio Illumination Rig (Key, Fill, Rim, Ambient)
     const ambientLight = new THREE.AmbientLight(0xffffff, 2.0);
     scene.add(ambientLight);
 
@@ -109,15 +119,15 @@ export function DomainCardReel({ index }: { index: number }) {
     bounceLight.position.set(0, -3.0, 0);
     scene.add(bounceLight);
 
-    // Contact floor shadow
-    const shadowMesh = createContactShadow(2.8, 2.8, 0.4);
+    // Soft Contact Floor Shadow
+    const shadowMesh = createContactShadow(2.8, 2.8, 0.38);
     scene.add(shadowMesh);
 
     // 4. Procedural 3D Generative Artifact
     const artifact = createMultiSceneArtifact(index);
     scene.add(artifact.group);
 
-    // 5. Observers: Responsive Resizing & Zero Background CPU Load
+    // 5. Observers: Responsive Resizing
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const w = entry.contentRect.width;
@@ -143,6 +153,8 @@ export function DomainCardReel({ index }: { index: number }) {
     let animationId: number;
     let lastTime = performance.now();
 
+    const currentCamPos = new THREE.Vector3(initialCam.x, initialCam.y, initialCam.z);
+
     const loop = (now: number) => {
       animationId = requestAnimationFrame(loop);
       const delta = Math.min((now - lastTime) / 1000, 0.1);
@@ -166,10 +178,14 @@ export function DomainCardReel({ index }: { index: number }) {
       setActiveSceneIdx(curIdx);
       setSceneProgress(curProg);
 
-      // Camera slight tilt with mouse
-      camera.position.x = pointerRef.current.x * 0.35;
-      camera.position.y = 0.35 + pointerRef.current.y * 0.25;
-      camera.lookAt(0, -0.05, 0);
+      // Smooth Cinematic Camera Choreography
+      const targetCam = CAMERA_KEYFRAMES[curIdx] ?? CAMERA_KEYFRAMES[0];
+      currentCamPos.x += (targetCam.x + pointerRef.current.x * 0.28 - currentCamPos.x) * 0.06;
+      currentCamPos.y += (targetCam.y + pointerRef.current.y * 0.22 - currentCamPos.y) * 0.06;
+      currentCamPos.z += (targetCam.z - currentCamPos.z) * 0.06;
+
+      camera.position.copy(currentCamPos);
+      camera.lookAt(0, -0.04, 0);
 
       // Update 3D procedural artifact
       artifact.update(
@@ -209,19 +225,27 @@ export function DomainCardReel({ index }: { index: number }) {
       onMouseMove={handleMouseMove}
       onMouseLeave={handleMouseLeave}
     >
-      {/* ── Layer 1: Pure Three.js WebGL Real-Time 3D Canvas (NO PICTURES) ── */}
+      {/* ── Layer 1: Pure Three.js WebGL Real-Time 3D Canvas ── */}
       <canvas ref={canvasRef} className="domain-reel-canvas" />
 
-      {/* ── Layer 2: Precision Concentric Calibration Rings ── */}
+      {/* ── Layer 2: Precision Viewfinder Corner Crosshairs ── */}
+      <div className="reel-viewfinder-hud" aria-hidden="true">
+        <span className="vf-cross vf-tl">+</span>
+        <span className="vf-cross vf-tr">+</span>
+        <span className="vf-cross vf-bl">+</span>
+        <span className="vf-cross vf-br">+</span>
+      </div>
+
+      {/* ── Layer 3: Concentric Optical Calibration Grid ── */}
       <svg className="reel-rings" viewBox="0 0 400 300" aria-hidden="true">
-        <circle cx="200" cy="150" r="55" />
-        <circle cx="200" cy="150" r="105" />
-        <circle cx="200" cy="150" r="155" />
-        <line x1="190" y1="150" x2="210" y2="150" />
-        <line x1="200" y1="140" x2="200" y2="160" />
+        <circle cx="200" cy="150" r="60" />
+        <circle cx="200" cy="150" r="110" />
+        <circle cx="200" cy="150" r="160" />
+        <line x1="192" y1="150" x2="208" y2="150" />
+        <line x1="200" y1="142" x2="200" y2="158" />
       </svg>
 
-      {/* ── Layer 3: Top Cinematic Reel Header ── */}
+      {/* ── Layer 4: Top Precision Telemetry Bar ── */}
       <div className="reel-top-bar">
         <div className="reel-badge">
           <span className="reel-rec-dot" />
@@ -254,15 +278,9 @@ export function DomainCardReel({ index }: { index: number }) {
         </div>
       </div>
 
-      {/* ── Layer 4: Live Engineering Telemetry Box ── */}
-      <div className="reel-floating-metric">
-        <span className="metric-label">{currentChapter.metric.label}</span>
-        <b className="metric-val">{currentChapter.metric.value}</b>
-      </div>
-
-      {/* ── Layer 5: Bottom Narrative Reel HUD ── */}
-      <div className="reel-bottom-hud">
-        {/* 4 Segmented Progress Pills */}
+      {/* ── Layer 5: Clean, Low-Profile Bottom Scrubber & Telemetry ── */}
+      <div className="reel-bottom-bar">
+        {/* 4-Segmented Hairline Progress Scrubber */}
         <div className="reel-segment-track">
           {domain.chapters.map((ch, idx) => (
             <button
@@ -273,7 +291,7 @@ export function DomainCardReel({ index }: { index: number }) {
                 e.stopPropagation();
                 handleSeek(idx);
               }}
-              title={ch.title}
+              title={`${ch.act}: ${ch.title}`}
             >
               <div
                 className="reel-seg-fill"
@@ -283,10 +301,15 @@ export function DomainCardReel({ index }: { index: number }) {
           ))}
         </div>
 
-        {/* Narrative Chapter Caption */}
-        <div className="reel-headline-box">
-          <h4 className="reel-chapter-title">{currentChapter.title}</h4>
-          <p className="reel-chapter-sub">{currentChapter.sub}</p>
+        {/* Minimal Monospace Sub-Bar: Chapter & Live Telemetry */}
+        <div className="reel-telemetry-row">
+          <span className="reel-chapter-mono">
+            0{activeSceneIdx + 1} // {currentChapter.title}
+          </span>
+          <span className="reel-metric-mono">
+            <span className="metric-tag">{currentChapter.metric.label}:</span>{' '}
+            <b>{currentChapter.metric.value}</b>
+          </span>
         </div>
       </div>
     </div>

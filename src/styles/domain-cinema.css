@@ -1,22 +1,22 @@
-/* Bharattech Origin — Pure Three.js Generative 3D Video Reels */
+/* Bharattech Origin — Precision Three.js 3D Generative Product Reels */
 
 .domain-visual {
   position: relative;
   display: block;
   width: 100%;
-  height: 290px;
-  background: radial-gradient(circle at 50% 45%, #242b3d 0%, #111522 55%, #080a11 100%);
+  height: 310px;
+  background: radial-gradient(circle at 50% 45%, #22283a 0%, #111522 55%, #080a11 100%);
   border-bottom: 1px solid var(--line, rgba(26, 28, 30, 0.12));
   overflow: hidden;
 }
 
 .domain-cell.is-lead .domain-visual {
-  height: 380px;
+  height: 400px;
 }
 
 .domain-cell.is-wide .domain-visual {
   height: 100%;
-  min-height: 320px;
+  min-height: 330px;
   border-bottom: 0;
   border-right: 1px solid var(--line, rgba(26, 28, 30, 0.12));
 }
@@ -42,7 +42,43 @@
   z-index: 1;
 }
 
-/* ── Layer 2: Precision Concentric Calibration Rings ─────────────────────── */
+/* ── Layer 2: Precision Viewfinder Corner Crosshairs ─────────────────────── */
+
+.reel-viewfinder-hud {
+  position: absolute;
+  inset: 12px 14px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.vf-cross {
+  position: absolute;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.28);
+  font-weight: 300;
+  user-select: none;
+}
+
+.vf-tl {
+  top: 0;
+  left: 0;
+}
+.vf-tr {
+  top: 0;
+  right: 0;
+}
+.vf-bl {
+  bottom: 0;
+  left: 0;
+}
+.vf-br {
+  bottom: 0;
+  right: 0;
+}
+
+/* ── Layer 3: Concentric Calibration Grid ─────────────────────────────────── */
 
 .reel-rings {
   position: absolute;
@@ -51,22 +87,22 @@
   height: 100%;
   pointer-events: none;
   z-index: 2;
-  opacity: 0.35;
+  opacity: 0.3;
 }
 
 .reel-rings circle {
   fill: none;
-  stroke: rgba(255, 255, 255, 0.35);
+  stroke: rgba(255, 255, 255, 0.28);
   stroke-width: 0.75;
   stroke-dasharray: 2 6;
 }
 
 .reel-rings line {
-  stroke: rgba(255, 255, 255, 0.5);
+  stroke: rgba(255, 255, 255, 0.4);
   stroke-width: 1;
 }
 
-/* ── Layer 3: Top Header Overlay ──────────────────────────────────────────── */
+/* ── Layer 4: Top Telemetry Bar ───────────────────────────────────────────── */
 
 .reel-top-bar {
   position: absolute;
@@ -84,13 +120,13 @@
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  background: rgba(10, 12, 18, 0.78);
+  background: rgba(10, 14, 24, 0.82);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
   padding: 4px 10px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.45);
 }
 
 .reel-rec-dot {
@@ -115,7 +151,7 @@
 
 .reel-act-code {
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 700;
   letter-spacing: 0.08em;
   color: #ffffff;
@@ -123,15 +159,15 @@
 
 .reel-divider {
   color: rgba(255, 255, 255, 0.35);
-  font-size: 10px;
+  font-size: 9.5px;
 }
 
 .reel-tag-text {
   font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 600;
   letter-spacing: 0.06em;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.88);
   text-transform: uppercase;
 }
 
@@ -152,31 +188,31 @@
   border-radius: 6px;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transition: all 0.25s ease;
 }
 
-.reel-status-pill.is-problem {
-  background: rgba(239, 68, 68, 0.25);
-  border: 1px solid rgba(239, 68, 68, 0.6);
-  color: #fca5a5;
+.reel-status-pill.is-standby {
+  background: rgba(148, 163, 184, 0.2);
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  color: #e2e8f0;
 }
 
-.reel-status-pill.is-building {
+.reel-status-pill.is-deploy {
   background: rgba(168, 85, 247, 0.25);
-  border: 1px solid rgba(168, 85, 247, 0.6);
-  color: #d8b4fe;
+  border: 1px solid rgba(168, 85, 247, 0.65);
+  color: #e9d5ff;
 }
 
 .reel-status-pill.is-active {
   background: rgba(16, 185, 129, 0.25);
-  border: 1px solid rgba(16, 185, 129, 0.6);
-  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.65);
+  color: #a7f3d0;
 }
 
 .reel-status-pill.is-verified {
-  background: rgba(245, 158, 11, 0.3);
-  border: 1px solid rgba(245, 158, 11, 0.8);
+  background: rgba(245, 158, 11, 0.28);
+  border: 1px solid rgba(245, 158, 11, 0.75);
   color: #fde047;
 }
 
@@ -184,7 +220,7 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background: rgba(10, 12, 18, 0.78);
+  background: rgba(10, 14, 24, 0.82);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.18);
@@ -198,69 +234,31 @@
 
 .reel-play-toggle:hover {
   transform: scale(1.1);
-  background: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.22);
 }
 
-/* ── Layer 4: Live Engineering Telemetry Box ──────────────────────────────── */
+/* ── Layer 5: Clean, Low-Profile Bottom Bar & Telemetry ────────────────────── */
 
-.reel-floating-metric {
-  position: absolute;
-  right: 14px;
-  bottom: 84px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  background: rgba(6, 8, 14, 0.82);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 8px;
-  padding: 5px 10px;
-  z-index: 6;
-  pointer-events: none;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-  animation: metricFloat 0.3s ease-out;
-}
-
-.metric-label {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 8.5px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  color: rgba(255, 255, 255, 0.5);
-  text-transform: uppercase;
-}
-
-.metric-val {
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  color: #ffffff;
-}
-
-/* ── Layer 5: Bottom Narrative HUD Overlay ────────────────────────────────── */
-
-.reel-bottom-hud {
+.reel-bottom-bar {
   position: absolute;
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 14px 16px 12px;
+  padding: 10px 14px 10px;
   background: linear-gradient(
     to top,
-    rgba(6, 8, 14, 0.98) 0%,
-    rgba(6, 8, 14, 0.85) 60%,
-    rgba(6, 8, 14, 0) 100%
+    rgba(8, 10, 18, 0.92) 0%,
+    rgba(8, 10, 18, 0.65) 60%,
+    rgba(8, 10, 18, 0) 100%
   );
   z-index: 6;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 6px;
   pointer-events: auto;
 }
 
-/* 4-Segment Progress Bar */
+/* 4-Segment Hairline Scrubber */
 
 .reel-segment-track {
   display: flex;
@@ -271,9 +269,9 @@
 
 .reel-seg-pill {
   flex: 1;
-  height: 3.5px;
+  height: 3px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.2);
   overflow: hidden;
   cursor: pointer;
   border: none;
@@ -282,67 +280,74 @@
 }
 
 .reel-seg-pill:hover {
-  height: 5px;
-  background: rgba(255, 255, 255, 0.32);
+  height: 4.5px;
+  background: rgba(255, 255, 255, 0.35);
 }
 
 .reel-seg-pill.is-active {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .reel-seg-fill {
   height: 100%;
   background: var(--tone, #f59e0b);
   border-radius: 999px;
-  transition: width 0.06s linear;
+  transition: width 0.05s linear;
 }
 
-/* Headline & Technical Subline */
+/* Minimal Monospace Sub-Bar */
 
-.reel-headline-box {
+.reel-telemetry-row {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9.5px;
+  line-height: 1;
 }
 
-.reel-chapter-title {
-  margin: 0;
-  font-size: 13px;
+.reel-chapter-mono {
+  color: rgba(255, 255, 255, 0.88);
   font-weight: 600;
-  letter-spacing: -0.01em;
-  color: #ffffff;
+  letter-spacing: 0.04em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  text-transform: uppercase;
 }
 
-.reel-chapter-sub {
-  margin: 0;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.72);
-  line-height: 1.35;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.reel-metric-mono {
+  color: rgba(255, 255, 255, 0.6);
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.reel-metric-mono b {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.metric-tag {
+  color: rgba(255, 255, 255, 0.45);
 }
 
 /* Mobile Responsiveness */
 @media (max-width: 768px) {
   .domain-visual {
-    height: 240px;
+    height: 250px;
   }
   .domain-cell.is-lead .domain-visual {
-    height: 280px;
+    height: 290px;
   }
   .domain-cell.is-wide .domain-visual {
-    min-height: 240px;
+    min-height: 250px;
   }
-  .reel-floating-metric {
+  .reel-metric-mono {
     display: none;
   }
-  .reel-chapter-sub {
+  .vf-cross {
     display: none;
   }
 }

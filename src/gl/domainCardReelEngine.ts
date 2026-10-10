@@ -28,7 +28,6 @@ export function getOrCreateStudioEnvironment(renderer: THREE.WebGLRenderer): THR
   if (cachedEnvMap) return cachedEnvMap;
 
   const envScene = new THREE.Scene();
-  // Bright studio neutral gray horizon so metals never reflect pitch black
   envScene.background = new THREE.Color(0x64748b);
 
   // Large overhead softbox (main diffuse highlight on top surfaces)
@@ -83,7 +82,7 @@ export function getOrCreateStudioEnvironment(renderer: THREE.WebGLRenderer): THR
 // 2. Soft Contact Floor Shadow
 // ════════════════════════════════════════════════════════════════════════════
 
-export function createContactShadow(w = 3.2, d = 3.2, opacity = 0.45): THREE.Mesh {
+export function createContactShadow(w = 3.2, d = 3.2, opacity = 0.4): THREE.Mesh {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 256;
   const ctx = canvas.getContext('2d')!;
@@ -120,11 +119,9 @@ export function createSilkscreenTexture(
   canvas.height = 256;
   const ctx = canvas.getContext('2d')!;
 
-  // Bright satin metallic chassis base (NEVER pure black!)
   ctx.fillStyle = isDark ? '#334155' : '#e2e8f0';
   ctx.fillRect(0, 0, 512, 256);
 
-  // Subtle brushed metallic noise / hairline grid
   ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(15, 23, 42, 0.08)';
   ctx.lineWidth = 1;
   for (let x = 32; x < 512; x += 32) {
@@ -176,7 +173,7 @@ export function createSilkscreenTexture(
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 4. 3D Annotation Callout Pin Helper with Floating Billboard Badges
+// 4. 3D Annotation Callout Pin Helper with Dynamic Target Tracking
 // ════════════════════════════════════════════════════════════════════════════
 
 export interface CalloutPinItem {
@@ -184,7 +181,9 @@ export interface CalloutPinItem {
   startPoint: THREE.Vector3;
   endPoint: THREE.Vector3;
   line: THREE.Line;
+  dot: THREE.Mesh;
   badge: THREE.Mesh;
+  setTarget: (start: [number, number, number], end?: [number, number, number]) => void;
 }
 
 export function createCalloutPin(
@@ -198,7 +197,7 @@ export function createCalloutPin(
   const startPt = new THREE.Vector3(...start);
   const endPt = new THREE.Vector3(...end);
 
-  // Thin hairline leader line
+  // Hairline leader line
   const lineGeo = new THREE.BufferGeometry().setFromPoints([startPt, endPt]);
   const lineMat = new THREE.LineBasicMaterial({
     color: new THREE.Color(accent),
@@ -209,7 +208,7 @@ export function createCalloutPin(
   pinGroup.add(line);
 
   // Metallic target anchor dot
-  const dotGeo = new THREE.SphereGeometry(0.026, 16, 16);
+  const dotGeo = new THREE.SphereGeometry(0.024, 16, 16);
   const dotMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(accent) });
   const dot = new THREE.Mesh(dotGeo, dotMat);
   dot.position.copy(startPt);
@@ -217,13 +216,13 @@ export function createCalloutPin(
 
   // Badge billboard canvas with crisp high-contrast pill
   const canvas = document.createElement('canvas');
-  canvas.width = 300;
-  canvas.height = 72;
+  canvas.width = 320;
+  canvas.height = 76;
   const ctx = canvas.getContext('2d')!;
 
-  ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+  ctx.fillStyle = 'rgba(12, 16, 28, 0.94)';
   ctx.beginPath();
-  ctx.roundRect(4, 4, 292, 64, 10);
+  ctx.roundRect(4, 4, 312, 68, 10);
   ctx.fill();
 
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
@@ -232,15 +231,15 @@ export function createCalloutPin(
 
   // Accent vertical indicator
   ctx.fillStyle = accent;
-  ctx.fillRect(10, 14, 5, 44);
+  ctx.fillRect(10, 14, 5, 48);
 
-  // Text
+  // Monospace text
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 16px ui-monospace, SFMono-Regular, Menlo, monospace';
-  ctx.fillText(text, 26, 42);
+  ctx.font = 'bold 15px ui-monospace, SFMono-Regular, Menlo, monospace';
+  ctx.fillText(text, 26, 44);
 
   const badgeTex = new THREE.CanvasTexture(canvas);
-  const badgeGeo = new THREE.PlaneGeometry(0.68, 0.17);
+  const badgeGeo = new THREE.PlaneGeometry(0.65, 0.16);
   const badgeMat = new THREE.MeshBasicMaterial({
     map: badgeTex,
     transparent: true,
@@ -251,11 +250,24 @@ export function createCalloutPin(
   badge.position.copy(endPt);
   pinGroup.add(badge);
 
-  return { group: pinGroup, startPoint: startPt, endPoint: endPt, line, badge };
+  const setTarget = (newStart: [number, number, number], newEnd?: [number, number, number]) => {
+    startPt.set(...newStart);
+    if (newEnd) endPt.set(...newEnd);
+    dot.position.copy(startPt);
+    badge.position.copy(endPt);
+    const posAttr = line.geometry.attributes.position;
+    if (posAttr) {
+      posAttr.setXYZ(0, startPt.x, startPt.y, startPt.z);
+      posAttr.setXYZ(1, endPt.x, endPt.y, endPt.z);
+      posAttr.needsUpdate = true;
+    }
+  };
+
+  return { group: pinGroup, startPoint: startPt, endPoint: endPt, line, dot, badge, setTarget };
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 0. GI RIVINITY: 5D Fused Quartz Optical Memory Engine & Femtosecond Laser
+// 0. GI RIVINITY: 5D Fused Quartz Optical Memory Engine & Dual-Layer Laser
 // ════════════════════════════════════════════════════════════════════════════
 
 export function createQuartzLatticeReel(): MultiSceneArtifact {
@@ -274,7 +286,7 @@ export function createQuartzLatticeReel(): MultiSceneArtifact {
   const plinthGeo = new THREE.CylinderGeometry(0.74, 0.8, 0.24, 48);
   const plinthMat = new THREE.MeshStandardMaterial({
     map: plinthTex,
-    color: 0xe2e8f0, // Bright satin aircraft titanium
+    color: 0xe2e8f0,
     metalness: 0.88,
     roughness: 0.2,
   });
@@ -300,7 +312,7 @@ export function createQuartzLatticeReel(): MultiSceneArtifact {
   // 2. 4 Satin Platinum Quadrant Petals (Kinematic Bloom Aperture)
   const petalGeo = createCurvedPetalGeometry(0.75, 0.86, Math.PI * 0.46, 0.08);
   const platinumMat = new THREE.MeshStandardMaterial({
-    color: 0xf1f5f9, // Satin platinum silver
+    color: 0xf1f5f9,
     metalness: 0.92,
     roughness: 0.16,
   });
@@ -332,7 +344,7 @@ export function createQuartzLatticeReel(): MultiSceneArtifact {
 
   // 3. Central Rising Spindle Carriage
   const carriageGroup = new THREE.Group();
-  carriageGroup.position.y = -0.32; // Partially visible even in Act 1
+  carriageGroup.position.y = -0.32;
 
   // 24k Gold Titanium Spindle Hub
   const spindleGeo = new THREE.CylinderGeometry(0.24, 0.24, 0.32, 32);
@@ -371,7 +383,6 @@ export function createQuartzLatticeReel(): MultiSceneArtifact {
     tPos[i * 3 + 1] = 0.18 + (Math.random() - 0.5) * 0.02;
     tPos[i * 3 + 2] = Math.sin(a) * r;
 
-    // Iridescent rainbow spectral tracks
     tCols[i * 3] = Math.sin(a * 2.5) * 0.5 + 0.5;
     tCols[i * 3 + 1] = Math.sin(a * 2.5 + 2.09) * 0.5 + 0.5;
     tCols[i * 3 + 2] = Math.sin(a * 2.5 + 4.18) * 0.5 + 0.5;
@@ -404,7 +415,7 @@ export function createQuartzLatticeReel(): MultiSceneArtifact {
     carriageGroup.add(ring);
   }
 
-  // 5. Articulated Femtosecond Laser Arm & Optic Lens
+  // 5. Articulated Femtosecond Laser Arm & Dual-Layer Volumetric Beam
   const laserArmGroup = new THREE.Group();
   laserArmGroup.position.set(0.38, 0.26, 0);
 
@@ -421,20 +432,31 @@ export function createQuartzLatticeReel(): MultiSceneArtifact {
   lensHead.position.set(0, 0.02, 0);
   laserArmGroup.add(lensHead);
 
-  // Visible Luminous Laser Beam Shooting Directly at Disc Surface
-  const beamGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.24, 12);
-  const beamMat = new THREE.MeshBasicMaterial({
-    color: 0xa855f7,
+  // High-Intensity Core Needle Beam (Cyan)
+  const coreBeamGeo = new THREE.CylinderGeometry(0.003, 0.003, 0.24, 12);
+  const coreBeamMat = new THREE.MeshBasicMaterial({
+    color: 0x38bdf8,
     transparent: true,
-    opacity: 0.9,
+    opacity: 0.95,
+  });
+  const coreBeam = new THREE.Mesh(coreBeamGeo, coreBeamMat);
+  coreBeam.position.set(0, -0.12, 0);
+  laserArmGroup.add(coreBeam);
+
+  // Glowing Outer Sheath (Violet / Additive)
+  const sheathGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.24, 12);
+  const sheathMat = new THREE.MeshBasicMaterial({
+    color: 0xc084fc,
+    transparent: true,
+    opacity: 0.5,
     blending: THREE.AdditiveBlending,
   });
-  const beam = new THREE.Mesh(beamGeo, beamMat);
-  beam.position.set(0, -0.12, 0);
-  laserArmGroup.add(beam);
+  const sheath = new THREE.Mesh(sheathGeo, sheathMat);
+  sheath.position.set(0, -0.12, 0);
+  laserArmGroup.add(sheath);
 
   // Focal Point Spark / Lens Flare on Disc
-  const flareGeo = new THREE.SphereGeometry(0.025, 16, 16);
+  const flareGeo = new THREE.SphereGeometry(0.028, 16, 16);
   const flareMat = new THREE.MeshBasicMaterial({
     color: 0x38bdf8,
     transparent: true,
@@ -444,6 +466,29 @@ export function createQuartzLatticeReel(): MultiSceneArtifact {
   const flare = new THREE.Mesh(flareGeo, flareMat);
   flare.position.set(0, -0.24, 0);
   laserArmGroup.add(flare);
+
+  // Dynamic Ablation Spark Particles (Spraying Outward)
+  const sparkCount = 60;
+  const sparkPos = new Float32Array(sparkCount * 3);
+  const sparkVels: THREE.Vector3[] = [];
+  for (let s = 0; s < sparkCount; s++) {
+    sparkPos[s * 3] = 0;
+    sparkPos[s * 3 + 1] = -0.24;
+    sparkPos[s * 3 + 2] = 0;
+    const a = Math.random() * Math.PI * 2;
+    sparkVels.push(new THREE.Vector3(Math.cos(a) * 0.15, Math.random() * 0.08, Math.sin(a) * 0.15));
+  }
+  const sparkGeo = new THREE.BufferGeometry();
+  sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+  const sparkMat = new THREE.PointsMaterial({
+    size: 0.026,
+    color: 0x7dd3fc,
+    transparent: true,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
+  });
+  const sparks = new THREE.Points(sparkGeo, sparkMat);
+  laserArmGroup.add(sparks);
 
   carriageGroup.add(laserArmGroup);
   group.add(carriageGroup);
@@ -462,7 +507,7 @@ export function createQuartzLatticeReel(): MultiSceneArtifact {
       const px = pointer ? pointer.x * 0.25 : 0;
       const py = pointer ? pointer.y * 0.25 : 0;
       group.rotation.x = 0.45 + py;
-      group.rotation.y = time * 0.12 + px;
+      group.rotation.y = time * 0.14 + px;
 
       // Pulse status micro-LEDs
       leds.forEach((led, i) => {
@@ -470,49 +515,64 @@ export function createQuartzLatticeReel(): MultiSceneArtifact {
         (led.material as THREE.MeshBasicMaterial).color.setHex(pulse > 0.5 ? 0x8b5cf6 : 0x38bdf8);
       });
 
+      // Update ablation spark particles
+      const sArr = sparkGeo.attributes.position.array as Float32Array;
+      for (let s = 0; s < sparkCount; s++) {
+        const life = ((time * 4 + s * 0.1) % 1);
+        sArr[s * 3] = sparkVels[s].x * life;
+        sArr[s * 3 + 1] = -0.24 + sparkVels[s].y * life - life * life * 0.1;
+        sArr[s * 3 + 2] = sparkVels[s].z * life;
+      }
+      sparkGeo.attributes.position.needsUpdate = true;
+
       // Billboarding for callout pins
       if (camera) {
         pins.forEach((p) => p.badge.quaternion.copy(camera.quaternion));
       }
 
       if (sceneIdx === 0) {
-        // Act 1: Sealed Capsule (Partially cracked petals so interior glints!)
+        // Act 1: Sealed Capsule (Slightly cracked petals)
         petalHinges.forEach((h) => (h.rotation.z = 0.15));
         carriageGroup.position.y = -0.32;
         disc.rotation.y = time * 0.2;
         trackPoints.rotation.y = time * 0.2;
         laserArmGroup.position.set(0.35, 0.22, 0);
-        beamMat.opacity = 0.4;
+        coreBeamMat.opacity = 0.4;
+        sheathMat.opacity = 0.25;
         flareMat.opacity = 0.5;
-        beamMat.color.set(0x8b5cf6);
+        sparkMat.opacity = 0.3;
       } else if (sceneIdx === 1) {
-        // Act 2: Kinematic Bloom (Petals open to 75°, spindle lifts)
+        // Act 2: Kinematic Bloom
         const ease = sceneProgress * sceneProgress * (3 - 2 * sceneProgress);
         petalHinges.forEach((h) => (h.rotation.z = 0.15 + ease * 1.15));
         carriageGroup.position.y = -0.32 + ease * 0.32;
         disc.rotation.y = time * (0.2 + ease * 2.0);
         trackPoints.rotation.y = disc.rotation.y;
-        beamMat.opacity = 0.4 + ease * 0.5;
+        coreBeamMat.opacity = 0.4 + ease * 0.55;
+        sheathMat.opacity = 0.25 + ease * 0.35;
         flareMat.opacity = 0.5 + ease * 0.5;
+        sparkMat.opacity = 0.3 + ease * 0.6;
       } else if (sceneIdx === 2) {
-        // Act 3: 8,000 RPM Optical Operation
+        // Act 3: 8,000 RPM Active Operation
         petalHinges.forEach((h) => (h.rotation.z = 1.3));
         carriageGroup.position.y = 0.0;
-        disc.rotation.y = time * 6.5;
-        trackPoints.rotation.y = time * 6.5;
-        beamMat.opacity = 0.95;
+        disc.rotation.y = time * 7.5;
+        trackPoints.rotation.y = time * 7.5;
+        coreBeamMat.opacity = 0.95;
+        sheathMat.opacity = 0.65;
         flareMat.opacity = 1.0;
-        beamMat.color.set(0x38bdf8);
-        laserArmGroup.position.x = 0.35 + Math.sin(time * 2.5) * 0.08;
+        sparkMat.opacity = 0.95;
+        laserArmGroup.position.x = 0.35 + Math.sin(time * 3.0) * 0.09;
       } else {
-        // Act 4: Hero Exploded View
+        // Act 4: Exploded View
         petalHinges.forEach((h) => (h.rotation.z = 1.15));
         carriageGroup.position.y = -0.05;
-        disc.rotation.y = time * 0.8;
-        trackPoints.rotation.y = time * 0.8;
-        beamMat.opacity = 0.85;
+        disc.rotation.y = time * 1.0;
+        trackPoints.rotation.y = time * 1.0;
+        coreBeamMat.opacity = 0.85;
+        sheathMat.opacity = 0.45;
         flareMat.opacity = 0.9;
-        beamMat.color.set(0xfacc15);
+        sparkMat.opacity = 0.6;
       }
     },
     dispose: () => {
@@ -528,16 +588,20 @@ export function createQuartzLatticeReel(): MultiSceneArtifact {
       trackMat.dispose();
       armGeo.dispose();
       armMat.dispose();
-      beamGeo.dispose();
-      beamMat.dispose();
+      coreBeamGeo.dispose();
+      coreBeamMat.dispose();
+      sheathGeo.dispose();
+      sheathMat.dispose();
       flareGeo.dispose();
       flareMat.dispose();
+      sparkGeo.dispose();
+      sparkMat.dispose();
     },
   };
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 1. RIVINITY CORE: Milled Modular Unibody Server Blade & 48.2 GB/s Optical Fabric
+// 1. RIVINITY CORE: Milled Modular Unibody Server Blade & Linear Rails
 // ════════════════════════════════════════════════════════════════════════════
 
 export function createComputeFabricReel(): MultiSceneArtifact {
@@ -556,7 +620,7 @@ export function createComputeFabricReel(): MultiSceneArtifact {
   const blockGeo = createBeveledBoxGeometry(0.58, 0.34, 0.58, 0.05, 0.015);
   const aluminumMat = new THREE.MeshStandardMaterial({
     map: blockTex,
-    color: 0xe2e8f0, // Bright satin anodized silver aluminum
+    color: 0xe2e8f0,
     metalness: 0.9,
     roughness: 0.18,
   });
@@ -569,16 +633,27 @@ export function createComputeFabricReel(): MultiSceneArtifact {
   ];
 
   const quadrantMeshes: THREE.Mesh[] = [];
+  const railMeshes: THREE.Mesh[] = [];
+
   assembledVectors.forEach(([ax, az]) => {
     const mesh = new THREE.Mesh(blockGeo, aluminumMat);
     mesh.position.set(ax, -0.15, az);
 
-    // Visible Gold Edge Connector Fingers on internal mating faces
+    // Visible Gold Edge Connector Fingers
     const edgeGeo = new THREE.BoxGeometry(0.52, 0.02, 0.02);
     const goldEdgeMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.96, roughness: 0.1 });
     const edge = new THREE.Mesh(edgeGeo, goldEdgeMat);
     edge.position.set(0, -0.14, -az * 0.45);
     mesh.add(edge);
+
+    // Chrome Linear Guide Rail
+    const railGeo = new THREE.CylinderGeometry(0.012, 0.012, 1.4, 16);
+    const railMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.99, roughness: 0.05 });
+    const rail = new THREE.Mesh(railGeo, railMat);
+    rail.position.set(ax * 0.5, -0.34, az * 0.5);
+    rail.rotation.x = Math.PI / 4;
+    railMeshes.push(rail);
+    group.add(rail);
 
     quadrantMeshes.push(mesh);
     group.add(mesh);
@@ -587,7 +662,7 @@ export function createComputeFabricReel(): MultiSceneArtifact {
   // Top Radial Polished Copper Heatsink (Gleaming Metallic Orange)
   const copperGeo = new THREE.CylinderGeometry(0.48, 0.48, 0.1, 48);
   const copperMat = new THREE.MeshStandardMaterial({
-    color: 0xf59e0b, // Bright lustrous copper
+    color: 0xf59e0b,
     metalness: 0.96,
     roughness: 0.14,
   });
@@ -671,14 +746,14 @@ export function createComputeFabricReel(): MultiSceneArtifact {
       const px = pointer ? pointer.x * 0.25 : 0;
       const py = pointer ? pointer.y * 0.25 : 0;
       group.rotation.x = 0.52 + py;
-      group.rotation.y = time * 0.15 + px;
+      group.rotation.y = time * 0.16 + px;
 
       if (camera) {
         pins.forEach((p) => p.badge.quaternion.copy(camera.quaternion));
       }
 
       if (sceneIdx === 0) {
-        // Act 1: Monolithic Unibody (Slightly cracked seams showing optical glow)
+        // Act 1: Monolithic Unibody
         quadrantMeshes.forEach((mesh, i) => {
           const [ax, az] = assembledVectors[i];
           mesh.position.set(ax * 1.05, -0.15, az * 1.05);
@@ -707,7 +782,7 @@ export function createComputeFabricReel(): MultiSceneArtifact {
         for (let i = 0; i < sparkCount; i++) {
           const quad = i % assembledVectors.length;
           const [ax, az] = assembledVectors[quad];
-          const flow = (time * 3.5 + i * 0.02) % 1;
+          const flow = (time * 3.8 + i * 0.02) % 1;
           sArray[i * 3] = THREE.MathUtils.lerp(0, ax * 1.9, flow);
           sArray[i * 3 + 1] = -0.12 + Math.sin(flow * Math.PI) * 0.12;
           sArray[i * 3 + 2] = THREE.MathUtils.lerp(0, az * 1.9, flow);
@@ -733,6 +808,7 @@ export function createComputeFabricReel(): MultiSceneArtifact {
       waveguideMat.dispose();
       sparkGeo.dispose();
       sparkMat.dispose();
+      railMeshes.forEach((r) => r.geometry.dispose());
     },
   };
 }
@@ -757,7 +833,7 @@ export function createLidarPointcloudReel(): MultiSceneArtifact {
   const shellGeo = new THREE.CylinderGeometry(0.68, 0.72, 0.35, 48);
   const shellMat = new THREE.MeshStandardMaterial({
     map: shellTex,
-    color: 0xe2e8f0, // Satin anodized silver metal
+    color: 0xe2e8f0,
     metalness: 0.9,
     roughness: 0.18,
   });
@@ -820,10 +896,24 @@ export function createLidarPointcloudReel(): MultiSceneArtifact {
   fan.position.y = 0.28;
   barrelGroup.add(fan);
 
+  // Spherical Expanding ToF Pulse Wave Ring
+  const pulseGeo = new THREE.RingGeometry(0.1, 0.12, 64);
+  const pulseMat = new THREE.MeshBasicMaterial({
+    color: 0x34d399,
+    transparent: true,
+    opacity: 0.8,
+    side: THREE.DoubleSide,
+    blending: THREE.AdditiveBlending,
+  });
+  const pulseRing = new THREE.Mesh(pulseGeo, pulseMat);
+  pulseRing.rotation.x = Math.PI / 2;
+  pulseRing.position.y = 0.28;
+  barrelGroup.add(pulseRing);
+
   group.add(barrelGroup);
 
   // 3D Point-Cloud Voxels (Emerald to Cyan to Violet Depth Gradient)
-  const ptCount = 2200;
+  const ptCount = 2500;
   const pPos = new Float32Array(ptCount * 3);
   const pCols = new Float32Array(ptCount * 3);
   const cGreen = new THREE.Color(0x10b981);
@@ -870,14 +960,19 @@ export function createLidarPointcloudReel(): MultiSceneArtifact {
       const px = pointer ? pointer.x * 0.25 : 0;
       const py = pointer ? pointer.y * 0.25 : 0;
       group.rotation.x = 0.42 + py;
-      group.rotation.y = time * 0.15 + px;
+      group.rotation.y = time * 0.16 + px;
+
+      // Expand ToF pulse wave ring
+      const wave = (time * 1.8) % 1;
+      pulseRing.scale.setScalar(1 + wave * 18);
+      pulseMat.opacity = (1 - wave) * 0.8;
 
       if (camera) {
         pins.forEach((p) => p.badge.quaternion.copy(camera.quaternion));
       }
 
       if (sceneIdx === 0) {
-        // Act 1: Hermetic Cowling (Partially parted seam showing laser lens)
+        // Act 1: Hermetic Cowling
         topShell.position.y = 0.24;
         bottomShell.position.y = -0.24;
         barrelGroup.position.z = 0;
@@ -896,18 +991,18 @@ export function createLidarPointcloudReel(): MultiSceneArtifact {
         topShell.position.y = 0.7;
         bottomShell.position.y = -0.6;
         barrelGroup.position.z = 0.22;
-        prism.rotation.y = time * 8.0;
-        fan.rotation.z = time * 5.0;
-        fanMat.opacity = 0.5;
+        prism.rotation.y = time * 9.0;
+        fan.rotation.z = time * 5.5;
+        fanMat.opacity = 0.55;
         ptMat.opacity = 0.95;
       } else {
         // Act 4: Exploded Spatial Voxel Map
         topShell.position.y = 0.62;
         bottomShell.position.y = -0.52;
         barrelGroup.position.z = 0.18;
-        prism.rotation.y = time * 2.0;
-        fan.rotation.z = time * 2.0;
-        fanMat.opacity = 0.3;
+        prism.rotation.y = time * 2.5;
+        fan.rotation.z = time * 2.5;
+        fanMat.opacity = 0.35;
         ptMat.opacity = 0.85;
       }
     },
@@ -924,6 +1019,8 @@ export function createLidarPointcloudReel(): MultiSceneArtifact {
       fanMat.dispose();
       ptGeo.dispose();
       ptMat.dispose();
+      pulseGeo.dispose();
+      pulseMat.dispose();
     },
   };
 }
@@ -959,7 +1056,7 @@ export function createProceduralTerrainReel(): MultiSceneArtifact {
   // 4 Perimeter Retaining Walls
   const wallGeo = createBeveledBoxGeometry(1.48, 0.45, 0.08, 0.02, 0.008);
   const wallMat = new THREE.MeshStandardMaterial({
-    color: 0x64748b, // Gunmetal slate
+    color: 0x64748b,
     metalness: 0.88,
     roughness: 0.2,
   });
@@ -1065,14 +1162,14 @@ export function createProceduralTerrainReel(): MultiSceneArtifact {
       const px = pointer ? pointer.x * 0.25 : 0;
       const py = pointer ? pointer.y * 0.25 : 0;
       group.rotation.x = 0.52 + py;
-      group.rotation.y = time * 0.12 + px;
+      group.rotation.y = time * 0.14 + px;
 
       if (camera) {
         pins.forEach((p) => p.badge.quaternion.copy(camera.quaternion));
       }
 
       if (sceneIdx === 0) {
-        // Act 1: Terraced Base (Contour relief partially elevated)
+        // Act 1: Terraced Base
         wallHinges.forEach((h) => (h.rotation.x = 0.15));
         terraceMeshes.forEach((mesh, l) => {
           mesh.position.y = -0.45 + (l / layers) * 0.2;
@@ -1126,7 +1223,7 @@ export function createProceduralTerrainReel(): MultiSceneArtifact {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// 4. DEFENSE INTELLIGENCE: Hardened Cryptographic Enclave & Quantum Vault
+// 4. DEFENSE INTELLIGENCE: Hardened Cryptographic Enclave & Dual Quantum Cages
 // ════════════════════════════════════════════════════════════════════════════
 
 export function createTungstenVaultReel(): MultiSceneArtifact {
@@ -1145,7 +1242,7 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
   const baseChassisGeo = createBeveledBoxGeometry(1.35, 0.22, 1.35, 0.04, 0.015);
   const tungstenMat = new THREE.MeshStandardMaterial({
     map: tungstenTex,
-    color: 0x475569, // Slate titanium gunmetal
+    color: 0x475569,
     metalness: 0.92,
     roughness: 0.2,
   });
@@ -1195,17 +1292,28 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
   die.position.y = -0.22;
   group.add(die);
 
-  // Geodesic Zero-Knowledge Quantum Tripwire Cage (Emerald Holographic Lattice)
-  const cageGeo = new THREE.IcosahedronGeometry(0.68, 1);
+  // Dual Counter-Rotating Geodesic Quantum Tripwire Cages
+  const outerCageGeo = new THREE.IcosahedronGeometry(0.68, 1);
   const cageMat = new THREE.MeshBasicMaterial({
     color: 0x22c55e,
     wireframe: true,
     transparent: true,
-    opacity: 0.4,
+    opacity: 0.45,
   });
-  const cage = new THREE.Mesh(cageGeo, cageMat);
-  cage.position.y = -0.15;
-  group.add(cage);
+  const outerCage = new THREE.Mesh(outerCageGeo, cageMat);
+  outerCage.position.y = -0.15;
+  group.add(outerCage);
+
+  const innerCageGeo = new THREE.IcosahedronGeometry(0.48, 1);
+  const innerCageMat = new THREE.MeshBasicMaterial({
+    color: 0x86efac,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.5,
+  });
+  const innerCage = new THREE.Mesh(innerCageGeo, innerCageMat);
+  innerCage.position.y = -0.15;
+  group.add(innerCage);
 
   // Diagonal Crimson Laser Tripwires Crossing Perimeter
   const tripwireMat = new THREE.LineBasicMaterial({
@@ -1236,20 +1344,25 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
       const px = pointer ? pointer.x * 0.25 : 0;
       const py = pointer ? pointer.y * 0.25 : 0;
       group.rotation.x = 0.52 + py;
-      group.rotation.y = time * 0.15 + px;
+      group.rotation.y = time * 0.16 + px;
+
+      // Counter-rotate cages
+      outerCage.rotation.y = -time * 0.8;
+      innerCage.rotation.y = time * 1.2;
 
       if (camera) {
         pins.forEach((p) => p.badge.quaternion.copy(camera.quaternion));
       }
 
       if (sceneIdx === 0) {
-        // Act 1: Sealed Vault (Bolts slightly exposed, green internal die glint)
+        // Act 1: Sealed Vault
         boltMeshes.forEach((b, i) => {
           const [bx, bz] = boltCoords[i];
           b.position.set(bx, 0.18, bz);
         });
         lid.position.y = 0.1;
         cageMat.opacity = 0.25;
+        innerCageMat.opacity = 0.3;
       } else if (sceneIdx === 1) {
         // Act 2: Torx Bolt Unscrew & Lid Elevation
         const ease = sceneProgress * sceneProgress * (3 - 2 * sceneProgress);
@@ -1260,6 +1373,7 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
         });
         lid.position.y = 0.1 + ease * 0.62;
         cageMat.opacity = 0.25 + ease * 0.45;
+        innerCageMat.opacity = 0.3 + ease * 0.5;
       } else if (sceneIdx === 2) {
         // Act 3: Active Zero-Knowledge Enclave
         boltMeshes.forEach((b, i) => {
@@ -1268,7 +1382,7 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
         });
         lid.position.y = 0.72;
         cageMat.opacity = 0.85;
-        cage.rotation.y = -time * 0.8;
+        innerCageMat.opacity = 0.95;
       } else {
         // Act 4: Exploded Defense Architecture
         boltMeshes.forEach((b, i) => {
@@ -1277,6 +1391,7 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
         });
         lid.position.y = 0.64;
         cageMat.opacity = 0.7;
+        innerCageMat.opacity = 0.75;
       }
     },
     dispose: () => {
@@ -1287,8 +1402,10 @@ export function createTungstenVaultReel(): MultiSceneArtifact {
       goldMat.dispose();
       dieGeo.dispose();
       dieMat.dispose();
-      cageGeo.dispose();
+      outerCageGeo.dispose();
       cageMat.dispose();
+      innerCageGeo.dispose();
+      innerCageMat.dispose();
       tripwireGeo.dispose();
       tripwireMat.dispose();
     },
@@ -1315,7 +1432,7 @@ export function createNeuromorphicDieReel(): MultiSceneArtifact {
   const substrateGeo = createBeveledBoxGeometry(1.35, 0.08, 1.35, 0.04, 0.015);
   const substrateMat = new THREE.MeshStandardMaterial({
     map: subTex,
-    color: 0xe2e8f0, // Bright carrier board
+    color: 0xe2e8f0,
     metalness: 0.88,
     roughness: 0.2,
   });
@@ -1339,7 +1456,7 @@ export function createNeuromorphicDieReel(): MultiSceneArtifact {
   // Mirror-Polished Nickel Heat-Spreader Lid (Lifts Upward)
   const lidGeo = createBeveledBoxGeometry(1.2, 0.06, 1.2, 0.03, 0.01);
   const lidMat = new THREE.MeshStandardMaterial({
-    color: 0xf1f5f9, // Gleaming polished nickel
+    color: 0xf1f5f9,
     metalness: 0.98,
     roughness: 0.1,
   });
@@ -1438,14 +1555,14 @@ export function createNeuromorphicDieReel(): MultiSceneArtifact {
       const px = pointer ? pointer.x * 0.25 : 0;
       const py = pointer ? pointer.y * 0.25 : 0;
       group.rotation.x = 0.52 + py;
-      group.rotation.y = time * 0.15 + px;
+      group.rotation.y = time * 0.16 + px;
 
       if (camera) {
         pins.forEach((p) => p.badge.quaternion.copy(camera.quaternion));
       }
 
       if (sceneIdx === 0) {
-        // Act 1: BGA Package (Lid slightly hovering showing wire bonds and blue die)
+        // Act 1: BGA Package
         lid.position.y = -0.38;
         lineMat.opacity = 0.35;
         sparkMat.opacity = 0.4;
@@ -1465,7 +1582,7 @@ export function createNeuromorphicDieReel(): MultiSceneArtifact {
         for (let i = 0; i < sparkCount; i++) {
           const b = i % branches;
           const a = (b / branches) * Math.PI * 2;
-          const flow = (time * 4.2 + i * 0.03) % 1;
+          const flow = (time * 4.5 + i * 0.03) % 1;
           sArr[i * 3] = Math.cos(a) * flow * 0.62;
           sArr[i * 3 + 1] = -0.44 + flow * 0.82;
           sArr[i * 3 + 2] = Math.sin(a) * flow * 0.62;
