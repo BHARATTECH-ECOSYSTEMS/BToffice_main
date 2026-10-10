@@ -28,7 +28,7 @@ export function getOrCreateStudioEnvironment(renderer: THREE.WebGLRenderer): THR
   if (cachedEnvMap) return cachedEnvMap;
 
   const envScene = new THREE.Scene();
-  envScene.background = new THREE.Color(0x64748b);
+  envScene.background = new THREE.Color(0xf8fafc); // Bright daylight off-white studio
 
   // Large overhead softbox (main diffuse highlight on top surfaces)
   const overheadGeo = new THREE.PlaneGeometry(24, 16);
@@ -48,7 +48,7 @@ export function getOrCreateStudioEnvironment(renderer: THREE.WebGLRenderer): THR
 
   // Left cool rim strip (crisp cyan-white ribbons down left flanks)
   const leftGeo = new THREE.PlaneGeometry(3.5, 22);
-  const leftMat = new THREE.MeshBasicMaterial({ color: 0x93c5fd, side: THREE.DoubleSide });
+  const leftMat = new THREE.MeshBasicMaterial({ color: 0xe0f2fe, side: THREE.DoubleSide });
   const leftStrip = new THREE.Mesh(leftGeo, leftMat);
   leftStrip.position.set(-11, 4, 0);
   leftStrip.rotation.y = Math.PI / 2;
@@ -56,15 +56,15 @@ export function getOrCreateStudioEnvironment(renderer: THREE.WebGLRenderer): THR
 
   // Right warm rim strip (golden specular highlights down right flanks)
   const rightGeo = new THREE.PlaneGeometry(3.5, 22);
-  const rightMat = new THREE.MeshBasicMaterial({ color: 0xfef08a, side: THREE.DoubleSide });
+  const rightMat = new THREE.MeshBasicMaterial({ color: 0xfef3c7, side: THREE.DoubleSide });
   const rightStrip = new THREE.Mesh(rightGeo, rightMat);
   rightStrip.position.set(11, 4, 0);
   rightStrip.rotation.y = -Math.PI / 2;
   envScene.add(rightStrip);
 
-  // Bottom bounce panel (prevents undersides from falling into black)
+  // Bottom bounce panel
   const bounceGeo = new THREE.PlaneGeometry(24, 24);
-  const bounceMat = new THREE.MeshBasicMaterial({ color: 0x94a3b8, side: THREE.DoubleSide });
+  const bounceMat = new THREE.MeshBasicMaterial({ color: 0xf1f5f9, side: THREE.DoubleSide });
   const bounce = new THREE.Mesh(bounceGeo, bounceMat);
   bounce.position.set(0, -6, 0);
   bounce.rotation.x = -Math.PI / 2;
@@ -214,18 +214,18 @@ export function createCalloutPin(
   dot.position.copy(startPt);
   pinGroup.add(dot);
 
-  // Badge billboard canvas with crisp high-contrast pill
+  // Badge billboard canvas with crisp high-contrast light pill
   const canvas = document.createElement('canvas');
   canvas.width = 320;
   canvas.height = 76;
   const ctx = canvas.getContext('2d')!;
 
-  ctx.fillStyle = 'rgba(12, 16, 28, 0.94)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.96)';
   ctx.beginPath();
   ctx.roundRect(4, 4, 312, 68, 10);
   ctx.fill();
 
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+  ctx.strokeStyle = 'rgba(15, 23, 42, 0.16)';
   ctx.lineWidth = 1.5;
   ctx.stroke();
 
@@ -233,8 +233,8 @@ export function createCalloutPin(
   ctx.fillStyle = accent;
   ctx.fillRect(10, 14, 5, 48);
 
-  // Monospace text
-  ctx.fillStyle = '#ffffff';
+  // Monospace text in crisp dark ink
+  ctx.fillStyle = '#0f172a';
   ctx.font = 'bold 15px ui-monospace, SFMono-Regular, Menlo, monospace';
   ctx.fillText(text, 26, 44);
 
