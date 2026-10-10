@@ -2,802 +2,898 @@ import * as THREE from 'three';
 
 export interface MultiSceneArtifact {
   group: THREE.Group;
+  cameraOffset?: { x: number; y: number; z: number };
   update: (time: number, sceneIdx: number, sceneProgress: number, pointer?: { x: number; y: number }) => void;
   dispose: () => void;
 }
 
-// ── Contact Shadow Generator ────────────────────────────────────────────────
-
-export function createContactShadow(w = 2.4, d = 2.4, opacity = 0.32): THREE.Mesh {
+// ── Contact Shadow Helper ────────────────────────────────────────────────────
+export function createContactShadow(w = 2.8, d = 2.8, opacity = 0.35): THREE.Mesh {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 256;
   const ctx = canvas.getContext('2d')!;
   const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
-  grad.addColorStop(0, `rgba(20, 19, 15, ${opacity})`);
-  grad.addColorStop(0.4, `rgba(20, 19, 15, ${opacity * 0.4})`);
-  grad.addColorStop(0.75, `rgba(20, 19, 15, ${opacity * 0.1})`);
-  grad.addColorStop(1, 'rgba(20, 19, 15, 0)');
+  grad.addColorStop(0, `rgba(10, 12, 16, ${opacity})`);
+  grad.addColorStop(0.4, `rgba(10, 12, 16, ${opacity * 0.45})`);
+  grad.addColorStop(0.75, `rgba(10, 12, 16, ${opacity * 0.1})`);
+  grad.addColorStop(1, 'rgba(10, 12, 16, 0)');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, 256, 256);
 
   const tex = new THREE.CanvasTexture(canvas);
   const geo = new THREE.PlaneGeometry(w, d);
-  const mat = new THREE.MeshBasicMaterial({
-    map: tex,
-    transparent: true,
-    depthWrite: false,
-  });
+  const mat = new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false });
   const mesh = new THREE.Mesh(geo, mat);
   mesh.rotation.x = -Math.PI / 2;
-  mesh.position.y = -0.78;
+  mesh.position.y = -1.1;
   return mesh;
 }
 
-// ── Custom Shaders ──────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// 0. GI RIVINITY: 5D Quantum Quartz Memory Lattice (8,000 Particles + Core)
+// ════════════════════════════════════════════════════════════════════════════
 
-/** Quartz Dispersion Shader with Laser-Inscription Animation */
-const QUARTZ_VS = `
-  varying vec3 vNormal;
-  varying vec3 vPosition;
-  varying vec2 vUv;
-  varying vec3 vViewPosition;
-
-  void main() {
-    vUv = uv;
-    vNormal = normalize(normalMatrix * normal);
-    vPosition = position;
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    vViewPosition = -mvPosition.xyz;
-    gl_Position = projectionMatrix * mvPosition;
-  }
-`;
-
-const QUARTZ_FS = `
-  uniform float uTime;
-  uniform float uInscribeRadius; // Progress of tracks being carved outward
-  uniform float uDispersionIntensity;
-  varying vec3 vNormal;
-  varying vec3 vPosition;
-  varying vec2 vUv;
-  varying vec3 vViewPosition;
-
-  void main() {
-    vec3 viewDir = normalize(vViewPosition);
-    vec3 norm = normalize(vNormal);
-
-    // Fresnel reflection
-    float fresnel = pow(1.0 - max(dot(viewDir, norm), 0.0), 3.0);
-
-    // Distance from center on disc face
-    float dist = length(vPosition.xz);
-    
-    // Laser etched tracks (only visible up to uInscribeRadius)
-    float isEtched = smoothstep(dist, dist - 0.04, uInscribeRadius);
-    float trackRings = sin(dist * 190.0) * 0.5 + 0.5;
-    trackRings *= smoothstep(0.34, 0.42, dist) * isEtched;
-
-    // Laser tip glow at cutting edge
-    float laserTip = exp(-abs(dist - uInscribeRadius) * 45.0) * step(uInscribeRadius, 1.18);
-
-    // Spectral dispersion colors
-    float angle = atan(vPosition.z, vPosition.x) + uTime * 0.4;
-    vec3 spectral;
-    spectral.r = sin(angle + dist * 14.0) * 0.5 + 0.5;
-    spectral.g = sin(angle + dist * 14.0 + 2.094) * 0.5 + 0.5;
-    spectral.b = sin(angle + dist * 14.0 + 4.188) * 0.5 + 0.5;
-
-    vec3 baseGlass = vec3(0.97, 0.98, 1.0);
-    vec3 color = mix(baseGlass, spectral, trackRings * 0.45 * uDispersionIntensity);
-    color += laserTip * vec3(0.85, 0.4, 1.0) * 1.5; // Glowing purple laser edge
-    color += fresnel * vec3(0.35, 0.3, 0.65);
-
-    float alpha = mix(0.22, 0.88, fresnel + trackRings * 0.3 + laserTip * 0.5);
-    gl_FragColor = vec4(color, alpha);
-  }
-`;
-
-/** Silicon Wafer Diffraction Shader */
-const SILICON_VS = `
-  varying vec3 vNormal;
-  varying vec3 vPosition;
-  varying vec2 vUv;
-  varying vec3 vViewPosition;
-
-  void main() {
-    vUv = uv;
-    vNormal = normalize(normalMatrix * normal);
-    vPosition = position;
-    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
-    vViewPosition = -mvPosition.xyz;
-    gl_Position = projectionMatrix * mvPosition;
-  }
-`;
-
-const SILICON_FS = `
-  uniform float uTime;
-  uniform float uSynapticPulse;
-  varying vec3 vNormal;
-  varying vec3 vPosition;
-  varying vec2 vUv;
-  varying vec3 vViewPosition;
-
-  void main() {
-    vec3 viewDir = normalize(vViewPosition);
-    vec3 norm = normalize(vNormal);
-
-    vec3 lightDir = normalize(vec3(0.8, 1.3, 0.6));
-    vec3 halfVec = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(norm, halfVec), 0.0), 36.0);
-
-    // Circuit grid pattern
-    vec2 grid = fract(vUv * 56.0);
-    float gridLines = step(0.12, grid.x) * step(0.12, grid.y);
-
-    // Spectral rainbow diffraction
-    float angle = dot(vUv - 0.5, vec2(1.2, 0.9)) * 16.0 + uTime * 0.4;
-    vec3 rainbow;
-    rainbow.r = sin(angle) * 0.5 + 0.5;
-    rainbow.g = sin(angle + 2.094) * 0.5 + 0.5;
-    rainbow.b = sin(angle + 4.188) * 0.5 + 0.5;
-
-    vec3 darkSilicon = vec3(0.04, 0.05, 0.08);
-    vec3 color = mix(darkSilicon, rainbow * 0.85, (1.0 - gridLines) * 0.7);
-    color += spec * vec3(1.0, 0.96, 0.88);
-
-    // Synaptic neural firings
-    color += uSynapticPulse * vec3(0.95, 0.65, 0.1) * (1.0 - gridLines);
-
-    gl_FragColor = vec4(color, 1.0);
-  }
-`;
-
-// ── 0. GI Rivinity: Multi-Scene Quartz Memory Disc ───────────────────────────
-
-export function createQuartzDiscReel(): MultiSceneArtifact {
+export function createQuartzLatticeReel(): MultiSceneArtifact {
   const group = new THREE.Group();
 
-  // Glass Disc with Shader
-  const discGeo = new THREE.CylinderGeometry(1.24, 1.24, 0.18, 64);
-  const quartzMat = new THREE.ShaderMaterial({
-    vertexShader: QUARTZ_VS,
-    fragmentShader: QUARTZ_FS,
-    uniforms: {
-      uTime: { value: 0 },
-      uInscribeRadius: { value: 0.34 },
-      uDispersionIntensity: { value: 0.2 },
-    },
+  // 1. Central Refractive Crystal Core
+  const coreGeo = new THREE.IcosahedronGeometry(0.55, 3);
+  const coreMat = new THREE.MeshPhysicalMaterial({
+    color: 0x9333ea,
+    emissive: 0x581c87,
+    emissiveIntensity: 0.4,
+    roughness: 0.1,
+    metalness: 0.1,
+    transmission: 0.85,
+    ior: 1.6,
+    thickness: 1.2,
+    wireframe: true,
+  });
+  const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+  group.add(coreMesh);
+
+  // 2. 6,000 Holographic Memory Particles in Concentric Fibonacci Shells
+  const particleCount = 4500;
+  const posArr = new Float32Array(particleCount * 3);
+  const targetArr = new Float32Array(particleCount * 3);
+  const colorArr = new Float32Array(particleCount * 3);
+
+  const cViolet = new THREE.Color(0xa855f7);
+  const cGold = new THREE.Color(0xfacc15);
+  const cRed = new THREE.Color(0xef4444);
+
+  for (let i = 0; i < particleCount; i++) {
+    const phi = Math.acos(-1 + (2 * i) / particleCount);
+    const theta = Math.sqrt(particleCount * Math.PI) * phi;
+    const layer = 0.85 + (i % 5) * 0.22;
+
+    // Structured target coordinates (Concentric Riemann Shells)
+    const tx = layer * Math.cos(theta) * Math.sin(phi);
+    const ty = layer * Math.sin(theta) * Math.sin(phi);
+    const tz = layer * Math.cos(phi);
+
+    targetArr[i * 3] = tx;
+    targetArr[i * 3 + 1] = ty;
+    targetArr[i * 3 + 2] = tz;
+
+    // Disordered initial coordinates (Entropy state)
+    posArr[i * 3] = tx * (1 + (Math.random() - 0.5) * 1.5);
+    posArr[i * 3 + 1] = ty * (1 + (Math.random() - 0.5) * 1.5);
+    posArr[i * 3 + 2] = tz * (1 + (Math.random() - 0.5) * 1.5);
+
+    colorArr[i * 3] = cViolet.r;
+    colorArr[i * 3 + 1] = cViolet.g;
+    colorArr[i * 3 + 2] = cViolet.b;
+  }
+
+  const particleGeo = new THREE.BufferGeometry();
+  particleGeo.setAttribute('position', new THREE.BufferAttribute(posArr, 3));
+  particleGeo.setAttribute('color', new THREE.BufferAttribute(colorArr, 3));
+
+  const particleMat = new THREE.PointsMaterial({
+    size: 0.038,
+    vertexColors: true,
     transparent: true,
-    side: THREE.DoubleSide,
+    opacity: 0.85,
+    blending: THREE.AdditiveBlending,
+    depthWrite: false,
   });
-  const disc = new THREE.Mesh(discGeo, quartzMat);
-  group.add(disc);
+  const particles = new THREE.Points(particleGeo, particleMat);
+  group.add(particles);
 
-  // Center Titanium Spindle
-  const spindleGeo = new THREE.CylinderGeometry(0.34, 0.34, 0.22, 48);
-  const spindleMat = new THREE.MeshStandardMaterial({
-    color: 0x22242b,
-    metalness: 0.95,
-    roughness: 0.18,
-  });
-  const spindle = new THREE.Mesh(spindleGeo, spindleMat);
-  group.add(spindle);
+  // 3. Laser Inscription Beam Line
+  const laserGeo = new THREE.CylinderGeometry(0.012, 0.012, 2.6, 16);
+  const laserMat = new THREE.MeshBasicMaterial({ color: 0xc084fc, transparent: true, opacity: 0 });
+  const laserBeam = new THREE.Mesh(laserGeo, laserMat);
+  laserBeam.position.set(0, 0, 0);
+  group.add(laserBeam);
 
-  // Gold Retaining Ring
-  const ringGeo = new THREE.RingGeometry(0.34, 0.42, 48);
-  ringGeo.rotateX(-Math.PI / 2);
-  const ringMat = new THREE.MeshStandardMaterial({
-    color: 0xd4af37,
-    metalness: 0.98,
-    roughness: 0.12,
-  });
-  const ring = new THREE.Mesh(ringGeo, ringMat);
-  ring.position.y = 0.092;
-  group.add(ring);
-
-  // Inscribing Laser Stylus Beam
-  const laserGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.8, 16);
-  const laserMat = new THREE.MeshBasicMaterial({ color: 0x8b5cf6, transparent: true, opacity: 0 });
-  const laser = new THREE.Mesh(laserGeo, laserMat);
-  laser.position.set(0.34, 0.5, 0);
-  group.add(laser);
+  // 4. Concentric Holographic Equatorial Reticle Rings
+  const ringGroup = new THREE.Group();
+  for (let r = 0; r < 3; r++) {
+    const ringGeo = new THREE.RingGeometry(0.9 + r * 0.35, 0.908 + r * 0.35, 64);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x8b5cf6,
+      transparent: true,
+      opacity: 0.25 + r * 0.15,
+      side: THREE.DoubleSide,
+    });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.rotation.x = Math.PI / 2 + r * 0.2;
+    ringGroup.add(ringMesh);
+  }
+  group.add(ringGroup);
 
   return {
     group,
     update: (time, sceneIdx, sceneProgress, pointer) => {
-      quartzMat.uniforms.uTime.value = time;
-      const px = pointer ? pointer.x * 0.15 : 0;
-      const py = pointer ? pointer.y * 0.15 : 0;
+      const px = pointer ? pointer.x * 0.3 : 0;
+      const py = pointer ? pointer.y * 0.3 : 0;
+      const pAttr = particleGeo.attributes.position as THREE.BufferAttribute;
+      const cAttr = particleGeo.attributes.color as THREE.BufferAttribute;
+      const pData = pAttr.array as Float32Array;
+      const cData = cAttr.array as Float32Array;
+
+      // Base rotation
+      group.rotation.x = 0.35 + py;
+      group.rotation.y = time * 0.15 + px;
 
       if (sceneIdx === 0) {
-        // Scene 1: Blank disc, laser descends into center
-        quartzMat.uniforms.uInscribeRadius.value = 0.34;
-        quartzMat.uniforms.uDispersionIntensity.value = 0.1;
-        laserMat.opacity = Math.min(1, sceneProgress * 2);
-        laser.position.set(0.34, 0.5 - sceneProgress * 0.35, 0);
-        group.rotation.x = 0.55 + py;
-        group.rotation.y = px + time * 0.08;
-      } else if (sceneIdx === 1) {
-        // Scene 2: Laser carves tracks outward from r = 0.34 to 1.18
-        const inscribeR = 0.34 + sceneProgress * 0.84;
-        quartzMat.uniforms.uInscribeRadius.value = inscribeR;
-        quartzMat.uniforms.uDispersionIntensity.value = 0.4;
-        laserMat.opacity = 1;
-        laser.position.set(inscribeR * Math.cos(time * 3), 0.15, inscribeR * Math.sin(time * 3));
-        group.rotation.x = 0.62 + py;
-        group.rotation.y = px + time * 0.25;
-      } else if (sceneIdx === 2) {
-        // Scene 3: Laser leaves, disc accelerates to full read speed with holographic dispersion
-        laserMat.opacity = Math.max(0, 1 - sceneProgress * 3);
-        quartzMat.uniforms.uInscribeRadius.value = 1.22;
-        quartzMat.uniforms.uDispersionIntensity.value = 0.95;
-        group.rotation.x = 0.65 + py;
-        group.rotation.y = px + time * 0.65;
-      } else {
-        // Scene 4: Hero lock pose
+        // Act 1: Attention Drift (High entropy, disordered red/amber jitter)
         laserMat.opacity = 0;
-        quartzMat.uniforms.uInscribeRadius.value = 1.22;
-        quartzMat.uniforms.uDispersionIntensity.value = 0.7;
-        group.rotation.x = 0.58 + py;
-        group.rotation.y = px + time * 0.15;
+        ringGroup.scale.setScalar(0.7);
+        coreMesh.rotation.y = time * 0.2;
+        coreMesh.rotation.x = time * 0.15;
+
+        for (let i = 0; i < particleCount; i++) {
+          const idx = i * 3;
+          const noise = Math.sin(time * 3 + i) * 0.15;
+          pData[idx] = targetArr[idx] * (1.3 + noise);
+          pData[idx + 1] = targetArr[idx + 1] * (1.3 + noise);
+          pData[idx + 2] = targetArr[idx + 2] * (1.3 + noise);
+
+          // Drift color towards red
+          cData[idx] = cRed.r;
+          cData[idx + 1] = cRed.g;
+          cData[idx + 2] = cRed.b;
+        }
+      } else if (sceneIdx === 1) {
+        // Act 2: Femtosecond Laser Inscription (Laser beam sweeps, particles snap to crystal lattice)
+        laserMat.opacity = 0.85;
+        laserBeam.rotation.z = Math.sin(time * 6) * 0.4;
+        laserBeam.position.x = Math.cos(time * 6) * 0.6;
+
+        for (let i = 0; i < particleCount; i++) {
+          const idx = i * 3;
+          const snap = Math.min(1, Math.max(0, (sceneProgress - (i / particleCount) * 0.7) * 3));
+          pData[idx] = THREE.MathUtils.lerp(targetArr[idx] * 1.4, targetArr[idx], snap);
+          pData[idx + 1] = THREE.MathUtils.lerp(targetArr[idx + 1] * 1.4, targetArr[idx + 1], snap);
+          pData[idx + 2] = THREE.MathUtils.lerp(targetArr[idx + 2] * 1.4, targetArr[idx + 2], snap);
+
+          cData[idx] = THREE.MathUtils.lerp(cRed.r, cViolet.r, snap);
+          cData[idx + 1] = THREE.MathUtils.lerp(cRed.g, cViolet.g, snap);
+          cData[idx + 2] = THREE.MathUtils.lerp(cRed.b, cViolet.b, snap);
+        }
+      } else if (sceneIdx === 2) {
+        // Act 3: 8,000 RPM Readback (High-speed counter-rotation, rainbow chromatic waves)
+        laserMat.opacity = 0;
+        group.rotation.y = time * 0.85 + px;
+        coreMesh.rotation.y = -time * 1.2;
+
+        for (let i = 0; i < particleCount; i++) {
+          const idx = i * 3;
+          const wave = Math.sin(time * 8 + i * 0.05);
+          pData[idx] = targetArr[idx] * (1 + wave * 0.04);
+          pData[idx + 1] = targetArr[idx + 1] * (1 + wave * 0.04);
+          pData[idx + 2] = targetArr[idx + 2] * (1 + wave * 0.04);
+
+          // Spectral rainbow phase
+          cData[idx] = (Math.sin(time * 4 + i * 0.02) * 0.5 + 0.5);
+          cData[idx + 1] = (Math.sin(time * 4 + i * 0.02 + 2.09) * 0.5 + 0.5);
+          cData[idx + 2] = (Math.sin(time * 4 + i * 0.02 + 4.18) * 0.5 + 0.5);
+        }
+      } else {
+        // Act 4: Verified 10,000-Yr Enclave (Stable breathing gold/cyan crystalline torus)
+        laserMat.opacity = 0;
+        group.rotation.y = time * 0.25 + px;
+        ringGroup.rotation.z = time * 0.15;
+
+        for (let i = 0; i < particleCount; i++) {
+          const idx = i * 3;
+          const breath = Math.sin(time * 1.8 + i * 0.01) * 0.02;
+          pData[idx] = targetArr[idx] * (1 + breath);
+          pData[idx + 1] = targetArr[idx + 1] * (1 + breath);
+          pData[idx + 2] = targetArr[idx + 2] * (1 + breath);
+
+          cData[idx] = cGold.r;
+          cData[idx + 1] = cGold.g;
+          cData[idx + 2] = cGold.b;
+        }
       }
 
-      group.position.y = Math.sin(time * 0.4) * 0.02;
+      pAttr.needsUpdate = true;
+      cAttr.needsUpdate = true;
     },
     dispose: () => {
-      discGeo.dispose();
-      quartzMat.dispose();
-      spindleGeo.dispose();
-      spindleMat.dispose();
-      ringGeo.dispose();
-      ringMat.dispose();
+      coreGeo.dispose();
+      coreMat.dispose();
+      particleGeo.dispose();
+      particleMat.dispose();
       laserGeo.dispose();
       laserMat.dispose();
     },
   };
 }
 
-// ── 1. Rivinity Core: Multi-Scene Machined Unibody Router ────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// 1. RIVINITY CORE: Distributed Compute Fabric & 48.2 GB/s Optical Bus Network
+// ════════════════════════════════════════════════════════════════════════════
 
-export function createMachinedUnitReel(): MultiSceneArtifact {
+export function createComputeFabricReel(): MultiSceneArtifact {
   const group = new THREE.Group();
 
-  // 4 Modular Aluminum Blocks (start fragmented, assemble in Scene 2)
-  const blockGeo = new THREE.BoxGeometry(0.82, 0.65, 0.82);
-  const blockMat = new THREE.MeshStandardMaterial({
-    color: 0x242730,
-    metalness: 0.88,
+  // Central Router Node
+  const hubGeo = new THREE.OctahedronGeometry(0.48, 2);
+  const hubMat = new THREE.MeshStandardMaterial({
+    color: 0x1e2029,
+    metalness: 0.95,
+    roughness: 0.18,
+    wireframe: false,
+  });
+  const hub = new THREE.Mesh(hubGeo, hubMat);
+  group.add(hub);
+
+  // 4 Orbital Compute Clusters
+  const satelliteCoords = [
+    [-0.95, 0.45, 0.5],
+    [0.95, 0.45, -0.5],
+    [-0.7, -0.55, -0.65],
+    [0.7, -0.55, 0.65],
+  ];
+  const satMeshes: THREE.Mesh[] = [];
+  const satGeo = new THREE.BoxGeometry(0.32, 0.32, 0.32);
+
+  satelliteCoords.forEach(() => {
+    const mat = new THREE.MeshStandardMaterial({
+      color: 0xd97706,
+      metalness: 0.85,
+      roughness: 0.25,
+    });
+    const m = new THREE.Mesh(satGeo, mat);
+    satMeshes.push(m);
+    group.add(m);
+  });
+
+  // Flowing Optical Interconnect Bus Lines (16 Bezier spline curves)
+  const busCurves: THREE.Line[] = [];
+  const lineMat = new THREE.LineBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.6 });
+
+  for (let i = 0; i < satelliteCoords.length; i++) {
+    const pts = [
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(satelliteCoords[i][0] * 0.5, satelliteCoords[i][1] * 0.5 + 0.15, satelliteCoords[i][2] * 0.5),
+      new THREE.Vector3(...satelliteCoords[i]),
+    ];
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(24));
+    const line = new THREE.Line(lineGeo, lineMat);
+    busCurves.push(line);
+    group.add(line);
+  }
+
+  // 1,200 High-Velocity Optical Data Packets
+  const packetCount = 1200;
+  const packetPos = new Float32Array(packetCount * 3);
+  const packetColors = new Float32Array(packetCount * 3);
+  const pColor = new THREE.Color(0xfbbf24);
+
+  for (let i = 0; i < packetCount; i++) {
+    packetPos[i * 3] = (Math.random() - 0.5) * 2;
+    packetPos[i * 3 + 1] = (Math.random() - 0.5) * 2;
+    packetPos[i * 3 + 2] = (Math.random() - 0.5) * 2;
+    packetColors[i * 3] = pColor.r;
+    packetColors[i * 3 + 1] = pColor.g;
+    packetColors[i * 3 + 2] = pColor.b;
+  }
+
+  const packetGeo = new THREE.BufferGeometry();
+  packetGeo.setAttribute('position', new THREE.BufferAttribute(packetPos, 3));
+  packetGeo.setAttribute('color', new THREE.BufferAttribute(packetColors, 3));
+  const packetMat = new THREE.PointsMaterial({
+    size: 0.04,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.9,
+    blending: THREE.AdditiveBlending,
+  });
+  const packetPoints = new THREE.Points(packetGeo, packetMat);
+  group.add(packetPoints);
+
+  return {
+    group,
+    update: (time, sceneIdx, sceneProgress, pointer) => {
+      const px = pointer ? pointer.x * 0.25 : 0;
+      const py = pointer ? pointer.y * 0.25 : 0;
+      group.rotation.x = 0.4 + py;
+      group.rotation.y = time * 0.2 + px;
+
+      hub.rotation.x = time * 0.4;
+      hub.rotation.y = time * 0.6;
+
+      const pPosAttr = packetGeo.attributes.position as THREE.BufferAttribute;
+      const pData = pPosAttr.array as Float32Array;
+
+      if (sceneIdx === 0) {
+        // Act 1: Siloed, isolated cluster drift
+        satMeshes.forEach((sat, i) => {
+          const [sx, sy, sz] = satelliteCoords[i];
+          sat.position.set(sx * 1.8 + Math.sin(time * 2 + i) * 0.2, sy * 1.8, sz * 1.8);
+        });
+        lineMat.opacity = 0.1;
+        packetMat.opacity = 0.15;
+      } else if (sceneIdx === 1) {
+        // Act 2: Mechanical lock into unified constellation
+        const ease = sceneProgress * sceneProgress * (3 - 2 * sceneProgress);
+        satMeshes.forEach((sat, i) => {
+          const [sx, sy, sz] = satelliteCoords[i];
+          sat.position.set(
+            THREE.MathUtils.lerp(sx * 1.8, sx, ease),
+            THREE.MathUtils.lerp(sy * 1.8, sy, ease),
+            THREE.MathUtils.lerp(sz * 1.8, sz, ease)
+          );
+        });
+        lineMat.opacity = THREE.MathUtils.lerp(0.1, 0.7, ease);
+        packetMat.opacity = THREE.MathUtils.lerp(0.15, 0.8, ease);
+      } else if (sceneIdx === 2) {
+        // Act 3: 48.2 GB/s Optical Bus Concurrency (stream packets along bus lines)
+        satMeshes.forEach((sat, i) => {
+          const [sx, sy, sz] = satelliteCoords[i];
+          sat.position.set(sx, sy, sz);
+        });
+        lineMat.opacity = 0.85;
+        packetMat.opacity = 1;
+
+        for (let i = 0; i < packetCount; i++) {
+          const satIdx = i % satelliteCoords.length;
+          const [sx, sy, sz] = satelliteCoords[satIdx];
+          const flow = (time * 3.5 + i * 0.05) % 1;
+          pData[i * 3] = THREE.MathUtils.lerp(0, sx, flow);
+          pData[i * 3 + 1] = THREE.MathUtils.lerp(0, sy, flow) + Math.sin(flow * Math.PI) * 0.1;
+          pData[i * 3 + 2] = THREE.MathUtils.lerp(0, sz, flow);
+        }
+        pPosAttr.needsUpdate = true;
+      } else {
+        // Act 4: Synchronized steady state
+        satMeshes.forEach((sat, i) => {
+          const [sx, sy, sz] = satelliteCoords[i];
+          sat.position.set(sx, sy, sz);
+        });
+        lineMat.opacity = 0.55;
+        packetMat.opacity = 0.7;
+      }
+    },
+    dispose: () => {
+      hubGeo.dispose();
+      hubMat.dispose();
+      satGeo.dispose();
+      packetGeo.dispose();
+      packetMat.dispose();
+      lineMat.dispose();
+    },
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 2. IoT INTELLIGENCE: 3D LiDAR Optical Sensor & 360° Point Cloud Environment
+// ════════════════════════════════════════════════════════════════════════════
+
+export function createLidarPointcloudReel(): MultiSceneArtifact {
+  const group = new THREE.Group();
+
+  // 1. Rotating Sensor Unit Housing
+  const sensorGeo = new THREE.CylinderGeometry(0.38, 0.42, 0.65, 32);
+  const sensorMat = new THREE.MeshStandardMaterial({
+    color: 0x111827,
+    metalness: 0.9,
+    roughness: 0.2,
+  });
+  const sensorMesh = new THREE.Mesh(sensorGeo, sensorMat);
+  sensorMesh.position.y = -0.4;
+  group.add(sensorMesh);
+
+  // Optical Window
+  const windowGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.35, 32);
+  const windowMat = new THREE.MeshPhysicalMaterial({
+    color: 0x10b981,
+    transmission: 0.75,
+    roughness: 0.05,
+    ior: 1.5,
+  });
+  const windowMesh = new THREE.Mesh(windowGeo, windowMat);
+  windowMesh.position.y = 0.05;
+  group.add(windowMesh);
+
+  // 2. Sweeping Laser Fan Cone
+  const fanGeo = new THREE.ConeGeometry(2.4, 0.15, 32, 1, true, 0, Math.PI * 0.45);
+  const fanMat = new THREE.MeshBasicMaterial({
+    color: 0x10b981,
+    transparent: true,
+    opacity: 0.35,
+    side: THREE.DoubleSide,
+  });
+  const fanMesh = new THREE.Mesh(fanGeo, fanMat);
+  fanMesh.rotation.x = Math.PI / 2;
+  fanMesh.position.y = 0.05;
+  group.add(fanMesh);
+
+  // 3. 3,500 Detected 3D Environment Point Cloud Points
+  const pointCount = 3500;
+  const pPos = new Float32Array(pointCount * 3);
+  const pColors = new Float32Array(pointCount * 3);
+
+  const cEmerald = new THREE.Color(0x10b981);
+  const cCyan = new THREE.Color(0x06b6d4);
+  const cAmber = new THREE.Color(0xf59e0b);
+
+  for (let i = 0; i < pointCount; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 0.9 + Math.random() * 1.6;
+    const height = (Math.random() - 0.5) * 1.8;
+
+    pPos[i * 3] = Math.cos(angle) * dist;
+    pPos[i * 3 + 1] = height;
+    pPos[i * 3 + 2] = Math.sin(angle) * dist;
+
+    const col = dist > 1.8 ? cAmber : dist > 1.3 ? cCyan : cEmerald;
+    pColors[i * 3] = col.r;
+    pColors[i * 3 + 1] = col.g;
+    pColors[i * 3 + 2] = col.b;
+  }
+
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+  pGeo.setAttribute('color', new THREE.BufferAttribute(pColors, 3));
+
+  const pMat = new THREE.PointsMaterial({
+    size: 0.034,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0,
+    blending: THREE.AdditiveBlending,
+  });
+  const points = new THREE.Points(pGeo, pMat);
+  group.add(points);
+
+  return {
+    group,
+    update: (time, sceneIdx, sceneProgress, pointer) => {
+      const px = pointer ? pointer.x * 0.25 : 0;
+      const py = pointer ? pointer.y * 0.25 : 0;
+      group.rotation.x = 0.35 + py;
+      group.rotation.y = px;
+
+      if (sceneIdx === 0) {
+        // Act 1: Blind dormant sensor
+        fanMat.opacity = 0;
+        pMat.opacity = 0;
+        windowMesh.rotation.y = 0;
+      } else if (sceneIdx === 1) {
+        // Act 2: Prism spool-up
+        const speed = sceneProgress * sceneProgress * 8;
+        windowMesh.rotation.y += speed * 0.05;
+        fanMat.opacity = THREE.MathUtils.lerp(0, 0.25, sceneProgress);
+        pMat.opacity = THREE.MathUtils.lerp(0, 0.4, sceneProgress);
+      } else if (sceneIdx === 2) {
+        // Act 3: 360° Continuous LiDAR Sweep
+        windowMesh.rotation.y += 0.35;
+        fanMesh.rotation.z = time * 6;
+        fanMat.opacity = 0.45;
+        pMat.opacity = 0.95;
+      } else {
+        // Act 4: Situational spatial concurrency locked
+        windowMesh.rotation.y += 0.15;
+        fanMesh.rotation.z = time * 3;
+        fanMat.opacity = 0.25;
+        pMat.opacity = 0.85;
+      }
+    },
+    dispose: () => {
+      sensorGeo.dispose();
+      sensorMat.dispose();
+      windowGeo.dispose();
+      windowMat.dispose();
+      fanGeo.dispose();
+      fanMat.dispose();
+      pGeo.dispose();
+      pMat.dispose();
+    },
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 3. GEO INTELLIGENCE: Procedural 3D Topographic Terrain & Raking Solar Shadows
+// ════════════════════════════════════════════════════════════════════════════
+
+export function createProceduralTerrainReel(): MultiSceneArtifact {
+  const group = new THREE.Group();
+
+  // 1. Procedural 3D Mesh (80x80 grid with dynamic elevation)
+  const segments = 80;
+  const terrainGeo = new THREE.PlaneGeometry(2.6, 2.6, segments, segments);
+  terrainGeo.rotateX(-Math.PI / 2);
+
+  const baseHeights = new Float32Array((segments + 1) * (segments + 1));
+  const posAttr = terrainGeo.attributes.position as THREE.BufferAttribute;
+
+  for (let i = 0; i <= segments; i++) {
+    for (let j = 0; j <= segments; j++) {
+      const idx = i * (segments + 1) + j;
+      const u = (i / segments) * 4 - 2;
+      const v = (j / segments) * 4 - 2;
+
+      // Multi-frequency fractal elevation
+      const elevation =
+        Math.sin(u * 1.8) * Math.cos(v * 1.8) * 0.35 +
+        Math.sin(u * 4.2 + v * 3.1) * 0.18 +
+        Math.cos(u * 8.5) * 0.06;
+
+      // Center mountain falloff
+      const r = Math.sqrt(u * u + v * v);
+      const falloff = Math.max(0, 1 - r / 2.6);
+      baseHeights[idx] = elevation * falloff;
+    }
+  }
+
+  const terrainMat = new THREE.MeshStandardMaterial({
+    color: 0x0284c7,
+    roughness: 0.35,
+    metalness: 0.15,
+    wireframe: true,
+  });
+  const terrainMesh = new THREE.Mesh(terrainGeo, terrainMat);
+  terrainMesh.position.y = -0.3;
+  group.add(terrainMesh);
+
+  // 2. Stepped Contour Elevation Watermark Rings
+  const contourGroup = new THREE.Group();
+  for (let c = 0; c < 5; c++) {
+    const ringGeo = new THREE.RingGeometry(0.3 + c * 0.3, 0.306 + c * 0.3, 48);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.35,
+      side: THREE.DoubleSide,
+    });
+    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
+    ringMesh.rotation.x = Math.PI / 2;
+    ringMesh.position.y = -0.25 + c * 0.12;
+    contourGroup.add(ringMesh);
+  }
+  group.add(contourGroup);
+
+  return {
+    group,
+    update: (time, sceneIdx, sceneProgress, pointer) => {
+      const px = pointer ? pointer.x * 0.25 : 0;
+      const py = pointer ? pointer.y * 0.25 : 0;
+      group.rotation.x = 0.55 + py;
+      group.rotation.y = time * 0.15 + px;
+
+      const pData = posAttr.array as Float32Array;
+
+      if (sceneIdx === 0) {
+        // Act 1: Flat 2D orthographic raster
+        terrainMat.color.set(0x334155);
+        contourGroup.scale.set(0, 0, 0);
+        for (let k = 0; k < baseHeights.length; k++) {
+          pData[k * 3 + 1] = 0; // Flat
+        }
+      } else if (sceneIdx === 1) {
+        // Act 2: Sequential stepped terrace extrusion
+        terrainMat.color.set(0x0284c7);
+        const ease = sceneProgress * sceneProgress * (3 - 2 * sceneProgress);
+        contourGroup.scale.setScalar(ease);
+        for (let k = 0; k < baseHeights.length; k++) {
+          pData[k * 3 + 1] = baseHeights[k] * ease;
+        }
+      } else if (sceneIdx === 2) {
+        // Act 3: Raking solar audit (flowing elevation contours)
+        terrainMat.color.set(0x38bdf8);
+        contourGroup.scale.set(1, 1, 1);
+        for (let k = 0; k < baseHeights.length; k++) {
+          pData[k * 3 + 1] = baseHeights[k] * (1 + Math.sin(time * 3 + k * 0.05) * 0.05);
+        }
+      } else {
+        // Act 4: Planetary ground-truth locked
+        terrainMat.color.set(0x0ea5e9);
+        contourGroup.scale.set(1, 1, 1);
+        for (let k = 0; k < baseHeights.length; k++) {
+          pData[k * 3 + 1] = baseHeights[k];
+        }
+      }
+      posAttr.needsUpdate = true;
+    },
+    dispose: () => {
+      terrainGeo.dispose();
+      terrainMat.dispose();
+    },
+  };
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// 4. DEFENSE INTELLIGENCE: Crystalline Tungsten Vault & ZK Quantum Shield
+// ════════════════════════════════════════════════════════════════════════════
+
+export function createTungstenVaultReel(): MultiSceneArtifact {
+  const group = new THREE.Group();
+
+  // 1. Inner Cryptographic Die Core
+  const coreGeo = new THREE.DodecahedronGeometry(0.45, 1);
+  const coreMat = new THREE.MeshStandardMaterial({
+    color: 0xef4444,
+    metalness: 0.95,
+    roughness: 0.1,
+    wireframe: true,
+  });
+  const coreMesh = new THREE.Mesh(coreGeo, coreMat);
+  group.add(coreMesh);
+
+  // 2. Outer Ballistic Tungsten Facets (8 segmented interlocking shield plates)
+  const shieldGeo = new THREE.BoxGeometry(0.45, 0.45, 0.12);
+  const shieldMat = new THREE.MeshStandardMaterial({
+    color: 0x1f2937,
+    metalness: 0.95,
     roughness: 0.22,
   });
 
-  const blocks: THREE.Mesh[] = [];
-  const assembledCoords = [
-    [-0.42, -0.42],
-    [0.42, -0.42],
-    [-0.42, 0.42],
-    [0.42, 0.42],
+  const shieldOffsets = [
+    [-0.55, 0.55, 0.55],
+    [0.55, 0.55, 0.55],
+    [-0.55, -0.55, 0.55],
+    [0.55, -0.55, 0.55],
+    [-0.55, 0.55, -0.55],
+    [0.55, 0.55, -0.55],
+    [-0.55, -0.55, -0.55],
+    [0.55, -0.55, -0.55],
   ];
 
-  assembledCoords.forEach(() => {
-    const b = new THREE.Mesh(blockGeo, blockMat);
-    blocks.push(b);
-    group.add(b);
+  const shieldMeshes: THREE.Mesh[] = [];
+  shieldOffsets.forEach(() => {
+    const sm = new THREE.Mesh(shieldGeo, shieldMat);
+    shieldMeshes.push(sm);
+    group.add(sm);
   });
 
-  // Top Brushed Copper Plate (drops into place during Scene 2)
-  const copperGeo = new THREE.CylinderGeometry(0.66, 0.66, 0.025, 48);
-  const copperMat = new THREE.MeshStandardMaterial({
-    color: 0xbd6936,
-    metalness: 0.92,
-    roughness: 0.25,
-  });
-  const copper = new THREE.Mesh(copperGeo, copperMat);
-  copper.position.y = 1.5; // Starts above
-  group.add(copper);
-
-  // Front Optical Ports
-  const portGroup = new THREE.Group();
-  const portLeds: THREE.Mesh[] = [];
-  for (let i = -1.5; i <= 1.5; i += 1) {
-    const portGeo = new THREE.BoxGeometry(0.24, 0.24, 0.08);
-    const pMat = new THREE.MeshStandardMaterial({ color: 0x0a0c10, metalness: 0.9, roughness: 0.35 });
-    const p = new THREE.Mesh(portGeo, pMat);
-    p.position.set(i * 0.36, -0.06, 0.84);
-
-    const ledGeo = new THREE.CircleGeometry(0.025, 16);
-    const ledMat = new THREE.MeshBasicMaterial({ color: 0x111317 });
-    const led = new THREE.Mesh(ledGeo, ledMat);
-    led.position.set(i * 0.36, -0.22, 0.85);
-
-    portGroup.add(p);
-    portGroup.add(led);
-    portLeds.push(led);
-  }
-  group.add(portGroup);
-
-  return {
-    group,
-    update: (time, sceneIdx, sceneProgress, pointer) => {
-      const px = pointer ? pointer.x * 0.15 : 0;
-      const py = pointer ? pointer.y * 0.15 : 0;
-
-      if (sceneIdx === 0) {
-        // Scene 1: Fragmented blocks floating apart
-        const explode = 0.45;
-        blocks.forEach((b, i) => {
-          const [ax, az] = assembledCoords[i];
-          b.position.set(ax * (1 + explode), Math.sin(time * 2 + i) * 0.08, az * (1 + explode));
-        });
-        copper.position.y = 1.2;
-        portGroup.position.set(0, 0, 0);
-        portLeds.forEach((l) => (l.material as THREE.MeshBasicMaterial).color.set(0x111317));
-        group.rotation.x = 0.35 + py;
-        group.rotation.y = -0.4 + px + time * 0.08;
-      } else if (sceneIdx === 1) {
-        // Scene 2: Mechanical lock together into solid unibody
-        const t = Math.min(1, sceneProgress * 1.3);
-        const ease = t * t * (3 - 2 * t);
-        const explode = 0.45 * (1 - ease);
-        blocks.forEach((b, i) => {
-          const [ax, az] = assembledCoords[i];
-          b.position.set(ax * (1 + explode), 0, az * (1 + explode));
-        });
-        // Copper plate drops and seats
-        copper.position.y = 0.34 + (1 - ease) * 0.8;
-        group.rotation.x = 0.42 + py;
-        group.rotation.y = -0.35 + px + time * 0.15;
-      } else if (sceneIdx === 2) {
-        // Scene 3: Assembled unibody active! Optical ports pulse with data
-        blocks.forEach((b, i) => {
-          const [ax, az] = assembledCoords[i];
-          b.position.set(ax, 0, az);
-        });
-        copper.position.y = 0.34;
-        portLeds.forEach((l, i) => {
-          const on = Math.sin(time * 12 + i * 2) > 0;
-          (l.material as THREE.MeshBasicMaterial).color.set(on ? (i % 2 === 0 ? 0xf59e00 : 0x8b5cf6) : 0x22242c);
-        });
-        group.rotation.x = 0.45 + py;
-        group.rotation.y = -0.3 + px + time * 0.28;
-      } else {
-        // Scene 4: Hero lock pose
-        blocks.forEach((b, i) => {
-          const [ax, az] = assembledCoords[i];
-          b.position.set(ax, 0, az);
-        });
-        copper.position.y = 0.34;
-        portLeds.forEach((l, i) => (l.material as THREE.MeshBasicMaterial).color.set(i % 2 === 0 ? 0xf59e00 : 0x8b5cf6));
-        group.rotation.x = 0.4 + py;
-        group.rotation.y = -0.35 + px + time * 0.1;
-      }
-
-      group.position.y = Math.sin(time * 0.4) * 0.02;
-    },
-    dispose: () => {
-      blockGeo.dispose();
-      blockMat.dispose();
-      copperGeo.dispose();
-      copperMat.dispose();
-    },
-  };
-}
-
-// ── 2. IoT Intelligence: Multi-Scene LiDAR Optical Sensor ───────────────────
-
-export function createLidarSensorReel(): MultiSceneArtifact {
-  const group = new THREE.Group();
-
-  // Flanged Base Collar
-  const baseGeo = new THREE.CylinderGeometry(0.85, 0.9, 0.24, 48);
-  const baseMat = new THREE.MeshStandardMaterial({ color: 0x1e2129, metalness: 0.9, roughness: 0.25 });
-  const base = new THREE.Mesh(baseGeo, baseMat);
-  base.position.y = -0.42;
-  group.add(base);
-
-  // Black Aerospace Grooved Barrel
-  const barrelGeo = new THREE.CylinderGeometry(0.72, 0.72, 0.58, 48);
-  const barrelMat = new THREE.MeshStandardMaterial({ color: 0x14161c, metalness: 0.85, roughness: 0.3 });
-  const barrel = new THREE.Mesh(barrelGeo, barrelMat);
-  barrel.position.y = -0.08;
-  group.add(barrel);
-
-  // Sapphire Coated Window
-  const windowGeo = new THREE.CylinderGeometry(0.73, 0.73, 0.34, 48);
-  const windowMat = new THREE.MeshPhysicalMaterial({
-    color: 0x08101a,
-    transmission: 0.78,
-    roughness: 0.02,
-    reflectivity: 0.92,
-    ior: 1.77,
-  });
-  const windowMesh = new THREE.Mesh(windowGeo, windowMat);
-  windowMesh.position.y = 0.26;
-  group.add(windowMesh);
-
-  // Revolving Prism
-  const prismGeo = new THREE.BoxGeometry(0.28, 0.24, 0.28);
-  const prismMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.98, roughness: 0.05 });
-  const prism = new THREE.Mesh(prismGeo, prismMat);
-  prism.position.y = 0.26;
-  group.add(prism);
-
-  // 360° Planar Laser Sweep Disc (Scene 3)
-  const scanGeo = new THREE.RingGeometry(0.75, 1.9, 48);
-  scanGeo.rotateX(-Math.PI / 2);
-  const scanMat = new THREE.MeshBasicMaterial({
-    color: 0xff8643,
+  // 3. Quantum Geodesic Tripwire Cage
+  const cageGeo = new THREE.IcosahedronGeometry(1.2, 1);
+  const cageMat = new THREE.MeshBasicMaterial({
+    color: 0x22c55e,
+    wireframe: true,
     transparent: true,
     opacity: 0,
-    side: THREE.DoubleSide,
-    depthWrite: false,
   });
-  const scanDisc = new THREE.Mesh(scanGeo, scanMat);
-  scanDisc.position.y = 0.26;
-  group.add(scanDisc);
+  const cage = new THREE.Mesh(cageGeo, cageMat);
+  group.add(cage);
 
   return {
     group,
     update: (time, sceneIdx, sceneProgress, pointer) => {
-      const px = pointer ? pointer.x * 0.15 : 0;
-      const py = pointer ? pointer.y * 0.15 : 0;
+      const px = pointer ? pointer.x * 0.25 : 0;
+      const py = pointer ? pointer.y * 0.25 : 0;
+      group.rotation.x = 0.4 + py;
+      group.rotation.y = time * 0.2 + px;
+
+      coreMesh.rotation.x = time * 0.5;
+      coreMesh.rotation.y = time * 0.7;
 
       if (sceneIdx === 0) {
-        // Scene 1: Dormant sensor
-        prism.rotation.y = 0;
-        scanMat.opacity = 0;
-        group.rotation.x = 0.22 + py;
-        group.rotation.y = px + time * 0.05;
+        // Act 1: Exposed vulnerable surface
+        coreMat.color.set(0xef4444);
+        cageMat.opacity = 0;
+        shieldMeshes.forEach((sm, i) => {
+          const [ox, oy, oz] = shieldOffsets[i];
+          sm.position.set(ox * 2.2, oy * 2.2, oz * 2.2);
+        });
       } else if (sceneIdx === 1) {
-        // Scene 2: Mechanical prism spool-up
-        const speed = sceneProgress * 6.0;
-        prism.rotation.y += speed * 0.05;
-        scanMat.opacity = 0;
-        group.rotation.x = 0.28 + py;
-        group.rotation.y = px + time * 0.15;
-      } else if (sceneIdx === 2) {
-        // Scene 3: Full 360° LiDAR laser sweep active
-        prism.rotation.y = time * 8.0;
-        scanMat.opacity = 0.35 + Math.sin(time * 16) * 0.15;
-        scanDisc.rotation.y = time * 4.0;
-        group.rotation.x = 0.32 + py;
-        group.rotation.y = px + time * 0.25;
-      } else {
-        // Scene 4: Hero lock
-        prism.rotation.y = time * 3.0;
-        scanMat.opacity = 0.15;
-        group.rotation.x = 0.26 + py;
-        group.rotation.y = px + time * 0.1;
-      }
-
-      group.position.y = -0.05 + Math.sin(time * 0.4) * 0.02;
-    },
-    dispose: () => {
-      baseGeo.dispose();
-      baseMat.dispose();
-      barrelGeo.dispose();
-      barrelMat.dispose();
-      windowGeo.dispose();
-      windowMat.dispose();
-      prismGeo.dispose();
-      prismMat.dispose();
-      scanGeo.dispose();
-      scanMat.dispose();
-    },
-  };
-}
-
-// ── 3. Geo Intelligence: Multi-Scene CNC Stepped Topographic Slab ────────────
-
-export function createTopographicSlabReel(): MultiSceneArtifact {
-  const group = new THREE.Group();
-
-  // Solid Plinth Base
-  const plinthGeo = new THREE.BoxGeometry(1.85, 0.22, 1.85);
-  const plinthMat = new THREE.MeshStandardMaterial({
-    color: 0xedebe6,
-    roughness: 0.88,
-    metalness: 0.02,
-  });
-  const plinth = new THREE.Mesh(plinthGeo, plinthMat);
-  plinth.position.y = -0.42;
-  group.add(plinth);
-
-  // 8 Stepped CNC Contour Terraces (Extrude upwards in Scene 2!)
-  const layers = 8;
-  const contourMeshes: THREE.Mesh[] = [];
-  const targetHeights: number[] = [];
-
-  for (let i = 0; i < layers; i++) {
-    const scale = 1.7 - i * 0.16;
-    const h = 0.055;
-    const layerGeo = new THREE.BoxGeometry(scale, h, scale);
-    const layerMat = new THREE.MeshStandardMaterial({
-      color: i === 0 ? 0xe5e2da : i % 2 === 0 ? 0xdcd8ce : 0xd2cdc2,
-      roughness: 0.85,
-      metalness: 0.02,
-    });
-    const layer = new THREE.Mesh(layerGeo, layerMat);
-    const ox = Math.sin(i * 0.6) * 0.08;
-    const oz = Math.cos(i * 0.6) * 0.08;
-    layer.position.set(ox, -0.42, oz); // Start inside base
-    contourMeshes.push(layer);
-    targetHeights.push(-0.28 + i * 0.055);
-    group.add(layer);
-  }
-
-  // Brass North Pointer (Clicks in during Scene 4)
-  const arrowGeo = new THREE.ConeGeometry(0.08, 0.22, 3);
-  arrowGeo.rotateX(-Math.PI / 2);
-  const arrowMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95, roughness: 0.1 });
-  const arrow = new THREE.Mesh(arrowGeo, arrowMat);
-  arrow.position.set(0.68, 0.18, 0.68);
-  arrow.scale.set(0, 0, 0);
-  group.add(arrow);
-
-  return {
-    group,
-    update: (time, sceneIdx, sceneProgress, pointer) => {
-      const px = pointer ? pointer.x * 0.15 : 0;
-      const py = pointer ? pointer.y * 0.15 : 0;
-
-      if (sceneIdx === 0) {
-        // Scene 1: Flat blank plinth
-        contourMeshes.forEach((mesh) => {
-          mesh.position.y = -0.42;
-          mesh.scale.y = 0.1;
-        });
-        arrow.scale.set(0, 0, 0);
-        group.rotation.x = 0.42 + py;
-        group.rotation.y = px + time * 0.08;
-      } else if (sceneIdx === 1) {
-        // Scene 2: Stepped contour terraces rise sequentially like CNC milling
-        contourMeshes.forEach((mesh, i) => {
-          const threshold = i / layers;
-          const prog = Math.max(0, Math.min(1, (sceneProgress - threshold) * layers));
-          mesh.position.y = -0.42 + prog * (targetHeights[i] - -0.42);
-          mesh.scale.y = Math.max(0.1, prog);
-        });
-        arrow.scale.set(0, 0, 0);
-        group.rotation.x = 0.52 + py;
-        group.rotation.y = px + time * 0.15;
-      } else if (sceneIdx === 2) {
-        // Scene 3: Fully raised topography with raking light
-        contourMeshes.forEach((mesh, i) => {
-          mesh.position.y = targetHeights[i];
-          mesh.scale.y = 1;
-        });
-        arrow.scale.set(0, 0, 0);
-        group.rotation.x = 0.54 + py;
-        group.rotation.y = px + time * 0.25;
-      } else {
-        // Scene 4: Hero lock & North arrow snaps in
-        contourMeshes.forEach((mesh, i) => {
-          mesh.position.y = targetHeights[i];
-          mesh.scale.y = 1;
-        });
-        arrow.scale.set(1, 1, 1);
-        group.rotation.x = 0.48 + py;
-        group.rotation.y = px + time * 0.1;
-      }
-
-      group.position.y = Math.sin(time * 0.4) * 0.02;
-    },
-    dispose: () => {
-      plinthGeo.dispose();
-      plinthMat.dispose();
-      arrowGeo.dispose();
-      arrowMat.dispose();
-    },
-  };
-}
-
-// ── 4. Defense Intelligence: Multi-Scene Cryptographic Enclave (HSM) ────────
-
-export function createCryptographicModuleReel(): MultiSceneArtifact {
-  const group = new THREE.Group();
-
-  // Exposed Golden Cryptographic Core (starts visible, gets sealed in Scene 2)
-  const coreGeo = new THREE.BoxGeometry(0.6, 0.18, 0.6);
-  const coreMat = new THREE.MeshStandardMaterial({
-    color: 0xd4af37,
-    metalness: 0.98,
-    roughness: 0.1,
-  });
-  const coreDie = new THREE.Mesh(coreGeo, coreMat);
-  coreDie.position.y = -0.15;
-  group.add(coreDie);
-
-  // Heavy Matte-Black Tungsten Ceramic Enclosure (lowers down during Scene 2)
-  const bodyGeo = new THREE.BoxGeometry(1.42, 0.62, 1.42);
-  const bodyMat = new THREE.MeshStandardMaterial({
-    color: 0x16171d,
-    metalness: 0.88,
-    roughness: 0.18,
-  });
-  const body = new THREE.Mesh(bodyGeo, bodyMat);
-  body.position.y = 1.4; // Starts above
-  group.add(body);
-
-  // 4 Corner Gold Torx Fasteners (thread and seat during Scene 2)
-  const screwGeo = new THREE.CylinderGeometry(0.05, 0.05, 0.02, 16);
-  const screwMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.95, roughness: 0.1 });
-  const screws: THREE.Mesh[] = [];
-  const screwOffsets = [-0.6, 0.6];
-  screwOffsets.forEach((x) => {
-    screwOffsets.forEach((z) => {
-      const screw = new THREE.Mesh(screwGeo, screwMat);
-      screw.position.set(x, 1.6, z);
-      screws.push(screw);
-      group.add(screw);
-    });
-  });
-
-  return {
-    group,
-    update: (time, sceneIdx, sceneProgress, pointer) => {
-      const px = pointer ? pointer.x * 0.15 : 0;
-      const py = pointer ? pointer.y * 0.15 : 0;
-
-      if (sceneIdx === 0) {
-        // Scene 1: Exposed vulnerable core
-        body.position.y = 1.4;
-        screws.forEach((s) => (s.position.y = 1.6));
-        group.rotation.x = 0.35 + py;
-        group.rotation.y = px + time * 0.08;
-      } else if (sceneIdx === 1) {
-        // Scene 2: Heavy enclosure lowers and seals with gold Torx fasteners
+        // Act 2: Tungsten chassis hermetically seats and seals
         const ease = sceneProgress * sceneProgress * (3 - 2 * sceneProgress);
-        body.position.y = 0 + (1 - ease) * 1.4;
-        screws.forEach((s) => (s.position.y = 0.32 + (1 - ease) * 1.3));
-        group.rotation.x = 0.44 + py;
-        group.rotation.y = px + time * 0.15;
+        shieldMeshes.forEach((sm, i) => {
+          const [ox, oy, oz] = shieldOffsets[i];
+          sm.position.set(
+            THREE.MathUtils.lerp(ox * 2.2, ox, ease),
+            THREE.MathUtils.lerp(oy * 2.2, oy, ease),
+            THREE.MathUtils.lerp(oz * 2.2, oz, ease)
+          );
+        });
+        cageMat.opacity = THREE.MathUtils.lerp(0, 0.4, ease);
       } else if (sceneIdx === 2) {
-        // Scene 3: Sealed air-gapped enclave validating zk-proofs
-        body.position.y = 0;
-        screws.forEach((s) => (s.position.y = 0.32));
-        group.rotation.x = 0.48 + py;
-        group.rotation.y = px + time * 0.28;
+        // Act 3: Air-gapped ZK tripwires active
+        cageMat.opacity = 0.85;
+        cage.rotation.y = -time * 0.5;
+        coreMat.color.set(0x22c55e);
+        shieldMeshes.forEach((sm, i) => {
+          const [ox, oy, oz] = shieldOffsets[i];
+          sm.position.set(ox, oy, oz);
+        });
       } else {
-        // Scene 4: Hero lock
-        body.position.y = 0;
-        screws.forEach((s) => (s.position.y = 0.32));
-        group.rotation.x = 0.42 + py;
-        group.rotation.y = px + time * 0.1;
+        // Act 4: Sovereign Enclave Locked
+        cageMat.opacity = 0.6;
+        coreMat.color.set(0x22c55e);
+        shieldMeshes.forEach((sm, i) => {
+          const [ox, oy, oz] = shieldOffsets[i];
+          sm.position.set(ox, oy, oz);
+        });
       }
-
-      group.position.y = Math.sin(time * 0.4) * 0.02;
     },
     dispose: () => {
       coreGeo.dispose();
       coreMat.dispose();
-      bodyGeo.dispose();
-      bodyMat.dispose();
-      screwGeo.dispose();
-      screwMat.dispose();
+      shieldGeo.dispose();
+      shieldMat.dispose();
+      cageGeo.dispose();
+      cageMat.dispose();
     },
   };
 }
 
-// ── 5. Miniature Intelligence: Multi-Scene 3nm Silicon BGA Chip ──────────────
+// ════════════════════════════════════════════════════════════════════════════
+// 5. MINIATURE INTELLIGENCE: 3nm Neuromorphic Synaptic Neural Tree (0.8W)
+// ════════════════════════════════════════════════════════════════════════════
 
-export function createSiliconDieReel(): MultiSceneArtifact {
+export function createNeuromorphicDieReel(): MultiSceneArtifact {
   const group = new THREE.Group();
 
-  // Dark Organic Substrate Board
-  const subGeo = new THREE.BoxGeometry(1.68, 0.06, 1.68);
-  const subMat = new THREE.MeshStandardMaterial({
-    color: 0x11141a,
-    metalness: 0.3,
-    roughness: 0.65,
+  // 1. 3nm Silicon Die Plinth
+  const dieGeo = new THREE.BoxGeometry(0.85, 0.08, 0.85);
+  const dieMat = new THREE.MeshStandardMaterial({
+    color: 0x0f172a,
+    metalness: 0.95,
+    roughness: 0.15,
   });
-  const substrate = new THREE.Mesh(subGeo, subMat);
-  group.add(substrate);
+  const dieMesh = new THREE.Mesh(dieGeo, dieMat);
+  dieMesh.position.y = -0.55;
+  group.add(dieMesh);
 
-  // 3nm Silicon Die with Diffraction Shader (descends and bonds in Scene 2!)
-  const dieGeo = new THREE.BoxGeometry(0.98, 0.045, 0.98);
-  const dieMat = new THREE.ShaderMaterial({
-    vertexShader: SILICON_VS,
-    fragmentShader: SILICON_FS,
-    uniforms: {
-      uTime: { value: 0 },
-      uSynapticPulse: { value: 0 },
-    },
-  });
-  const die = new THREE.Mesh(dieGeo, dieMat);
-  die.position.y = 1.2; // Starts floating above
-  group.add(die);
-
-  // Gold Wire Bond Group (scales in after die bonds!)
+  // 2. Microscopic Gold Bond Wire Arcs
   const wireGroup = new THREE.Group();
-  const wireMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.98, roughness: 0.08 });
-  for (let i = -3; i <= 3; i++) {
-    const x = i * 0.11;
-    const curveN = new THREE.QuadraticBezierCurve3(
-      new THREE.Vector3(x, 0.06, 0.46),
-      new THREE.Vector3(x, 0.18, 0.62),
-      new THREE.Vector3(x * 1.2, 0.03, 0.76)
+  for (let w = 0; w < 12; w++) {
+    const angle = (w / 12) * Math.PI * 2;
+    const curve = new THREE.QuadraticBezierCurve3(
+      new THREE.Vector3(Math.cos(angle) * 0.38, -0.51, Math.sin(angle) * 0.38),
+      new THREE.Vector3(Math.cos(angle) * 0.55, -0.32, Math.sin(angle) * 0.55),
+      new THREE.Vector3(Math.cos(angle) * 0.68, -0.55, Math.sin(angle) * 0.68)
     );
-    const tubeN = new THREE.TubeGeometry(curveN, 8, 0.009, 8, false);
-    wireGroup.add(new THREE.Mesh(tubeN, wireMat));
-
-    const curveS = new THREE.QuadraticBezierCurve3(
-      new THREE.Vector3(x, 0.06, -0.46),
-      new THREE.Vector3(x, 0.18, -0.62),
-      new THREE.Vector3(x * 1.2, 0.03, -0.76)
-    );
-    const tubeS = new THREE.TubeGeometry(curveS, 8, 0.009, 8, false);
-    wireGroup.add(new THREE.Mesh(tubeS, wireMat));
+    const wireGeo = new THREE.TubeGeometry(curve, 16, 0.012, 8, false);
+    const wireMat = new THREE.MeshStandardMaterial({
+      color: 0xd4af37,
+      metalness: 0.98,
+      roughness: 0.1,
+    });
+    const wireMesh = new THREE.Mesh(wireGeo, wireMat);
+    wireGroup.add(wireMesh);
   }
-  wireGroup.scale.set(0, 0, 0);
   group.add(wireGroup);
+
+  // 3. 3D Synaptic Neural Dendrite Axon Tree (Branching Splines)
+  const treeLines: THREE.Line[] = [];
+  const lineMat = new THREE.LineBasicMaterial({ color: 0xeab308, transparent: true, opacity: 0.85 });
+
+  const branches = 18;
+  for (let b = 0; b < branches; b++) {
+    const a = (b / branches) * Math.PI * 2;
+    const pts = [
+      new THREE.Vector3(0, -0.5, 0),
+      new THREE.Vector3(Math.cos(a) * 0.25, -0.2, Math.sin(a) * 0.25),
+      new THREE.Vector3(Math.cos(a + 0.3) * 0.5, 0.15, Math.sin(a + 0.3) * 0.5),
+      new THREE.Vector3(Math.cos(a) * 0.75, 0.45, Math.sin(a) * 0.75),
+    ];
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(curve.getPoints(20));
+    const line = new THREE.Line(lineGeo, lineMat);
+    treeLines.push(line);
+    group.add(line);
+  }
+
+  // 4. 1,800 Synaptic Action Potential Energy Sparks
+  const sparkCount = 1800;
+  const sparkPos = new Float32Array(sparkCount * 3);
+  const sparkColors = new Float32Array(sparkCount * 3);
+  const cGold = new THREE.Color(0xfde047);
+
+  for (let i = 0; i < sparkCount; i++) {
+    sparkPos[i * 3] = (Math.random() - 0.5) * 1.4;
+    sparkPos[i * 3 + 1] = -0.5 + Math.random() * 1.1;
+    sparkPos[i * 3 + 2] = (Math.random() - 0.5) * 1.4;
+    sparkColors[i * 3] = cGold.r;
+    sparkColors[i * 3 + 1] = cGold.g;
+    sparkColors[i * 3 + 2] = cGold.b;
+  }
+
+  const sparkGeo = new THREE.BufferGeometry();
+  sparkGeo.setAttribute('position', new THREE.BufferAttribute(sparkPos, 3));
+  sparkGeo.setAttribute('color', new THREE.BufferAttribute(sparkColors, 3));
+  const sparkMat = new THREE.PointsMaterial({
+    size: 0.035,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.9,
+    blending: THREE.AdditiveBlending,
+  });
+  const sparks = new THREE.Points(sparkGeo, sparkMat);
+  group.add(sparks);
 
   return {
     group,
     update: (time, sceneIdx, sceneProgress, pointer) => {
-      dieMat.uniforms.uTime.value = time;
-      const px = pointer ? pointer.x * 0.15 : 0;
-      const py = pointer ? pointer.y * 0.15 : 0;
+      const px = pointer ? pointer.x * 0.25 : 0;
+      const py = pointer ? pointer.y * 0.25 : 0;
+      group.rotation.x = 0.5 + py;
+      group.rotation.y = time * 0.2 + px;
+
+      const pPosAttr = sparkGeo.attributes.position as THREE.BufferAttribute;
+      const pData = pPosAttr.array as Float32Array;
 
       if (sceneIdx === 0) {
-        // Scene 1: Bare substrate board
-        die.position.y = 1.0;
+        // Act 1: High latency cloud anchor (sparks drift upwards into void)
         wireGroup.scale.set(0, 0, 0);
-        dieMat.uniforms.uSynapticPulse.value = 0;
-        group.rotation.x = 0.52 + py;
-        group.rotation.y = px + time * 0.08;
+        sparkMat.opacity = 0.25;
+        for (let i = 0; i < sparkCount; i++) {
+          pData[i * 3 + 1] += 0.01;
+          if (pData[i * 3 + 1] > 1.2) pData[i * 3 + 1] = -0.5;
+        }
       } else if (sceneIdx === 1) {
-        // Scene 2: Silicon die lands and bonds; wire bonds arc out
+        // Act 2: 3nm Silicon bonding & gold wire arcs snap into pads
         const ease = sceneProgress * sceneProgress * (3 - 2 * sceneProgress);
-        die.position.y = 0.052 + (1 - ease) * 0.95;
-        const wireScale = Math.max(0, (sceneProgress - 0.4) * 1.6);
-        wireGroup.scale.setScalar(Math.min(1, wireScale));
-        dieMat.uniforms.uSynapticPulse.value = 0;
-        group.rotation.x = 0.62 + py;
-        group.rotation.y = px + time * 0.18;
+        wireGroup.scale.setScalar(ease);
+        sparkMat.opacity = THREE.MathUtils.lerp(0.25, 0.8, ease);
       } else if (sceneIdx === 2) {
-        // Scene 3: Synaptic neural pulses firing on 0.8W!
-        die.position.y = 0.052;
-        wireGroup.scale.setScalar(1);
-        dieMat.uniforms.uSynapticPulse.value = (Math.sin(time * 16) * 0.5 + 0.5) * 0.9;
-        group.rotation.x = 0.64 + py;
-        group.rotation.y = px + time * 0.28;
+        // Act 3: 0.8W Synaptic neural firing pulses
+        wireGroup.scale.set(1, 1, 1);
+        sparkMat.opacity = 1;
+        for (let i = 0; i < sparkCount; i++) {
+          const bIdx = i % branches;
+          const a = (bIdx / branches) * Math.PI * 2;
+          const flow = (time * 4.5 + i * 0.03) % 1;
+          pData[i * 3] = Math.cos(a) * flow * 0.75;
+          pData[i * 3 + 1] = -0.5 + flow * 0.95;
+          pData[i * 3 + 2] = Math.sin(a) * flow * 0.75;
+        }
       } else {
-        // Scene 4: Hero lock
-        die.position.y = 0.052;
-        wireGroup.scale.setScalar(1);
-        dieMat.uniforms.uSynapticPulse.value = 0.2;
-        group.rotation.x = 0.58 + py;
-        group.rotation.y = px + time * 0.1;
+        // Act 4: Local on-device sovereignty locked
+        wireGroup.scale.set(1, 1, 1);
+        sparkMat.opacity = 0.75;
       }
-
-      group.position.y = Math.sin(time * 0.4) * 0.02;
+      pPosAttr.needsUpdate = true;
     },
     dispose: () => {
-      subGeo.dispose();
-      subMat.dispose();
       dieGeo.dispose();
       dieMat.dispose();
-      wireMat.dispose();
+      sparkGeo.dispose();
+      sparkMat.dispose();
+      lineMat.dispose();
     },
   };
 }
 
-// ── Factory Helper ──────────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════════
+// Factory
+// ════════════════════════════════════════════════════════════════════════════
 
 export function createMultiSceneArtifact(index: number): MultiSceneArtifact {
   switch (index) {
     case 0:
-      return createQuartzDiscReel();
+      return createQuartzLatticeReel();
     case 1:
-      return createMachinedUnitReel();
+      return createComputeFabricReel();
     case 2:
-      return createLidarSensorReel();
+      return createLidarPointcloudReel();
     case 3:
-      return createTopographicSlabReel();
+      return createProceduralTerrainReel();
     case 4:
-      return createCryptographicModuleReel();
+      return createTungstenVaultReel();
     case 5:
-      return createSiliconDieReel();
+      return createNeuromorphicDieReel();
     default:
-      return createQuartzDiscReel();
+      return createQuartzLatticeReel();
   }
 }

@@ -1,11 +1,11 @@
-/* Bharattech Origin — Hyperrealistic Domain Cinema Reels */
+/* Bharattech Origin — Pure Three.js Generative 3D Video Reels */
 
 .domain-visual {
   position: relative;
   display: block;
   width: 100%;
   height: 290px;
-  background: #08090d;
+  background: radial-gradient(circle at 50% 40%, #151824 0%, #0c0e17 65%, #06070a 100%);
   border-bottom: 1px solid var(--line, rgba(26, 28, 30, 0.12));
   overflow: hidden;
 }
@@ -27,54 +27,19 @@
   height: 100%;
   overflow: hidden;
   user-select: none;
-  background: #05060a;
+  background: transparent;
 }
 
-/* ── Layer 1: Photorealistic Macro Hero Image Layer ───────────────────────── */
+/* ── Layer 1: Pure Three.js WebGL Canvas ──────────────────────────────────── */
 
-.reel-image-layer {
+.domain-reel-canvas {
   position: absolute;
-  inset: -10px;
-  overflow: hidden;
-  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-  will-change: transform;
-}
-
-.reel-hero-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center 48%;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
   display: block;
-  filter: brightness(0.92) contrast(1.08) saturate(1.05);
-  transition: filter 0.6s ease;
-}
-
-.domain-reel-stage.act-0 .reel-hero-img {
-  filter: brightness(0.85) contrast(1.15) saturate(0.9);
-}
-
-.domain-reel-stage.act-2 .reel-hero-img {
-  filter: brightness(1.02) contrast(1.1) saturate(1.15);
-}
-
-.domain-reel-stage.act-3 .reel-hero-img {
-  filter: brightness(1) contrast(1.08) saturate(1.08);
-}
-
-/* Specular glare that sweeps across the lens with mouse movement */
-.reel-specular-glare {
-  position: absolute;
-  inset: -50%;
-  background: radial-gradient(
-    circle at 50% 50%,
-    rgba(255, 255, 255, 0.18) 0%,
-    rgba(255, 255, 255, 0.05) 30%,
-    transparent 65%
-  );
-  pointer-events: none;
-  mix-blend-mode: screen;
-  transition: transform 0.1s ease-out;
+  outline: none;
+  z-index: 1;
 }
 
 /* ── Layer 2: Precision Concentric Calibration Rings ─────────────────────── */
@@ -101,19 +66,7 @@
   stroke-width: 1;
 }
 
-/* ── Layer 3: Interactive Canvas FX ───────────────────────────────────────── */
-
-.reel-fx-canvas {
-  position: absolute;
-  inset: 0;
-  width: 100% !important;
-  height: 100% !important;
-  display: block;
-  pointer-events: none;
-  z-index: 3;
-}
-
-/* ── Layer 4: Top Header Overlay ──────────────────────────────────────────── */
+/* ── Layer 3: Top Header Overlay ──────────────────────────────────────────── */
 
 .reel-top-bar {
   position: absolute;
@@ -248,7 +201,7 @@
   background: rgba(255, 255, 255, 0.2);
 }
 
-/* ── Layer 5: Live Engineering Telemetry Box ──────────────────────────────── */
+/* ── Layer 4: Live Engineering Telemetry Box ──────────────────────────────── */
 
 .reel-floating-metric {
   position: absolute;
@@ -286,7 +239,7 @@
   color: #ffffff;
 }
 
-/* ── Layer 6: Bottom Narrative HUD Overlay ────────────────────────────────── */
+/* ── Layer 5: Bottom Narrative HUD Overlay ────────────────────────────────── */
 
 .reel-bottom-hud {
   position: absolute;
