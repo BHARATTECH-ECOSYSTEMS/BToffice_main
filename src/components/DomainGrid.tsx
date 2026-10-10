@@ -1,13 +1,13 @@
 import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { Arrow, Reveal } from './ui';
-import { DomainArt } from './art';
+import { DomainCardReel } from './DomainCardReel';
 import { DOMAINS } from '../content';
 
 export const DOMAIN_TONES = ['var(--violet)', 'var(--tangerine)', 'var(--saffron)', 'var(--violet)', 'var(--tangerine)', 'var(--saffron)'];
 const SPANS = [8, 4, 4, 4, 4, 12];
 
-/** The six research domains as a bento, each with a living diagram of what it studies. */
+/** The six research domains as a bento, each with an interactive 4-scene narrative 3D video reel. */
 export function DomainGrid({ link = true }: { link?: boolean }) {
   return (
     <div className="bento domain-bento">
@@ -20,7 +20,7 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
           delay={(i % 3) * 80}
         >
           <div className="domain-visual">
-            <DomainArt index={i} />
+            <DomainCardReel index={i} />
           </div>
           <div className="domain-copy">
             <p className="cell-label">
