@@ -83,14 +83,13 @@
 
 .about-overview-grid {
   display: grid;
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+  grid-template-columns: 1fr;
   gap: clamp(36px, 6vw, 72px);
   align-items: start;
 }
 
 .about-who-sticky {
-  position: sticky;
-  top: calc(var(--nav-h) + 28px);
+  max-width: 760px;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -165,30 +164,38 @@
   border: 1px solid var(--line-strong);
 }
 
-/* What drives us cards list */
+/* Values share a rule and alignment, without implying sequential steps. */
 .about-drives-col {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(16px, 2.5vw, 24px);
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0 clamp(24px, 3vw, 40px);
 }
-
+.about-drives-col > h2 { grid-column: 1 / -1; margin-bottom: 36px; }
 .about-drives-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: clamp(22px, 2.6vw, 30px);
-  border-radius: var(--r-lg);
-  background: var(--paper);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.25s var(--ease);
+  gap: 12px;
+  padding: 24px 0 0;
+  border-top: 1px solid var(--line-strong);
 }
-
-.about-drives-card:hover {
-  transform: translateY(-2px);
-  border-color: var(--line-strong);
-  box-shadow: 0 10px 24px -6px rgba(0, 0, 0, 0.06), var(--shadow-sm);
+.about-item-num {
+  font: 500 12px var(--mono);
+  letter-spacing: .1em;
+  color: var(--violet);
+  margin-bottom: 14px;
 }
+.about-drives-card::before, .about-reason-col::before {
+  content: ''; position: absolute; top: -3px; left: 0;
+  width: 5px; height: 5px; border-radius: 50%; background: var(--violet);
+}
+.company-about-page .about-drives-card.reveal,
+.company-about-page .about-reason-col.reveal {
+  opacity: 1; filter: none; transform: translateY(8px);
+  transition: transform .35s ease-out;
+}
+.company-about-page .about-drives-card[data-in],
+.company-about-page .about-reason-col[data-in] { transform: none; }
 
 .about-drives-card h3 {
   font-family: var(--display);
@@ -212,9 +219,9 @@
 }
 
 .about-why-header {
-  text-align: center;
+  text-align: left;
   max-width: 720px;
-  margin: 0 auto clamp(36px, 5vw, 60px);
+  margin: 0 0 clamp(36px, 5vw, 60px);
 }
 
 .about-why-header h2 {
@@ -237,25 +244,16 @@
 .about-reasons-matrix {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(16px, 2.2vw, 24px);
+  gap: clamp(28px, 4vw, 56px);
+  border-top: 1px solid var(--line-strong);
 }
 
 .about-reason-col {
-  padding: clamp(28px, 3.2vw, 36px) clamp(20px, 2.6vw, 30px);
+  position: relative;
+  padding: 28px 0 0;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  background: var(--paper);
-  border: 1px solid var(--line);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.25s var(--ease);
-}
-
-.about-reason-col:hover {
-  transform: translateY(-2px);
-  border-color: var(--line-strong);
-  box-shadow: 0 10px 24px -6px rgba(0, 0, 0, 0.06), var(--shadow-sm);
+  gap: 14px;
 }
 
 .about-reason-col h3 {
@@ -358,163 +356,88 @@
   position: relative;
   padding: clamp(48px, 6vw, 84px) 0;
 }
-
-.how-scroll-track {
-  position: relative;
-  height: 300vh;
-}
-
-.how-sticky-frame {
-  position: sticky;
-  top: calc(var(--nav-h) + 12px);
-  height: calc(100svh - var(--nav-h) - 24px);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-}
-
+.how-scroll-track { position: relative; }
+.how-sticky-frame { position: relative; }
 .how-pinned-card {
   width: 100%;
-  max-width: var(--content);
-  margin: 0 auto;
-  border-radius: var(--r-xl);
-  background: var(--paper);
-  border: 1px solid var(--line);
-  box-shadow: var(--shadow-sm);
-  padding: clamp(18px, 2.2vw, 28px);
-  height: 100%;
-  max-height: 840px;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: clamp(12px, 1.8vh, 18px);
-  box-sizing: border-box;
+  gap: 28px;
 }
-
-/* Card Header */
-.how-pinned-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 20px;
-}
-
+.how-pinned-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; }
 .how-pinned-title {
   font-family: var(--display);
-  font-size: clamp(24px, 2.8vw, 38px);
-  font-weight: 700;
-  line-height: 1.15;
-  letter-spacing: -0.035em;
-  color: var(--ink);
-  margin: 0;
+  font-size: clamp(30px, 3.5vw, 48px);
+  font-weight: 700; line-height: 1.12; letter-spacing: -.035em;
+  color: var(--ink); margin: 0; max-width: 760px;
 }
-
 .how-pinned-meta {
-  padding: 6px 14px;
-  border-radius: 20px;
-  background: color-mix(in srgb, var(--violet) 8%, var(--paper));
-  border: 1px solid color-mix(in srgb, var(--violet) 20%, transparent);
-  font-family: var(--mono);
-  font-size: 11.5px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--violet);
-  text-transform: uppercase;
-  white-space: nowrap;
+  font: 500 11px/1.6 var(--mono); letter-spacing: .04em;
+  color: var(--violet); max-width: 200px; flex-shrink: 0;
 }
-
-/* Panoramic Canvas Stage */
-.how-pinned-stage {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  min-height: 200px;
-  border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--ink) 2%, var(--paper));
-  border: 1px solid var(--line);
-  overflow: hidden;
+.how-pinned-stage { width: 100%; height: clamp(200px, 23vh, 260px); }
+.how-pinned-canvas { display: block; width: 100%; height: 100%; }
+.how-process-body { position: relative; }
+.how-connection { position: relative; height: 1px; background: var(--line-strong); }
+.how-connection-fill {
+  display: block; width: 100%; height: 100%; background: var(--violet);
+  transform: scaleX(0); transform-origin: left;
 }
-
-.how-pinned-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
+.how-connection-marker { position: absolute; inset: 0; pointer-events: none; }
+.how-connection-marker i {
+  position: absolute; left: -4px; top: -3.5px; width: 8px; height: 8px;
+  border-radius: 50%; background: var(--violet);
 }
-
-/* 4 Step Cards at the bottom */
 .how-pinned-steps {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(10px, 1.5vw, 16px);
+  list-style: none; padding: 0; margin: 0;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: clamp(20px, 3vw, 40px);
 }
-
-.how-pinned-step {
-  text-align: left;
-  background: transparent;
-  border: 1px solid var(--line);
-  border-radius: var(--r-md);
-  padding: 14px 14px;
-  cursor: pointer;
-  transition: all 0.25s var(--ease);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+.how-pinned-step { position: relative; min-width: 0; padding-top: 24px; }
+.how-step-select {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 8px;
+  text-align: left; background: none; border: 0; padding: 0; margin-bottom: 16px;
+  color: var(--ink-soft); cursor: pointer;
 }
-
-.how-pinned-step:hover {
-  border-color: var(--line-strong);
-  background: color-mix(in srgb, var(--violet) 2%, transparent);
-}
-
-.how-pinned-step.is-active {
-  border-color: var(--violet);
-  background: color-mix(in srgb, var(--violet) 5%, var(--paper));
-  box-shadow: 0 4px 16px -4px rgba(110, 88, 245, 0.25);
-}
-
-/* Step Progress Rail on top of each card */
-.how-step-rail {
-  width: 100%;
-  height: 3px;
-  background: var(--line);
-  border-radius: 2px;
-  overflow: hidden;
-  margin-bottom: 4px;
-}
-
-.how-step-fill {
-  height: 100%;
-  background: var(--violet);
-  transition: width 0.1s linear;
-}
-
-.how-step-num-row {
-  display: flex;
-  align-items: center;
-}
-
-.how-step-phase {
-  font-size: 11px;
-  font-family: var(--mono);
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--violet);
-}
-
+.how-step-select:focus-visible { outline: 2px solid var(--violet); outline-offset: 6px; }
+.how-step-num { font: 500 11px var(--mono); letter-spacing: .1em; }
+.how-step-phase { font: 500 11px var(--mono); text-transform: uppercase; letter-spacing: .04em; }
+.how-pinned-step.is-active .how-step-select,
+.how-pinned-step.is-done .how-step-num { color: var(--violet); }
 .how-step-title {
-  font-family: var(--display);
-  font-size: 14.5px;
-  font-weight: 650;
-  color: var(--ink);
-  margin: 0;
-  line-height: 1.25;
+  font-family: var(--display); font-size: clamp(18px, 1.6vw, 23px);
+  font-weight: 650; line-height: 1.25; letter-spacing: -.025em;
+  color: var(--ink); margin: 0 0 12px;
 }
-
-.how-step-desc {
-  font-size: 12px;
-  line-height: 1.55;
-  color: var(--ink-soft);
-  margin: 0;
+.how-step-desc { font-size: 14px; line-height: 1.65; color: var(--ink-soft); margin: 0; }
+.how-step-metric { font: 500 10px/1.6 var(--mono); color: var(--violet); margin: 16px 0 0; }
+.how-step-art, .how-step-loop { display: none; }
+@media (max-width: 1099px), (max-height: 819px) {
+  .how-connection-marker { display: none; }
+}
+@media (min-width: 1100px) and (min-height: 820px) and (prefers-reduced-motion: no-preference) {
+  .how-scroll-track { height: 220svh; }
+  .how-sticky-frame { position: sticky; top: calc(var(--nav-h) + 12px); }
+}
+@media (max-width: 1099px) {
+  .how-pinned-head { align-items: flex-start; flex-direction: column; }
+  .how-pinned-meta { max-width: none; }
+  .how-pinned-stage, .how-connection { display: none; }
+  .how-pinned-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px; }
+  .how-pinned-step { border-top: 1px solid var(--line-strong); }
+  .how-step-loop { display: block; font: 500 10px/1.6 var(--mono); color: var(--ink-soft); }
+  .how-step-art { display: block; width: 100%; height: 200px; margin-bottom: 20px; }
+}
+@media (max-width: 640px) {
+  .how-pinned-steps { grid-template-columns: 1fr; gap: 0; border-left: 1px solid var(--line-strong); }
+  .how-pinned-step { padding: 0 0 40px 24px; border: 0; }
+  .how-pinned-step:last-child { padding-bottom: 0; }
+  .how-pinned-step::before {
+    content: ''; position: absolute; left: -4px; top: 3px;
+    width: 7px; height: 7px; border-radius: 50%; background: var(--line-strong);
+  }
+  .how-pinned-step.is-active::before, .how-pinned-step.is-done::before { background: var(--violet); }
+  .how-step-title { font-size: 23px; }
+  .how-step-desc { font-size: 15px; }
 }
 
 /* ── 6. SECTION: NATIONAL AWARDS & HONORS ── */
@@ -699,20 +622,6 @@
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  .how-pinned-steps {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-  .how-pinned-card {
-    max-height: none;
-    height: auto;
-  }
-  .how-scroll-track {
-    height: auto;
-  }
-  .how-sticky-frame {
-    position: static;
-    height: auto;
-  }
   .about-contact-grid {
     grid-template-columns: 1fr;
     gap: 32px;
@@ -723,12 +632,18 @@
   .about-awards-grid {
     grid-template-columns: 1fr;
   }
-  .how-pinned-steps {
-    grid-template-columns: 1fr;
-  }
-  .how-pinned-head {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
+}
+
+@media (max-width: 1024px) {
+  .about-drives-col { grid-template-columns: repeat(2, minmax(0, 1fr)); row-gap: 32px; }
+  .about-drives-col > h2 { margin-bottom: 0; }
+  .about-reasons-matrix { border-top: 0; gap: 32px; }
+  .about-reason-col { border-top: 1px solid var(--line-strong); }
+}
+@media (max-width: 640px) {
+  .about-drives-col { grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .company-about-page .reveal { opacity: 1; filter: none; transform: none; transition: none; }
+  .how-connection-marker { display: none; }
 }

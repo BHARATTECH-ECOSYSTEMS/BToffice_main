@@ -115,7 +115,8 @@ export function About() {
               What drives us
             </Reveal>
             {DRIVES.map((d, index) => (
-              <Reveal key={d.title} className="about-drives-card" delay={index * 60}>
+              <Reveal as="article" key={d.title} className="about-drives-card" delay={index * 60}>
+                <span className="about-item-num" aria-hidden="true">{d.num}</span>
                 <h3>{d.title}</h3>
                 <p>{d.body}</p>
               </Reveal>
@@ -124,7 +125,7 @@ export function About() {
         </div>
       </section>
 
-      {/* ── 3. SECTION: WHY CHOOSE US (REASON MATRIX) ── */}
+      {/* Connected principles, not chronological process steps. */}
       <section className="section about-why-section" id="why">
         <div className="wrap">
           <div className="about-why-header">
@@ -138,7 +139,8 @@ export function About() {
 
           <div className="about-reasons-matrix">
             {REASONS.map((r, i) => (
-              <Reveal key={r.title} className="about-reason-col" delay={i * 70}>
+              <Reveal as="article" key={r.title} className="about-reason-col" delay={i * 70}>
+                <span className="about-item-num" aria-hidden="true">{r.num}</span>
                 <h3>{r.title}</h3>
                 <p>{r.body}</p>
               </Reveal>

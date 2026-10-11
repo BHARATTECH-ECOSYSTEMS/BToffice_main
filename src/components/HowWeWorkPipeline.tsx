@@ -1,4 +1,8 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import gsap from 'gsap';
+import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+gsap.registerPlugin(ScrollTrigger);
 import { useScene } from '../gl/Scene';
 
 interface StepData {
@@ -45,21 +49,19 @@ export function HowWeWorkPipeline() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { scrollTo } = useScene();
   const [activeStep, setActiveStep] = useState(0);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const triggerRef = useRef<ScrollTrigger | null>(null);
 
-  // Jump to step on click
-  const handleStepClick = useCallback(
-    (index: number) => {
-      const track = trackRef.current;
-      if (!track) return;
-      const rect = track.getBoundingClientRect();
-      const trackTop = window.scrollY + rect.top;
-      const totalScrollable = rect.height - window.innerHeight;
-      const targetScrollY = trackTop + (index / 3.2) * totalScrollable;
-      scrollTo(targetScrollY);
-    },
-    [scrollTo]
-  );
+  const handleStepClick = (index: number) => {
+    const trigger = triggerRef.current;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (trigger) {
+      scrollTo(trigger.start + ((index + 0.5) / STEPS.length) * (trigger.end - trigger.start), reduced);
+    } else {
+      const step = trackRef.current?.querySelectorAll<HTMLElement>('.how-pinned-step')[index];
+      if (step) scrollTo(window.scrollY + step.getBoundingClientRect().top - 100, reduced);
+    }
+    setActiveStep(index);
+  };
 
   // Canvas drawing & scroll tracking effect
   useEffect(() => {
@@ -67,8 +69,9 @@ export function HowWeWorkPipeline() {
     const canvas = canvasRef.current;
     if (!track || !canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    const mainContext = canvas.getContext('2d');
+    if (!mainContext) return;
+    let ctx: CanvasRenderingContext2D = mainContext;
 
     let W = 0;
     let H = 0;
@@ -76,31 +79,30 @@ export function HowWeWorkPipeline() {
     let u = 1;
     let G = 0;
     let X: number[] = [];
-    let rafId = 0;
-    let currentP = 0;
-    let targetP = 0;
+    let progress = 0;
+    let frame = 0;
+    let disposed = false;
+    let panoramic = true;
+    let fontFamily = 'monospace';
 
     const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
-    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
     const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
+    // Dimensions are read on resize only. Drawing never measures layout on scroll.
+    const sizes = new Map<HTMLCanvasElement, { width: number; height: number }>();
+    const canvases = [canvas, ...track.querySelectorAll<HTMLCanvasElement>('.how-step-art')];
     const resize = () => {
       const dpr = Math.min(2, window.devicePixelRatio || 1);
-      W = canvas.clientWidth;
-      H = canvas.clientHeight;
-      canvas.width = Math.round(W * dpr);
-      canvas.height = Math.round(H * dpr);
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      u = Math.max(0.68, Math.min(1.4, H / 290));
-      WW = Math.max(W, 1180 * u);
-      G = H * 0.78;
-      X = [0.14, 0.38, 0.62, 0.86].map((f) => f * WW);
+      fontFamily = getComputedStyle(track).getPropertyValue('--mono').trim() || 'monospace';
+      canvases.forEach((element) => {
+        const width = element.clientWidth;
+        const height = element.clientHeight;
+        sizes.set(element, { width, height });
+        element.width = Math.round(width * dpr);
+        element.height = Math.round(height * dpr);
+        element.getContext('2d')?.setTransform(dpr, 0, 0, dpr, 0, 0);
+      });
     };
-
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
 
     const getThemeColors = () => {
       const isDark =
@@ -195,13 +197,13 @@ export function HowWeWorkPipeline() {
         ctx.fill();
 
         // Technical data label
-        ctx.font = `${9 * u}px var(--mono)`;
+        ctx.font = `${9 * u}px ${fontFamily}`;
         ctx.fillStyle = colors.inkSoft;
         ctx.fillText(s.label, x - 105 * u, sy + 3 * u);
       });
 
       // Terminal Badge
-      ctx.font = `bold ${10 * u}px var(--mono)`;
+      ctx.font = `bold ${10 * u}px ${fontFamily}`;
       ctx.fillStyle = colors.violet;
       ctx.fillText('[ 01 · SOVEREIGN INGEST ]', x - tw, y + 20 * u);
     };
@@ -305,7 +307,7 @@ export function HowWeWorkPipeline() {
       });
 
       // Station Badge
-      ctx.font = `bold ${10 * u}px var(--mono)`;
+      ctx.font = `bold ${10 * u}px ${fontFamily}`;
       ctx.fillStyle = colors.violet;
       ctx.fillText('[ 02 · KNOWLEDGE WEAVE ]', x - 48 * u, y + 20 * u);
     };
@@ -375,7 +377,7 @@ export function HowWeWorkPipeline() {
       drawLine(x + ringR1 * 0.8, y, x + ringR1 * 0.8, coreY + ringR1 * 0.4, 1.5 * u, colors.ink, 0.4 * alpha);
 
       // Station Badge
-      ctx.font = `bold ${10 * u}px var(--mono)`;
+      ctx.font = `bold ${10 * u}px ${fontFamily}`;
       ctx.fillStyle = colors.violet;
       ctx.fillText('[ 03 · SOVEREIGN COMPUTE ]', x - 54 * u, y + 20 * u);
     };
@@ -437,7 +439,7 @@ export function HowWeWorkPipeline() {
         ctx.fill();
 
         // Platform Label
-        ctx.font = `bold ${9.5 * u}px var(--mono)`;
+        ctx.font = `bold ${9.5 * u}px ${fontFamily}`;
         ctx.fillStyle = colors.ink;
         ctx.fillText(pl.name, px - 18 * u, py - 8 * u);
       });
@@ -445,75 +447,108 @@ export function HowWeWorkPipeline() {
       // Feedback Arrow returning back to start (Compounding Memory Loop)
       const loopY = y - 12 * u;
       drawLine(x, loopY, X[0], loopY, 1 * u, colors.line, 0.4 * alpha);
-      ctx.font = `${8.5 * u}px var(--mono)`;
+      ctx.font = `${8.5 * u}px ${fontFamily}`;
       ctx.fillStyle = colors.inkSoft;
-      ctx.fillText('CONTINUOUS LEARNING & CONTEXT PERSISTENCE LOOP ↺', X[1] - 40 * u, loopY - 5 * u);
+      if (panoramic) ctx.fillText('CONTINUOUS LEARNING & CONTEXT PERSISTENCE LOOP ↺', X[1] - 40 * u, loopY - 5 * u);
 
       // Station Badge
-      ctx.font = `bold ${10 * u}px var(--mono)`;
+      ctx.font = `bold ${10 * u}px ${fontFamily}`;
       ctx.fillStyle = colors.violet;
       ctx.fillText('[ 04 · NATIONWIDE SCALE ]', x - 52 * u, y + 20 * u);
     };
 
-    // ── Main Render Loop ──
-    const render = (time: number) => {
-      // Smooth progress interpolation
-      currentP = lerp(currentP, targetP, 0.08);
-      const p = currentP;
-
-      ctx.clearRect(0, 0, W, H);
+    const stations = [drawStation01, drawStation02, drawStation03, drawStation04];
+    const draw = (p: number, staticArt: boolean) => {
       const colors = getThemeColors();
-      const tSec = time * 0.001;
+      canvases.forEach((element, index) => {
+        const size = sizes.get(element);
+        if (!size?.width || !size.height) return;
+        const context = element.getContext('2d');
+        if (!context) return;
+        ctx = context;
+        panoramic = index === 0;
+        W = size.width;
+        H = size.height;
+        u = index === 0 ? Math.min(1, W / 1180, H / 240) : 0.9;
+        WW = W;
+        G = H * 0.78;
+        X = [0.14, 0.38, 0.62, 0.86].map((f) => f * WW);
+        ctx.clearRect(0, 0, W, H);
+        ctx.save();
+        if (index === 0) {
+          drawLine(0, G, WW, G, 1, colors.line);
+          stations.forEach((station, i) => station(X[i], staticArt ? 1 : 0.28 + p * 0.72, staticArt ? 0 : p * 5, colors));
+        } else {
+          // The same PK artwork sits beside its own copy on stacked layouts.
+          X = [W / 2 - 180, W / 2, W / 2 + 180, W / 2 + 360];
+          stations[index - 1](W / 2, 1, 0, colors);
+        }
+        ctx.restore();
+      });
+    };
 
-      // Camera pans across the panoramic world
-      const maxCam = Math.max(0, WW - W);
-      const camX = p * maxCam;
-
-      ctx.save();
-      ctx.translate(-camX, 0);
-
-      // ── Ground Baseline & Sub-Grid ──
-      drawLine(0, G, WW, G, 2 * u, colors.ink, 0.8);
-      for (let gx = 20; gx < WW; gx += 40 * u) {
-        drawLine(gx, G, gx - 8 * u, G + 7 * u, 1 * u, colors.line, 0.35);
+    const rail = track.querySelector<HTMLElement>('.how-connection-fill')!;
+    const marker = track.querySelector<HTMLElement>('.how-connection-marker')!;
+    const motion = gsap.matchMedia();
+    motion.add({
+      desktop: '(min-width: 1100px) and (min-height: 820px)',
+      compact: '(max-width: 1099px), (max-height: 819px)',
+      reduce: '(prefers-reduced-motion: reduce)',
+    }, (context) => {
+      const reduced = !!context.conditions?.reduce;
+      const pinned = !!context.conditions?.desktop && !reduced;
+      let currentStep = -1;
+      const update = (p: number) => {
+        progress = p;
+        rail.style.transform = `scaleX(${p})`;
+        marker.style.transform = `translateX(${p * 100}%)`;
+        const next = Math.min(STEPS.length - 1, Math.floor(p * STEPS.length));
+        if (next !== currentStep) {
+          currentStep = next;
+          setActiveStep(next);
+        }
+        draw(p, !pinned);
+      };
+      resize();
+      if (!pinned) {
+        // A stacked or short viewport has no pinned reading sequence to scrub.
+        // Show complete artwork; phase buttons remain ordinary, usable controls.
+        rail.style.transform = 'scaleX(1)';
+        setActiveStep(0);
+        draw(1, true);
       }
-
-      // Render the 4 progressive stations
-      drawStation01(X[0], p, tSec, colors);
-      drawStation02(X[1], p, tSec, colors);
-      drawStation03(X[2], p, tSec, colors);
-      drawStation04(X[3], p, tSec, colors);
-
-      ctx.restore();
-
-      rafId = requestAnimationFrame(render);
-    };
-
-    rafId = requestAnimationFrame(render);
-
-    // ── Scroll Listener for Pinned Chapter ──
-    const onScroll = () => {
-      const rect = track.getBoundingClientRect();
-      const totalScrollable = rect.height - window.innerHeight;
-      if (totalScrollable <= 0) return;
-
-      const progress = clamp01(-rect.top / totalScrollable);
-      targetP = progress;
-      setScrollProgress(progress);
-
-      const stepIdx = Math.min(3, Math.floor(progress * 3.99));
-      setActiveStep(stepIdx);
-    };
-
-    window.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onScroll);
-    onScroll();
-
+      else {
+        const trigger = ScrollTrigger.create({
+          trigger: track,
+          start: () => `top ${parseFloat(getComputedStyle(track).getPropertyValue('--nav-h')) + 12}`,
+          end: 'bottom bottom',
+          onUpdate: (self) => update(self.progress),
+          onRefresh: (self) => update(self.progress),
+        });
+        triggerRef.current = trigger;
+        update(trigger.progress);
+      }
+      const observer = new ResizeObserver(() => {
+        cancelAnimationFrame(frame);
+        frame = requestAnimationFrame(() => {
+          resize();
+          ScrollTrigger.refresh();
+          draw(progress, !pinned);
+        });
+      });
+      canvases.forEach(element => observer.observe(element));
+      observer.observe(track);
+      return () => {
+        observer.disconnect();
+        cancelAnimationFrame(frame);
+        triggerRef.current = null;
+      };
+    }, track);
+    document.fonts.ready.then(() => { if (!disposed) ScrollTrigger.refresh(); });
     return () => {
-      cancelAnimationFrame(rafId);
-      window.removeEventListener('scroll', onScroll);
-      window.removeEventListener('resize', onScroll);
-      ro.disconnect();
+      disposed = true;
+      motion.revert();
+      cancelAnimationFrame(frame);
     };
   }, []);
 
@@ -540,44 +575,30 @@ export function HowWeWorkPipeline() {
 
           {/* Panoramic Scroll-Driven Canvas Stage */}
           <div className="how-pinned-stage">
-            <canvas ref={canvasRef} className="how-pinned-canvas" />
+            <canvas ref={canvasRef} className="how-pinned-canvas" aria-hidden="true" />
           </div>
 
-          {/* 4 Interactive Step Progression Cards */}
-          <div className="how-pinned-steps" role="tablist">
-            {STEPS.map((s, idx) => {
-              const isActive = activeStep === idx;
-              const isDone = activeStep > idx;
-              // Quartile progress: 0 to 1 for this specific step
-              const stepP = Math.max(0, Math.min(1, (scrollProgress - idx * 0.25) / 0.25));
-
-              return (
-                <button
-                  key={s.num}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  className={`how-pinned-step ${isActive ? 'is-active' : ''} ${isDone ? 'is-done' : ''}`}
-                  onClick={() => handleStepClick(idx)}
-                >
-                  {/* Step Progress Fill Line */}
-                  <div className="how-step-rail">
-                    <div
-                      className="how-step-fill"
-                      style={{ width: `${isDone ? 100 : Math.round(stepP * 100)}%` }}
-                    />
-                  </div>
-
-                  <div className="how-step-num-row">
+          <div className="how-process-body">
+            <div className="how-connection" aria-hidden="true">
+              <span className="how-connection-fill" />
+              <span className="how-connection-marker"><i /></span>
+            </div>
+            <ol className="how-pinned-steps" aria-label="How we work">
+              {STEPS.map((s, idx) => (
+                <li key={s.num} className={`how-pinned-step ${activeStep === idx ? 'is-active' : ''} ${activeStep > idx ? 'is-done' : ''}`}>
+                  <button type="button" className="how-step-select" onClick={() => handleStepClick(idx)}
+                    aria-current={activeStep === idx ? 'step' : undefined} aria-label={`Read phase ${idx + 1}: ${s.phase}`}>
                     <span className="how-step-num">{s.num}</span>
                     <span className="how-step-phase">{s.phase}</span>
-                  </div>
-
+                  </button>
+                  <canvas className="how-step-art" aria-hidden="true" />
                   <h3 className="how-step-title">{s.title}</h3>
                   <p className="how-step-desc">{s.desc}</p>
-                </button>
-              );
-            })}
+                  <p className="how-step-metric">{s.metric}</p>
+                  {idx === STEPS.length - 1 && <p className="how-step-loop">Continuous learning & context persistence loop ↺</p>}
+                </li>
+              ))}
+            </ol>
           </div>
         </div>
       </div>
