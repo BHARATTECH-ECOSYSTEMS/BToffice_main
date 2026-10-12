@@ -107,7 +107,7 @@ export function About() {
               What drives us
             </Reveal>
             {DRIVES.map((d, index) => (
-              <Reveal key={d.title} className="about-drives-card" delay={index * 60}>
+              <Reveal as="article" key={d.title} className="about-drives-card" delay={index * 60}>
                 <h3>{d.title}</h3>
                 <p>{d.body}</p>
               </Reveal>
@@ -132,7 +132,7 @@ export function About() {
 
           <div className="about-reasons-matrix">
             {REASONS.map((r, i) => (
-              <Reveal key={r.title} className="about-reason-col" delay={i * 70}>
+              <Reveal as="article" key={r.title} className="about-reason-col" delay={i * 70}>
                 <h3>{r.title}</h3>
                 <p>{r.body}</p>
               </Reveal>
