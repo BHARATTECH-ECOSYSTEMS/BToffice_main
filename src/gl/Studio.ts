@@ -332,6 +332,14 @@ export class Studio {
       g.beginPath();
       g.arc(128, 128, 120, 0, Math.PI * 2);
       g.stroke();
+      // The form floats too low for any ring to clear it, so the half running behind it (the texture's top,
+      // once laid on the floor) fades out rather than showing through the glass.
+      const front = g.createLinearGradient(0, 96, 0, 150);
+      front.addColorStop(0, 'rgba(255,255,255,0)');
+      front.addColorStop(1, 'rgba(255,255,255,1)');
+      g.globalCompositeOperation = 'destination-in';
+      g.fillStyle = front;
+      g.fillRect(0, 0, 256, 256);
     });
     this.trash.push(shadowTex, causticTex, ringTex);
     const decal = (tex: THREE.Texture, opacity = 1) => {

@@ -1,509 +1,491 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, type CSSProperties } from 'react';
+import { Link } from 'react-router';
+import { ArrowUpRight } from 'lucide-react';
 import { useScene } from '../gl/Scene';
+import {
+  type Palette,
+  type Pt,
+  arc,
+  clamp01,
+  drawStrokes,
+  easeInOut,
+  easeOut,
+  easeOutBack,
+  getPalette,
+  glowDot,
+  lerp,
+  line,
+  span,
+  wobble,
+} from '../gl/ink';
 
 interface StepData {
-  num: string;
   phase: string;
   title: string;
   desc: string;
-  metric: string;
 }
 
 const STEPS: StepData[] = [
   {
-    num: '01 / 04',
     phase: 'Ingest & Boundary',
     title: 'Sovereign Ingestion & Intent Parsing',
     desc: 'Unstructured enterprise records, research papers, and national datasets enter an isolated sovereign perimeter. Intent is extracted with zero offshore data leakage.',
-    metric: 'Zero-Relay Data Perimeter',
   },
   {
-    num: '02 / 04',
     phase: 'Memory Mesh',
     title: 'Tri-Thread Memory & Knowledge Graph',
     desc: 'The three Origin threads—Remembers, Connects, and Learns—weave raw tokens into a living neural graph. Context endures permanently across sessions.',
-    metric: 'Persistent Multi-Hop Recall',
   },
   {
-    num: '03 / 04',
     phase: 'Sovereign Compute',
     title: 'Cognitive Reasoning Engine & Isolation',
     desc: 'Deep inference executes on in-country accelerated clusters. Concentric zero-trust cryptographic rings enforce mathematical auditability and data sovereignty.',
-    metric: '100% In-Country Compute',
   },
   {
-    num: '04 / 04',
     phase: 'Nationwide Scale',
     title: 'Sovereign Scale & Continual Evolution',
     desc: 'Models deploy across regional data centers and mobile runtimes. Continuous learning loops feed real-world insights back into the core without catastrophic forgetting.',
-    metric: 'BharatAI · BSearch · CollegeCue · Recag',
   },
 ];
+
+const STEP_COUNT = STEPS.length;
+
+/** Below 1024px the CSS drops `position: sticky`, so the section scrolls like normal content. */
+const isPinned = (track: HTMLElement) => {
+  const frame = track.firstElementChild;
+  return !!frame && getComputedStyle(frame).position === 'sticky';
+};
+
+interface World {
+  ctx: CanvasRenderingContext2D;
+  c: Palette;
+  u: number;
+  G: number;
+  t: number;
+}
+
+// ── 01 · A dashed sovereign dome; records drop in and resolve into intent ──
+function drawIngest(w: World, x: number, build: number) {
+  const { ctx, c, u, G, t } = w;
+  const r = 62 * u;
+
+  ctx.strokeStyle = c.ink;
+  ctx.lineWidth = 2 * u;
+  ctx.setLineDash([7 * u, 6 * u]);
+  // The gap at the lower left is the gate records enter through.
+  drawStrokes(ctx, [wobble(arc(x, G, r, Math.PI * 1.14, Math.PI * 2), 1, 0.8 * u)], span(build, 0, 0.45));
+  ctx.setLineDash([]);
+
+  for (let k = 0; k < 3; k++) {
+    const f = span(build, 0.3 + k * 0.17, 0.52 + k * 0.17);
+    if (f <= 0) continue;
+    const restY = G - 24 * u - k * 13 * u;
+    const y = lerp(G - 190 * u, restY, easeOut(f));
+    const sx = x - 22 * u + k * 12 * u;
+    const tilt = (1 - f) * (k % 2 ? 0.25 : -0.25) + (k - 1) * 0.06;
+    ctx.save();
+    ctx.translate(sx, y);
+    ctx.rotate(tilt);
+    ctx.fillStyle = c.paper;
+    ctx.strokeStyle = c.ink;
+    ctx.lineWidth = 1.6 * u;
+    ctx.beginPath();
+    ctx.moveTo(-10 * u, -12 * u);
+    ctx.lineTo(5 * u, -12 * u);
+    ctx.lineTo(10 * u, -7 * u);
+    ctx.lineTo(10 * u, 12 * u);
+    ctx.lineTo(-10 * u, 12 * u);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.lineWidth = 1 * u;
+    for (let l = 0; l < 3; l++) {
+      ctx.beginPath();
+      ctx.moveTo(-6 * u, (-4 + l * 5) * u);
+      ctx.lineTo((l === 2 ? 1 : 6) * u, (-4 + l * 5) * u);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  const intent = span(build, 0.86, 1);
+  if (intent > 0) glowDot(ctx, c, x + 26 * u, G - 44 * u + Math.sin(t * 2.2) * 2 * u, 4.5 * u, intent);
+}
+
+// ── 02 · A knowledge tree grows; its nodes take the three thread colours ──
+function drawMemory(w: World, x: number, build: number) {
+  const { ctx, c, u, G, t } = w;
+  const nodes: Pt[] = [
+    [x - 40 * u, G - 72 * u],
+    [x + 42 * u, G - 84 * u],
+    [x - 28 * u, G - 124 * u],
+    [x + 32 * u, G - 132 * u],
+    [x, G - 156 * u],
+  ];
+  const hues = [c.violet, c.orange, c.saffron, c.orange, c.violet];
+
+  ctx.strokeStyle = c.ink;
+  ctx.lineWidth = 2.4 * u;
+  drawStrokes(ctx, [wobble(line([x, G], [x, G - 104 * u], 12), 4, 1.2 * u)], span(build, 0, 0.3));
+
+  ctx.lineWidth = 1.8 * u;
+  const roots: Pt[] = [[x, G - 50 * u], [x, G - 62 * u], [x, G - 98 * u], [x, G - 98 * u], [x, G - 104 * u]];
+  drawStrokes(
+    ctx,
+    nodes.map((n, i) => wobble(line(roots[i], n, 8), 7 + i, 1.1 * u)),
+    span(build, 0.22, 0.7)
+  );
+
+  // Cross-links: recall that jumps between branches, not just along them
+  ctx.lineWidth = 1.2 * u;
+  ctx.setLineDash([4 * u, 4 * u]);
+  ctx.strokeStyle = c.violet;
+  drawStrokes(
+    ctx,
+    [[0, 2], [1, 3], [2, 4], [3, 4]].map(([a, b]) => line(nodes[a], nodes[b], 6)),
+    span(build, 0.62, 1)
+  );
+  ctx.setLineDash([]);
+
+  nodes.forEach(([nx, ny], i) => {
+    const pop = span(build, 0.4 + i * 0.08, 0.55 + i * 0.08);
+    if (pop <= 0) return;
+    const r = 7 * u * easeOutBack(pop) * (1 + Math.sin(t * 2.4 + i) * 0.05);
+    ctx.fillStyle = hues[i];
+    ctx.strokeStyle = c.ink;
+    ctx.lineWidth = 1.6 * u;
+    ctx.beginPath();
+    ctx.arc(nx, ny, r, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  });
+}
+
+// ── 03 · Compute racks stack up and a zero-trust ring closes around them ──
+function drawCompute(w: World, x: number, build: number) {
+  const { ctx, c, u, G, t } = w;
+  const blockH = 16 * u;
+  const gap = 3 * u;
+
+  for (let k = 0; k < 5; k++) {
+    const f = span(build, k * 0.14, k * 0.14 + 0.2);
+    if (f <= 0) continue;
+    const bw = (76 - k * 6) * u;
+    const restY = G - (k + 1) * (blockH + gap);
+    const y = lerp(G - 240 * u, restY, easeOut(f));
+    ctx.globalAlpha = Math.min(1, f * 3);
+    ctx.fillStyle = c.ink;
+    ctx.beginPath();
+    ctx.roundRect(x - bw / 2, y, bw, blockH, 3 * u);
+    ctx.fill();
+    // Accelerator status lights
+    for (let l = 0; l < 3; l++) {
+      const lit = Math.sin(t * 3 + k * 1.9 + l * 2.1) > -0.2;
+      ctx.fillStyle = lit ? (l === 1 ? c.saffron : c.violet) : c.paper;
+      ctx.beginPath();
+      ctx.arc(x - bw / 2 + (9 + l * 8) * u, y + blockH / 2, 2 * u, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  const ring = span(build, 0.76, 1);
+  if (ring > 0) {
+    ctx.save();
+    ctx.strokeStyle = c.violet;
+    ctx.lineWidth = 1.8 * u;
+    ctx.setLineDash([6 * u, 5 * u]);
+    ctx.lineDashOffset = -t * 14 * u;
+    ctx.globalAlpha = ring;
+    ctx.beginPath();
+    ctx.ellipse(x, G - 52 * u, 66 * u, 18 * u, -0.08, 0, Math.PI * 2 * ring);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ── 04 · A broadcast tower rises and lights up the four platforms ──
+function drawScale(w: World, x: number, build: number) {
+  const { ctx, c, u, G, t } = w;
+  const top: Pt = [x, G - 140 * u];
+  const tip: Pt = [x, G - 160 * u];
+
+  ctx.strokeStyle = c.ink;
+  ctx.lineWidth = 2.2 * u;
+  const braces: Pt[][] = [];
+  for (let i = 0; i < 4; i++) {
+    const y0 = G - i * 34 * u;
+    const y1 = G - (i + 1) * 34 * u;
+    const half = (y: number) => lerp(24 * u, 5 * u, (G - y) / (140 * u));
+    braces.push(line([x - half(y0), y0], [x + half(y1), y1], 4));
+  }
+  drawStrokes(
+    ctx,
+    [
+      wobble(line([x - 24 * u, G], [x - 5 * u, top[1]], 10), 11, 0.9 * u),
+      wobble(line([x + 24 * u, G], [x + 5 * u, top[1]], 10), 13, 0.9 * u),
+      ...braces,
+      line(top, tip, 4),
+    ],
+    span(build, 0, 0.45)
+  );
+
+  // Signal ripples once the mast is up
+  const live = span(build, 0.45, 0.55);
+  for (let i = 0; i < 3; i++) {
+    const f = (t * 0.45 + i / 3) % 1;
+    ctx.strokeStyle = c.violet;
+    ctx.lineWidth = 1.6 * u;
+    ctx.globalAlpha = live * (1 - f) * 0.8;
+    ctx.beginPath();
+    ctx.arc(tip[0], tip[1], (10 + f * 46) * u, -Math.PI * 0.85, -Math.PI * 0.15);
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+
+  const platforms: [number, number, string][] = [
+    [-118, -150, c.violet],
+    [-58, -206, c.orange],
+    [58, -206, c.saffron],
+    [118, -150, c.violet],
+  ];
+  platforms.forEach(([dx, dy, hue], i) => {
+    const f = span(build, 0.5 + i * 0.08, 0.66 + i * 0.08);
+    if (f <= 0) return;
+    const p: Pt = [x + dx * u, G + dy * u];
+    ctx.strokeStyle = c.faint;
+    ctx.lineWidth = 1.2 * u;
+    ctx.setLineDash([3 * u, 4 * u]);
+    drawStrokes(ctx, [line(tip, p, 6)], f);
+    ctx.setLineDash([]);
+    ctx.strokeStyle = hue;
+    ctx.lineWidth = 2.4 * u;
+    drawStrokes(ctx, [arc(p[0], p[1], 11 * u, -Math.PI / 2, Math.PI * 1.5, 24)], f);
+  });
+
+  const spark = span(build, 0.9, 1);
+  if (spark > 0) {
+    const pulse = 1 + Math.sin(t * 3) * 0.12;
+    ctx.strokeStyle = c.violet;
+    ctx.lineWidth = 1.6 * u;
+    ctx.globalAlpha = spark;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2 + t * 0.4;
+      ctx.beginPath();
+      ctx.moveTo(tip[0] + Math.cos(a) * 7 * u, tip[1] + Math.sin(a) * 7 * u);
+      ctx.lineTo(tip[0] + Math.cos(a) * 15 * u * pulse, tip[1] + Math.sin(a) * 15 * u * pulse);
+      ctx.stroke();
+    }
+    glowDot(ctx, c, tip[0], tip[1], 4 * u, spark);
+  }
+}
+
+const STATIONS = [drawIngest, drawMemory, drawCompute, drawScale];
+
+/** The Origin orb: walks the ground, trailing the three brand threads behind it. */
+function drawOrb(w: World, x: number, speed: number, blink: boolean) {
+  const { ctx, c, u, G, t } = w;
+  const walking = Math.min(1, speed);
+  const stride = Math.sin(t * 11) * walking;
+  const bob = Math.abs(stride) * 3 * u + Math.sin(t * 2) * 0.8 * u * (1 - walking);
+  const cy = G - 22 * u - bob;
+  const r = 13 * u;
+
+  ctx.strokeStyle = c.ink;
+  ctx.lineWidth = 2 * u;
+  [-1, 1].forEach((side) => {
+    const sw = side * stride * 5 * u;
+    ctx.beginPath();
+    ctx.moveTo(x + side * 4 * u, cy + r * 0.7);
+    ctx.lineTo(x + side * 5 * u + sw, G);
+    ctx.stroke();
+  });
+
+  [c.violet, c.orange, c.saffron].forEach((hue, k) => {
+    ctx.strokeStyle = hue;
+    ctx.lineWidth = 2 * u;
+    ctx.beginPath();
+    for (let i = 0; i <= 10; i++) {
+      const f = i / 10;
+      const px = x - r * 0.8 - f * 26 * u;
+      const py = cy + (k - 1) * 5 * u + Math.sin(t * 7 + f * 5 + k * 2) * 3 * u * f;
+      if (i === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = c.ink;
+  ctx.beginPath();
+  ctx.arc(x, cy, r, 0, Math.PI * 2);
+  ctx.fill();
+
+  const eyeH = blink ? 0.6 * u : 3.6 * u;
+  [x + 1.5 * u, x + 9.5 * u].forEach((ex) => {
+    ctx.fillStyle = c.paper;
+    ctx.beginPath();
+    ctx.ellipse(ex, cy - 3 * u, 3.4 * u, eyeH, 0, 0, Math.PI * 2);
+    ctx.fill();
+    if (!blink) {
+      ctx.fillStyle = c.ink;
+      ctx.beginPath();
+      ctx.arc(ex + 1.2 * u, cy - 2.6 * u, 1.7 * u, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  });
+}
 
 export function HowWeWorkPipeline() {
   const trackRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { scrollTo } = useScene();
-  const [activeStep, setActiveStep] = useState(0);
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const [progress, setProgress] = useState(0);
+  // The draw loop reads this ref so it never restarts on React updates.
+  const progressRef = useRef(0);
+  // Wakes the draw loop after a state change (it idles off-screen and under reduced motion).
+  const redrawRef = useRef<() => void>(() => {});
 
-  // Jump to step on click
+  const activeStep = Math.min(STEP_COUNT - 1, Math.floor(progress * STEP_COUNT));
+
+  useEffect(() => {
+    progressRef.current = progress;
+    redrawRef.current();
+  }, [progress]);
+
   const handleStepClick = useCallback(
     (index: number) => {
       const track = trackRef.current;
       if (!track) return;
+      if (!isPinned(track)) {
+        // No pinned scroll range to seek, so show that step fully built.
+        setProgress((index + 0.999) / STEP_COUNT);
+        return;
+      }
       const rect = track.getBoundingClientRect();
-      const trackTop = window.scrollY + rect.top;
       const totalScrollable = rect.height - window.innerHeight;
-      const targetScrollY = trackTop + (index / 3.2) * totalScrollable;
-      scrollTo(targetScrollY);
+      // Land after the walk, while the station is being drawn.
+      scrollTo(window.scrollY + rect.top + ((index + 0.7) / STEP_COUNT) * totalScrollable);
     },
     [scrollTo]
   );
 
-  // Canvas drawing & scroll tracking effect
   useEffect(() => {
     const track = trackRef.current;
     const canvas = canvasRef.current;
     if (!track || !canvas) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     let W = 0;
     let H = 0;
-    let WW = 0;
-    let u = 1;
-    let G = 0;
-    let X: number[] = [];
+    let dpr = 1;
     let rafId = 0;
-    let currentP = 0;
-    let targetP = 0;
-
-    const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
-    const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-    const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
+    let visible = false;
+    let lastTime = 0;
+    let shown = progressRef.current;
+    let orbX = -1;
 
     const resize = () => {
-      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      dpr = Math.min(2, window.devicePixelRatio || 1);
       W = canvas.clientWidth;
       H = canvas.clientHeight;
       canvas.width = Math.round(W * dpr);
       canvas.height = Math.round(H * dpr);
+    };
+
+    const render = (time: number) => {
+      // Time-based easing keeps motion the same speed at 60Hz, 120Hz or when throttled.
+      const dt = lastTime ? Math.min(0.25, (time - lastTime) / 1000) : 1 / 60;
+      lastTime = time;
+      shown = reduced ? progressRef.current : lerp(shown, progressRef.current, 1 - Math.exp(-dt * 6));
+
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      u = Math.max(0.68, Math.min(1.4, H / 290));
-      WW = Math.max(W, 1180 * u);
-      G = H * 0.78;
-      X = [0.14, 0.38, 0.62, 0.86].map((f) => f * WW);
-    };
-
-    resize();
-    const ro = new ResizeObserver(resize);
-    ro.observe(canvas);
-
-    const getThemeColors = () => {
-      const isDark =
-        document.documentElement.getAttribute('data-theme') === 'dark' ||
-        document.documentElement.classList.contains('dark');
-      return {
-        ink: isDark ? '#FAF9F6' : '#14130F',
-        inkSoft: isDark ? 'rgba(250, 249, 246, 0.45)' : 'rgba(20, 19, 15, 0.45)',
-        line: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(20, 19, 15, 0.1)',
-        grid: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(20, 19, 15, 0.04)',
-        paper: isDark ? '#161523' : '#FFFFFF',
-        violet: isDark ? '#8E7BFF' : '#6E58F5',
-        orange: isDark ? '#FFA066' : '#FF8643',
-        saffron: isDark ? '#FFB733' : '#F59E00',
-      };
-    };
-
-    // Technical line drawer
-    const drawLine = (x1: number, y1: number, x2: number, y2: number, width: number, color: string, alpha = 1) => {
-      ctx.globalAlpha = alpha;
-      ctx.lineWidth = width;
-      ctx.strokeStyle = color;
+      ctx.clearRect(0, 0, W, H);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    };
 
-    // ── Station 01: Ingestion & Sovereign Security Perimeter ──
-    const drawStation01 = (x: number, progress: number, t: number, colors: ReturnType<typeof getThemeColors>) => {
-      const p = clamp01(progress / 0.28);
-      if (p <= 0) return;
+      const c = getPalette();
+      const t = reduced ? 0 : time * 0.001;
+      const u = Math.max(0.45, Math.min(1.4, W / 1200, H / 330));
+      const G = H * 0.82;
+      const X = [0.14, 0.38, 0.62, 0.86].map((f) => f * W);
+      const world: World = { ctx, c, u, G, t };
 
-      const alpha = easeOut(p);
-      const y = G;
+      // Each step: the orb walks to its station (first 30%), then the station is drawn.
+      const s = shown * STEP_COUNT;
+      const stand = (i: number) => X[i] - 70 * u;
+      const step = Math.min(STEP_COUNT - 1, Math.floor(s));
+      const walk = easeInOut(span(s - step, 0, 0.3));
+      const targetX = lerp(step === 0 ? 0.03 * W : stand(step - 1), stand(step), walk);
+      const speed = orbX < 0 ? 0 : Math.abs(targetX - orbX) / Math.max(dt, 1 / 120) / (90 * u);
+      orbX = targetX;
 
-      // Ingest Terminal Monolith (Hand-drawn isometric server tower)
-      const tw = 54 * u;
-      const th = 88 * u * alpha;
-      const top = y - th;
-
-      // Tower Base & Body
-      ctx.strokeStyle = colors.ink;
-      ctx.lineWidth = 1.8 * u;
-      ctx.globalAlpha = 0.85 * alpha;
-      ctx.strokeRect(x - tw / 2, top, tw, th);
-
-      // Internal modular server bays
-      for (let bay = 1; bay <= 4; bay++) {
-        if (alpha > bay * 0.2) {
-          const by = top + (th / 5) * bay;
-          drawLine(x - tw / 2 + 6 * u, by, x + tw / 2 - 6 * u, by, 1 * u, colors.ink, 0.4 * alpha);
-          // Status activity blips
-          const blipLit = Math.sin(t * 4 + bay) > 0;
-          ctx.fillStyle = blipLit ? colors.violet : colors.inkSoft;
-          ctx.beginPath();
-          ctx.arc(x - tw / 2 + 10 * u, by - 4 * u, 1.8 * u, 0, Math.PI * 2);
-          ctx.fill();
+      // Faint thread lines across the sky, inked only as far as the orb has travelled
+      [c.violet, c.orange, c.saffron].forEach((hue, k) => {
+        const pts: Pt[] = [];
+        for (let px = 0; px <= orbX - 30 * u; px += 8) {
+          pts.push([px, G - (182 - k * 20) * u + Math.sin((px / W) * Math.PI * 2.2 + k * 1.4) * 16 * u]);
         }
-      }
-
-      // Vertical Sovereign Security Laser Scanner
-      const scanPhase = (Math.sin(t * 3) + 1) / 2;
-      const scanY = top + th * scanPhase;
-      ctx.setLineDash([3 * u, 3 * u]);
-      drawLine(x - tw * 0.9, scanY, x + tw * 0.9, scanY, 1.4 * u, colors.violet, 0.75 * alpha);
-      ctx.setLineDash([]);
-
-      // Incoming Data Streams from the left entering the vault
-      const streams = [
-        { label: 'DOCS', dy: -32 * u },
-        { label: 'CODE', dy: -14 * u },
-        { label: 'SATELLITE', dy: 6 * u },
-        { label: 'SENSORS', dy: 24 * u },
-      ];
-
-      streams.forEach((s, idx) => {
-        const streamFlow = ((t * 0.8 + idx * 0.25) % 1);
-        const sx = x - 90 * u + streamFlow * 60 * u;
-        const sy = y - 44 * u + s.dy;
-
-        // Connecting packet line
-        drawLine(x - 90 * u, sy, x - tw / 2, sy, 1 * u, colors.line, 0.6 * alpha);
-
-        // Moving data packet node
-        ctx.fillStyle = colors.violet;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 2.5 * u, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Technical data label
-        ctx.font = `${9 * u}px var(--mono)`;
-        ctx.fillStyle = colors.inkSoft;
-        ctx.fillText(s.label, x - 105 * u, sy + 3 * u);
+        if (pts.length < 2) return;
+        ctx.strokeStyle = hue;
+        ctx.globalAlpha = 0.35;
+        ctx.lineWidth = 1.2 * u;
+        drawStrokes(ctx, [pts], 1);
+        ctx.globalAlpha = 1;
       });
 
-      // Terminal Badge
-      ctx.font = `bold ${10 * u}px var(--mono)`;
-      ctx.fillStyle = colors.violet;
-      ctx.fillText('[ 01 · SOVEREIGN INGEST ]', x - tw, y + 20 * u);
-    };
-
-    // ── Station 02: Knowledge Graph & Tri-Thread Memory Loom ──
-    const drawStation02 = (x: number, progress: number, t: number, colors: ReturnType<typeof getThemeColors>) => {
-      const p = clamp01((progress - 0.2) / 0.3);
-      if (p <= 0) return;
-
-      const alpha = easeOut(p);
-      const y = G;
-
-      // The Three Threads emerging from Station 1 into the Graph
-      const threads = [
-        { color: colors.violet, name: 'REMEMBERS', offY: -48 * u, freq: 1.2 },
-        { color: colors.orange, name: 'CONNECTS', offY: -28 * u, freq: 1.6 },
-        { color: colors.saffron, name: 'KEEPS LEARNING', offY: -8 * u, freq: 1.4 },
-      ];
-
-      threads.forEach((th, tIdx) => {
+      // Ground line with hatching
+      ctx.strokeStyle = c.ink;
+      ctx.lineWidth = 2.4 * u;
+      drawStrokes(ctx, [wobble(line([0, G], [W, G], 60), 3, 0.9 * u)], 1);
+      ctx.strokeStyle = c.faint;
+      ctx.lineWidth = 1 * u;
+      for (let gx = 12 * u; gx < W; gx += 34 * u) {
         ctx.beginPath();
-        ctx.strokeStyle = th.color;
-        ctx.lineWidth = 1.8 * u;
-        ctx.globalAlpha = 0.8 * alpha;
-
-        const startX = X[0] + 30 * u;
-        const endX = x - 30 * u;
-        const len = endX - startX;
-
-        for (let currX = startX; currX <= endX; currX += 8 * u) {
-          const ratio = (currX - startX) / len;
-          const wave = Math.sin(ratio * Math.PI * 2 + t * 2 + tIdx) * 10 * u;
-          const currY = y + th.offY + wave;
-          if (currX === startX) ctx.moveTo(currX, currY);
-          else ctx.lineTo(currX, currY);
-        }
-        ctx.stroke();
-
-        // Light pulse traveling along thread
-        const pulseRatio = (t * 0.4 + tIdx * 0.33) % 1;
-        const px = startX + pulseRatio * len;
-        const py = y + th.offY + Math.sin(pulseRatio * Math.PI * 2 + t * 2 + tIdx) * 10 * u;
-        ctx.fillStyle = '#FFFFFF';
-        ctx.beginPath();
-        ctx.arc(px, py, 3.2 * u, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = th.color;
-        ctx.beginPath();
-        ctx.arc(px, py, 1.8 * u, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // Living Knowledge Graph Lattice (Hexagonal constellation hubs)
-      const nodes: [number, number, string][] = [
-        [x, y - 55 * u, colors.violet],
-        [x - 32 * u, y - 82 * u, colors.orange],
-        [x + 32 * u, y - 82 * u, colors.saffron],
-        [x - 32 * u, y - 28 * u, colors.saffron],
-        [x + 32 * u, y - 28 * u, colors.violet],
-        [x, y - 110 * u, colors.violet],
-      ];
-
-      // Draw Synaptic Links
-      const links = [
-        [0, 1],
-        [0, 2],
-        [0, 3],
-        [0, 4],
-        [1, 5],
-        [2, 5],
-        [1, 3],
-        [2, 4],
-      ];
-      links.forEach(([a, b]) => {
-        const [x1, y1] = nodes[a];
-        const [x2, y2] = nodes[b];
-        drawLine(x1, y1, x2, y2, 1.2 * u, colors.ink, 0.35 * alpha);
-      });
-
-      // Draw Graph Hub Nodes
-      nodes.forEach(([nx, ny, hue], nIdx) => {
-        const pulse = 1 + Math.sin(t * 3 + nIdx) * 0.15;
-        // Outer halo
-        ctx.fillStyle = hue;
-        ctx.globalAlpha = 0.2 * alpha;
-        ctx.beginPath();
-        ctx.arc(nx, ny, 8 * u * pulse, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Inner solid core
-        ctx.globalAlpha = 0.95 * alpha;
-        ctx.beginPath();
-        ctx.arc(nx, ny, 3.5 * u, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Center dot
-        ctx.fillStyle = colors.ink;
-        ctx.beginPath();
-        ctx.arc(nx, ny, 1.2 * u, 0, Math.PI * 2);
-        ctx.fill();
-      });
-
-      // Station Badge
-      ctx.font = `bold ${10 * u}px var(--mono)`;
-      ctx.fillStyle = colors.violet;
-      ctx.fillText('[ 02 · KNOWLEDGE WEAVE ]', x - 48 * u, y + 20 * u);
-    };
-
-    // ── Station 03: Sovereign Compute Core & Zero-Trust Engine ──
-    const drawStation03 = (x: number, progress: number, t: number, colors: ReturnType<typeof getThemeColors>) => {
-      const p = clamp01((progress - 0.45) / 0.3);
-      if (p <= 0) return;
-
-      const alpha = easeOut(p);
-      const y = G;
-      const coreY = y - 62 * u;
-
-      // Concentric Zero-Trust Cryptographic Rings
-      const ringR1 = 44 * u * alpha;
-      const ringR2 = 32 * u * alpha;
-      const ringR3 = 18 * u * alpha;
-
-      // Outer Dashed Policy Ring (Rotating clockwise)
-      ctx.save();
-      ctx.translate(x, coreY);
-      ctx.rotate(t * 0.4);
-      ctx.setLineDash([8 * u, 5 * u]);
-      ctx.strokeStyle = colors.violet;
-      ctx.lineWidth = 1.6 * u;
-      ctx.globalAlpha = 0.6 * alpha;
-      ctx.beginPath();
-      ctx.arc(0, 0, ringR1, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Middle Isolation Ring (Rotating counter-clockwise)
-      ctx.rotate(-t * 0.8);
-      ctx.setLineDash([5 * u, 4 * u]);
-      ctx.strokeStyle = colors.orange;
-      ctx.beginPath();
-      ctx.arc(0, 0, ringR2, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-
-      // Inner Compute Chamber Core
-      ctx.strokeStyle = colors.ink;
-      ctx.lineWidth = 2 * u;
-      ctx.globalAlpha = 0.85 * alpha;
-      ctx.beginPath();
-      ctx.arc(x, coreY, ringR3, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Inner Glowing Sovereign Nucleus
-      const nucleusPulse = 8 * u + Math.sin(t * 4) * 2 * u;
-      const glow = ctx.createRadialGradient(x, coreY, 2 * u, x, coreY, nucleusPulse * 2.5);
-      glow.addColorStop(0, 'rgba(110, 88, 245, 0.6)');
-      glow.addColorStop(1, 'rgba(110, 88, 245, 0)');
-      ctx.fillStyle = glow;
-      ctx.beginPath();
-      ctx.arc(x, coreY, nucleusPulse * 2.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Nucleus solid spark
-      ctx.fillStyle = colors.violet;
-      ctx.beginPath();
-      ctx.arc(x, coreY, 4 * u, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Structural Support Pillars
-      drawLine(x - ringR1 * 0.8, y, x - ringR1 * 0.8, coreY + ringR1 * 0.4, 1.5 * u, colors.ink, 0.4 * alpha);
-      drawLine(x + ringR1 * 0.8, y, x + ringR1 * 0.8, coreY + ringR1 * 0.4, 1.5 * u, colors.ink, 0.4 * alpha);
-
-      // Station Badge
-      ctx.font = `bold ${10 * u}px var(--mono)`;
-      ctx.fillStyle = colors.violet;
-      ctx.fillText('[ 03 · SOVEREIGN COMPUTE ]', x - 54 * u, y + 20 * u);
-    };
-
-    // ── Station 04: Nationwide Scale & Compounding Ecosystem ──
-    const drawStation04 = (x: number, progress: number, t: number, colors: ReturnType<typeof getThemeColors>) => {
-      const p = clamp01((progress - 0.7) / 0.3);
-      if (p <= 0) return;
-
-      const alpha = easeOut(p);
-      const y = G;
-      const towerHeight = 104 * u * alpha;
-      const top = y - towerHeight;
-
-      // Broadcast Tower Mast
-      drawLine(x, y, x, top, 2.4 * u, colors.ink, 0.85 * alpha);
-
-      // Tower cross struts
-      for (let s = 1; s <= 4; s++) {
-        const sy = y - (towerHeight / 5) * s;
-        const sw = (28 * u * (5 - s)) / 5;
-        drawLine(x - sw, sy, x + sw, sy, 1 * u, colors.ink, 0.45 * alpha);
-      }
-
-      // Radiating Harmonic Signal Waves into the Sky
-      for (let wave = 0; wave < 3; wave++) {
-        const waveP = (t * 0.35 + wave * 0.33) % 1;
-        const wr = waveP * 64 * u;
-        const waveAlpha = (1 - waveP) * 0.65 * alpha;
-        ctx.strokeStyle = colors.violet;
-        ctx.lineWidth = 1.6 * u;
-        ctx.globalAlpha = waveAlpha;
-        ctx.beginPath();
-        ctx.arc(x, top, wr, -Math.PI * 0.85, -Math.PI * 0.15);
+        ctx.moveTo(gx, G + 6 * u);
+        ctx.lineTo(gx - 8 * u, G + 13 * u);
         ctx.stroke();
       }
-      ctx.globalAlpha = 1;
 
-      // Four National Deployment Constellation Hubs (Real Bharattech Platforms)
-      const platforms = [
-        { name: 'BharatAI', dx: -54 * u, dy: -80 * u, hue: colors.violet },
-        { name: 'BSearch', dx: -24 * u, dy: -115 * u, hue: colors.orange },
-        { name: 'CollegeCue', dx: 24 * u, dy: -115 * u, hue: colors.saffron },
-        { name: 'Recag', dx: 54 * u, dy: -80 * u, hue: colors.violet },
-      ];
+      STATIONS.forEach((draw, i) => draw(world, X[i], span(s - i, 0.3, 1)));
 
-      platforms.forEach((pl) => {
-        const px = x + pl.dx;
-        const py = y + pl.dy;
+      const blink = !reduced && time % 4200 < 140;
+      drawOrb(world, orbX, speed, blink);
 
-        // Uplink ray
-        drawLine(x, top, px, py, 1 * u, pl.hue, 0.4 * alpha);
-
-        // Platform Node
-        ctx.fillStyle = pl.hue;
-        ctx.globalAlpha = 0.9 * alpha;
-        ctx.beginPath();
-        ctx.arc(px, py, 4 * u, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Platform Label
-        ctx.font = `bold ${9.5 * u}px var(--mono)`;
-        ctx.fillStyle = colors.ink;
-        ctx.fillText(pl.name, px - 18 * u, py - 8 * u);
-      });
-
-      // Feedback Arrow returning back to start (Compounding Memory Loop)
-      const loopY = y - 12 * u;
-      drawLine(x, loopY, X[0], loopY, 1 * u, colors.line, 0.4 * alpha);
-      ctx.font = `${8.5 * u}px var(--mono)`;
-      ctx.fillStyle = colors.inkSoft;
-      ctx.fillText('CONTINUOUS LEARNING & CONTEXT PERSISTENCE LOOP ↺', X[1] - 40 * u, loopY - 5 * u);
-
-      // Station Badge
-      ctx.font = `bold ${10 * u}px var(--mono)`;
-      ctx.fillStyle = colors.violet;
-      ctx.fillText('[ 04 · NATIONWIDE SCALE ]', x - 52 * u, y + 20 * u);
+      rafId = visible && !reduced ? requestAnimationFrame(render) : 0;
+      if (!rafId) lastTime = 0;
     };
 
-    // ── Main Render Loop ──
-    const render = (time: number) => {
-      // Smooth progress interpolation
-      currentP = lerp(currentP, targetP, 0.08);
-      const p = currentP;
-
-      ctx.clearRect(0, 0, W, H);
-      const colors = getThemeColors();
-      const tSec = time * 0.001;
-
-      // Camera pans across the panoramic world
-      const maxCam = Math.max(0, WW - W);
-      const camX = p * maxCam;
-
-      ctx.save();
-      ctx.translate(-camX, 0);
-
-      // ── Ground Baseline & Sub-Grid ──
-      drawLine(0, G, WW, G, 2 * u, colors.ink, 0.8);
-      for (let gx = 20; gx < WW; gx += 40 * u) {
-        drawLine(gx, G, gx - 8 * u, G + 7 * u, 1 * u, colors.line, 0.35);
-      }
-
-      // Render the 4 progressive stations
-      drawStation01(X[0], p, tSec, colors);
-      drawStation02(X[1], p, tSec, colors);
-      drawStation03(X[2], p, tSec, colors);
-      drawStation04(X[3], p, tSec, colors);
-
-      ctx.restore();
-
-      rafId = requestAnimationFrame(render);
+    const start = () => {
+      if (!rafId) rafId = requestAnimationFrame(render);
     };
+    redrawRef.current = start;
 
-    rafId = requestAnimationFrame(render);
+    resize();
+    const ro = new ResizeObserver(() => {
+      resize();
+      start();
+    });
+    ro.observe(canvas);
 
-    // ── Scroll Listener for Pinned Chapter ──
+    // Only animate while the section is on screen; the track is several viewports tall.
+    const io = new IntersectionObserver(([entry]) => {
+      visible = entry.isIntersecting;
+      if (visible) start();
+    });
+    io.observe(canvas);
+
     const onScroll = () => {
+      if (!isPinned(track)) return;
       const rect = track.getBoundingClientRect();
       const totalScrollable = rect.height - window.innerHeight;
       if (totalScrollable <= 0) return;
-
-      const progress = clamp01(-rect.top / totalScrollable);
-      targetP = progress;
-      setScrollProgress(progress);
-
-      const stepIdx = Math.min(3, Math.floor(progress * 3.99));
-      setActiveStep(stepIdx);
+      setProgress(clamp01(-rect.top / totalScrollable));
     };
+
+    // Unpinned layouts have no scroll story, so open on the first step already drawn.
+    if (!isPinned(track)) setProgress(0.999 / STEP_COUNT);
 
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
@@ -511,74 +493,51 @@ export function HowWeWorkPipeline() {
 
     return () => {
       cancelAnimationFrame(rafId);
+      redrawRef.current = () => {};
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       ro.disconnect();
+      io.disconnect();
     };
   }, []);
 
   return (
     <div className="how-scroll-track" ref={trackRef}>
-      {/* Sticky Frame: Pinned Viewport */}
       <div className="how-sticky-frame">
-        <div className="how-pinned-card">
-          {/* Header */}
-          <div className="how-pinned-head">
+        <div className="how-paper">
+          <div className="how-paper-head">
             <div>
-              <div className="about-eyebrow">
-                <span className="about-eyebrow-dot" />
-                How We Work
-              </div>
-              <h2 className="how-pinned-title">From foundational hypothesis to sovereign scale</h2>
+              <h2 className="how-paper-title">From foundational hypothesis to sovereign scale</h2>
             </div>
-            <div className="how-pinned-meta">
-              <span className="how-pinned-step-indicator">
-                Phase {STEPS[activeStep].num.slice(0, 2)}: {STEPS[activeStep].phase}
-              </span>
-            </div>
+            <Link to="/contact" className="btn btn-primary">
+              Start a Conversation <ArrowUpRight size={15} />
+            </Link>
           </div>
 
-          {/* Panoramic Scroll-Driven Canvas Stage */}
-          <div className="how-pinned-stage">
-            <canvas ref={canvasRef} className="how-pinned-canvas" />
+          <div className="how-paper-stage">
+            <canvas ref={canvasRef} className="how-paper-canvas" aria-hidden="true" />
           </div>
 
-          {/* 4 Interactive Step Progression Cards */}
-          <div className="how-pinned-steps" role="tablist">
+          <ol className="how-paper-steps" style={{ '--how-progress': progress } as CSSProperties}>
             {STEPS.map((s, idx) => {
-              const isActive = activeStep === idx;
-              const isDone = activeStep > idx;
-              // Quartile progress: 0 to 1 for this specific step
-              const stepP = Math.max(0, Math.min(1, (scrollProgress - idx * 0.25) / 0.25));
-
+              const state = idx === activeStep ? 'is-active' : idx < activeStep ? 'is-done' : '';
               return (
-                <button
-                  key={s.num}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  className={`how-pinned-step ${isActive ? 'is-active' : ''} ${isDone ? 'is-done' : ''}`}
-                  onClick={() => handleStepClick(idx)}
-                >
-                  {/* Step Progress Fill Line */}
-                  <div className="how-step-rail">
-                    <div
-                      className="how-step-fill"
-                      style={{ width: `${isDone ? 100 : Math.round(stepP * 100)}%` }}
-                    />
-                  </div>
-
-                  <div className="how-step-num-row">
-                    <span className="how-step-num">{s.num}</span>
-                    <span className="how-step-phase">{s.phase}</span>
-                  </div>
-
-                  <h3 className="how-step-title">{s.title}</h3>
-                  <p className="how-step-desc">{s.desc}</p>
-                </button>
+                <li key={s.title} className={`how-paper-step ${state}`}>
+                  <button
+                    type="button"
+                    aria-current={idx === activeStep ? 'step' : undefined}
+                    onClick={() => handleStepClick(idx)}
+                  >
+                    <span className="how-paper-num">
+                      {s.phase}
+                    </span>
+                    <h3>{s.title}</h3>
+                    <p>{s.desc}</p>
+                  </button>
+                </li>
               );
             })}
-          </div>
+          </ol>
         </div>
       </div>
     </div>

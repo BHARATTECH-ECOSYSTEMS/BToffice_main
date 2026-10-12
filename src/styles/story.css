@@ -700,7 +700,10 @@
   padding-top: calc(var(--nav-h) + 20px);
   padding-bottom: 24px;
 }
+/* the panel spans edge to edge like the architecture sheet below it */
 .how-frame {
+  max-width: none;
+  padding-inline: var(--sheet-x);
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: clamp(10px, 1.8svh, 20px);
@@ -711,8 +714,11 @@
 .how-head .eyebrow {
   justify-content: center;
 }
+/* the step tabs stay a readable width rather than stretching across the full sheet */
 .ch-how .pipe {
-  margin: 0;
+  width: 100%;
+  max-width: 1600px;
+  margin: 0 auto;
 }
 .ch-how .pipe-fill {
   background: var(--ink);
@@ -723,9 +729,9 @@
   align-items: stretch;
   gap: 16px;
   padding: 18px 20px 20px;
-  border-radius: 28px;
+  border-radius: 36px;
+  /* fills the frame's 1fr row so the panel matches the full-height chapters around it */
   min-height: 0;
-  max-height: 440px;
   transition: background-color 0.6s var(--ease);
 }
 .how-copy .how-main {
@@ -984,7 +990,7 @@
 .ch-arch .chapter-pin::before {
   content: '';
   position: absolute;
-  inset: 10px clamp(8px, 1.4vw, 20px);
+  inset: 10px var(--sheet-x);
   z-index: -1;
   border-radius: 36px;
   background: var(--ink-bg);
@@ -1540,7 +1546,7 @@
   background: rgb(255 255 255 / 0.2);
 }
 
-/* the fan on the publications page */
+/* the fan on the services page */
 .cover-fan {
   position: relative;
   width: min(100%, 600px);

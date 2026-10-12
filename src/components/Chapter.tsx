@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Reac
 import { useScene } from '../gl/Scene';
 import type { HueName } from '../gl/palette';
 import { toneStyle } from './ui';
+import { pageScroll, trackBox } from './trackBox';
 
 /**
  * A pinned chapter: the section is several screens tall, its frame stays on screen, and scrolling walks
@@ -14,18 +15,26 @@ export function usePinned(ref: RefObject<HTMLElement>, n: number) {
   const { scrollTo } = useScene();
 
   useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // positions come from the cached box, so scrolling never forces the browser to recalculate layout
+    const { box, release } = trackBox(el);
     let raf = 0;
+    let shown = '';
     const measure = () => {
       raf = 0;
-      const el = ref.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const run = Math.max(1, r.height - window.innerHeight);
-      const p = Math.min(1, Math.max(0, -r.top / run));
+      const run = Math.max(1, box.height - window.innerHeight);
+      const p = Math.min(1, Math.max(0, (pageScroll() - box.top) / run));
       progress.current = p;
-      el.style.setProperty('--p', p.toFixed(4));
       const s = Math.min(n - 1, Math.floor(p * n));
-      el.style.setProperty('--local', (p * n - s).toFixed(4));
+      const local = (p * n - s).toFixed(4);
+      // off-screen the values stop changing, so there is nothing to write
+      const next = `${p.toFixed(4)} ${local}`;
+      if (next !== shown) {
+        shown = next;
+        el.style.setProperty('--p', p.toFixed(4));
+        el.style.setProperty('--local', local);
+      }
       setStep((prev) => (prev === s ? prev : s));
     };
     const on = () => {
@@ -36,6 +45,7 @@ export function usePinned(ref: RefObject<HTMLElement>, n: number) {
     window.addEventListener('resize', on);
     return () => {
       cancelAnimationFrame(raf);
+      release();
       window.removeEventListener('scroll', on);
       window.removeEventListener('resize', on);
     };

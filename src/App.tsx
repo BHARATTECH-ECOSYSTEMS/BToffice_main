@@ -98,9 +98,11 @@ const router = createHashRouter([
       { path: 'about', Component: About },
       { path: 'research', Component: Research },
       { path: 'careers', Component: Careers },
+      { path: 'services', Component: Blog },
+      { path: 'services/:slug', Component: Article },
+      // old links keep working
       { path: 'publications', Component: Blog },
       { path: 'publications/:slug', Component: Article },
-      // old links keep working
       { path: 'blog', Component: Blog },
       { path: 'blog/:slug', Component: Article },
       { path: 'contact', Component: Contact },

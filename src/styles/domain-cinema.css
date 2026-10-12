@@ -1,8 +1,7 @@
 /* ══════════════════════════════════════════════════════════════════════════════
-   Bharattech Origin — Demaze Homescreen Card Stack & Continuous 3D Reel Engine
-   Adapted after https://d-50-production.up.railway.app/ (Featured Projects Deck)
-   Strict Light Studio Palette · Crisp Ink Typography · Zero 3D Model Overlap
-   Sticky Stacking Deck Architecture · Uninterrupted 60fps WebGL Kinematics
+   Bharattech Origin — Research domains deck
+   Layout after the "Our work" deck on https://d-50-production.up.railway.app/:
+   a split section head, then plain stacking cards (copy left, ink reel right).
    ══════════════════════════════════════════════════════════════════════════════ */
 
 /* ── 0. Research Section Header & Eyebrow Typography ─────────────────────── */
@@ -11,27 +10,6 @@
   display: flex;
   flex-direction: column;
   gap: 14px;
-}
-
-.research-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--mono, 'Geist Mono', ui-monospace, monospace);
-  font-size: 0.72rem;
-  font-weight: 650;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: #64748B;
-  width: fit-content;
-}
-
-.research-eyebrow__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--violet, #6E58F5);
-  box-shadow: 0 0 10px var(--violet, #6E58F5);
 }
 
 .section.research .headline {
@@ -52,636 +30,150 @@
   color: var(--violet, #6E58F5);
 }
 
-/* ── 1. The Deck Section Container ────────────────────────────────────────── */
+/* ── 1. Section head: copy on the left, one action on the right ─────────────── */
 
-.domain-sticky-deck {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
-  position: relative;
-}
-
-/* ── 2. Sticky Top Navigation Bar: Domain Pills + Action Controls ─────────── */
-
-.deck-nav.is-sticky {
-  position: sticky;
-  top: 76px;
-  z-index: 50;
+.research-head {
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: nowrap;
-  width: 100%;
-  height: 50px;
-  padding: 4px 8px 4px 12px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(24px) saturate(1.8);
-  -webkit-backdrop-filter: blur(24px) saturate(1.8);
-  border: 1px solid rgba(20, 19, 15, 0.08);
-  box-shadow: 0 8px 28px -6px rgba(20, 19, 15, 0.05),
-              0 2px 6px rgba(20, 19, 15, 0.02),
-              inset 0 1px 0 rgba(255, 255, 255, 0.95);
-  margin-bottom: 28px;
-  transition: border-color 0.25s ease, box-shadow 0.25s ease;
+  align-items: flex-end;
+  gap: 24px 48px;
+  margin-bottom: clamp(32px, 4vw, 48px);
 }
 
-/* ── Brand & Active Telemetry Tag on Left ── */
-.deck-nav__brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 4px;
-  flex-shrink: 0;
-  user-select: none;
-}
-
-.deck-nav__dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  transition: background 0.3s ease, box-shadow 0.3s ease;
-  animation: radarPulse 2.4s ease-in-out infinite;
-}
-
-@keyframes radarPulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(1.25); opacity: 0.75; }
-}
-
-.deck-nav__brand-title {
-  font-family: var(--mono, 'Geist Mono', ui-monospace, monospace);
-  font-size: 0.72rem;
-  font-weight: 750;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #0f172a;
-}
-
-.deck-nav__brand-code {
-  font-family: var(--mono, 'Geist Mono', ui-monospace, monospace);
-  font-size: 0.68rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  font-variant-numeric: tabular-nums;
-  color: #64748b;
-  padding: 2px 7px;
-  border-radius: 5px;
-  background: rgba(20, 19, 15, 0.04);
-  border: 1px solid rgba(20, 19, 15, 0.06);
-}
-
-/* ── Center Segmented Options Track ── */
-.deck-nav__track {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  height: 40px;
-  padding: 3px;
-  border-radius: 10px;
-  background: rgba(20, 19, 15, 0.035);
-  border: 1px solid rgba(20, 19, 15, 0.04);
-  overflow-x: auto;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-  flex: 1;
-  min-width: 0;
-  justify-content: center;
-}
-
-.deck-nav__track::-webkit-scrollbar {
-  display: none;
-}
-
-/* ── Individual Tabs ── */
-.deck-tab {
-  font-family: var(--sans, 'Figtree', sans-serif);
-  font-size: 0.8rem;
-  font-weight: 550;
-  letter-spacing: -0.01em;
-  padding: 0 12px;
-  height: 34px;
-  border-radius: 7px;
-  background: transparent;
-  border: 1px solid transparent;
-  color: #64748b;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+.research-head .btn {
   flex-shrink: 0;
 }
 
-.deck-tab:hover {
-  background: rgba(255, 255, 255, 0.75);
-  color: #0f172a;
-  border-color: rgba(20, 19, 15, 0.04);
+/* ── 2. Stacking deck ─────────────────────────────────────────────────────── */
+
+/* the cards take the hero's warm off-white instead of pure white */
+.section.research .stack-card__inner {
+  background: var(--bg-2);
+}
+.section.research .stack-card__tags li {
+  background: color-mix(in srgb, var(--ink) 6%, var(--bg-2));
 }
 
-.deck-tab.is-active {
-  background: #ffffff;
-  border-color: var(--tab-border, rgba(124, 58, 237, 0.25));
-  color: var(--tab-strong, #6d28d9);
-  font-weight: 650;
-  box-shadow: 0 2px 6px rgba(20, 19, 15, 0.06),
-              0 1px 2px rgba(20, 19, 15, 0.03);
-}
-
-.deck-tab__num {
-  font-family: var(--mono, 'Geist Mono', ui-monospace, monospace);
-  opacity: 0.6;
-  font-size: 0.7rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-}
-
-.deck-tab.is-active .deck-tab__num {
-  opacity: 0.9;
-  color: var(--tab-tint, #7c3aed);
-}
-
-.deck-tab__indicator {
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--tab-tint, #7c3aed);
-  box-shadow: 0 0 6px var(--tab-tint, #7c3aed);
-  margin-left: 2px;
-}
-
-/* ── Right Navigation Controls Cluster ── */
-.deck-nav__controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.deck-counter {
-  font-family: var(--mono, 'Geist Mono', ui-monospace, monospace);
-  font-size: 0.78rem;
-  font-weight: 650;
-  letter-spacing: 0.05em;
-  font-variant-numeric: tabular-nums;
-  padding: 4px 9px;
-  border-radius: 6px;
-  background: rgba(20, 19, 15, 0.035);
-  border: 1px solid rgba(20, 19, 15, 0.06);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.deck-counter__active {
-  color: #0f172a;
-  font-weight: 750;
-}
-
-.deck-counter__sep {
-  opacity: 0.35;
-  font-size: 0.68rem;
-}
-
-.deck-counter__total {
-  color: #64748b;
-  font-weight: 550;
-}
-
-.deck-arrows {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.deck-arrow-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: 7px;
-  background: #ffffff;
-  border: 1px solid rgba(20, 19, 15, 0.1);
-  color: #0f172a;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  padding: 0;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 1px 3px rgba(20, 19, 15, 0.03);
-}
-
-.deck-arrow-btn:hover {
-  background: #f8fafc;
-  border-color: rgba(20, 19, 15, 0.22);
-  transform: translateY(-1px);
-  box-shadow: 0 3px 8px rgba(20, 19, 15, 0.06);
-}
-
-.deck-arrow-btn:active {
-  transform: scale(0.93);
-}
-
-.deck-arrow-btn svg {
-  width: 14px;
-  height: 14px;
-}
-
-@media (max-width: 1100px) {
-  .deck-nav__brand-title {
-    display: none;
-  }
-  .deck-nav__track {
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 768px) {
-  .deck-nav.is-sticky {
-    top: 68px;
-    height: 46px;
-    padding: 3px 6px;
-  }
-  .deck-nav__brand-code {
-    display: none;
-  }
-  .deck-tab {
-    padding: 0 9px;
-    height: 30px;
-    font-size: 0.7rem;
-  }
-  .deck-nav__track {
-    height: 36px;
-  }
-}
-
-/* ── 3. Sticky Stacking Cards Container ───────────────────────────────────── */
-
-.sticky-deck-cards {
+.domain-deck {
+  position: relative;
   display: flex;
   flex-direction: column;
-  width: 100%;
-  position: relative;
+  gap: clamp(24px, 4vh, 40px);
 }
 
+/* Each card pins a little lower than the one before, leaving a visible stack edge. */
 .stack-card {
   position: sticky;
-  width: 100%;
-  margin-bottom: clamp(64px, 10vh, 96px);
+  top: calc(var(--nav-h) + 24px + var(--i) * 12px);
   transform-origin: 50% 0;
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
-              box-shadow 0.4s ease;
-  will-change: transform;
+  transition: transform 0.5s var(--ease);
 }
 
-/* Dynamic depth when stacked behind */
-.stack-card.is-stacked-behind {
-  transform: scale(0.978);
-  box-shadow: 0 10px 24px -10px rgba(20, 19, 15, 0.05);
+.stack-card.is-behind {
+  transform: scale(0.97);
 }
 
-/* ── 4. Inner Card Structure (.stack-card__inner) ─────────────────────────── */
+/* ── 3. Card ──────────────────────────────────────────────────────────────── */
 
 .stack-card__inner {
-  position: relative;
-  border-radius: 28px;
-  overflow: hidden;
-  background: linear-gradient(145deg, #ffffff 0%, color-mix(in srgb, var(--tint) 5%, #ffffff) 60%, #ffffff 100%);
-  border: 1px solid rgba(20, 19, 15, 0.09);
-  box-shadow: 0 -4px 20px rgba(20, 19, 15, 0.02),
-              0 24px 56px -16px rgba(20, 19, 15, 0.08),
-              inset 0 1px 0 rgba(255, 255, 255, 0.95),
-              0 0 0 1px color-mix(in srgb, var(--tint) 14%, transparent);
-  display: flex;
-  flex-direction: column;
-}
-
-/* ── 5. Decorated Technical Header Bar ────────────────────────────────────── */
-
-.stack-card__tech-bar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 24px;
-  border-bottom: 1px solid rgba(20, 19, 15, 0.07);
-  background: color-mix(in srgb, var(--tint) 4%, rgba(255, 255, 255, 0.75));
-  font-family: var(--mono, 'Geist Mono', ui-monospace, monospace);
-  font-size: 0.72rem;
-  letter-spacing: 0.06em;
-  font-variant-numeric: tabular-nums;
-}
-
-.tech-bar__left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.tech-bar__dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  box-shadow: 0 0 6px currentColor;
-}
-
-.tech-bar__code {
-  font-weight: 750;
-  letter-spacing: 0.06em;
-  color: #0f172a;
-}
-
-.tech-bar__divider {
-  opacity: 0.35;
-}
-
-.tech-bar__class {
-  color: #475569;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-
-.tech-bar__stamp {
-  color: #64748b;
-  font-size: 0.68rem;
-  font-weight: 500;
-  letter-spacing: 0.06em;
-}
-
-/* ── 6. Two-Column Layout (.stack-card__columns) ──────────────────────────── */
-
-.stack-card__columns {
   display: grid;
-  grid-template-columns: 1fr 1.15fr;
-  gap: clamp(24px, 3.5vw, 52px);
-  align-items: center;
-  padding: clamp(24px, 3vw, 40px);
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: clamp(24px, 4vw, 44px);
+  min-height: 440px;
+  padding: clamp(20px, 2.4vw, 28px);
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 48px -32px rgb(20 19 15 / 0.28);
 }
-
-/* ── 7. Left Column: Copy & Interactive Chapter Controller ────────────────── */
 
 .stack-card__copy {
   display: flex;
   flex-direction: column;
-  gap: 13px;
   justify-content: center;
   min-width: 0;
-}
-
-.stack-card__kicker {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--mono, 'Geist Mono', ui-monospace, monospace);
-  font-size: 0.76rem;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--tint-strong, #6d28d9);
-  font-variant-numeric: tabular-nums;
+  padding: 8px 0 8px 8px;
 }
 
 .stack-card__num {
-  font-weight: 750;
-}
-
-.stack-card__field {
-  color: #475569;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
 }
 
 .stack-card__title {
-  font-family: var(--display, 'Bricolage Grotesque', sans-serif);
-  font-size: clamp(1.85rem, 2.6vw, 2.45rem);
-  font-weight: 750;
-  color: #0f172a;
-  line-height: 1.12;
-  letter-spacing: -0.032em;
-  margin: 0;
-  font-optical-sizing: auto;
-  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
+  margin: 12px 0 0;
+  font-family: var(--display);
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  color: var(--ink);
 }
 
 .stack-card__body {
-  font-family: var(--sans, 'Figtree', sans-serif);
-  font-size: 1.02rem;
-  font-weight: 420;
-  line-height: 1.68;
-  color: #334155;
-  letter-spacing: -0.01em;
-  margin: 0;
+  margin: 12px 0 0;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
   display: -webkit-box;
   -webkit-line-clamp: 4;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  text-wrap: pretty;
-  -webkit-font-smoothing: antialiased;
 }
 
 .stack-card__tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  list-style: none;
+  gap: 6px;
+  margin: 18px 0 0;
   padding: 0;
-  margin: 2px 0 0;
+  list-style: none;
 }
 
 .stack-card__tags li {
-  font-family: var(--sans, 'Figtree', sans-serif);
-  font-size: 0.78rem;
-  font-weight: 550;
-  letter-spacing: -0.005em;
-  padding: 5px 12px;
-  border-radius: 8px;
-  background: color-mix(in srgb, var(--tint) 8%, #ffffff);
-  border: 1px solid color-mix(in srgb, var(--tint) 20%, rgba(20, 19, 15, 0.08));
-  color: #1e293b;
-  transition: all 0.2s ease;
-}
-
-/* ── 8. Interactive 4-Act Chapter Controller (Left Column) ────────────────── */
-
-.stack-card__reel-ctrl {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  padding: 14px 16px;
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(20, 19, 15, 0.08);
-  box-shadow: 0 2px 8px rgba(20, 19, 15, 0.03);
-  margin-top: 4px;
-}
-
-.reel-ctrl__header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-family: var(--mono, 'Geist Mono', ui-monospace, monospace);
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.reel-ctrl__label {
-  color: #64748b;
-}
-
-.reel-ctrl__pill {
-  font-family: var(--mono, 'Geist Mono', ui-monospace, monospace);
-  font-size: 0.68rem;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 6px;
-  letter-spacing: 0.05em;
-  background: color-mix(in srgb, var(--tint) 12%, #ffffff);
-  color: var(--tint-strong, #6d28d9);
-  border: 1px solid color-mix(in srgb, var(--tint) 25%, transparent);
-  font-variant-numeric: tabular-nums;
-}
-
-.reel-ctrl__acts {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 6px;
-}
-
-.act-btn {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 2px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(20, 19, 15, 0.08);
-  background: #ffffff;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  text-align: left;
-}
-
-.act-btn:hover {
-  border-color: rgba(20, 19, 15, 0.2);
-  background: #f8fafc;
-}
-
-.act-btn.is-active {
-  background: var(--tint-soft, #f5f3ff);
-  border-color: var(--tint-border, #8b5cf6);
-  box-shadow: 0 0 0 1px var(--tint-border, #8b5cf6);
-}
-
-.act-btn__num {
-  font-family: var(--mono, 'Geist Mono', ui-monospace, monospace);
-  font-size: 0.68rem;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  color: #64748b;
-  opacity: 0.75;
-}
-
-.act-btn.is-active .act-btn__num {
-  color: var(--tint-strong, #6d28d9);
-  opacity: 1;
-}
-
-.act-btn__tag {
-  font-family: var(--sans, 'Figtree', sans-serif);
-  font-size: 0.76rem;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  color: #1e293b;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 100%;
-}
-
-.reel-ctrl__telemetry {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.78rem;
-  padding-top: 4px;
-  border-top: 1px solid rgba(20, 19, 15, 0.06);
-  gap: 8px;
-}
-
-.reel-ctrl__title {
-  font-family: var(--display, 'Bricolage Grotesque', sans-serif);
-  font-size: 0.94rem;
-  font-weight: 650;
-  letter-spacing: -0.015em;
-  color: #0f172a;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.reel-ctrl__metric {
-  font-family: var(--mono, 'Geist Mono', ui-monospace, monospace);
-  font-size: 0.8rem;
-  color: #64748b;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-
-.reel-ctrl__metric .metric-tag {
-  font-family: var(--sans, 'Figtree', sans-serif);
-  font-weight: 500;
-  color: #64748b;
-}
-
-.reel-ctrl__metric b {
-  color: var(--tint-strong, #6d28d9);
-  font-weight: 700;
-}
-
-.stack-card__actions {
-  margin-top: 2px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--ink) 5%, var(--paper));
 }
 
 .link-arrow {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--sans, 'Figtree', sans-serif);
-  font-size: 0.94rem;
+  width: fit-content;
+  margin-top: 22px;
+  font-size: 14.5px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  color: var(--tint-strong, #6d28d9);
+  color: var(--ink);
   text-decoration: none;
   transition: color 0.2s ease;
+}
+
+.link-arrow:hover {
+  color: var(--violet);
 }
 
 .link-arrow svg {
   width: 16px;
   height: 16px;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.25s var(--ease);
 }
 
 .link-arrow:hover svg {
   transform: translateX(4px);
 }
 
-/* ── 9. Right Column: Dedicated 3D Canvas Stage (Unobstructed) ────────────── */
-
+/* The reel stage stays light in both themes; its ink palette is drawn for a light ground. */
 .stack-card__media {
-  height: 100%;
-  min-height: 460px;
   position: relative;
-  border-radius: 20px;
-  overflow: hidden;
-  background: radial-gradient(120% 100% at 50% 45%, #ffffff 0%, #f8fafc 65%, #edf2f7 100%);
-  border: 1px solid rgba(20, 19, 15, 0.08);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.8),
-              0 8px 24px -10px rgba(20, 19, 15, 0.05);
   margin: 0;
+  min-height: 360px;
+  border-radius: 18px;
+  overflow: hidden;
+  border: 1px solid var(--line);
 }
 
 /* ── 10. The Demaze Reel Cinema Stage (.reel) ─────────────────────────────── */
@@ -772,12 +264,39 @@
   border-color: rgba(20, 19, 15, 0.24);
 }
 
+.reel__caption {
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  right: 56px;
+  z-index: 6;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #14130F;
+  pointer-events: none;
+}
+
+.reel__caption span {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: color-mix(in srgb, var(--tint, #6E58F5) 75%, #14130F);
+}
+
+/* a hairline along the stage's base; its four chapters take the brand colours, ending in white */
 .reel__progress {
   position: absolute;
   left: 16px;
   right: 16px;
-  bottom: 12px;
-  height: 3px;
+  bottom: 6px;
+  height: 2px;
   z-index: 6;
   display: flex;
   gap: 4px;
@@ -797,7 +316,7 @@
 }
 
 .reel__progress-seg:hover {
-  height: 4px;
+  height: 3px;
   background: rgba(15, 23, 42, 0.16);
 }
 
@@ -808,69 +327,56 @@
 .reel__progress-seg em {
   display: block;
   height: 100%;
-  background: var(--tint, #f59e0b);
+  background: var(--seg, var(--tint, #f59e0b));
   transform-origin: left;
   border-radius: 999px;
   transition: transform 0.05s linear;
 }
 
-/* ── 11. Responsive Mobile Layout ─────────────────────────────────────────── */
+.reel__progress-seg:nth-child(4n + 1) { --seg: var(--violet); }
+.reel__progress-seg:nth-child(4n + 2) { --seg: #FFFFFF; }
+.reel__progress-seg:nth-child(4n + 3) { --seg: var(--saffron); }
+.reel__progress-seg:nth-child(4n + 4) { --seg: var(--tangerine); }
+
+/* ── 11. Responsive ─────────────────────────────────────────────────────── */
 
 @media (max-width: 900px) {
-  .deck-nav.is-sticky {
-    border-radius: 20px;
-    top: 60px;
-    padding: 8px 10px;
+  .research-head {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
+  /* No pinning on small screens: cards simply follow each other. */
   .stack-card {
-    position: relative !important;
-    top: auto !important;
-    margin-bottom: 24px;
-    transform: none !important;
+    position: relative;
+    top: auto;
   }
 
-  .stack-card__tech-bar {
-    padding: 10px 16px;
-    font-size: 0.68rem;
+  .stack-card.is-behind {
+    transform: none;
   }
 
-  .tech-bar__stamp {
-    display: none;
-  }
-
-  .stack-card__columns {
+  .stack-card__inner {
     grid-template-columns: 1fr;
-    padding: 20px 16px;
-    gap: 20px;
+    min-height: 0;
   }
 
+  /* Height comes from the aspect ratio. A min-height here would force the width past the card
+     (aspect-ratio derives width from it), clipping the right side of the reel. */
   .stack-card__media {
-    aspect-ratio: 16 / 10;
-    min-height: 280px;
     order: -1;
+    width: 100%;
+    min-height: 0;
+    aspect-ratio: 16 / 10;
   }
 
-  .deck-arrows,
-  .deck-scroll-hint {
-    display: none;
+  .stack-card__copy {
+    padding: 4px;
   }
 }
 
 @media (max-width: 640px) {
-  .reel-ctrl__acts {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .stack-card__title {
-    font-size: 1.5rem;
-  }
-
-  .stack-card__inner {
-    border-radius: 20px;
-  }
-
   .stack-card__media {
-    min-height: 240px;
+    aspect-ratio: 5 / 4;
   }
 }

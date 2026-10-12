@@ -1,6 +1,7 @@
 import { useRef } from 'react';
+import { Link } from 'react-router';
 import { useQuiet } from '../gl/Scene';
-import { Headline } from '../components/ui';
+import { Arrow, Headline } from '../components/ui';
 import { DomainGrid } from '../components/DomainGrid';
 
 export function Research() {
@@ -8,15 +9,14 @@ export function Research() {
   useQuiet(ref);
   return (
     <section id="research" ref={ref} className="section research">
-      <div className="wrap">
-        <div className="section-head section-head--split">
+      <div className="wrap wrap-sheet">
+        <div className="research-head wrap-col">
           <div className="research-head-block">
-            <div className="research-eyebrow">
-              <span className="research-eyebrow__dot" />
-              <span>RESEARCH ARCHITECTURE</span>
-            </div>
             <Headline tone="violet" lines={['Six domains.', 'One intelligence.']} />
           </div>
+          <Link to="/research" className="btn btn-primary">
+            Explore all research <Arrow />
+          </Link>
         </div>
         <DomainGrid />
       </div>

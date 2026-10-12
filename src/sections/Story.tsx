@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { useQuiet, useScene } from '../gl/Scene';
 import { BEATS, Studio } from '../gl/Studio';
 import { Arrow } from '../components/ui';
+import { pageScroll, trackBox } from '../components/trackBox';
 import { PILLARS_PLAIN, PROBLEMS } from '../content';
 
 /** Screens of scroll per beat. */
@@ -26,12 +27,6 @@ const BEAT_COPY: Beat[] = [
   { act: 2, title: ['It keeps', 'learning.'], body: PILLARS_PLAIN[2].body, fact: 'Every use feeds the origin' },
 ];
 
-const ACTS = [
-  { label: 'Origin', from: 0, to: 1 },
-  { label: 'The problem', from: 1, to: 5 },
-  { label: 'The answer', from: 5, to: 8 },
-];
-
 /**
  * The opening of the home page: one continuous film of the logo, scrubbed by scroll. Each beat has one
  * headline that slides in from one side and leaves by the other while the scene changes behind it.
@@ -40,7 +35,6 @@ export function Story() {
   const ref = useRef<HTMLElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const beats = useRef<(HTMLElement | null)[]>([]);
-  const rail = useRef<HTMLDivElement>(null);
   const [gl, setGl] = useState(true);
   const [current, setCurrent] = useState(0);
   const { scrollTo } = useScene();
@@ -56,13 +50,18 @@ export function Story() {
       setGl(false);
     }
     let raf = 0;
-    const measure = () => {
+    // the section's cached position, so the per-frame update never forces a layout
+    const { box, release } = trackBox(ref.current!);
+    let lastP = -1;
+    const measure = (force = false) => {
       raf = 0;
       const el = ref.current;
       if (!el) return;
-      const r = el.getBoundingClientRect();
-      const run = Math.max(1, r.height - window.innerHeight);
-      const p = Math.min(1, Math.max(0, -r.top / run));
+      const run = Math.max(1, box.height - window.innerHeight);
+      const p = Math.min(1, Math.max(0, (pageScroll() - box.top) / run));
+      // past the film the progress stays pinned at 0 or 1: nothing to redraw
+      if (p === lastP && !force) return;
+      lastP = p;
       const b = p * BEATS;
       studio?.setBeat(b);
       el.style.setProperty('--p', p.toFixed(4));
@@ -78,12 +77,9 @@ export function Story() {
       });
       const cur = Math.min(BEATS - 1, Math.floor(b));
       setCurrent((c) => (c === cur ? c : cur));
-      if (rail.current) {
-        ACTS.forEach((a, i) => rail.current!.style.setProperty(`--a${i}`, Math.min(1, Math.max(0, (b - a.from) / (a.to - a.from))).toFixed(4)));
-      }
     };
     const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(measure);
+      if (!raf) raf = requestAnimationFrame(() => measure());
     };
     const onResize = () => {
       studio?.setCompact(compact());
@@ -98,19 +94,13 @@ export function Story() {
     window.addEventListener('resize', onResize);
     return () => {
       io.disconnect();
+      release();
       cancelAnimationFrame(raf);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);
       studio?.destroy();
     };
   }, []);
-
-  const jump = (beat: number) => {
-    const el = ref.current;
-    if (!el) return;
-    const top = el.getBoundingClientRect().top + window.scrollY;
-    scrollTo(top + ((beat + 0.5) / BEATS) * (el.offsetHeight - window.innerHeight));
-  };
 
   return (
     <section id="top" ref={ref} className="story" data-gl={gl || undefined} style={{ '--beats': BEATS, '--pace': PACE } as CSSProperties}>
@@ -161,20 +151,6 @@ export function Story() {
             );
           })}
         </div>
-
-        <div className="story-cue" aria-hidden="true">
-          <span>Scroll to watch it forget</span>
-          <i />
-        </div>
-
-        <nav className="story-rail" ref={rail} aria-label="Story">
-          {ACTS.map((a, i) => (
-            <button key={a.label} type="button" className="story-act" data-on={(current >= a.from && current < a.to) || undefined} style={{ '--fill': `var(--a${i})` } as CSSProperties} onClick={() => jump(a.from)}>
-              <span>{a.label}</span>
-              <i />
-            </button>
-          ))}
-        </nav>
       </div>
     </section>
   );

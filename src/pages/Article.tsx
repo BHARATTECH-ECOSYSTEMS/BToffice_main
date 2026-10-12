@@ -14,8 +14,8 @@ export function Article() {
     <>
       <Quiet className="article">
         <div className="wrap article-wrap">
-          <Link to="/publications" className="text-link back">
-            <Arrow dir="left" size={12} /> Publications
+          <Link to="/services" className="text-link back">
+            <Arrow dir="left" size={12} /> Services
           </Link>
           <p className="post-meta" style={toneStyle('violet')}>
             <span>{post.category}</span>
@@ -41,7 +41,7 @@ export function Article() {
           <div className="bento posts-bento">
             {more.map((p, i) => (
               <Reveal key={p.slug} className="cell post" delay={i * 70}>
-                <Link to={`/publications/${p.slug}`} className="cell-link" style={toneStyle('violet')}>
+                <Link to={`/services/${p.slug}`} className="cell-link" style={toneStyle('violet')}>
                   <Cover index={POSTS.indexOf(p)} label={p.category} />
                   <p className="post-meta">
                     <span>{p.category}</span>

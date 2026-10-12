@@ -5,8 +5,8 @@ import { Icon, type IconName } from './fx';
 import { AWARDS, CAPABILITIES, CAPABILITY_GROUPS, DOMAINS, EMAIL, HQ, POSTS, PRINCIPLES, PRIVACY_EMAIL, ROLES } from '../content';
 import type { HueName } from '../gl/palette';
 
-export type PeekId = 'research' | 'capabilities' | 'publications' | 'careers' | 'about' | 'contact';
-export const PEEK_ORDER: PeekId[] = ['research', 'capabilities', 'publications', 'careers', 'about', 'contact'];
+export type PeekId = 'research' | 'capabilities' | 'services' | 'careers' | 'about' | 'contact';
+export const PEEK_ORDER: PeekId[] = ['research', 'capabilities', 'services', 'careers', 'about', 'contact'];
 
 const DOMAIN_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
 const FAMILY_TONES: HueName[] = ['violet', 'tangerine', 'saffron'];
@@ -93,7 +93,7 @@ export function NavPeek({
             <Fragment key={id === shown ? `${id}-${epoch}` : id}>
               {id === 'research' && <ResearchPeek go={go} />}
               {id === 'capabilities' && <CapabilitiesPeek go={go} />}
-              {id === 'publications' && <PublicationsPeek go={go} />}
+              {id === 'services' && <ServicesPeek go={go} />}
               {id === 'careers' && <CareersPeek go={go} />}
               {id === 'about' && <AboutPeek go={go} />}
               {id === 'contact' && <ContactPeek go={go} />}
@@ -173,13 +173,13 @@ function CapabilitiesPeek({ go }: { go: Go }) {
   );
 }
 
-function PublicationsPeek({ go }: { go: Go }) {
+function ServicesPeek({ go }: { go: Go }) {
   return (
     <div className="peek-visual">
       <ul className="peek-posts">
         {POSTS.slice(0, 3).map((p, i) => (
           <li key={p.slug} style={{ '--k': i } as CSSProperties}>
-            <button className="peek-tile peek-post" onClick={go(`/publications/${p.slug}`)}>
+            <button className="peek-tile peek-post" onClick={go(`/services/${p.slug}`)}>
               <Cover index={i} label={p.category} />
               <small>
                 {p.date} · {p.read}
@@ -189,7 +189,7 @@ function PublicationsPeek({ go }: { go: Go }) {
           </li>
         ))}
       </ul>
-      <Foot figure={String(POSTS.length).padStart(2, '0')} label="essays and notes" blurb="On memory, generative intelligence and infrastructure." cta="All publications" onClick={go('/publications')} tone="violet" />
+      <Foot figure={String(POSTS.length).padStart(2, '0')} label="essays and notes" blurb="On memory, generative intelligence and infrastructure." cta="All services" onClick={go('/services')} tone="violet" />
     </div>
   );
 }

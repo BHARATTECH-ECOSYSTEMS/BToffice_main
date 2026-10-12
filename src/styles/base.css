@@ -41,6 +41,8 @@
 
   --content: 1240px;
   --gutter: clamp(16px, 4vw, 40px);
+  /* how far the full-bleed dark sheets sit in from the viewport edges */
+  --sheet-x: clamp(8px, 1.4vw, 20px);
   --r-lg: 28px;
   --r-md: 20px;
   --r-sm: 14px;
@@ -352,6 +354,17 @@ main:focus {
 }
 .section {
   padding: clamp(96px, 12vw, 168px) 0;
+}
+/* A wrap whose boxes span to the same edges as the page's full-bleed sheets. Its .wrap-col children (the
+   section head) keep to the shared content column, so headlines still line up with every other section's. */
+.wrap-sheet {
+  max-width: none;
+  padding-inline: var(--sheet-x);
+}
+.wrap-sheet > .wrap-col {
+  max-width: calc(var(--content) + (var(--gutter) - var(--sheet-x)) * 2);
+  margin-inline: auto;
+  padding-inline: calc(var(--gutter) - var(--sheet-x));
 }
 .section-tight {
   padding-top: 24px;
@@ -1039,6 +1052,8 @@ h3 {
   border-radius: inherit;
   background: var(--tone);
   transform-origin: left;
+  /* empty until the nav's scroll handler draws the fill */
+  transform: scaleX(0);
   transition: transform 0.2s linear;
 }
 
@@ -1162,6 +1177,23 @@ h3 {
   color: var(--ink-2);
   font-size: 16px;
   line-height: 1.5;
+}
+.footer-social {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  color: var(--ink-soft);
+  font-size: 15px;
+  transition: color 0.2s var(--ease);
+}
+.footer-social:hover {
+  color: var(--cobalt);
+}
+.footer-social svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
 }
 .footer-col h4 {
   margin-bottom: 20px;

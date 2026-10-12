@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { Arrow, Brand, toneStyle } from './ui';
 import { CHAPTERS, EMAIL, EMPLOYEE_LOGIN_URL } from '../content';
 import { useScene } from '../gl/Scene';
 import { NavPeek, type PeekId } from './NavPeek';
 import type { HueName } from '../gl/palette';
+import { pageScroll, trackBox } from './trackBox';
 
 const LINKS: { label: string; to: string; section?: string; tone: HueName; peek?: PeekId }[] = [
   { label: 'Research', to: '/research', tone: 'saffron', peek: 'research' },
-  { label: 'Publications', to: '/publications', tone: 'violet', peek: 'publications' },
+  { label: 'Services', to: '/services', tone: 'violet', peek: 'services' },
   { label: 'Capabilities', to: '/', section: 'capabilities', tone: 'tangerine', peek: 'capabilities' },
   { label: 'Careers', to: '/careers', tone: 'saffron', peek: 'careers' },
   { label: 'About', to: '/about', tone: 'violet', peek: 'about' },
@@ -48,52 +49,52 @@ function usePeek() {
   return { peek, open, close, hold };
 }
 
-/** Where the reader is in the home story: the chapter holding the middle of the screen, and how far through it. */
-function useChapterProgress(enabled: boolean) {
-  const [state, setState] = useState({ index: 0, fills: CHAPTERS.map(() => 0) });
+/**
+ * Where the reader is in the home story: the chapter holding the middle of the screen, and how far through each
+ * chapter they are. The fills are drawn straight onto the progress bars in `bars`, so scrolling only re-renders
+ * the nav when the current chapter changes; positions come from cached boxes, so it never forces a layout.
+ */
+function useChapterProgress(enabled: boolean, bars: RefObject<HTMLDivElement>) {
+  const [index, setIndex] = useState(0);
   useEffect(() => {
     if (!enabled) return;
+    const tracked = CHAPTERS.map((c) => document.getElementById(c.id)).map((el) => (el ? trackBox(el) : null));
+    const footer = document.querySelector('.footer');
+    const end = footer ? trackBox(footer) : null;
     let raf = 0;
-    let starts: number[] = [];
-    let end = 0;
-
-    const measureOffsets = () => {
-      starts = CHAPTERS.map((c) => {
-        const el = document.getElementById(c.id);
-        return el ? el.getBoundingClientRect().top + window.scrollY : Infinity;
-      });
-      end = (document.querySelector('.footer') as HTMLElement | null)?.offsetTop ?? document.body.scrollHeight;
-    };
-
-    measureOffsets();
 
     const measure = () => {
       raf = 0;
-      if (!starts.length) return;
-      const mid = window.scrollY + window.innerHeight * 0.5;
-      let index = 0;
-      const fills = starts.map((s, i) => {
-        const e = i < starts.length - 1 ? starts[i + 1] : end;
-        if (mid >= s) index = i;
-        return Math.min(1, Math.max(0, (mid - s) / Math.max(1, e - s)));
+      const mid = pageScroll() + window.innerHeight * 0.5;
+      let current = 0;
+      const fills = bars.current?.querySelectorAll<HTMLElement>(':scope > button > span');
+      tracked.forEach((t, i) => {
+        if (!t) return;
+        const s = t.box.top;
+        const e = i < tracked.length - 1 ? (tracked[i + 1]?.box.top ?? Infinity) : (end?.box.top ?? document.body.scrollHeight);
+        if (mid >= s) current = i;
+        const fill = Math.min(1, Math.max(0, (mid - s) / Math.max(1, e - s)));
+        const bar = fills?.[i];
+        const next = `scaleX(${fill.toFixed(3)})`;
+        if (bar && bar.style.transform !== next) bar.style.transform = next;
       });
-      setState((p) => (p.index === index && p.fills.every((f, i) => Math.abs(f - fills[i]) < 0.01) ? p : { index, fills }));
+      setIndex((p) => (p === current ? p : current));
     };
     const on = () => {
       if (!raf) raf = requestAnimationFrame(measure);
     };
     measure();
     window.addEventListener('scroll', on, { passive: true });
-    window.addEventListener('resize', () => {
-      measureOffsets();
-      on();
-    }, { passive: true });
+    window.addEventListener('resize', on, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('scroll', on);
+      window.removeEventListener('resize', on);
+      tracked.forEach((t) => t?.release());
+      end?.release();
     };
-  }, [enabled]);
-  return state;
+  }, [enabled, bars]);
+  return index;
 }
 
 export function Nav() {
@@ -108,7 +109,8 @@ export function Nav() {
   const [inCaps, setInCaps] = useState(false);
   const linksRef = useRef<HTMLDivElement>(null);
   const [hl, setHl] = useState({ x: 0, w: 0, glide: false });
-  const { index: chapter, fills } = useChapterProgress(home);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const chapter = useChapterProgress(home, progressRef);
   const { peek, open: openPeek, close: closePeek, hold } = usePeek();
   const [caret, setCaret] = useState(0);
 
@@ -303,10 +305,10 @@ export function Nav() {
       <NavPeek peek={peek} caret={caret} onEnter={hold} onLeave={() => closePeek()} onGo={fromPeek} />
 
       {home && (
-        <div className="nav-progress" aria-hidden="true">
+        <div className="nav-progress" ref={progressRef} aria-hidden="true">
           {CHAPTERS.map((c, i) => (
             <button key={c.id} tabIndex={-1} style={toneStyle(c.tone)} onClick={() => toChapter(c.id)} title={c.label} data-on={i === chapter || undefined}>
-              <span style={{ transform: `scaleX(${fills[i]})` }} />
+              <span />
             </button>
           ))}
         </div>

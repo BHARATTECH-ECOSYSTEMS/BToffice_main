@@ -61,11 +61,17 @@ export const GLOBE_LABELS: { name: string; at: LonLat; home?: boolean; side: 'le
 
 export const INDIA_BBOX = { minLon: 68, maxLon: 97.5, minLat: 7.8, maxLat: 37.2 };
 
-export function inPolygon([x, y]: LonLat, poly: LonLat[]): boolean {
+// Indexed rather than destructured: globes call this thousands of times while building, before the engine has
+// optimised it, and unoptimised array destructuring goes through the iterator protocol on every edge.
+export function inPolygon(pt: LonLat, poly: LonLat[]): boolean {
+  const x = pt[0];
+  const y = pt[1];
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [xi, yi] = poly[i];
-    const [xj, yj] = poly[j];
+    const xi = poly[i][0];
+    const yi = poly[i][1];
+    const xj = poly[j][0];
+    const yj = poly[j][1];
     if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
   }
   return inside;

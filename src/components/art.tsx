@@ -470,7 +470,7 @@ export function DomainArt({ index }: { index: number }) {
   }
 }
 
-// ── Publication covers: a drawing of what each essay is about, white on one flat colour ─────────
+// ── Services covers: a drawing of what each essay is about, white on one flat colour ─────────
 
 const COVER_TONES = ['#6E58F5', '#FF8643', '#F59E00'];
 

@@ -10,6 +10,8 @@ export const EMPLOYEE_LOGIN_URL = isLocal
   ? 'http://localhost:5173/login'
   : 'https://learning-management-frontend-v1nx.onrender.com/login';
 
+export const LINKEDIN_URL = 'https://www.linkedin.com/company/bharattech/posts/';
+
 export const PROBLEMS = [
   {
     title: 'It forgets.',
@@ -433,7 +435,7 @@ export const FAQ = [
   },
   {
     q: 'Can I use it today?',
-    a: 'Rivinity is in active research and development, and we share progress in our Publications. If you are a researcher, institution or organisation interested in early collaboration, write to us.',
+    a: 'Rivinity is in active research and development, and we share progress in our Services. If you are a researcher, institution or organisation interested in early collaboration, write to us.',
   },
   {
     q: 'What happens to data?',

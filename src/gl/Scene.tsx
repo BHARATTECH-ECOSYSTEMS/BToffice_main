@@ -1,11 +1,17 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Lenis from 'lenis';
 import { Engine, type Target } from './Engine';
+import { trackBox, type Box } from '../components/trackBox';
 
 interface Entry {
   el: HTMLElement;
   target: () => Target;
   onProgress?: (p: number, active: boolean) => void;
+}
+
+/** A registered entry with its cached page position, so picking never forces a layout. */
+interface Placed extends Entry {
+  box: Box;
 }
 
 interface SceneApi {
@@ -73,13 +79,18 @@ export function useQuiet(ref: RefObject<HTMLElement>) {
 
 export function SceneProvider({ children }: { children: ReactNode }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const entries = useRef(new Set<Entry>());
+  const entries = useRef(new Set<Placed>());
   const [api, setApi] = useState<SceneApi>(() => ({
     engine: null,
     lenis: null,
     register: (e) => {
-      entries.current.add(e);
-      return () => void entries.current.delete(e);
+      const { box, release } = trackBox(e.el);
+      const placed: Placed = { ...e, box };
+      entries.current.add(placed);
+      return () => {
+        entries.current.delete(placed);
+        release();
+      };
     },
     scrollTo: (t) => (typeof t === 'number' ? window.scrollTo(0, t) : t.scrollIntoView()),
   }));
@@ -93,8 +104,9 @@ export function SceneProvider({ children }: { children: ReactNode }) {
       canvas.style.display = 'none'; // no WebGL: the page carries itself without the objects
     }
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    // Snappy, responsive smooth scrolling (0.6s duration instead of 1.1s lag)
-    const lenis = reduced || isCompact() ? null : new Lenis({ duration: 0.6, smoothWheel: true, wheelMultiplier: 1.0, touchMultiplier: 1.2 });
+    // Continuous glide: each frame the page closes a share of the distance to where the wheel has sent it, so
+    // successive wheel ticks blend into one motion instead of each restarting a fixed-length ease.
+    const lenis = reduced || isCompact() ? null : new Lenis({ lerp: 0.11, smoothWheel: true, wheelMultiplier: 1.0, touchMultiplier: 1.2 });
     let raf = 0;
     let lastY = window.scrollY;
     let lastPickedY = -999999;
@@ -108,21 +120,22 @@ export function SceneProvider({ children }: { children: ReactNode }) {
 
       const vh = window.innerHeight;
       const mid = vh * 0.5;
-      let best: Entry | null = null;
+      let best: Placed | null = null;
       let bestH = Infinity;
       entries.current.forEach((e) => {
-        const r = e.el.getBoundingClientRect();
-        const active = r.top <= mid && r.bottom >= mid;
-        if (active && r.height < bestH) {
+        const top = e.box.top - y;
+        const height = e.box.height;
+        const active = top <= mid && top + height >= mid;
+        if (active && height < bestH) {
           best = e;
-          bestH = r.height;
+          bestH = height;
         }
         if (e.onProgress) {
-          const raw = r.height > vh * 1.2 ? -r.top / (r.height - vh) : (mid - r.top) / r.height;
+          const raw = height > vh * 1.2 ? -top / (height - vh) : (mid - top) / height;
           e.onProgress(Math.min(1, Math.max(0, raw)), false);
         }
       });
-      const chosen = best as Entry | null;
+      const chosen = best as Placed | null;
       engine?.setTarget(chosen ? chosen.target() : { key: 'none' });
     };
 

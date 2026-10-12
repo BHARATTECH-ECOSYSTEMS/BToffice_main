@@ -54,7 +54,8 @@
   pointer-events: none;
 }
 .beat {
-  --gap: max(var(--gutter), calc((100vw - var(--content)) / 2 + var(--gutter)));
+  /* the page's text column: (frame width - content) / 2, never closer to the edge than the gutter */
+  --gap: max(var(--gutter), calc((100% - var(--content)) / 2));
   position: absolute;
   left: var(--gap);
   top: 50%;
@@ -164,101 +165,6 @@
   background: linear-gradient(135deg, #7B68EE, #6E58F5);
 }
 
-/* ── chrome: a scroll cue and the act rail ───────────────────────────────── */
-
-.story-cue {
-  position: absolute;
-  left: 50%;
-  bottom: 30px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  transform: translateX(-50%);
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  opacity: max(0, calc(1 - var(--p, 0) * 40));
-  pointer-events: none;
-}
-.story-cue i {
-  position: relative;
-  width: 1px;
-  height: 34px;
-  overflow: hidden;
-  background: var(--line-strong);
-}
-.story-cue i::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: -40%;
-  width: 1px;
-  height: 40%;
-  background: var(--ink);
-  animation: cue 1.8s var(--ease-io) infinite;
-}
-@keyframes cue {
-  to {
-    top: 100%;
-  }
-}
-
-.story-rail {
-  --gap: max(var(--gutter), calc((100vw - var(--content)) / 2 + var(--gutter)));
-  position: absolute;
-  left: var(--gap);
-  right: var(--gap);
-  bottom: 26px;
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  opacity: min(1, calc(var(--p, 0) * 40));
-}
-.story-act {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  flex: 1;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.story-act:nth-child(1) {
-  flex: 0.5;
-}
-.story-act span {
-  font-family: var(--mono);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--muted);
-  transition: color 0.3s var(--ease);
-}
-.story-act[data-on] span {
-  color: var(--ink);
-}
-.story-act i {
-  position: relative;
-  height: 2px;
-  border-radius: 2px;
-  overflow: hidden;
-  background: var(--line-strong);
-}
-.story-act i::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--ink);
-  transform-origin: left;
-  transform: scaleX(var(--fill, 0));
-}
 .story-count {
   font-family: var(--mono);
   font-size: 12px;
@@ -299,12 +205,6 @@
     min-height: 44px;
     padding: 0 16px;
     font-size: 14px;
-  }
-  .story-act span {
-    font-size: 10px;
-  }
-  .story-cue {
-    display: none;
   }
 }
 
@@ -412,17 +312,22 @@
   font-size: 13.5px;
   color: var(--ink-soft);
 }
+/* three equal tabs spanning the card's width, so their outer edges line up with it */
 .wheel-fams {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
-  margin: 18px 0 0;
+  margin: 14px 0 0;
   padding: 0;
   list-style: none;
 }
 .wheel-fams button {
-  display: inline-flex;
+  display: flex;
+  justify-content: center;
   align-items: center;
   gap: 8px;
+  width: 100%;
+  min-height: 40px;
   padding: 8px 12px;
   border: 0;
   border-radius: 999px;
@@ -556,9 +461,6 @@
   }
   .wheel-card-body {
     min-height: 112px;
-  }
-  .wheel-fams {
-    flex-wrap: wrap;
   }
   /* on a phone the wheel rises from the bottom edge, its active capability at twelve o'clock */
   .wheel {

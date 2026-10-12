@@ -1,86 +1,28 @@
-import { useState, useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { useQuiet } from '../gl/Scene';
-import { AudienceSchematic } from '../components/AudienceSchematic';
+import { AudienceCorridor, type CorridorAudience } from '../components/AudienceCorridor';
+import { Chapter, usePinned } from '../components/Chapter';
 import { AUDIENCE_DETAIL, AUDIENCE_TONES } from '../content';
-import { toneStyle } from '../components/ui';
+import { Headline, toneStyle } from '../components/ui';
 
-const AUTO_SLIDE_DURATION = 6500; // 6.5s per tab
+const CORRIDOR: CorridorAudience[] = AUDIENCE_DETAIL.map((a, i) => ({ name: a.name, uses: a.uses, tone: AUDIENCE_TONES[i] || 'violet' }));
 
+/** Six audiences, one pinned frame: scrolling flies down a corridor of their use cases, one audience at a time. */
 export function Audiences() {
   const ref = useRef<HTMLElement>(null);
   useQuiet(ref);
-
-  const [activeIdx, setActiveIdx] = useState(0);
-  const [progress, setProgress] = useState(0);
-  const [isPaused, setIsPaused] = useState(false);
-
-  // Time tracking ref for smooth animation
-  const startTimeRef = useRef<number>(performance.now());
-  const animFrameRef = useRef<number | null>(null);
-
-  // Restart timer when activeIdx changes
-  useEffect(() => {
-    startTimeRef.current = performance.now();
-    setProgress(0);
-  }, [activeIdx]);
-
-  // Continuous timer loop with requestAnimationFrame
-  useEffect(() => {
-    let lastTick = performance.now();
-
-    const tick = (now: number) => {
-      if (isPaused) {
-        // Shift start time by pause duration so it resumes seamlessly
-        startTimeRef.current += now - lastTick;
-      } else {
-        const elapsed = now - startTimeRef.current;
-        const currentProgress = Math.min(100, (elapsed / AUTO_SLIDE_DURATION) * 100);
-        setProgress(currentProgress);
-
-        if (elapsed >= AUTO_SLIDE_DURATION) {
-          setActiveIdx((prev) => (prev + 1) % AUDIENCE_DETAIL.length);
-          startTimeRef.current = now;
-          setProgress(0);
-        }
-      }
-      lastTick = now;
-      animFrameRef.current = requestAnimationFrame(tick);
-    };
-
-    animFrameRef.current = requestAnimationFrame(tick);
-    return () => {
-      if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
-    };
-  }, [isPaused]);
-
-  const handleSelectTab = (idx: number) => {
-    setActiveIdx(idx);
-    startTimeRef.current = performance.now();
-    setProgress(0);
-  };
+  const { step: activeIdx, goTo, progress } = usePinned(ref, AUDIENCE_DETAIL.length);
 
   const activeItem = AUDIENCE_DETAIL[activeIdx];
   const activeTone = AUDIENCE_TONES[activeIdx] || 'violet';
 
   return (
-    <section id="who" ref={ref} className="section svc-section">
-      <div className="wrap">
-        <div
-          className="svc-showcase"
-          onMouseEnter={() => setIsPaused(true)}
-          onMouseLeave={() => setIsPaused(false)}
-        >
+    <Chapter id="who" innerRef={ref} n={AUDIENCE_DETAIL.length} screens={0.6} tone={activeTone} className="svc-section">
+      <div className="wrap svc-frame">
+        <div className="svc-showcase">
           {/* Left Column: Eyebrow, Headline & Interactive Tabs List */}
           <div className="svc-left-col">
-            <div className="svc-eyebrow">
-              <span className="svc-eyebrow__dot" />
-              <span>WHO IT’S FOR</span>
-            </div>
-
-            <h2 className="svc-headline">
-              Built for the people<br />
-              <span className="is-accent">who build what’s next.</span>
-            </h2>
+            <Headline tone="violet" lines={['Built for the people', 'who build what’s next.']} />
 
             <div className="svc-list">
               {AUDIENCE_DETAIL.map((item, idx) => {
@@ -91,13 +33,13 @@ export function Audiences() {
                   <div
                     key={item.name}
                     className={`svc-list__item ${isActive ? 'is-active' : ''}`}
-                    onClick={() => handleSelectTab(idx)}
+                    onClick={() => goTo(idx)}
                     role="button"
                     tabIndex={0}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
-                        handleSelectTab(idx);
+                        goTo(idx);
                       }
                     }}
                     style={toneStyle(tone)}
@@ -113,7 +55,7 @@ export function Audiences() {
                         <div
                           className="svc-list__fill"
                           style={{
-                            width: `${progress}%`,
+                            width: 'calc(var(--local, 0) * 100%)',
                             backgroundColor: `var(--${tone})`,
                             boxShadow: `0 0 10px var(--${tone})`,
                           }}
@@ -130,36 +72,19 @@ export function Audiences() {
 
           {/* Right Column: Dynamic Feature Panel */}
           <div className="svc-panel-wrap" style={toneStyle(activeTone)}>
-            <div key={activeIdx} className="svc-panel">
-              {/* Top Animated Vector Schematic (Floating directly with no separate container box) */}
-              <div className="svc-panel__schematic">
-                <AudienceSchematic index={activeIdx} tone={activeTone} />
-              </div>
+            <div className="svc-panel">
+              {/* The use cases travel on the corridor's cards; the hidden list carries them for screen readers. */}
+              <AudienceCorridor audiences={CORRIDOR} progress={progress} />
 
               {/* Panel Content Header */}
-              <div className="svc-panel__content">
+              <div key={activeIdx} className="svc-panel__content">
                 <h3 className="svc-panel__title">{activeItem.name}</h3>
                 <p className="svc-panel__desc">{activeItem.line}</p>
-
-                {/* 2-Column Capability Checklist */}
-                <div className="svc-panel__grid">
-                  {activeItem.uses.map((useText, uIdx) => (
-                    <div key={uIdx} className="svc-panel__check-item">
-                      <div className="svc-panel__check-icon">
-                        <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
-                          <path
-                            d="M2.5 6.2L4.8 8.5L9.5 3.5"
-                            stroke="currentColor"
-                            strokeWidth="2"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                          />
-                        </svg>
-                      </div>
-                      <span className="svc-panel__check-text">{useText}</span>
-                    </div>
+                <ul className="sr-only">
+                  {activeItem.uses.map((useText) => (
+                    <li key={useText}>{useText}</li>
                   ))}
-                </div>
+                </ul>
 
                 {/* Footer: SEEN IN / POWERED BY text links */}
                 <div className="svc-panel__footer">
@@ -178,6 +103,6 @@ export function Audiences() {
           </div>
         </div>
       </div>
-    </section>
+    </Chapter>
   );
 }

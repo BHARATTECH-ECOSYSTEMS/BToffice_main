@@ -30,7 +30,7 @@ function CoverFan() {
   return (
     <div className="cover-fan">
       {POSTS.slice(0, 3).map((p, i) => (
-        <Link key={p.slug} to={`/publications/${p.slug}`} className="fan-card" style={{ '--i': i - 1, '--d': i } as CSSProperties}>
+        <Link key={p.slug} to={`/services/${p.slug}`} className="fan-card" style={{ '--i': i - 1, '--d': i } as CSSProperties}>
           <Cover index={i} label={p.category} />
           <span className="fan-meta">
             {p.date} · {p.read}
@@ -49,7 +49,7 @@ export function Blog() {
   return (
     <>
       <PageHero
-        eyebrow="Publications"
+        eyebrow="Services"
         tone="violet"
         title={['Notes from', 'the lab.']}
         lede="Essays and research notes on persistent memory, generative intelligence and the infrastructure underneath them."
@@ -88,7 +88,7 @@ export function Blog() {
                   style={toneStyle(CAT_TONE[p.category], { gridColumn: `span ${spans[i]}` })}
                   delay={i * 60}
                 >
-                  <Link to={`/publications/${p.slug}`} className="cell-link">
+                  <Link to={`/services/${p.slug}`} className="cell-link">
                     <Cover index={POSTS.indexOf(p)} label={p.category} />
                     <div className="post-body">
                       <p className="post-meta">

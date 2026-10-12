@@ -15,21 +15,21 @@ export function Journal() {
   const [lead, ...rest] = POSTS.slice(0, 3);
   return (
     <section id="journal" ref={ref} className="section">
-      <div className="wrap">
-        <div className="section-head">
+      <div className="wrap wrap-sheet">
+        <div className="section-head wrap-col">
           <div>
             <Eyebrow tone="cobalt">From the lab</Eyebrow>
-            <Headline tone="cobalt" lines={['Publications,', 'and people.']} />
+            <Headline tone="cobalt" lines={['Services,', 'and people.']} />
           </div>
           <Reveal className="section-head-link" delay={120}>
-            <Link to="/publications" className="btn btn-ghost">
-              All publications <Arrow />
+            <Link to="/services" className="btn btn-ghost">
+              All services <Arrow />
             </Link>
           </Reveal>
         </div>
         <div className="bento journal-bento">
           <Reveal className="cell cell-tint post post-lead" style={toneStyle(TONES[0])}>
-            <Link to={`/publications/${lead.slug}`} className="cell-link">
+            <Link to={`/services/${lead.slug}`} className="cell-link">
               <Cover index={0} label={lead.category} />
               <p className="post-meta">
                 <span>{lead.category}</span>
@@ -44,7 +44,7 @@ export function Journal() {
           </Reveal>
           {rest.map((p, i) => (
             <Reveal key={p.slug} className="cell post" delay={80 + i * 70}>
-              <Link to={`/publications/${p.slug}`} className="cell-link" style={toneStyle(TONES[i + 1])}>
+              <Link to={`/services/${p.slug}`} className="cell-link" style={toneStyle(TONES[i + 1])}>
                 <Cover index={i + 1} label={p.category} />
                 <p className="post-meta">
                   <span>{p.category}</span>

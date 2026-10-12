@@ -109,171 +109,184 @@ export function DomainCardReel({
     const canvas = canvasRef.current;
     if (!container || !canvas) return;
 
-    const width = container.clientWidth || 480;
-    const height = container.clientHeight || 420;
+    // Every reel owns a WebGL context. Building all of them on mount blocked the main thread for ~600ms
+    // on each route change, so a reel builds its scene only once it comes near the viewport.
+    const startScene = () => {
+      const width = container.clientWidth || 480;
+      const height = container.clientHeight || 420;
 
-    // 1. Scene & Camera
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 50);
-    const initialCam = CAMERA_BASE[0];
-    camera.position.set(initialCam.x, initialCam.y, initialCam.z);
-    camera.lookAt(0, -0.04, 0);
+      // 1. Scene & Camera
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 50);
+      const initialCam = CAMERA_BASE[0];
+      camera.position.set(initialCam.x, initialCam.y, initialCam.z);
+      camera.lookAt(0, -0.04, 0);
 
-    // 2. High-Performance WebGL Renderer (Clamped 1.75 Pixel Ratio)
-    const renderer = new THREE.WebGLRenderer({
-      canvas,
-      antialias: true,
-      alpha: true,
-      powerPreference: 'high-performance',
-    });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
-    renderer.setSize(width, height);
-    renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.36;
+      // 2. High-Performance WebGL Renderer (Clamped 1.75 Pixel Ratio)
+      const renderer = new THREE.WebGLRenderer({
+        canvas,
+        antialias: true,
+        alpha: true,
+        powerPreference: 'high-performance',
+      });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
+      renderer.setSize(width, height);
+      renderer.toneMapping = THREE.ACESFilmicToneMapping;
+      renderer.toneMappingExposure = 1.36;
 
-    // Studio Environment Map
-    const envMap = getOrCreateStudioEnvironment(renderer);
-    scene.environment = envMap;
+      // Studio Environment Map
+      const envMap = getOrCreateStudioEnvironment(renderer);
+      scene.environment = envMap;
 
-    // 3. Daylight Studio Lighting Rig
-    const ambientLight = new THREE.AmbientLight(0xffffff, 2.2);
-    scene.add(ambientLight);
+      // 3. Daylight Studio Lighting Rig
+      const ambientLight = new THREE.AmbientLight(0xffffff, 2.2);
+      scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xfffbeb, 3.4);
-    keyLight.position.set(3.5, 5.0, 4.0);
-    scene.add(keyLight);
+      const keyLight = new THREE.DirectionalLight(0xfffbeb, 3.4);
+      keyLight.position.set(3.5, 5.0, 4.0);
+      scene.add(keyLight);
 
-    const fillLight = new THREE.DirectionalLight(0xe0f2fe, 2.0);
-    fillLight.position.set(-3.5, 2.0, 3.0);
-    scene.add(fillLight);
+      const fillLight = new THREE.DirectionalLight(0xe0f2fe, 2.0);
+      fillLight.position.set(-3.5, 2.0, 3.0);
+      scene.add(fillLight);
 
-    const rimLight = new THREE.DirectionalLight(0xffedd5, 2.6);
-    rimLight.position.set(-2.5, 4.0, -3.5);
-    scene.add(rimLight);
+      const rimLight = new THREE.DirectionalLight(0xffedd5, 2.6);
+      rimLight.position.set(-2.5, 4.0, -3.5);
+      scene.add(rimLight);
 
-    const bounceLight = new THREE.DirectionalLight(0x94a3b8, 1.4);
-    bounceLight.position.set(0, -3.0, 0);
-    scene.add(bounceLight);
+      const bounceLight = new THREE.DirectionalLight(0x94a3b8, 1.4);
+      bounceLight.position.set(0, -3.0, 0);
+      scene.add(bounceLight);
 
-    // Soft Contact Floor Shadow
-    const shadowMesh = createContactShadow(2.8, 2.8, 0.28);
-    scene.add(shadowMesh);
+      // Soft Contact Floor Shadow
+      const shadowMesh = createContactShadow(2.8, 2.8, 0.28);
+      scene.add(shadowMesh);
 
-    // 4. Procedural 3D Generative Artifact
-    const artifact = createMultiSceneArtifact(index);
-    scene.add(artifact.group);
+      // 4. Procedural 3D Generative Artifact
+      const artifact = createMultiSceneArtifact(index);
+      scene.add(artifact.group);
 
-    // Render 1 initial static frame immediately
-    renderer.render(scene, camera);
+      // Render 1 initial static frame immediately
+      renderer.render(scene, camera);
 
-    // 5. Resize & Intersection Observers
-    const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const w = entry.contentRect.width;
-        const h = entry.contentRect.height;
-        if (w > 0 && h > 0) {
-          camera.aspect = w / h;
-          camera.updateProjectionMatrix();
-          renderer.setSize(w, h);
-          renderer.render(scene, camera);
+      // 5. Resize Observer
+      const resizeObserver = new ResizeObserver((entries) => {
+        for (const entry of entries) {
+          const w = entry.contentRect.width;
+          const h = entry.contentRect.height;
+          if (w > 0 && h > 0) {
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+            renderer.render(scene, camera);
+          }
         }
-      }
-    });
-    resizeObserver.observe(container);
+      });
+      resizeObserver.observe(container);
 
-    const intersectionObserver = new IntersectionObserver(
+      // 6. Continuous 60fps RAF Kinematic Loop across full duration
+      let animationId: number = 0;
+      let lastTime = performance.now();
+      const currentCamPos = new THREE.Vector3(initialCam.x, initialCam.y, initialCam.z);
+
+      if (isActive) {
+        const loop = (now: number) => {
+          animationId = requestAnimationFrame(loop);
+
+          const delta = Math.min((now - lastTime) / 1000, 0.1);
+          lastTime = now;
+
+          // Pointer smoothing
+          pointerRef.current.x += (pointerRef.current.targetX - pointerRef.current.x) * 0.08;
+          pointerRef.current.y += (pointerRef.current.targetY - pointerRef.current.y) * 0.08;
+
+          if (isPlayingRef.current) {
+            animTimeRef.current += delta;
+          }
+
+          const totalLoop = TOTAL_SCENES * SCENE_DURATION_SEC;
+          const t = animTimeRef.current % totalLoop;
+          const curIdx = Math.floor(t / SCENE_DURATION_SEC);
+          const curProg = (t % SCENE_DURATION_SEC) / SCENE_DURATION_SEC;
+
+          // Re-rendering off-screen reels every frame kept the main thread busy for no visible change.
+          if (isIntersectingRef.current) {
+            setActiveSceneIdx(curIdx);
+            setSceneProgress(curProg);
+          }
+
+          if (curIdx !== lastReportedActRef.current) {
+            lastReportedActRef.current = curIdx;
+            onActChange?.(curIdx);
+          }
+
+          // Smooth camera drift
+          const targetAnchor = CAMERA_BASE[curIdx] ?? CAMERA_BASE[0];
+
+          let dynamicZOffset = 0;
+          if (curProg < 0.22) {
+            const landT = curProg / 0.22;
+            const landEase = 1 - Math.pow(1 - landT, 3);
+            dynamicZOffset = (1 - landEase) * 0.16;
+          } else if (curProg < 0.86) {
+            const driftT = (curProg - 0.22) / 0.64;
+            dynamicZOffset = -driftT * 0.08;
+          } else {
+            const punchT = (curProg - 0.86) / 0.14;
+            dynamicZOffset = -0.08 - punchT * punchT * 0.08;
+          }
+
+          const targetX = targetAnchor.x + pointerRef.current.x * 0.22;
+          const targetY = targetAnchor.y + pointerRef.current.y * 0.18;
+          const targetZ = targetAnchor.z + dynamicZOffset;
+
+          currentCamPos.x += (targetX - currentCamPos.x) * 0.07;
+          currentCamPos.y += (targetY - currentCamPos.y) * 0.07;
+          currentCamPos.z += (targetZ - currentCamPos.z) * 0.07;
+
+          camera.position.copy(currentCamPos);
+          camera.lookAt(0, -0.04, 0);
+
+          // Update 3D procedural artifact
+          artifact.update(
+            animTimeRef.current,
+            curIdx,
+            curProg,
+            pointerRef.current,
+            camera
+          );
+
+          if (isIntersectingRef.current) {
+            renderer.render(scene, camera);
+          }
+        };
+
+        animationId = requestAnimationFrame(loop);
+      }
+
+      return () => {
+        if (animationId) cancelAnimationFrame(animationId);
+        resizeObserver.disconnect();
+        artifact.dispose();
+        scene.remove(artifact.group);
+        scene.remove(shadowMesh);
+        renderer.dispose();
+      };
+    };
+
+    let stopScene: (() => void) | undefined;
+    const visibility = new IntersectionObserver(
       ([entry]) => {
         isIntersectingRef.current = entry.isIntersecting;
+        if (entry.isIntersecting && !stopScene) stopScene = startScene();
       },
-      { threshold: 0.02 }
+      { rootMargin: '200px 0px' }
     );
-    intersectionObserver.observe(container);
-
-    // 6. Continuous 60fps RAF Kinematic Loop across full duration
-    let animationId: number = 0;
-    let lastTime = performance.now();
-    const currentCamPos = new THREE.Vector3(initialCam.x, initialCam.y, initialCam.z);
-
-    if (isActive) {
-      const loop = (now: number) => {
-        animationId = requestAnimationFrame(loop);
-
-        const delta = Math.min((now - lastTime) / 1000, 0.1);
-        lastTime = now;
-
-        // Pointer smoothing
-        pointerRef.current.x += (pointerRef.current.targetX - pointerRef.current.x) * 0.08;
-        pointerRef.current.y += (pointerRef.current.targetY - pointerRef.current.y) * 0.08;
-
-        if (isPlayingRef.current) {
-          animTimeRef.current += delta;
-        }
-
-        const totalLoop = TOTAL_SCENES * SCENE_DURATION_SEC;
-        const t = animTimeRef.current % totalLoop;
-        const curIdx = Math.floor(t / SCENE_DURATION_SEC);
-        const curProg = (t % SCENE_DURATION_SEC) / SCENE_DURATION_SEC;
-
-        setActiveSceneIdx(curIdx);
-        setSceneProgress(curProg);
-
-        if (curIdx !== lastReportedActRef.current) {
-          lastReportedActRef.current = curIdx;
-          onActChange?.(curIdx);
-        }
-
-        // Smooth camera drift
-        const targetAnchor = CAMERA_BASE[curIdx] ?? CAMERA_BASE[0];
-
-        let dynamicZOffset = 0;
-        if (curProg < 0.22) {
-          const landT = curProg / 0.22;
-          const landEase = 1 - Math.pow(1 - landT, 3);
-          dynamicZOffset = (1 - landEase) * 0.16;
-        } else if (curProg < 0.86) {
-          const driftT = (curProg - 0.22) / 0.64;
-          dynamicZOffset = -driftT * 0.08;
-        } else {
-          const punchT = (curProg - 0.86) / 0.14;
-          dynamicZOffset = -0.08 - punchT * punchT * 0.08;
-        }
-
-        const targetX = targetAnchor.x + pointerRef.current.x * 0.22;
-        const targetY = targetAnchor.y + pointerRef.current.y * 0.18;
-        const targetZ = targetAnchor.z + dynamicZOffset;
-
-        currentCamPos.x += (targetX - currentCamPos.x) * 0.07;
-        currentCamPos.y += (targetY - currentCamPos.y) * 0.07;
-        currentCamPos.z += (targetZ - currentCamPos.z) * 0.07;
-
-        camera.position.copy(currentCamPos);
-        camera.lookAt(0, -0.04, 0);
-
-        // Update 3D procedural artifact
-        artifact.update(
-          animTimeRef.current,
-          curIdx,
-          curProg,
-          pointerRef.current,
-          camera
-        );
-
-        if (isIntersectingRef.current) {
-          renderer.render(scene, camera);
-        }
-      };
-
-      animationId = requestAnimationFrame(loop);
-    }
+    visibility.observe(container);
 
     return () => {
-      if (animationId) cancelAnimationFrame(animationId);
-      resizeObserver.disconnect();
-      intersectionObserver.disconnect();
-      artifact.dispose();
-      scene.remove(artifact.group);
-      scene.remove(shadowMesh);
-      renderer.dispose();
+      visibility.disconnect();
+      stopScene?.();
     };
   }, [index, isActive]);
 

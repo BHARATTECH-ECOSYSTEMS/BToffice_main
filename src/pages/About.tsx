@@ -2,7 +2,6 @@ import { Link } from 'react-router';
 import { 
   ArrowUpRight, 
   Sparkles,
-  ShieldCheck, 
   Award, 
   Building2, 
   Mail, 
@@ -17,22 +16,18 @@ import '../styles/company-about.css';
 
 const DRIVES = [
   {
-    num: '01',
     title: 'Innovation at Our Core',
     body: 'We are driven by the challenge of turning ambitious frontiers into production reality. Every project pushes the boundaries of neural memory, persistent reasoning, and cognitive scale.',
   },
   {
-    num: '02',
     title: 'Sovereign & National Impact',
     body: 'We believe cognitive intelligence and critical data must remain under sovereign custody. We build resilient architectures that empower India’s autonomous digital future.',
   },
   {
-    num: '03',
     title: 'Technology for Good & Access',
     body: 'Democratizing advanced tools, localized learning, and enterprise search so that startups, researchers, and grassroots students all share in the progress.',
   },
   {
-    num: '04',
     title: 'Continuous Research & Evolution',
     body: 'In a rapidly advancing deep-tech landscape, our research labs continuously benchmark, fine-tune, and evolve multi-model architectures designed for compounding intelligence.',
   },
@@ -40,17 +35,14 @@ const DRIVES = [
 
 const REASONS = [
   {
-    num: '01',
     title: 'AI-First Sovereign Innovation',
     body: 'We don’t merely assemble third-party wrappers; we architect intelligent systems that remember, reason, and adapt. With proprietary models like BharatAI and BSearch, we deliver true cognitive independence.',
   },
   {
-    num: '02',
     title: 'Full-Stack Ecosystem Synergy',
     body: 'From grassroots higher education with CollegeCue to developer community platforms with Recag and unified search, every product shares one knowledge fabric and compounds value over time.',
   },
   {
-    num: '03',
     title: 'Proven Track Record & Honors',
     body: 'Launched by the Hon’ble Prime Minister Shri Narendra Modi, vetted through the MeitY Open Challenge, and represented at international forums, we combine technical excellence with measurable national impact.',
   },
@@ -67,7 +59,7 @@ export function About() {
   return (
     <div className="company-about-page">
       {/* ── 1. CLEAN EDITORIAL HERO (NATURAL BACKGROUND) ── */}
-      <section className="about-hero-section">
+      <section className="about-sheet about-hero-section">
         <div className="wrap">
           <div className="about-hero-content">
             <Reveal as="h1" className="about-hero-title" delay={60}>
@@ -83,7 +75,7 @@ export function About() {
       </section>
 
       {/* ── 2. SECTION: WHO WE ARE & WHAT DRIVES US ── */}
-      <section className="section about-overview-section" id="overview">
+      <section className="section about-sheet about-overview-section" id="overview">
         <div className="wrap about-overview-grid">
           <div className="about-who-sticky">
             <Reveal as="h2" className="about-section-h2">
@@ -125,12 +117,14 @@ export function About() {
       </section>
 
       {/* ── 3. SECTION: WHY CHOOSE US (REASON MATRIX) ── */}
-      <section className="section about-why-section" id="why">
+      <section className="section about-sheet about-why-section" id="why">
         <div className="wrap">
-          <div className="about-why-header">
-            <Reveal as="h2">
-              Why Bharattech
-            </Reveal>
+          <div className="about-sheet-head">
+            <div>
+              <Reveal as="h2" className="about-section-h2">
+                Why Bharattech
+              </Reveal>
+            </div>
             <Reveal as="p" delay={80}>
               Built for sovereign trust, deep craft, and enduring scale.
             </Reveal>
@@ -147,45 +141,21 @@ export function About() {
         </div>
       </section>
 
-      {/* ── 4. SECTION: LEADERSHIP MANIFESTO QUOTE (NATURAL CARD) ── */}
-      <section className="about-quote-section" id="manifesto">
-        <div className="wrap">
-          <div className="about-quote-panel">
-            <span className="about-quote-glyph" aria-hidden="true">“</span>
-            <Reveal as="blockquote" className="about-quote-text">
-              We harness deep research, sovereign compute, and purposeful engineering to build technology that elevates our nation and scales globally. When you build with conviction for India, you build for the future of humanity.
-            </Reveal>
-
-            <Reveal className="about-quote-author" delay={80}>
-              <div className="about-author-avatar">BT</div>
-              <div className="about-author-info">
-                <div className="about-author-name">
-                  Bharattech Leadership & Research Council
-                  <ShieldCheck size={15} color="var(--violet)" />
-                </div>
-                <div className="about-author-role">
-                  Sovereign Deep-Tech · Made in Bharat
-                </div>
-              </div>
-            </Reveal>
-          </div>
-        </div>
-      </section>
-
       {/* ── 5. SECTION: "HOW WE WORK" SCROLL-PINNED PIPELINE ── */}
+      {/* Full-bleed on purpose: the pinned sheet fills the viewport, not the content column. */}
       <section className="about-process-section" id="process">
-        <div className="wrap">
-          <HowWeWorkPipeline />
-        </div>
+        <HowWeWorkPipeline />
       </section>
 
       {/* ── 6. SECTION: NATIONAL AWARDS & HONORS ── */}
-      <section className="section about-awards-section" id="awards">
+      <section className="section about-sheet about-awards-section" id="awards">
         <div className="wrap">
-          <div className="about-awards-head">
-            <Reveal as="h2">
-              Awards
-            </Reveal>
+          <div className="about-sheet-head">
+            <div>
+              <Reveal as="h2" className="about-section-h2">
+                Awards
+              </Reveal>
+            </div>
             <Reveal as="p" delay={80}>
               Bharattech is establishing a sovereign benchmark for technology innovation recognized across India's leading national forums.
             </Reveal>
@@ -208,13 +178,13 @@ export function About() {
       </section>
 
       {/* ── 7. SECTION: CONTACT & CONNECTIVITY (NATURAL ELEGANCE) ── */}
-      <section className="about-contact-section" id="connect">
+      <section className="about-sheet about-contact-section" id="connect">
         <div className="wrap">
           <div className="about-contact-card">
             <div className="about-contact-grid">
               <div className="about-contact-copy">
-                <h2>
-                  Let’s connect and build smarter, faster, and sovereign — together.
+                <h2 className="about-section-h2">
+                  Let’s connect and build smarter, faster, and sovereign together.
                 </h2>
                 <p>
                   Whether you are an enterprise seeking cognitive automation, an academic institution exploring research fellowships, or a technologist eager to build sovereign infrastructure.

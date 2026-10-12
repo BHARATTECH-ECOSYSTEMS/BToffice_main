@@ -3,6 +3,7 @@ import { useQuiet, useScene } from '../gl/Scene';
 import { Eyebrow, Headline } from '../components/ui';
 import { CAPABILITIES, CAPABILITY_GROUPS } from '../content';
 import type { HueName } from '../gl/palette';
+import { pageScroll, trackBox } from '../components/trackBox';
 
 const TONES: HueName[] = ['violet', 'tangerine', 'saffron'];
 const LINES = [
@@ -28,13 +29,12 @@ export function Capabilities() {
 
   useEffect(() => {
     let raf = 0;
+    // the section's cached position, so the per-frame update never forces a layout
+    const { box, release } = trackBox(ref.current!);
     const measure = () => {
       raf = 0;
-      const el = ref.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const run = Math.max(1, r.height - window.innerHeight);
-      const p = Math.min(1, Math.max(0, -r.top / run));
+      const run = Math.max(1, box.height - window.innerHeight);
+      const p = Math.min(1, Math.max(0, (pageScroll() - box.top) / run));
       const pos = p * (N - 1);
       // settle on each capability for a moment before turning on to the next
       const i = Math.floor(pos);
@@ -52,6 +52,7 @@ export function Capabilities() {
     window.addEventListener('resize', on);
     return () => {
       cancelAnimationFrame(raf);
+      release();
       window.removeEventListener('scroll', on);
       window.removeEventListener('resize', on);
     };
