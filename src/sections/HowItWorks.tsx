@@ -1,6 +1,6 @@
 import { useRef, type CSSProperties } from 'react';
 import { useQuiet } from '../gl/Scene';
-import { Eyebrow, Headline, toneStyle } from '../components/ui';
+import { Headline, toneStyle } from '../components/ui';
 import { Chapter, Steps, usePinned } from '../components/Chapter';
 import { Icon, Typewriter } from '../components/fx';
 import { FLOW, FLOW_TONES } from '../content';
@@ -109,10 +109,9 @@ export function HowItWorks() {
   const f = FLOW[step];
 
   return (
-    <Chapter id="how" innerRef={ref} n={FLOW.length} screens={0.6} tone={FLOW_TONES[step]} className="ch-how">
+    <Chapter id="how" innerRef={ref} n={FLOW.length} screens={0.4} tone={FLOW_TONES[step]} className="ch-how">
       <div className="wrap how-frame">
         <div className="how-head">
-          <Eyebrow tone="pink">How it works</Eyebrow>
           <Headline tone="pink" lines={['From request to result,', 'in five steps.']} />
         </div>
 
@@ -170,14 +169,20 @@ export function HowItWorks() {
               </span>
               origin · trace
             </div>
+            {/* the whole trace is always listed, so the console reads as a run in progress rather than an
+                empty box: done steps in full, the current one typing, the rest waiting their turn */}
             <ol className="console-log">
-              {FLOW.slice(0, step + 1).map((s, i) => (
-                <li key={s.step} data-now={i === step || undefined}>
+              {FLOW.map((s, i) => (
+                <li key={s.step} data-now={i === step || undefined} data-done={i < step || undefined} data-wait={i > step || undefined}>
                   <span className="console-k">{s.step.toLowerCase()}</span>
-                  {i === step ? <Typewriter key={f.step} text={s.trace} run speed={14} /> : <span>{s.trace}</span>}
+                  {i === step ? <Typewriter key={f.step} text={s.trace} run speed={14} /> : <span>{i < step ? s.trace : 'waiting'}</span>}
                 </li>
               ))}
             </ol>
+            <p className="console-foot">
+              <i aria-hidden="true" />
+              {step + 1} / {FLOW.length} steps · {step === FLOW.length - 1 ? 'learning from the result' : 'running'}
+            </p>
           </div>
         </div>
       </div>

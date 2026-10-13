@@ -14,15 +14,4 @@ export type HueName = keyof typeof HUE;
 
 /** Particle hue slots, in the order the shader's palette uniform holds them. */
 export const PARTICLE_HUES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
-export const hueIndex = (h: HueName) => PARTICLE_HUES.indexOf(h);
 
-/** The logo's three threads: Violet, Tango Orange, Pitch Yellow. */
-export const THREAD_HUES: HueName[] = ['violet', 'tangerine', 'saffron'];
-/** The six tools of the problem chapter: chat, search, docs, code, vision, voice. */
-export const TOOL_HUES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
-/** Capability families: understand, build, operate. */
-export const GROUP_HUES: HueName[] = ['saffron', 'tangerine', 'violet'];
-/** Architecture families: intelligence, knowledge & trust, foundation. */
-export const FAMILY_HUES: HueName[] = ['tangerine', 'saffron', 'violet'];
-/** Research domains, in DOMAINS order. */
-export const DOMAIN_HUES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];

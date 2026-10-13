@@ -2,7 +2,7 @@ import { DOMAIN_SCENES, layerBuild } from './domainInkScenes';
 import { getPalette, span } from './ink';
 import { DOMAIN_REVEALS, drawRevealed } from './reelReveals';
 import type { DomainWorld } from './worlds/kit';
-import { getReelRenderer, renderWorld, safeView } from './worlds/reelRenderer';
+import { compileWorld, getReelRenderer, renderWorld, safeView } from './worlds/reelRenderer';
 import { WORLD_BUILDERS } from './worlds';
 
 /**
@@ -21,6 +21,8 @@ export interface ReelFrame {
 
 export interface ReelPainter {
   resize(width: number, height: number, dpr: number): void;
+  /** Gets everything ready for the first paint without blocking the page (shader compile). */
+  prepare(): Promise<void>;
   paint(frame: ReelFrame): void;
   dispose(): void;
 }
@@ -45,6 +47,7 @@ export function createWorldPainter(index: number, canvas: HTMLCanvasElement): Re
       canvas.width = Math.round(width * ratio);
       canvas.height = Math.round(height * ratio);
     },
+    prepare: () => compileWorld(world),
     paint({ act, progress, t, exit, pointer }) {
       const insets = { top: CAPTION_SPACE * dpr, bottom: PROGRESS_SPACE * dpr, pad: STAGE_PAD * dpr };
       world.frame(safeView(world.camera.fov, canvas.width, canvas.height, insets));
@@ -81,6 +84,7 @@ export function createInkPainter(index: number, canvas: HTMLCanvasElement): Reel
       canvas.width = surface.buffer.width = Math.round(W * dpr);
       canvas.height = surface.buffer.height = Math.round(H * dpr);
     },
+    prepare: () => Promise.resolve(),
     paint({ act, progress, t, exit }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);

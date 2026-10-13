@@ -1,30 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { LogoMark, useInView } from './ui';
-
-/** One of the explainer films, playing only while it is on screen. */
-export function AutoVideo({ name, label }: { name: string; label: string }) {
-  const ref = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const v = ref.current;
-    if (!v) return;
-    const io = new IntersectionObserver(([e]) => (e.isIntersecting ? v.play().catch(() => {}) : v.pause()), { threshold: 0.25 });
-    io.observe(v);
-    return () => io.disconnect();
-  }, []);
-  return (
-    <video
-      ref={ref}
-      className="film"
-      src={`/media/${name}-light.mp4`}
-      poster={`/media/${name}-light.jpg`}
-      muted
-      loop
-      playsInline
-      preload="metadata"
-      aria-label={label}
-    />
-  );
-}
+import { LogoMark } from './ui';
 
 /** An endless row that drifts sideways and pauses under the cursor. */
 export function Marquee({ children, speed = 40, reverse = false }: { children: ReactNode; speed?: number; reverse?: boolean }) {
@@ -37,30 +12,6 @@ export function Marquee({ children, speed = 40, reverse = false }: { children: R
         </div>
       </div>
     </div>
-  );
-}
-
-/** Counts up to `to` the first time it is seen. */
-export function Counter({ to, pad = 2, suffix = '' }: { to: number; pad?: number; suffix?: string }) {
-  const [ref, inView] = useInView<HTMLSpanElement>();
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    if (!inView) return;
-    let raf = 0;
-    const t0 = performance.now();
-    const tick = (t: number) => {
-      const k = Math.min(1, (t - t0) / 1400);
-      setN(Math.round(to * (1 - Math.pow(1 - k, 4))));
-      if (k < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [inView, to]);
-  return (
-    <span ref={ref} className="counter">
-      {String(n).padStart(pad, '0')}
-      {suffix}
-    </span>
   );
 }
 
@@ -91,17 +42,6 @@ export function Typewriter({ text, run, speed = 22, onDone }: { text: string; ru
     <span className="typewriter" data-done={n >= text.length || undefined}>
       {text.slice(0, n)}
     </span>
-  );
-}
-
-/** Soft colour fields that drift behind a section, like light through frosted glass. */
-export function Aurora({ className = '' }: { className?: string }) {
-  return (
-    <div className={`aurora ${className}`} aria-hidden="true">
-      <span />
-      <span />
-      <span />
-    </div>
   );
 }
 

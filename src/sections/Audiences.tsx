@@ -3,7 +3,7 @@ import { useQuiet } from '../gl/Scene';
 import { AudienceCorridor, type CorridorAudience } from '../components/AudienceCorridor';
 import { Chapter, usePinned } from '../components/Chapter';
 import { AUDIENCE_DETAIL, AUDIENCE_TONES } from '../content';
-import { Headline, toneStyle } from '../components/ui';
+import { Headline, toneStyle, useQuickChange } from '../components/ui';
 
 const CORRIDOR: CorridorAudience[] = AUDIENCE_DETAIL.map((a, i) => ({ name: a.name, uses: a.uses, tone: AUDIENCE_TONES[i] || 'violet' }));
 
@@ -15,12 +15,13 @@ export function Audiences() {
 
   const activeItem = AUDIENCE_DETAIL[activeIdx];
   const activeTone = AUDIENCE_TONES[activeIdx] || 'violet';
+  const quick = useQuickChange(activeIdx);
 
   return (
-    <Chapter id="who" innerRef={ref} n={AUDIENCE_DETAIL.length} screens={0.6} tone={activeTone} className="svc-section">
+    <Chapter id="who" innerRef={ref} n={AUDIENCE_DETAIL.length} screens={0.4} tone={activeTone} className="svc-section">
       <div className="wrap svc-frame">
         <div className="svc-showcase">
-          {/* Left Column: Eyebrow, Headline & Interactive Tabs List */}
+          {/* Left column: headline and the audience list */}
           <div className="svc-left-col">
             <Headline tone="violet" lines={['Built for the people', 'who build what’s next.']} />
 
@@ -50,12 +51,11 @@ export function Audiences() {
                     </div>
 
                     {/* Progress Line Bar */}
-                    <div className="svc-list__track">
+                    <div className="svc-list__track" data-local>
                       {isActive ? (
                         <div
                           className="svc-list__fill"
                           style={{
-                            width: 'calc(var(--local, 0) * 100%)',
                             backgroundColor: `var(--${tone})`,
                             boxShadow: `0 0 10px var(--${tone})`,
                           }}
@@ -74,10 +74,10 @@ export function Audiences() {
           <div className="svc-panel-wrap" style={toneStyle(activeTone)}>
             <div className="svc-panel">
               {/* The use cases travel on the corridor's cards; the hidden list carries them for screen readers. */}
-              <AudienceCorridor audiences={CORRIDOR} progress={progress} />
+              <AudienceCorridor audiences={CORRIDOR} active={activeIdx} progress={progress} />
 
               {/* Panel Content Header */}
-              <div key={activeIdx} className="svc-panel__content">
+              <div key={activeIdx} className="svc-panel__content" data-quick={quick || undefined}>
                 <h3 className="svc-panel__title">{activeItem.name}</h3>
                 <p className="svc-panel__desc">{activeItem.line}</p>
                 <ul className="sr-only">

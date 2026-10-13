@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { Arrow, Eyebrow, Headline, Reveal } from '../components/ui';
+import { Arrow, Headline, Reveal } from '../components/ui';
 import { useQuiet } from '../gl/Scene';
 import { EMAIL, FAQ } from '../content';
 import { ORIGIN_POINT, threadPaths } from '../gl/threads';
@@ -64,7 +64,6 @@ export function Faq() {
     <section id="faq" ref={ref} className="section faq">
       <div className="wrap faq-grid">
         <div className="faq-head">
-          <Eyebrow tone="violet">Questions</Eyebrow>
           <Headline tone="violet" lines={['Asked often,', 'answered plainly.']} />
           <Reveal className="cell cell-ink faq-ask" delay={100}>
             <ThreadMark />

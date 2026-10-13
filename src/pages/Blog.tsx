@@ -49,7 +49,6 @@ export function Blog() {
   return (
     <>
       <PageHero
-        eyebrow="Services"
         tone="violet"
         title={['Notes from', 'the lab.']}
         lede="Essays and research notes on persistent memory, generative intelligence and the infrastructure underneath them."

@@ -2,16 +2,14 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { fitTo, useFormation, useQuiet } from '../gl/Scene';
 import { GLOBE_SIZE } from '../gl/Engine';
 import type { HueName } from '../gl/palette';
-import { Eyebrow, Headline } from './ui';
-import { Aurora } from './fx';
+import { Headline } from './ui';
 import { LogoGlass } from './LogoGlass';
 
 /**
- * Every inner page opens the same way: a label, a two-line headline, a lede, and on the right either one of
+ * Every inner page opens the same way: a two-line headline, a lede, and on the right either one of
  * the 3D objects (`object`) or a drawn visual (`visual`).
  */
 export function PageHero({
-  eyebrow,
   tone,
   title,
   lede,
@@ -20,7 +18,6 @@ export function PageHero({
   children,
   align,
 }: {
-  eyebrow: string;
   tone: HueName;
   title: [ReactNode, ReactNode];
   lede: ReactNode;
@@ -41,11 +38,9 @@ export function PageHero({
   const side = object || visual;
   return (
     <section ref={ref} className={`page-hero ${side ? 'has-side' : ''} ${align === 'center' ? 'is-center' : ''}`} data-ready={ready || undefined}>
-      <Aurora className="is-page" />
       <div className="hero-grid-bg" aria-hidden="true" />
       <div className="wrap page-hero-grid">
         <div className="page-hero-copy">
-          <Eyebrow tone={tone}>{eyebrow}</Eyebrow>
           <Headline as="h1" className="h1" tone={tone} lines={title} show={ready} />
           <p className="lede page-hero-lede">{lede}</p>
           {children}

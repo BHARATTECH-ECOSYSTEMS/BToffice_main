@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { useQuiet, useScene } from '../gl/Scene';
-import { Eyebrow, Headline } from '../components/ui';
+import { Headline, useQuickChange } from '../components/ui';
 import { CAPABILITIES, CAPABILITY_GROUPS } from '../content';
 import type { HueName } from '../gl/palette';
 import { pageScroll, trackBox } from '../components/trackBox';
@@ -13,8 +13,8 @@ const LINES = [
 ];
 const N = CAPABILITIES.length;
 const STEP = 360 / N;
-/** Screens of scroll per capability. */
-const PACE = 0.32;
+/** Screens of scroll per capability (cut by a third from 0.32, so the wheel turns without dragging). */
+const PACE = 0.21;
 
 /**
  * Fifteen capabilities on one wheel. Scrolling turns it, and the capability that comes round to the
@@ -24,6 +24,9 @@ export function Capabilities() {
   const ref = useRef<HTMLElement>(null);
   const wheel = useRef<HTMLDivElement>(null);
   const [active, setActive] = useState(0);
+  // the card is announced only once the visitor has picked a family, not on every turn of the wheel
+  const [chosen, setChosen] = useState(false);
+  const quick = useQuickChange(active);
   const { scrollTo } = useScene();
   useQuiet(ref);
 
@@ -61,6 +64,7 @@ export function Capabilities() {
   const go = (i: number) => {
     const el = ref.current;
     if (!el) return;
+    setChosen(true);
     const top = el.getBoundingClientRect().top + window.scrollY;
     scrollTo(top + ((i + 0.2) / (N - 1)) * (el.offsetHeight - window.innerHeight));
   };
@@ -73,17 +77,16 @@ export function Capabilities() {
       <div className="wheel-pin">
         <div className="wrap wheel-grid">
           <div className="wheel-copy">
-            <Eyebrow tone="cobalt">Capabilities</Eyebrow>
             <Headline tone="cobalt" lines={['One intelligence.', 'Fifteen capabilities.']} />
 
-            <div className="wheel-card" style={{ '--tone': `var(--${TONES[fam]})` } as CSSProperties} aria-live="polite">
+            <div className="wheel-card" style={{ '--tone': `var(--${TONES[fam]})` } as CSSProperties} aria-live={chosen ? 'polite' : 'off'}>
               <div className="wheel-card-top">
                 <span className="wheel-fam">
                   <i />
                   {CAPABILITY_GROUPS[fam]}
                 </span>
               </div>
-              <div className="wheel-card-body" key={active}>
+              <div className="wheel-card-body" key={active} data-quick={quick || undefined}>
                 <h3>{cap.name}</h3>
                 <p>{cap.body}</p>
               </div>

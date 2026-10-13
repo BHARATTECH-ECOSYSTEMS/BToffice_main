@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Lenis from 'lenis';
 import { Engine, type Target } from './Engine';
-import { trackBox, type Box } from '../components/trackBox';
+import { pageScroll, setPageScroll, trackBox, type Box } from '../components/trackBox';
 
 interface Entry {
   el: HTMLElement;
@@ -38,7 +38,10 @@ function perPx() {
   return (2 * z * Math.tan((35 / 2) * (Math.PI / 180))) / h;
 }
 
-export const isCompact = () => window.innerWidth <= 900;
+/** The phone/tablet breakpoint, matching the CSS: at this width and below, pinned sections scroll normally. */
+export const PHONE_MAX = 900;
+export const WIDE_QUERY = `(min-width: ${PHONE_MAX + 1}px)`;
+export const isCompact = () => window.innerWidth <= PHONE_MAX;
 
 /**
  * World pose that centres an object of `size` world units in an element's box, as large as it fits
@@ -47,9 +50,14 @@ export const isCompact = () => window.innerWidth <= 900;
 export function fitTo(el: HTMLElement | null, size: number, max = 1) {
   if (!el) return { x: 0, y: 0, s: 0.0001 };
   const r = el.getBoundingClientRect();
+  return poseAt(r.left + r.width / 2, r.top + r.height / 2, Math.min(r.width, r.height), size, max);
+}
+
+/** World pose that centres an object of `size` world units on viewport point (x, y), `px` CSS pixels across. */
+export function poseAt(x: number, y: number, px: number, size: number, max = 1) {
   const k = perPx();
-  const s = Math.max(0.15, Math.min(max, (Math.min(r.width, r.height) * k) / size));
-  return { x: (r.left + r.width / 2 - window.innerWidth / 2) * k, y: (window.innerHeight / 2 - (r.top + r.height / 2)) * k, s };
+  const s = Math.max(0.15, Math.min(max, (px * k) / size));
+  return { x: (x - window.innerWidth / 2) * k, y: (window.innerHeight / 2 - y) * k, s };
 }
 
 /**
@@ -114,8 +122,8 @@ export function SceneProvider({ children }: { children: ReactNode }) {
     // The section holding the middle of the screen decides what the scene shows; the smallest one wins,
     // so a stage nested inside a long chapter can take over from it.
     const pick = (force = false) => {
-      const y = window.scrollY;
-      if (!force && Math.abs(y - lastPickedY) < 1) return;
+      const y = force ? window.scrollY : pageScroll();
+      if (!force && y === lastPickedY) return;
       lastPickedY = y;
 
       const vh = window.innerHeight;
@@ -141,9 +149,13 @@ export function SceneProvider({ children }: { children: ReactNode }) {
 
     const loop = (time: number) => {
       lenis?.raf(time);
-      const y = window.scrollY;
+      // the position the smooth scroll has just set; reading window.scrollY here forced a page layout each frame
+      const y = lenis ? lenis.animatedScroll : pageScroll();
+      if (lenis) setPageScroll(y);
       engine?.setVelocity(y - lastY);
       lastY = y;
+      // after the smooth scroll has moved the page, so the scene is placed from this frame's scroll
+      engine?.tick(time);
       if (!engine) pick();
       raf = requestAnimationFrame(loop);
     };
@@ -158,7 +170,7 @@ export function SceneProvider({ children }: { children: ReactNode }) {
       scrollTo: (t, immediate) => {
         if (lenis) lenis.scrollTo(t, { immediate, offset: 0, duration: 1 });
         else if (typeof t === 'number') window.scrollTo(0, t);
-        else t.scrollIntoView({ behavior: immediate ? 'auto' : 'smooth' });
+        else t.scrollIntoView({ behavior: immediate || reduced ? 'auto' : 'smooth' });
       },
     }));
 

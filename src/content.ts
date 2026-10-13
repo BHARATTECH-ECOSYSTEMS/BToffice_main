@@ -35,8 +35,6 @@ export const PROBLEMS = [
   },
 ];
 
-export const SILOS = ['Chat', 'Search', 'Docs', 'Code', 'Vision', 'Voice'];
-
 // Order matters: each group of five sits on one orbital ring, inner to outer.
 export const CAPABILITY_GROUPS = ['Understand', 'Build', 'Operate'];
 export const CAPABILITIES = [
@@ -129,8 +127,6 @@ export const PRINCIPLES = [
   { title: 'Intelligence should be accessible.', body: 'From cloud to edge, available to everyone who needs it.' },
   { title: 'Intelligence should serve humanity.', body: 'Technology exists to amplify human potential. People remain the constant.' },
 ];
-
-export const AUDIENCES = ['Researchers', 'Scientists', 'Developers', 'Enterprises', 'Governments', 'Educational institutions', 'Defence organisations', 'Startups', 'Innovators', 'Students'];
 
 export const TECHNOLOGY = [
   'Artificial Intelligence', 'Generative Intelligence', 'Autonomous Systems', 'Large Language Models', 'Knowledge Systems', 'AI Infrastructure', 'Edge AI',
@@ -281,26 +277,6 @@ export const PILLARS_PLAIN = [
   { title: 'It connects', body: 'Specialised systems for language, vision, research and location share one memory and work as one.' },
   { title: 'It keeps learning', body: 'It improves through use after it is deployed, rather than waiting for the next training cycle.' },
 ];
-
-/** A concept scene: the same request, today and with Origin. Illustrative, not a product transcript. */
-export const SCENARIO = {
-  setup: 'A water-policy team returns to a groundwater study after three weeks.',
-  earlier: 'We are studying groundwater across 40 districts. Here are our survey notes and satellite data.',
-  question: 'Which districts did we flag as critical, and has anything changed since?',
-  today: {
-    reply: 'I don’t have access to earlier conversations. Could you share the district list and the data again?',
-    outcomes: ['Context lost', 'Data uploaded again', 'Each tool starts alone'],
-  },
-  origin: {
-    reply: 'Last time we flagged 7 districts as critical. New satellite imagery since then shows further decline in 3 of them. I’ve drafted an updated brief with the sources linked.',
-    trace: [
-      { layer: 'Memory Engine', text: 'Recalled the study and the 7 flagged districts' },
-      { layer: 'Geo Intelligence', text: 'Compared new satellite imagery' },
-      { layer: 'Agents', text: 'Drafted a brief and linked the sources' },
-    ],
-    outcomes: ['Context kept', 'Tools work together', 'Learns from new data'],
-  },
-};
 
 export const FLOW = [
   {
@@ -459,11 +435,10 @@ export const CHAPTERS: { id: string; label: string; tone: HueName }[] = [
   { id: 'who', label: 'Join us', tone: 'saffron' },
 ];
 
-/** The mark's three threads are the three things Origin does; they keep these colours everywhere. */
-export const THREAD_LABELS = ['Remembers', 'Connects', 'Keeps learning'];
-
 export const FLOW_TONES: HueName[] = ['saffron', 'violet', 'tangerine', 'saffron', 'violet'];
 export const AUDIENCE_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
+/** Each careers department's colour, on the Careers page and the home page's careers section alike. */
+export const DEPT_TONES: Record<string, HueName> = { Research: 'violet', Engineering: 'saffron', Operations: 'tangerine' };
 
 export const NETWORK = [
   { title: 'Sovereign by design', body: 'The core lives in India. Data and intelligence stay under the control of those they serve.', tone: 'tangerine' as HueName },

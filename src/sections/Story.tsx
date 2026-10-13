@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
-import { useQuiet, useScene } from '../gl/Scene';
+import { isCompact, useQuiet, useScene } from '../gl/Scene';
 import { BEATS, Studio } from '../gl/Studio';
 import { Arrow } from '../components/ui';
+import { StoryOpening } from '../components/StoryOpening';
 import { pageScroll, trackBox } from '../components/trackBox';
 import { PILLARS_PLAIN, PROBLEMS } from '../content';
 
 /** Screens of scroll per beat. */
-const PACE = 1;
+// screens of scroll per beat (cut by a third from 1: long pins made visitors feel stuck)
+const PACE = 0.67;
 
 interface Beat {
   act: 0 | 1 | 2;
@@ -39,13 +41,23 @@ export function Story() {
   const [current, setCurrent] = useState(0);
   const { scrollTo } = useScene();
   useQuiet(ref);
+  // the opening runs before the studio exists, so its hold on the logo is kept here and handed over on creation
+  const studioRef = useRef<Studio | null>(null);
+  const reveal = useRef({ grow: 1, draw: 1 });
+  const onReveal = useCallback((grow: number, draw: number) => {
+    reveal.current = { grow, draw };
+    studioRef.current?.setReveal(grow, draw);
+  }, []);
+  const hero = useCallback(() => beats.current[0], []);
 
   useEffect(() => {
     const cv = canvas.current!;
-    const compact = () => window.innerWidth <= 900;
+    const compact = isCompact;
     let studio: Studio | null = null;
     try {
       studio = new Studio(cv, { compact: compact() });
+      studio.setReveal(reveal.current.grow, reveal.current.draw);
+      studioRef.current = studio;
     } catch {
       setGl(false);
     }
@@ -64,7 +76,6 @@ export function Story() {
       lastP = p;
       const b = p * BEATS;
       studio?.setBeat(b);
-      el.style.setProperty('--p', p.toFixed(4));
       beats.current.forEach((node, i) => {
         if (!node) return;
         // the first headline is at rest until the scroll begins
@@ -99,6 +110,7 @@ export function Story() {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);
       studio?.destroy();
+      studioRef.current = null;
     };
   }, []);
 
@@ -151,6 +163,9 @@ export function Story() {
             );
           })}
         </div>
+
+        {/* after the copy, so the hero's elements (and their refs) exist when the opening takes hold of them */}
+        <StoryOpening hero={hero} onReveal={onReveal} />
       </div>
     </section>
   );

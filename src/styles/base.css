@@ -43,9 +43,40 @@
   --gutter: clamp(16px, 4vw, 40px);
   /* how far the full-bleed dark sheets sit in from the viewport edges */
   --sheet-x: clamp(8px, 1.4vw, 20px);
+  --r-sheet: 36px; /* boxes that run to the sheet edge */
   --r-lg: 28px;
   --r-md: 20px;
   --r-sm: 14px;
+  --r-xs: 10px;
+  --r-pill: 999px;
+
+  /* One vertical rhythm for every page. Sections used to pick their own values and drifted apart. */
+  --section-y: clamp(56px, 7vw, 104px);
+  --hero-top: calc(var(--nav-h) + clamp(48px, 7vw, 96px));
+  --hero-bottom: clamp(48px, 5vw, 72px);
+  --head-gap: clamp(32px, 4vw, 56px);
+  --split-gap: clamp(32px, 4vw, 64px);
+  --card-pad: clamp(20px, 2.4vw, 28px);
+  --sticky-top: calc(var(--nav-h) + 32px);
+
+  --fs-display: clamp(44px, 5.8vw, 84px);
+  --fs-h2: clamp(36px, 4.3vw, 62px);
+  --fs-h3: 21px;
+  --fs-lede: clamp(16px, 1.25vw, 18px);
+  --fs-label: 11px; /* mono uppercase labels: 0.1em tracking, weight 500 */
+  --fs-label-sm: 10px;
+  --fw-head: 640;
+  --fw-strong: 700;
+
+  --dur-press: 120ms;
+  --dur-hover: 180ms;
+  --dur-ui: 240ms;
+  --dur-reveal: 0.7s;
+  --reveal-y: 16px;
+  --lift: -3px;
+  /* Breakpoints (CSS can't read variables in media queries, so these are documentation):
+     1100 laptop · 1024 nav burger · 900 phone/tablet, pins off (PHONE_MAX in gl/Scene.tsx) · 640 small phone */
+
   --shadow-sm: 0 0 0 1px var(--line), 0 1px 2px rgb(20 19 15 / 0.04);
   --shadow-lg: 0 0 0 1px var(--line), 0 2px 4px -2px rgb(20 19 15 / 0.06), 0 30px 60px -32px rgb(20 19 15 / 0.32);
   --nav-h: 60px;
@@ -77,9 +108,9 @@ body.dark {
 .lite.dark .nav-glass,
 [data-theme='dark'] .nav[data-compact] .nav-glass,
 .dark .nav[data-compact] .nav-glass {
-  background: rgba(18, 17, 28, 0.86) !important;
-  border: 1px solid rgba(255, 255, 255, 0.12) !important;
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.08) !important;
+  background: rgba(18, 17, 28, 0.86);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   -webkit-backdrop-filter: blur(22px) saturate(1.6);
   backdrop-filter: blur(22px) saturate(1.6);
 }
@@ -87,21 +118,24 @@ body.dark {
 [data-theme='dark'] .nav-links > a,
 [data-theme='dark'] .nav-links > button,
 .dark .nav-links > a,
-.dark .nav-links > button,
-[data-theme='dark'] .nav-link,
-.dark .nav-link {
+.dark .nav-links > button {
   color: var(--ink-soft);
 }
 
 [data-theme='dark'] .nav-links > *:hover,
 [data-theme='dark'] .nav-links > [aria-current],
 .dark .nav-links > *:hover,
-.dark .nav-links > [aria-current],
-[data-theme='dark'] .nav-link:hover,
-[data-theme='dark'] .nav-link[aria-current="page"],
-.dark .nav-link:hover,
-.dark .nav-link[aria-current="page"] {
-  color: var(--ink) !important;
+.dark .nav-links > [aria-current] {
+  color: var(--ink);
+}
+
+/* the light pill is near-white, which would hide the dark theme's light link text */
+[data-theme='dark'] .nav-hl,
+.dark .nav-hl {
+  background: color-mix(in srgb, var(--tone, var(--violet)) 26%, rgb(255 255 255 / 0.07));
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--violet)) 34%, transparent);
 }
 
 [data-theme='dark'] .nav-brand,
@@ -111,22 +145,24 @@ body.dark {
 
 [data-theme='dark'] .nav-cta,
 .dark .nav-cta {
-  background: #FAF9F6 !important;
-  color: #0A0910 !important;
+  background: #FAF9F6;
+  color: #0A0910;
 }
 [data-theme='dark'] .nav-cta:hover,
 .dark .nav-cta:hover {
-  color: #fff !important;
+  color: #fff;
 }
 [data-theme='dark'] .nav-cta .nav-cta-icon,
 .dark .nav-cta .nav-cta-icon {
-  background: rgba(10, 9, 16, 0.08) !important;
-  color: #0A0910 !important;
+  background: rgba(10, 9, 16, 0.08);
+  color: #0A0910;
 }
-[data-theme='dark'] .nav-cta:hover .nav-cta-icon,
-.dark .nav-cta:hover .nav-cta-icon {
-  background: #fff !important;
-  color: #6E58F5 !important;
+@media (hover: hover) and (pointer: fine) {
+  [data-theme='dark'] .nav-cta:hover .nav-cta-icon,
+  .dark .nav-cta:hover .nav-cta-icon {
+    background: #fff;
+    color: #6E58F5;
+  }
 }
 
 [data-theme='dark'] .footer,
@@ -135,78 +171,78 @@ body.dark {
   border-top: 1px solid var(--line);
 }
 
+/* !important stays here: later section rules set the button shadow with the same or higher specificity */
 [data-theme='dark'] .btn-primary,
 .dark .btn-primary {
   background: #FAF9F6 !important;
   color: #0A0910 !important;
   box-shadow: 0 8px 24px -6px rgba(250, 249, 246, 0.25) !important;
 }
-[data-theme='dark'] .btn-primary:hover,
-.dark .btn-primary:hover {
-  color: #FFFFFF !important;
-  box-shadow: 0 14px 28px -10px rgb(255 134 67 / 0.55) !important;
+@media (hover: hover) and (pointer: fine) {
+  [data-theme='dark'] .btn-primary:hover,
+  .dark .btn-primary:hover {
+    color: #FFFFFF !important;
+    box-shadow: 0 14px 28px -10px rgb(255 134 67 / 0.55) !important;
+  }
 }
 
 [data-theme='dark'] .btn-ghost,
 .dark .btn-ghost {
-  background: rgba(255, 255, 255, 0.08) !important;
-  border-color: rgba(255, 255, 255, 0.16) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16) !important;
-  color: var(--ink) !important;
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.16);
+  color: var(--ink);
 }
-[data-theme='dark'] .btn-ghost:hover,
-.dark .btn-ghost:hover {
-  background: rgba(255, 255, 255, 0.16) !important;
-  border-color: rgba(255, 255, 255, 0.3) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3) !important;
-  color: #FFFFFF !important;
+@media (hover: hover) and (pointer: fine) {
+  [data-theme='dark'] .btn-ghost:hover,
+  .dark .btn-ghost:hover {
+    background: rgba(255, 255, 255, 0.16);
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+    color: #FFFFFF;
+  }
 }
 
 [data-theme='dark'] .btn-light,
 .dark .btn-light {
-  background: rgba(255, 255, 255, 0.12) !important;
-  color: #FFFFFF !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.2);
 }
-[data-theme='dark'] .btn-light:hover,
-.dark .btn-light:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-  color: #FFFFFF !important;
+@media (hover: hover) and (pointer: fine) {
+  [data-theme='dark'] .btn-light:hover,
+  .dark .btn-light:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #FFFFFF;
+  }
 }
 
 [data-theme='dark'] .skip,
 .dark .skip {
-  background: #FAF9F6 !important;
-  color: #0A0910 !important;
-}
-
-[data-theme='dark'] .mini-tags li,
-.dark .mini-tags li {
-  background: rgba(255, 255, 255, 0.08) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.14) !important;
-  color: var(--ink-2) !important;
+  background: #FAF9F6;
+  color: #0A0910;
 }
 
 [data-theme='dark'] .segmented,
 .dark .segmented {
-  background: rgba(255, 255, 255, 0.05) !important;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
 }
 [data-theme='dark'] .segmented button,
 .dark .segmented button {
-  color: var(--ink-soft) !important;
+  color: var(--ink-soft);
 }
 [data-theme='dark'] .segmented button:hover,
 .dark .segmented button:hover {
-  color: #FFFFFF !important;
+  color: #FFFFFF;
 }
 [data-theme='dark'] .segmented button[aria-selected='true'],
 [data-theme='dark'] .segmented button[aria-pressed='true'],
 .dark .segmented button[aria-selected='true'],
 .dark .segmented button[aria-pressed='true'] {
-  background: #252438 !important;
-  color: #FFFFFF !important;
-  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 4px 16px -6px rgba(0, 0, 0, 0.6) !important;
+  background: #252438;
+  color: #FFFFFF;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18), 0 4px 16px -6px rgba(0, 0, 0, 0.6);
 }
 
 /* ── Base ───────────────────────────────────────────────────────────────── */
@@ -302,7 +338,7 @@ main:focus {
   top: -60px;
   z-index: 100;
   padding: 10px 16px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: var(--ink);
   color: #fff;
   transition: top 0.3s var(--ease);
@@ -320,14 +356,6 @@ main:focus {
   z-index: 5;
   pointer-events: none;
 }
-.stage-tags,
-.hero-labels {
-  position: fixed;
-  inset: 0;
-  z-index: 6;
-  pointer-events: none;
-  overflow: hidden;
-}
 
 /* Paper grain: keeps flat colour from looking digital. */
 .app::after {
@@ -344,6 +372,13 @@ main:focus {
   display: none;
 }
 
+/* Off screen, a section's animations hold still (marked by Layout in App.tsx). */
+[data-offscreen] *,
+[data-offscreen] *::before,
+[data-offscreen] *::after {
+  animation-play-state: paused !important;
+}
+
 /* ── Layout ─────────────────────────────────────────────────────────────── */
 
 .wrap {
@@ -353,7 +388,7 @@ main:focus {
   padding: 0 var(--gutter);
 }
 .section {
-  padding: clamp(96px, 12vw, 168px) 0;
+  padding: var(--section-y) 0;
 }
 /* A wrap whose boxes span to the same edges as the page's full-bleed sheets. Its .wrap-col children (the
    section head) keep to the shared content column, so headlines still line up with every other section's. */
@@ -374,7 +409,7 @@ main:focus {
   align-items: flex-end;
   justify-content: space-between;
   gap: 32px 64px;
-  margin-bottom: clamp(36px, 5vw, 64px);
+  margin-bottom: var(--head-gap);
 }
 .section-head > div {
   max-width: 760px;
@@ -388,13 +423,7 @@ main:focus {
   align-items: center;
   text-align: center;
 }
-.section-head.is-center .eyebrow {
-  justify-content: center;
-}
-.page-enter {
-  /* backwards only: a filled transform would make <main> the containing block of the fixed 3D labels */
-  animation: pageIn 0.7s var(--ease) backwards;
-}
+
 @keyframes pageIn {
   from {
     opacity: 0;
@@ -414,30 +443,31 @@ h3,
 }
 .display {
   font-size: clamp(50px, 6.4vw, 100px);
-  font-weight: 620;
+  font-weight: var(--fw-head);
   line-height: 0.95;
   letter-spacing: -0.042em;
 }
 .h1 {
-  font-size: clamp(44px, 5.8vw, 84px);
-  font-weight: 640;
+  font-size: var(--fs-display);
+  font-weight: var(--fw-head);
   line-height: 0.96;
   letter-spacing: -0.048em;
 }
+/* the one section-heading size: sections used to override it, so neighbours jumped between 29 and 36px on a phone */
 .h2 {
-  font-size: clamp(36px, 4.4vw, 62px);
-  font-weight: 630;
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-head);
   line-height: 1;
   letter-spacing: -0.045em;
 }
 h3 {
-  font-size: 21px;
+  font-size: var(--fs-h3);
   font-weight: 600;
   line-height: 1.15;
   letter-spacing: -0.02em;
 }
 .lede {
-  font-size: clamp(16px, 1.25vw, 18px);
+  font-size: var(--fs-lede);
   line-height: 1.55;
   color: var(--ink-soft);
   text-wrap: pretty;
@@ -460,22 +490,12 @@ h3 {
 .headline .is-accent {
   color: var(--tone);
 }
-.eyebrow,
-.beat-eyebrow {
-  display: none !important;
-}
-.eyebrow i {
-  width: 7px;
-  height: 7px;
-  background: var(--tone);
-  transform: rotate(45deg);
-  flex: none;
-}
+
 .cell-label {
   font-family: var(--mono);
-  font-size: 11px;
+  font-size: var(--fs-label);
   font-weight: 500;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--muted);
 }
@@ -486,7 +506,7 @@ h3 {
   color: var(--ink);
   font-weight: 600;
   background: linear-gradient(currentColor, currentColor) 0 100% / 0 1.5px no-repeat;
-  transition: background-size 0.45s var(--ease);
+  transition: background-size var(--dur-ui) var(--ease);
 }
 .text-link:hover {
   background-size: 100% 1.5px;
@@ -496,21 +516,24 @@ h3 {
 
 .reveal {
   opacity: 0;
-  transform: translateY(22px);
-  filter: blur(6px);
+  transform: translateY(var(--reveal-y));
   transition:
-    opacity 0.9s var(--ease),
-    transform 1.1s var(--ease-expo),
-    filter 0.9s var(--ease);
+    opacity var(--dur-reveal) var(--ease),
+    transform var(--dur-reveal) var(--ease-expo);
   transition-delay: var(--d, 0ms);
 }
 .reveal[data-in] {
   opacity: 1;
   transform: none;
-  filter: none;
 }
-.lite .reveal {
-  filter: none;
+/* Cards declare their own quick transition (for the hover lift), which reset the delay above, so a row of
+   cards arrived all at once. Until Reveal marks the entrance settled it keeps the reveal's timing and stagger;
+   after that the card's own hover timing applies. */
+.reveal[data-in]:not([data-settled]) {
+  transition:
+    opacity var(--dur-reveal) var(--ease),
+    transform var(--dur-reveal) var(--ease-expo);
+  transition-delay: var(--d, 0ms);
 }
 
 /* ── Buttons & chips ────────────────────────────────────────────────────── */
@@ -523,7 +546,7 @@ h3 {
   gap: 10px;
   min-height: 46px;
   padding: 0 22px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   overflow: hidden;
   isolation: isolate;
   font-size: 14.5px;
@@ -538,11 +561,25 @@ h3 {
 .btn:active {
   transform: scale(0.97);
 }
-.btn .arrow {
-  transition: transform 0.4s var(--ease-expo);
+/* Everything else that can be clicked gives a little under the press too. The scale property, not transform,
+   so cards that already sit on a transform (the fan, the deck, a lifted card) don't jump. */
+:is(.cell:has(.cell-link), .roles a, .careers-role a, .step-tabs button, .pipe-step, .wheel-fams button, .arch-family button, .deck-card, .fan-card, .peek-tile, .peek-row, .how-paper-step button):active {
+  scale: 0.98;
 }
-.btn:hover .arrow {
-  transform: translateX(3px);
+.reel__toggle:active {
+  scale: 0.97;
+}
+.careers-role a,
+.how-paper-step button {
+  transition: scale var(--dur-press) var(--ease);
+}
+.btn .arrow {
+  transition: transform 200ms var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn:hover .arrow {
+    transform: translateX(3px);
+  }
 }
 .btn-lg {
   min-height: 54px;
@@ -555,8 +592,10 @@ h3 {
   border: 1px solid rgb(110 88 245 / 0.35);
   box-shadow: 0 10px 25px -8px rgb(110 88 245 / 0.45);
 }
-.btn-primary:hover {
-  box-shadow: 0 14px 30px -10px rgb(110 88 245 / 0.55);
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover {
+    box-shadow: 0 14px 30px -10px rgb(110 88 245 / 0.55);
+  }
 }
 /* purple bloom expands out from wherever the cursor came in */
 .btn-primary::before {
@@ -570,19 +609,28 @@ h3 {
   z-index: -1;
   border-radius: 50%;
   background: linear-gradient(135deg, #7B68EE, #6E58F5);
-  transform: scale(0);
-  transition: transform 0.6s var(--ease);
+  /* from half size and invisible: growing out of nothing reads as a pop, not a fill */
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    transform var(--dur-ui) var(--ease),
+    opacity var(--dur-press) var(--ease);
 }
-.btn-primary:hover::before {
-  transform: scale(60);
+@media (hover: hover) and (pointer: fine) {
+  .btn-primary:hover::before {
+    opacity: 1;
+    transform: scale(60);
+  }
 }
 .btn-ghost {
   background: rgb(255 253 249 / 0.7);
   box-shadow: inset 0 0 0 1px var(--line-strong);
   color: var(--ink);
 }
-.btn-ghost:hover {
-  box-shadow: inset 0 0 0 1px var(--ink);
+@media (hover: hover) and (pointer: fine) {
+  .btn-ghost:hover {
+    box-shadow: inset 0 0 0 1px var(--ink);
+  }
 }
 .chip {
   display: inline-flex;
@@ -590,7 +638,7 @@ h3 {
   gap: 7px;
   height: 30px;
   padding: 0 12px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: color-mix(in srgb, var(--tone, var(--ink)) 9%, var(--paper));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--ink)) 20%, transparent);
   font-size: 12.5px;
@@ -604,20 +652,6 @@ h3 {
   border-radius: 50%;
   background: var(--tone);
 }
-.mini-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.mini-tags li {
-  padding: 5px 10px;
-  border-radius: 999px;
-  background: rgb(255 255 255 / 0.7);
-  box-shadow: inset 0 0 0 1px var(--line);
-  font-size: 12px;
-  font-weight: 550;
-  color: var(--ink-2);
-}
 
 /* Segmented pills (capability families, filters) */
 .segmented {
@@ -625,7 +659,7 @@ h3 {
   flex-wrap: wrap;
   gap: 4px;
   padding: 4px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   background: rgb(20 19 15 / 0.045);
   box-shadow: inset 0 0 0 1px var(--line);
 }
@@ -635,7 +669,7 @@ h3 {
   gap: 8px;
   height: 36px;
   padding: 0 15px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font-size: 13.5px;
   font-weight: 600;
   color: var(--ink-soft);
@@ -708,7 +742,7 @@ h3 {
   pointer-events: none;
   will-change: transform;
   transform: translate3d(0, 0, 0);
-  transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.28s var(--ease-expo);
   animation: navIn 0.8s var(--ease-expo) both;
 }
 .nav > *:not(.nav-scrim) {
@@ -729,15 +763,16 @@ h3 {
   display: flex;
   align-items: center;
   gap: 6px;
-  max-width: 1260px;
+  /* its 16px inner padding puts the logo on the shared text column */
+  max-width: calc(var(--content) + 32px);
   height: var(--nav-h);
   margin: 0 auto;
   padding: 0 8px 0 16px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   isolation: isolate;
   will-change: transform;
   transform: translate3d(0, 0, 0);
-  transition: height 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: height 0.25s var(--ease-expo);
 }
 .nav[data-compact] .nav-bar {
   height: 56px;
@@ -752,8 +787,8 @@ h3 {
   -webkit-backdrop-filter: blur(22px) saturate(1.6);
   backdrop-filter: blur(22px) saturate(1.6);
   transition:
-    background 0.25s cubic-bezier(0.16, 1, 0.3, 1),
-    box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    background 0.25s var(--ease-expo),
+    box-shadow 0.25s var(--ease-expo);
 }
 .nav[data-compact] .nav-glass {
   background: rgb(255 253 249 / 0.8);
@@ -770,63 +805,16 @@ h3 {
 .nav-brand {
   flex: none;
   padding: 6px 4px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
 }
-.nav-readout {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 34px;
-  margin-left: 10px;
-  padding: 0 12px 0 10px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--tone) 8%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 18%, transparent);
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 500;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-  overflow: hidden;
-  transition:
-    background 0.5s var(--ease),
-    box-shadow 0.5s var(--ease);
-}
-.nav-readout-num {
-  color: var(--tone);
-  font-weight: 600;
-  transition: color 0.5s var(--ease);
-}
-.nav-readout-label {
-  display: inline-block;
-  white-space: nowrap;
-  animation: roll 0.55s var(--ease-expo) both;
-}
+
 @keyframes roll {
   from {
     opacity: 0;
     transform: translateY(110%);
   }
 }
-.nav-ring {
-  width: 16px;
-  height: 16px;
-  transform: rotate(-90deg);
-  flex: none;
-}
-.nav-ring circle {
-  fill: none;
-  stroke-width: 2.4;
-}
-.nav-ring-track {
-  stroke: color-mix(in srgb, var(--tone) 20%, transparent);
-}
-.nav-ring-fill {
-  stroke: var(--tone);
-  stroke-linecap: round;
-  transition: stroke 0.5s var(--ease);
-}
+
 .nav-links {
   position: absolute;
   left: 50%;
@@ -844,7 +832,7 @@ h3 {
   gap: 8px;
   height: 38px;
   padding: 0 14px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font-size: 14px;
   font-weight: 550;
   color: var(--ink-2);
@@ -866,7 +854,7 @@ h3 {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--violet);
+  background: var(--tone, var(--violet));
   opacity: 0;
   transform: translateX(-50%) scale(0.7);
   transition:
@@ -877,7 +865,7 @@ h3 {
 .nav-links > [aria-current] {
   color: var(--ink);
 }
-.nav-links > *:hover i,
+/* the link's own dot marks the current page; the hover dot rides inside .nav-hl */
 .nav-links > [aria-current] i {
   opacity: 1;
   transform: translateX(-50%) scale(1);
@@ -888,26 +876,38 @@ h3 {
   top: 50%;
   height: 38px;
   margin-top: -19px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--paper) 92%, #fff);
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--tone, var(--violet)) 7%, #fff);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.9),
-    0 0 0 0.5px rgb(30 20 60 / 0.08),
-    0 4px 12px -4px rgb(30 20 60 / 0.25);
+    inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--violet)) 14%, transparent),
+    0 4px 12px -4px color-mix(in srgb, var(--tone, var(--violet)) 35%, rgb(30 20 60 / 0.25));
   opacity: 0;
   will-change: transform, width, opacity;
   transition:
     opacity 0.2s var(--ease),
-    background 0.25s var(--ease),
-    box-shadow 0.25s var(--ease);
+    background-color 0.22s var(--ease),
+    box-shadow 0.22s var(--ease);
+}
+.nav-hl::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 5px;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--tone, var(--violet));
+  transition: background-color 0.22s var(--ease);
 }
 .nav-hl[data-glide] {
   transition:
-    transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
-    width 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.22s var(--ease-expo),
+    width 0.22s var(--ease-expo),
     opacity 0.2s var(--ease),
-    background 0.25s var(--ease),
-    box-shadow 0.25s var(--ease);
+    background-color 0.22s var(--ease),
+    box-shadow 0.22s var(--ease);
 }
 .nav-hl[data-show] {
   opacity: 1;
@@ -925,7 +925,7 @@ h3 {
   gap: 10px;
   height: 44px;
   padding: 0 5px 0 18px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   overflow: hidden;
   isolation: isolate;
   background: var(--ink);
@@ -942,8 +942,10 @@ h3 {
     box-shadow 0.3s var(--ease);
   animation: navItem 0.8s var(--ease) 520ms both;
 }
-.nav-cta:hover {
-  box-shadow: 0 14px 30px -10px rgb(110 88 245 / 0.55);
+@media (hover: hover) and (pointer: fine) {
+  .nav-cta:hover {
+    box-shadow: 0 14px 30px -10px rgb(110 88 245 / 0.55);
+  }
 }
 .nav-cta:active {
   transform: scale(0.97);
@@ -962,11 +964,18 @@ h3 {
   z-index: -1;
   border-radius: 50%;
   background: linear-gradient(135deg, #7B68EE, #6E58F5);
-  transform: scale(0);
-  transition: transform 0.6s var(--ease);
+  /* from half size and invisible: growing out of nothing reads as a pop, not a fill */
+  opacity: 0;
+  transform: scale(0.5);
+  transition:
+    transform var(--dur-ui) var(--ease),
+    opacity var(--dur-press) var(--ease);
 }
-.nav-cta:hover::before {
-  transform: scale(60);
+@media (hover: hover) and (pointer: fine) {
+  .nav-cta:hover::before {
+    opacity: 1;
+    transform: scale(60);
+  }
 }
 .nav-cta-icon {
   display: grid;
@@ -977,12 +986,14 @@ h3 {
   background: #fff;
   color: var(--ink);
   transition:
-    transform 0.5s var(--ease-expo),
+    transform var(--dur-ui) var(--ease),
     color 0.3s var(--ease);
 }
-.nav-cta:hover .nav-cta-icon {
-  transform: rotate(45deg);
-  color: #6E58F5;
+@media (hover: hover) and (pointer: fine) {
+  .nav-cta:hover .nav-cta-icon {
+    transform: rotate(45deg);
+    color: #6E58F5;
+  }
 }
 .nav-burger {
   display: none;
@@ -1021,9 +1032,10 @@ h3 {
   display: grid;
   grid-template-columns: repeat(9, 1fr);
   gap: 6px;
-  max-width: 1200px;
+  /* spans the shared text column (the nav itself is inset 12px from the viewport) */
+  max-width: calc(var(--content) + (var(--gutter) - 12px) * 2);
   margin: 8px auto 0;
-  padding: 0 34px;
+  padding: 0 calc(var(--gutter) - 12px);
   opacity: 0;
   transform: translateY(-4px);
   transition:
@@ -1091,12 +1103,14 @@ h3 {
   border-radius: var(--r-md);
   font-family: var(--display);
   font-size: 28px;
-  font-weight: 620;
+  font-weight: var(--fw-head);
   letter-spacing: -0.035em;
   transition: background 0.3s var(--ease);
 }
-.nav-sheet li > *:hover {
-  background: color-mix(in srgb, var(--tone) 8%, transparent);
+@media (hover: hover) and (pointer: fine) {
+  .nav-sheet li > *:hover {
+    background: color-mix(in srgb, var(--tone) 8%, transparent);
+  }
 }
 .nav-sheet li i {
   width: 10px;
@@ -1152,7 +1166,6 @@ h3 {
   opacity: 1;
   pointer-events: auto;
 }
-
 
 /* ── Footer ─────────────────────────────────────────────────────────────── */
 
@@ -1234,9 +1247,11 @@ h3 {
   color: var(--ink-2);
   transition: color 0.2s var(--ease), transform 0.2s var(--ease);
 }
-.footer-base button:hover {
-  color: var(--cobalt);
-  transform: translateY(-2px);
+@media (hover: hover) and (pointer: fine) {
+  .footer-base button:hover {
+    color: var(--cobalt);
+    transform: translateY(-2px);
+  }
 }
 .footer-base button span {
   font-size: 18px;
@@ -1256,13 +1271,12 @@ h3 {
   user-select: none;
 }
 
-
 /* ── Nav & footer responsive ─────────────────────────────────────────────── */
-@media (max-width: 1180px) { .nav-readout-label { display: none; } }
+
 @media (max-width: 1024px) {
   .nav-links { display: none; }
   .nav-burger { display: block; }
-  .nav-readout-label { display: inline-block; }
+
 }
 @media (max-width: 900px) {
   :root { --nav-h: 56px; }
@@ -1272,11 +1286,11 @@ h3 {
     margin-bottom: 8px;
   }
 }
-@media (max-width: 420px) { .nav-readout-label { display: none !important; } }
+
 @media (max-width: 640px) {
   .brand-word span { display: none; }
   .nav-cta { display: none; }
-  .nav-readout { margin-left: 6px; }
+
   .nav-progress { padding: 0 22px; gap: 4px; }
   .footer-top { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .footer-top { column-gap: 28px; row-gap: 34px; }

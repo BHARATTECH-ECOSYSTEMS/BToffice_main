@@ -69,9 +69,18 @@ export function trackBox(el: Element, onMeasure?: () => void): { box: Box; relea
 // Reading window.scrollY also forces a layout if a style was written earlier in the same frame. The scroll
 // event runs before any frame callback writes, so the value is captured there once and shared.
 let scrollTop = typeof window === 'undefined' ? 0 : window.scrollY;
+// Even there it forced a full layout of the page on most frames, because other code writes styles between
+// frames. When the smooth scroller is running it reports the position it has just set, and nothing reads it.
+let driven = false;
 if (typeof window !== 'undefined') {
-  window.addEventListener('scroll', () => (scrollTop = window.scrollY), { passive: true });
+  window.addEventListener('scroll', () => !driven && (scrollTop = window.scrollY), { passive: true });
 }
+
+/** The smooth scroller hands over the position it has just scrolled to, once per frame, before anything reads it. */
+export const setPageScroll = (y: number) => {
+  driven = true;
+  scrollTop = y;
+};
 
 /** The page's scroll position as of the latest scroll event: free to read inside frame callbacks. */
 export const pageScroll = () => scrollTop;

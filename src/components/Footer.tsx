@@ -1,5 +1,6 @@
 import { Link } from 'react-router';
 import { Brand } from './ui';
+import { useScene } from '../gl/Scene';
 import { EMPLOYEE_LOGIN_URL, LINKEDIN_URL } from '../content';
 
 const COLS: { title: string; links: { label: string; to?: string; href?: string }[] }[] = [
@@ -32,6 +33,8 @@ const COLS: { title: string; links: { label: string; to?: string; href?: string 
 ];
 
 export function Footer() {
+  // the shared scroll respects reduced motion and the smooth scroller
+  const { scrollTo } = useScene();
   return (
     <footer className="footer">
       <div className="wrap">
@@ -62,7 +65,7 @@ export function Footer() {
         </div>
         <div className="footer-base">
           <span>© {new Date().getFullYear()} Bharattech Origin</span>
-          <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <button type="button" onClick={() => scrollTo(0)}>
             Back to top <span aria-hidden="true">↑</span>
           </button>
         </div>

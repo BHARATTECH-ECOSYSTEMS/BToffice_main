@@ -14,9 +14,9 @@
 
 .section.research .headline {
   font-family: var(--display, 'Bricolage Grotesque', sans-serif);
-  letter-spacing: -0.04em;
-  line-height: 1.05;
-  font-weight: 700;
+  letter-spacing: -0.045em;
+  line-height: 1;
+  font-weight: var(--fw-head);
   font-optical-sizing: auto;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -33,11 +33,14 @@
 /* ── 1. Section head: copy on the left, one action on the right ─────────────── */
 
 .research-head {
+  /* above the 3D scene (z-index 5): the network globe comes to rest behind this heading */
+  position: relative;
+  z-index: 6;
   display: flex;
   justify-content: space-between;
   align-items: flex-end;
   gap: 24px 48px;
-  margin-bottom: clamp(32px, 4vw, 48px);
+  margin-bottom: var(--head-gap);
 }
 
 .research-head .btn {
@@ -80,7 +83,7 @@
   grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
   gap: clamp(24px, 4vw, 44px);
   min-height: 440px;
-  padding: clamp(20px, 2.4vw, 28px);
+  padding: var(--card-pad);
   border-radius: var(--r-lg);
   background: var(--paper);
   border: 1px solid var(--line);
@@ -105,7 +108,7 @@
   margin: 12px 0 0;
   font-family: var(--display);
   font-size: clamp(24px, 2.4vw, 32px);
-  font-weight: 650;
+  font-weight: var(--fw-head);
   line-height: 1.1;
   letter-spacing: -0.025em;
   color: var(--ink);
@@ -133,7 +136,7 @@
 
 .stack-card__tags li {
   padding: 6px 12px;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   font-size: 13px;
   color: var(--ink-2);
   background: color-mix(in srgb, var(--ink) 5%, var(--paper));
@@ -162,8 +165,10 @@
   transition: transform 0.25s var(--ease);
 }
 
-.link-arrow:hover svg {
-  transform: translateX(4px);
+@media (hover: hover) and (pointer: fine) {
+  .link-arrow:hover svg {
+    transform: translateX(4px);
+  }
 }
 
 /* The reel stage stays light in both themes; its ink palette is drawn for a light ground. */
@@ -171,7 +176,7 @@
   position: relative;
   margin: 0;
   min-height: 360px;
-  border-radius: 18px;
+  border-radius: var(--r-md);
   overflow: hidden;
   border: 1px solid var(--line);
 }
@@ -194,22 +199,6 @@
   display: block;
   outline: none;
   z-index: 1;
-}
-
-
-.reel__rings {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  fill: none;
-  stroke: rgba(15, 23, 42, 0.07);
-  stroke-width: 1;
-  stroke-dasharray: 2 6;
-  pointer-events: none;
-  z-index: 2;
-  opacity: 0.7;
 }
 
 .reel__viewfinder {
@@ -254,14 +243,17 @@
   place-items: center;
   cursor: pointer;
   padding: 0;
-  transition: transform 0.15s ease, background 0.15s ease;
+  transition: transform 0.15s ease, background 0.15s ease,
+    scale var(--dur-press) var(--ease);
   box-shadow: 0 2px 8px rgba(20, 19, 15, 0.06);
 }
 
-.reel__toggle:hover {
-  transform: scale(1.08);
-  background: #ffffff;
-  border-color: rgba(20, 19, 15, 0.24);
+@media (hover: hover) and (pointer: fine) {
+  .reel__toggle:hover {
+    transform: scale(1.08);
+    background: #ffffff;
+    border-color: rgba(20, 19, 15, 0.24);
+  }
 }
 
 .reel__caption {
@@ -307,7 +299,7 @@
   flex: 1;
   height: 100%;
   background: rgba(15, 23, 42, 0.08);
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   overflow: hidden;
   cursor: pointer;
   border: none;
@@ -315,9 +307,11 @@
   transition: height 0.15s ease, background-color 0.15s ease;
 }
 
-.reel__progress-seg:hover {
-  height: 3px;
-  background: rgba(15, 23, 42, 0.16);
+@media (hover: hover) and (pointer: fine) {
+  .reel__progress-seg:hover {
+    height: 3px;
+    background: rgba(15, 23, 42, 0.16);
+  }
 }
 
 .reel__progress-seg.is-active {
@@ -329,7 +323,7 @@
   height: 100%;
   background: var(--seg, var(--tint, #f59e0b));
   transform-origin: left;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   transition: transform 0.05s linear;
 }
 

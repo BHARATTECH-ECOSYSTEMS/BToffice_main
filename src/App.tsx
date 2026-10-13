@@ -50,6 +50,14 @@ function Layout() {
     }
   }, [pathname]);
 
+  // Endless decorative animations (pulses, beams, spinning dials) pause while their section is off screen;
+  // the matching rule is [data-offscreen] in base.css. <main> remounts per page, so this re-runs for each.
+  useEffect(() => {
+    const io = new IntersectionObserver((entries) => entries.forEach((e) => e.target.toggleAttribute('data-offscreen', !e.isIntersecting)));
+    document.querySelectorAll('#main section, .footer').forEach((s) => io.observe(s));
+    return () => io.disconnect();
+  }, [pathname]);
+
   // Cards and solid buttons light up where the cursor is.
   useEffect(() => {
     let raf = 0;

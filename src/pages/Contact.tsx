@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { PageHero, Quiet } from '../components/PageHero';
 import { Accordion, ThreadMark } from '../sections/Faq';
-import { Arrow, Eyebrow, Headline, Reveal, toneStyle } from '../components/ui';
+import { Arrow, Headline, Reveal, toneStyle } from '../components/ui';
 import { CONTACT_FAQ, CONTACT_NEEDS, EMAIL, HQ, HQ_MAP } from '../content';
 import type { HueName } from '../gl/palette';
 
@@ -24,11 +24,9 @@ export function Contact() {
   return (
     <>
       <PageHero
-        eyebrow="Contact"
         tone="violet"
         title={['Let’s build', 'what comes next.']}
         lede="Direct access to our research and engineering teams. Every message is read by a person."
-        align="center"
       />
       <Quiet>
         <div className="wrap">
@@ -120,7 +118,6 @@ export function Contact() {
       <Quiet>
         <div className="wrap faq-grid faq">
           <div className="faq-head">
-            <Eyebrow tone="violet">Before you write</Eyebrow>
             <Headline tone="violet" lines={['A few', 'answers.']} />
             <Reveal className="cell cell-ink faq-ask" delay={100}>
               <ThreadMark />

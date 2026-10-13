@@ -53,9 +53,6 @@ export function Arrow({ dir = 'right', size = 14 }: { dir?: 'right' | 'down' | '
 }
 
 /** Mono label with a diamond in the chapter's colour. */
-export function Eyebrow(_props: { tone?: HueName; children?: ReactNode; className?: string }) {
-  return null;
-}
 
 /** Fires once when the element comes into view. */
 export function useInView<T extends Element>(margin = '0px 0px -12% 0px') {
@@ -79,7 +76,20 @@ export function useInView<T extends Element>(margin = '0px 0px -12% 0px') {
   return [ref, inView] as const;
 }
 
-/** Rises and sharpens into place the first time it is seen. */
+/**
+ * True when `value` changed less than 250 ms after its previous change: someone is scrolling quickly
+ * through a list, and replaying an entrance on every item would only flash.
+ */
+export function useQuickChange(value: unknown) {
+  const last = useRef({ value, at: 0, quick: false });
+  if (last.current.value !== value) {
+    const now = performance.now();
+    last.current = { value, at: now, quick: now - last.current.at < 250 };
+  }
+  return last.current.quick;
+}
+
+/** Rises into place the first time it is seen. */
 export function Reveal({
   as: Tag = 'div',
   delay = 0,
@@ -89,8 +99,15 @@ export function Reveal({
   ...rest
 }: { as?: ElementType; delay?: number; className?: string; style?: CSSProperties; children?: ReactNode } & Record<string, unknown>) {
   const [ref, inView] = useInView<HTMLElement>();
+  const [settled, setSettled] = useState(false);
+  useEffect(() => {
+    if (!inView) return;
+    // the entrance is over once its delay and the 0.7s reveal have run
+    const t = window.setTimeout(() => setSettled(true), delay + 800);
+    return () => window.clearTimeout(t);
+  }, [inView, delay]);
   return (
-    <Tag ref={ref} className={`reveal ${className}`} data-in={inView || undefined} style={{ '--d': `${delay}ms`, ...style } as CSSProperties} {...rest}>
+    <Tag ref={ref} className={`reveal ${className}`} data-in={inView || undefined} data-settled={settled || undefined} style={{ '--d': `${delay}ms`, ...style } as CSSProperties} {...rest}>
       {children}
     </Tag>
   );
@@ -125,14 +142,5 @@ export function Headline({
         </span>
       ))}
     </Tag>
-  );
-}
-
-export function Chip({ tone, children, className = '' }: { tone?: HueName; children: ReactNode; className?: string }) {
-  return (
-    <span className={`chip ${className}`} style={tone ? toneStyle(tone) : undefined}>
-      {tone && <i aria-hidden="true" />}
-      {children}
-    </span>
   );
 }

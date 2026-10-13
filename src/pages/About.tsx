@@ -8,6 +8,7 @@ import {
   Globe 
 } from 'lucide-react';
 import { Reveal } from '../components/ui';
+import { PageHero } from '../components/PageHero';
 import { HowWeWorkPipeline } from '../components/HowWeWorkPipeline';
 import { AWARDS, EMAIL, HQ, HQ_MAP, PRODUCTS } from '../content';
 import '../styles/company-about.css';
@@ -58,27 +59,18 @@ const AWARD_COPY = [
 export function About() {
   return (
     <div className="company-about-page">
-      {/* ── 1. CLEAN EDITORIAL HERO (NATURAL BACKGROUND) ── */}
-      <section className="about-sheet about-hero-section">
-        <div className="wrap">
-          <div className="about-hero-content">
-            <Reveal as="h1" className="about-hero-title" delay={60}>
-              More than developers <br />
-              <span className="hero-accent">builders of sovereign intelligence</span>
-            </Reveal>
-            
-            <Reveal as="p" className="about-hero-lead" delay={120}>
-              Founded with a vision to democratize advanced technology across Bharat and beyond, we bridge the gap between sovereign AI research, complex compute, and transformative human progress.
-            </Reveal>
-          </div>
-        </div>
-      </section>
+      {/* the same hero as every other inner page */}
+      <PageHero
+        tone="violet"
+        title={['More than developers,', 'builders of sovereign intelligence.']}
+        lede="Founded with a vision to democratize advanced technology across Bharat and beyond, we bridge the gap between sovereign AI research, complex compute, and transformative human progress."
+      />
 
       {/* ── 2. SECTION: WHO WE ARE & WHAT DRIVES US ── */}
-      <section className="section about-sheet about-overview-section" id="overview">
+      <section className="section about-overview-section" id="overview">
         <div className="wrap about-overview-grid">
           <div className="about-who-sticky">
-            <Reveal as="h2" className="about-section-h2">
+            <Reveal as="h2" className="h2 about-section-h2">
               Who we are
             </Reveal>
             <Reveal as="p" className="about-who-lead">
@@ -103,7 +95,7 @@ export function About() {
           </div>
 
           <div className="about-drives-col">
-            <Reveal as="h2" className="about-section-h2">
+            <Reveal as="h2" className="h2 about-section-h2">
               What drives us
             </Reveal>
             {DRIVES.map((d, index) => (
@@ -117,15 +109,15 @@ export function About() {
       </section>
 
       {/* ── 3. SECTION: WHY CHOOSE US (REASON MATRIX) ── */}
-      <section className="section about-sheet about-why-section" id="why">
+      <section className="section about-why-section" id="why">
         <div className="wrap">
-          <div className="about-sheet-head">
+          <div className="section-head">
             <div>
-              <Reveal as="h2" className="about-section-h2">
+              <Reveal as="h2" className="h2 about-section-h2">
                 Why Bharattech
               </Reveal>
             </div>
-            <Reveal as="p" delay={80}>
+            <Reveal as="p" className="lede" delay={80}>
               Built for sovereign trust, deep craft, and enduring scale.
             </Reveal>
           </div>
@@ -148,15 +140,15 @@ export function About() {
       </section>
 
       {/* ── 6. SECTION: NATIONAL AWARDS & HONORS ── */}
-      <section className="section about-sheet about-awards-section" id="awards">
+      <section className="section about-awards-section" id="awards">
         <div className="wrap">
-          <div className="about-sheet-head">
+          <div className="section-head">
             <div>
-              <Reveal as="h2" className="about-section-h2">
+              <Reveal as="h2" className="h2 about-section-h2">
                 Awards
               </Reveal>
             </div>
-            <Reveal as="p" delay={80}>
+            <Reveal as="p" className="lede" delay={80}>
               Bharattech is establishing a sovereign benchmark for technology innovation recognized across India's leading national forums.
             </Reveal>
           </div>
@@ -178,12 +170,12 @@ export function About() {
       </section>
 
       {/* ── 7. SECTION: CONTACT & CONNECTIVITY (NATURAL ELEGANCE) ── */}
-      <section className="about-sheet about-contact-section" id="connect">
+      <section className="section about-contact-section" id="connect">
         <div className="wrap">
           <div className="about-contact-card">
             <div className="about-contact-grid">
               <div className="about-contact-copy">
-                <h2 className="about-section-h2">
+                <h2 className="h2 about-section-h2">
                   Let’s connect and build smarter, faster, and sovereign together.
                 </h2>
                 <p>

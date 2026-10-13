@@ -1,9 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageHero, Quiet } from '../components/PageHero';
 import { Arrow, Reveal, toneStyle } from '../components/ui';
-import { EMAIL, ROLES, VALUES } from '../content';
-import type { HueName } from '../gl/palette';
+import { DEPT_TONES, EMAIL, ROLES, VALUES } from '../content';
 import { Icon, type IconName } from '../components/fx';
+import { useScene } from '../gl/Scene';
 import { DomainArt } from '../components/art';
 
 const VALUE_ICONS: IconName[] = ['clock', 'layers', 'spark', 'rocket'];
@@ -12,14 +12,21 @@ const VALUE_ICONS: IconName[] = ['clock', 'layers', 'spark', 'rocket'];
 function CareersVisual() {
   const [hover, setHover] = useState(-1);
   const [auto, setAuto] = useState(0);
+  const deck = useRef<HTMLDivElement>(null);
+  const [onScreen, setOnScreen] = useState(false);
   useEffect(() => {
-    if (hover >= 0 || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    const io = new IntersectionObserver(([e]) => setOnScreen(e.isIntersecting));
+    io.observe(deck.current!);
+    return () => io.disconnect();
+  }, []);
+  useEffect(() => {
+    if (hover >= 0 || !onScreen || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const t = window.setInterval(() => setAuto((a) => (a + 1) % ROLES.length), 2600);
     return () => window.clearInterval(t);
-  }, [hover]);
+  }, [hover, onScreen]);
   const open = hover >= 0 ? hover : auto;
   return (
-    <div className="deck" onPointerLeave={() => setHover(-1)} style={{ '--n': ROLES.length } as React.CSSProperties}>
+    <div className="deck" ref={deck} onPointerLeave={() => setHover(-1)} style={{ '--n': ROLES.length } as React.CSSProperties}>
       {ROLES.map((r, i) => (
         <a
           key={r.title}
@@ -29,7 +36,8 @@ function CareersVisual() {
           data-below={i > open || undefined}
           onPointerEnter={() => setHover(i)}
           onFocus={() => setHover(i)}
-          style={{ '--i': i, ...toneStyle(DEPT_TONE[r.dept]) } as React.CSSProperties}
+          onBlur={() => setHover(-1)}
+          style={{ '--i': i, ...toneStyle(DEPT_TONES[r.dept]) } as React.CSSProperties}
         >
           <span className="deck-dept">
             <i />
@@ -69,9 +77,9 @@ const TEAM_ART: Record<string, number> = {
 };
 
 const DEPTS = ['All', 'Research', 'Engineering', 'Operations'];
-const DEPT_TONE: Record<string, HueName> = { Research: 'violet', Engineering: 'saffron', Operations: 'tangerine' };
 
 export function Careers() {
+  const { scrollTo } = useScene();
   const [dept, setDept] = useState('All');
   const [q, setQ] = useState('');
   const roles = useMemo(() => {
@@ -82,13 +90,16 @@ export function Careers() {
   return (
     <>
       <PageHero
-        eyebrow="Careers"
         tone="tangerine"
         title={['Build the', 'foundation.']}
         lede="We hire researchers and engineers who would rather spend a decade on the right problem than a quarter on the easy one."
         visual={<CareersVisual />}
       >
-        <a href="#roles" className="btn btn-primary page-hero-cta" onClick={(e) => (e.preventDefault(), document.getElementById('roles')?.scrollIntoView({ behavior: 'smooth' }))}>
+        <a href="#roles" className="btn btn-primary page-hero-cta" onClick={(e) => {
+            e.preventDefault();
+            const roles = document.getElementById('roles');
+            if (roles) scrollTo(roles);
+          }}>
           {ROLES.length} open roles <Arrow dir="down" />
         </a>
       </PageHero>
@@ -114,7 +125,7 @@ export function Careers() {
           <div className="roles-bar">
             <div className="segmented" role="group" aria-label="Department">
               {DEPTS.map((d) => (
-                <button key={d} aria-pressed={dept === d} style={toneStyle(DEPT_TONE[d] ?? 'violet')} onClick={() => setDept(d)}>
+                <button key={d} aria-pressed={dept === d} style={toneStyle(DEPT_TONES[d] ?? 'violet')} onClick={() => setDept(d)}>
                   <i aria-hidden="true" />
                   {d}
                   <small>{d === 'All' ? ROLES.length : ROLES.filter((r) => r.dept === d).length}</small>
@@ -131,7 +142,7 @@ export function Careers() {
           </div>
           <ul className="role-grid">
             {roles.map((r, i) => (
-              <Reveal as="li" key={r.title} delay={(i % 3) * 70} style={toneStyle(DEPT_TONE[r.dept])}>
+              <Reveal as="li" key={r.title} delay={(i % 3) * 70} style={toneStyle(DEPT_TONES[r.dept])}>
                 <a href={applyHref(r)} className="role-card">
                   <span className="role-art">
                     <DomainArt index={TEAM_ART[r.team] ?? 0} />

@@ -1,6 +1,6 @@
 import { useRef, type CSSProperties } from 'react';
 import { useQuiet } from '../gl/Scene';
-import { Eyebrow, Headline } from '../components/ui';
+import { Headline } from '../components/ui';
 import { Chapter, Steps, usePinned } from '../components/Chapter';
 import { LayerStack } from '../components/art';
 import { LAYERS, LAYER_FAMILIES } from '../content';
@@ -16,10 +16,9 @@ export function Architecture() {
   const l = LAYERS[step];
 
   return (
-    <Chapter id="architecture" innerRef={ref} n={LAYERS.length} screens={0.42} tone="violet" className="ch-arch">
+    <Chapter id="architecture" innerRef={ref} n={LAYERS.length} screens={0.28} tone="violet" className="ch-arch">
       <div className="wrap arch">
         <div className="arch-side">
-          <Eyebrow tone="violet">Architecture</Eyebrow>
           <Headline tone="violet" lines={['An operating system,', 'not an application.']} />
           <div className="arch-list">
             {LAYER_FAMILIES.map((fam, fi) => (

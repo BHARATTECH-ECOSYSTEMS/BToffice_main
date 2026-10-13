@@ -24,8 +24,23 @@ export interface Target {
   pose?: Partial<Pose>;
   /** extra turn (radians) added to the object's idle rotation, usually driven by scroll */
   spin?: number;
-  /** how tightly the pose tracks its goal; high values pin the object to its stage while scrolling */
+  /** how tightly the pose tracks its goal; high values pin the object to its stage while scrolling, and
+   *  Infinity places it exactly (for poses already computed from this frame's scroll) */
   follow?: number;
+  /** how much of the object shows (opacity only, 1 by default), for one that fades while still in place */
+  fade?: number;
+  /** the globe only: how much of its place names show (1 by default) */
+  labels?: number;
+  /** the globe only: 1 stops its idle sway, so `spin` alone sets which way it faces */
+  still?: number;
+  /** how much of the object's contact shadow shows (1 by default) */
+  shadow?: number;
+  /**
+   * The globe only: its dots leave it and pour into the shape set by `Engine.setDust`. `progress` 0…1 is the
+   * dots' own clock, `at` the viewport point (CSS px) that shape is centred on this frame, `break` how far the
+   * globe's body has dissolved (the dots show only as it goes), `show` their overall opacity.
+   */
+  dust?: { progress: number; at: [number, number]; break: number; show: number };
   /** the mark only, one value per thread (memory, connection, learning): 1 drawn, 0 wiped */
   show?: Vec3;
   /** the mark only, per thread: 1 cut into pieces */
@@ -44,8 +59,12 @@ export interface Target {
 const LOGO_R = 1.35;
 export const GLOBE_R = 1.45;
 /** Footprints in world units, for fitting an object into its stage. */
-export const MARK_SIZE = LOGO_R * 2.25;
 export const GLOBE_SIZE = GLOBE_R * 2.35;
+/** Radius of a continent dot on the globe. */
+const DOT_R = 0.019;
+/** The dots' colours as sRGB 0…1, written straight to the screen by the dust shader. */
+const DOT_INK: [number, number, number] = [0x2b / 255, 0x26 / 255, 0x40 / 255];
+const DOT_INDIA: [number, number, number] = [0xff / 255, 0x86 / 255, 0x43 / 255];
 
 const VIOLET = new THREE.Color('#4a2fd0');
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt));
@@ -429,8 +448,14 @@ function buildGlobe() {
     trash.push(g, m);
     mats.push(m);
   };
-  dots(world, 0.019, '#2b2640', 0.5);
-  dots(india, 0.016, '#FF8643', 0.4);
+  dots(world, DOT_R, '#2b2640', 0.5);
+  dots(india, DOT_R * 0.84, '#FF8643', 0.4);
+  // where every dot sits and its colour, for the dust that leaves from them
+  const dotsAt = { pos: new Float32Array((world.length + india.length) * 3), col: new Float32Array((world.length + india.length) * 3) };
+  [...world.map((v) => [v, DOT_INK] as const), ...india.map((v) => [v, DOT_INDIA] as const)].forEach(([v, c], i) => {
+    dotsAt.pos.set([v.x * 1.002, v.y * 1.002, v.z * 1.002], i * 3);
+    dotsAt.col.set(c, i * 3);
+  });
 
   // 3. hubs in India, with rings that breathe
   const ringGeo = new THREE.RingGeometry(0.03, 0.04, 40);
@@ -501,9 +526,10 @@ function buildGlobe() {
     group,
     spinner,
     mats,
+    dotsAt,
     atmo: atmoMat,
-    update(time: number, spin: number) {
-      spinner.rotation.y = Math.sin(time * 0.12) * 0.55 + spin;
+    update(time: number, spin: number, show = 1, still = 0) {
+      spinner.rotation.y = Math.sin(time * 0.12) * 0.55 * (1 - still) + spin;
       heads.forEach((h) => {
         const t = (((h.phase + time * h.speed) % 1) + 1) % 1;
         h.mesh.position.copy(h.curve.getPointAt(t));
@@ -518,12 +544,99 @@ function buildGlobe() {
       labelSprites.forEach(({ sprite, pos, mat }) => {
         const rotatedPos = pos.clone().applyEuler(euler);
         const facing = Math.max(0, Math.min(1, (rotatedPos.z - 0.1) / 0.4));
-        mat.opacity = facing;
-        sprite.visible = facing > 0.02;
+        // set here every frame, so the names follow the globe's own opacity rather than the engine's pass
+        mat.opacity = facing * show;
+        sprite.visible = mat.opacity > 0.02;
       });
     },
     dispose: () => trash.forEach((t) => t.dispose()),
   };
+}
+
+// ── Dust: the globe breaking into its dots, which pour into a shape on the page ─────────────
+
+/** Share of the dots' clock each one spends travelling; the rest staggers their departures. */
+const DUST_SPAN = 0.42;
+
+const DUST_VS = /* glsl */ `
+attribute vec3 aFrom;     // a dot on the globe, in the globe's own space
+attribute vec3 aFromCol;
+attribute vec2 aTo;       // its place in the target shape: CSS px from the shape's centre, y down
+attribute vec3 aToCol;
+attribute vec4 aSeed;     // x departure, y swirl angle, z depth, w size
+uniform mat4 uFromM;      // the globe's world matrix this frame
+uniform vec3 uFromC;      // the globe's centre
+uniform vec2 uToC;        // the shape's centre, world units
+uniform float uK;         // world units per CSS px
+uniform float uP;
+uniform float uBreak;
+uniform float uShow;
+uniform float uDotPx;
+uniform float uTextPx;
+uniform float uDpr;
+varying vec3 vCol;
+varying float vA;
+float ease(float t) { return t < 0.5 ? 4.0 * t * t * t : 1.0 - pow(-2.0 * t + 2.0, 3.0) / 2.0; }
+void main() {
+  vec3 from = (uFromM * vec4(aFrom, 1.0)).xyz;
+  vec3 to = vec3(uToC + aTo * vec2(uK, -uK), 0.0);
+  float t = clamp((uP - aSeed.x) / ${DUST_SPAN.toFixed(3)}, 0.0, 1.0);
+  float e = ease(t);
+  // a curved path: each dot swings out to its own side, and toward or away from the viewer, on the way down
+  vec3 bend = vec3(cos(aSeed.y), sin(aSeed.y) * 0.5, aSeed.z * 0.5) * length(to - from) * 0.14;
+  vec3 mid = mix(from, to, 0.5) + bend;
+  vec3 pos = mix(mix(from, mid, e), mix(mid, to, e), e);
+  // still on the globe, a dot on its far side stays hidden behind where the body was
+  vec3 n = normalize(from - uFromC);
+  float facing = smoothstep(-0.05, 0.3, dot(n, normalize(cameraPosition - from)));
+  vA = mix(facing, 1.0, smoothstep(0.0, 0.25, t)) * uBreak * uShow;
+  vCol = mix(aFromCol, aToCol, smoothstep(0.3, 0.95, t));
+  // they leave a little finer than the raised dots and are down to letter size well before they arrive
+  gl_PointSize = mix(uDotPx * 0.8 * aSeed.w, uTextPx, smoothstep(0.0, 0.7, t)) * (1.0 + sin(3.14159 * t) * 0.25) * uDpr;
+  gl_Position = projectionMatrix * viewMatrix * vec4(pos, 1.0);
+}`;
+
+const DUST_FS = /* glsl */ `
+varying vec3 vCol;
+varying float vA;
+void main() {
+  float r = length(gl_PointCoord - 0.5);
+  float a = smoothstep(0.5, 0.3, r) * vA;
+  if (a < 0.01) discard;
+  gl_FragColor = vec4(vCol, a);
+}`;
+
+/** A small seeded random, so the same heading always gets the same flight paths. */
+function seeded(seed: number) {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function buildDust() {
+  const uniforms = {
+    uFromM: { value: new THREE.Matrix4() },
+    uFromC: { value: new THREE.Vector3() },
+    uToC: { value: new THREE.Vector2() },
+    uK: { value: 0.01 },
+    uP: { value: 0 },
+    uBreak: { value: 0 },
+    uShow: { value: 0 },
+    uDotPx: { value: 6 },
+    uTextPx: { value: 2.6 },
+    uDpr: { value: 1 },
+  };
+  const material = new THREE.ShaderMaterial({ uniforms, vertexShader: DUST_VS, fragmentShader: DUST_FS, transparent: true, depthTest: false, depthWrite: false });
+  const geometry = new THREE.BufferGeometry();
+  const points = new THREE.Points(geometry, material);
+  points.frustumCulled = false; // positions are computed in the shader; the geometry's bounds mean nothing
+  points.renderOrder = 20;
+  points.visible = false;
+  return { points, uniforms, material };
 }
 
 // ── Engine ───────────────────────────────────────────────────────────────────
@@ -534,6 +647,7 @@ interface Slot {
   amt: number; // 0 folded away … 1 present
   pose: Pose;
   shadow: THREE.Mesh;
+  target: Target;
 }
 
 export class Engine {
@@ -544,6 +658,7 @@ export class Engine {
   private slots: Record<'mark' | 'globe', Slot>;
   private mark: ReturnType<typeof buildMark>;
   private globe: ReturnType<typeof buildGlobe>;
+  private dust = buildDust();
   private tex: { mask: THREE.Texture; param: THREE.Texture };
   private env: THREE.Texture;
   private target: Target = { key: 'mark' };
@@ -563,9 +678,10 @@ export class Engine {
   private spin = 0;
   private time = 0;
   private last = performance.now();
-  private raf = 0;
   private listeners = new Set<() => void>();
   private idleFrames = 0;
+  private warmTask = 0;
+  private destroyed = false;
   private onPointer = (e: PointerEvent) => this.pointer.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
   private onResize = () => this.resize();
 
@@ -602,20 +718,89 @@ export class Engine {
         m.userData.base = m.opacity;
         m.userData.noDepth = !m.depthWrite || m.opacity < 1;
       });
-      return { group: holder, mats: all, amt: 0, pose: { x: 1.7, y: 0, s: 1 }, shadow };
+      return { group: holder, mats: all, amt: 0, pose: { x: 1.7, y: 0, s: 1 }, shadow, target: { key: 'none' } as Target };
     };
     this.slots = { mark: slot(this.mark.group, this.mark.mats, LOGO_R * 2.2), globe: slot(this.globe.group, this.globe.mats, GLOBE_R * 2.3) };
     this.slots.mark.shadow.position.set(0, -LOGO_R * 1.32, -0.4);
     this.slots.globe.shadow.position.set(0, -GLOBE_R * 1.28, -0.4);
+    this.scene.add(this.dust.points);
+    this.dust.uniforms.uFromM.value = this.globe.spinner.matrixWorld; // by reference: current at every draw
 
     this.resize();
     window.addEventListener('resize', this.onResize);
     window.addEventListener('pointermove', this.onPointer, { passive: true });
-    this.raf = requestAnimationFrame(this.frame);
+    // once the page has settled, draw the objects off to one side so their first real appearance is free
+    const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1200));
+    this.warmTask = idle(() => this.warm(), { timeout: 4000 });
+  }
+
+  /**
+   * The first time an object is drawn its shaders compile and its geometry and textures upload, which stalled
+   * the page for a few hundred milliseconds when the globe first scrolled into view. Drawing every object once
+   * into a single pixel does that work up front; that pixel is cleared again on the next frame.
+   */
+  private warm() {
+    if (this.destroyed) return;
+    const slots = Object.values(this.slots);
+    const was = slots.map((s) => s.group.visible);
+    slots.forEach((s) => (s.group.visible = true));
+    this.renderer.setScissorTest(true);
+    this.renderer.setScissor(0, 0, 1, 1);
+    this.renderer.render(this.scene, this.camera);
+    this.renderer.clear();
+    this.renderer.setScissorTest(false);
+    slots.forEach((s, i) => (s.group.visible = was[i]));
+    // The dust is hidden until the globe pours into the heading, so the draw above skips it; compiling it on
+    // the spot froze that moment for ~0.6 s. compileAsync links its shaders in the background.
+    void this.renderer.compileAsync(this.dust.points, this.camera, this.scene);
+  }
+
+  /**
+   * Draws one frame. The page's frame loop calls this after the smooth scroll has moved the page, so an object
+   * placed from this frame's scroll lands where its stage is drawn in the same frame.
+   */
+  tick(now: number) {
+    this.frame(now);
+  }
+
+  /**
+   * The shape the globe's dots pour into: points as CSS px from its centre (x, y pairs) and their sRGB colours,
+   * `size` the px size of a dot once there. Every point gets a dot that leaves from somewhere on the globe.
+   */
+  setDust(to: Float32Array, toColor: Float32Array, size: number) {
+    const n = to.length / 2;
+    const src = this.globe.dotsAt;
+    const m = src.pos.length / 3;
+    const from = new Float32Array(n * 3);
+    const fromCol = new Float32Array(n * 3);
+    const seed = new Float32Array(n * 4);
+    const rnd = seeded(7);
+    for (let i = 0; i < n; i++) {
+      const j = Math.floor(rnd() * m);
+      // several dots can leave one globe dot; a hair apart, so they visibly split
+      for (let k = 0; k < 3; k++) from[i * 3 + k] = src.pos[j * 3 + k] + (rnd() - 0.5) * DOT_R;
+      fromCol.set(src.col.subarray(j * 3, j * 3 + 3), i * 3);
+      // the lowest dots leave first, so the globe pours downward rather than evaporating evenly
+      const low = 1 - (src.pos[j * 3 + 1] / GLOBE_R + 1) / 2;
+      const order = 1 - (0.6 * low + 0.4 * rnd());
+      seed.set([order * (1 - DUST_SPAN), rnd() * Math.PI * 2, (rnd() - 0.3) * 1.4, 0.75 + rnd() * 0.5], i * 4);
+    }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3)); // unused, sets the count
+    g.setAttribute('aFrom', new THREE.BufferAttribute(from, 3));
+    g.setAttribute('aFromCol', new THREE.BufferAttribute(fromCol, 3));
+    g.setAttribute('aTo', new THREE.BufferAttribute(to, 2));
+    g.setAttribute('aToCol', new THREE.BufferAttribute(toColor, 3));
+    g.setAttribute('aSeed', new THREE.BufferAttribute(seed, 4));
+    this.dust.points.geometry.dispose();
+    this.dust.points.geometry = g;
+    this.dust.uniforms.uTextPx.value = size;
   }
 
   setTarget(t: Target) {
     this.target = t;
+    // Keep the outgoing object's appearance: resetting a scroll fade here makes it flash back into view.
+    if (t.key !== 'none') this.slots[t.key].target = t;
   }
 
   /** Scroll velocity in px per frame: a quick scroll gives the objects a little extra turn. */
@@ -638,17 +823,18 @@ export class Engine {
     this.camera.updateProjectionMatrix();
   }
 
-  private frame = (now: number) => {
-    this.raf = requestAnimationFrame(this.frame);
+  private frame(now: number) {
     const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000)); // rAF's first timestamp can predate the constructor
     this.last = now;
     if (!this.reducedMotion) this.time += dt;
     this.listeners.forEach((fn) => fn());
 
     const t = this.target;
-    this.spin = damp(this.spin, this.velocity * 0.004, 4, dt);
-    this.lean.x = damp(this.lean.x, this.pointer.x, 3, dt);
-    this.lean.y = damp(this.lean.y, this.pointer.y, 3, dt);
+    // reduced motion: no spin from fast scrolling and no leaning toward the pointer
+    const moving = this.reducedMotion ? 0 : 1;
+    this.spin = damp(this.spin, this.velocity * 0.004 * moving, 4, dt);
+    this.lean.x = damp(this.lean.x, this.pointer.x * moving, 3, dt);
+    this.lean.y = damp(this.lean.y, this.pointer.y * moving, 3, dt);
 
     let busy = false;
     (['mark', 'globe'] as const).forEach((k) => {
@@ -664,7 +850,7 @@ export class Engine {
       const goal = t.key === k ? t.pose : undefined;
       const follow = t.follow ?? 12;
       if (goal) {
-        if (s.amt < 0.02) Object.assign(s.pose, goal); // appears in place, rather than flying in from the last stage
+        if (s.amt < 0.02 || follow === Infinity) Object.assign(s.pose, goal); // exact scroll poses also work when dt is zero
         else {
           s.pose.x = damp(s.pose.x, goal.x ?? s.pose.x, follow, dt);
           s.pose.y = damp(s.pose.y, goal.y ?? s.pose.y, follow, dt);
@@ -677,10 +863,17 @@ export class Engine {
       const e = easeOut(s.amt);
       s.group.position.set(s.pose.x, s.pose.y - (1 - e) * 0.35, 0);
       s.group.scale.setScalar(s.pose.s * (0.72 + 0.28 * e));
+      const shown = e * (s.target.fade ?? 1);
+      // faded right out (its dots gone to dust) it is not drawn at all; its matrices still update for the dust
+      if (shown < 0.002) {
+        s.group.visible = false;
+        return;
+      }
       s.mats.forEach((m) => {
-        m.opacity = e * (m.userData.base as number);
-        m.depthWrite = e > 0.98 && !m.userData.noDepth;
+        m.opacity = shown * (m.userData.base as number);
+        m.depthWrite = shown > 0.98 && !m.userData.noDepth;
       });
+      (s.shadow.material as THREE.Material).opacity *= s.target.shadow ?? 1;
     });
 
     // the mark's threads carry the story; each eases to what the section asks for
@@ -722,25 +915,51 @@ export class Engine {
     mk.position.y = Math.sin(this.life * 0.9) * 0.06;
     this.slots.mark.shadow.scale.set(LOGO_R * 2.2 * (1 - mk.position.y * 0.6), LOGO_R * 0.92 * (1 - mk.position.y * 0.6), 1);
 
-    this.globe.group.rotation.x = this.lean.y * 0.1;
-    this.globe.update(this.time, (t.key === 'globe' ? t.spin ?? 0 : 0) + this.lean.x * 0.25 + this.spin * 2);
-    this.globe.atmo.uniforms.uOpacity.value = easeOut(this.slots.globe.amt);
+    const gt = this.slots.globe.target;
+    const globeAmt = easeOut(this.slots.globe.amt);
+    const globeShown = globeAmt * (gt.fade ?? 1);
+    const still = gt.still ?? 0;
+    this.globe.group.rotation.x = this.lean.y * 0.1 * (1 - still);
+    this.globe.update(this.time, (gt.spin ?? 0) + (this.lean.x * 0.25 + this.spin * 2) * (1 - still), globeShown * (gt.labels ?? 1), still);
+    this.globe.atmo.uniforms.uOpacity.value = globeShown;
 
-    const anyVisible = this.slots.mark.group.visible || this.slots.globe.group.visible;
+    // the dust, placed from this frame's globe and target shape
+    const d = gt.dust;
+    const du = this.dust.uniforms;
+    // gated by the globe being present, so a fast scroll past the ride never leaves dust hanging on screen
+    const dustOn = !!d && d.show * d.break * globeAmt > 0.002 && this.dust.points.geometry.getAttribute('aTo') !== undefined;
+    this.dust.points.visible = dustOn;
+    if (dustOn && d) {
+      const k = (2 * this.camera.position.z * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2))) / window.innerHeight;
+      const gp = this.slots.globe.group.position;
+      du.uK.value = k;
+      du.uToC.value.set((d.at[0] - window.innerWidth / 2) * k, (window.innerHeight / 2 - d.at[1]) * k);
+      du.uFromC.value.copy(gp);
+      du.uP.value = d.progress;
+      du.uBreak.value = d.break;
+      du.uShow.value = d.show * globeAmt;
+      du.uDotPx.value = (2 * DOT_R * this.slots.globe.group.scale.x) / k;
+      du.uDpr.value = this.renderer.getPixelRatio();
+    }
+
+    const anyVisible = this.slots.mark.group.visible || this.slots.globe.group.visible || dustOn;
     if (anyVisible || busy) {
       this.idleFrames = 0;
       this.renderer.render(this.scene, this.camera);
     } else if (this.idleFrames++ < 2) {
       this.renderer.render(this.scene, this.camera); // clear once after the last object leaves
     }
-  };
+  }
 
   destroy() {
-    cancelAnimationFrame(this.raf);
+    this.destroyed = true;
+    (window.cancelIdleCallback ?? window.clearTimeout)(this.warmTask);
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('pointermove', this.onPointer);
     this.mark.dispose();
     this.globe.dispose();
+    this.dust.points.geometry.dispose();
+    this.dust.material.dispose();
     this.tex.mask.dispose();
     this.tex.param.dispose();
     this.env.dispose();

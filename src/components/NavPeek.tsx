@@ -6,7 +6,7 @@ import { AWARDS, CAPABILITIES, CAPABILITY_GROUPS, DOMAINS, EMAIL, HQ, POSTS, PRI
 import type { HueName } from '../gl/palette';
 
 export type PeekId = 'research' | 'capabilities' | 'services' | 'careers' | 'about' | 'contact';
-export const PEEK_ORDER: PeekId[] = ['research', 'capabilities', 'services', 'careers', 'about', 'contact'];
+export const PEEK_ORDER: PeekId[] = ['research', 'services', 'capabilities', 'careers', 'about', 'contact'];
 
 const DOMAIN_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
 const FAMILY_TONES: HueName[] = ['violet', 'tangerine', 'saffron'];
@@ -14,8 +14,8 @@ const FAMILY_ART = [SearchArt, WorkflowArt, MetricsArt];
 const DEPT_TONE: Record<string, HueName> = { Research: 'violet', Engineering: 'saffron', Operations: 'tangerine' };
 
 /**
- * The glance under the nav. One panel morphs between sections: its height follows the open pane, the new
- * pane slides in from the side the pointer came from, and a caret tracks the link that opened it.
+ * The glance under the nav. One panel serves every section: its height follows the open pane, each section
+ * plays its own entrance whenever it becomes the open one (styles in story.css), and a caret tracks the link.
  */
 export function NavPeek({
   peek,
@@ -34,15 +34,34 @@ export function NavPeek({
   const [h, setH] = useState(0);
   const [last, setLast] = useState<PeekId>('research');
   const [left, setLeft] = useState(0);
-  // counts openings, so each pane's drawings replay when the glance opens again
+  // counts each time a section is shown (on open and on every switch), so its drawings replay with its entrance
   const [epoch, setEpoch] = useState(0);
+  // the showing each pane was last mounted for; a pane leaving keeps its key so it doesn't remount as it goes
+  const mountedFor = useRef<Partial<Record<PeekId, number>>>({});
   const [wasOpen, setWasOpen] = useState(false);
+  // true once the pointer has moved to another section while open; only then does the caret glide
+  const [morph, setMorph] = useState(false);
+  // the section the pointer came from while open; About and Contact share their dark card, so between them
+  // the panel stays put instead of replaying its whole entrance (which blanked the card for a moment)
+  const [from, setFrom] = useState<PeekId | null>(null);
   if (!!peek !== wasOpen) {
     setWasOpen(!!peek);
-    if (peek) setEpoch((n) => n + 1);
+    if (peek) {
+      setEpoch((n) => n + 1);
+      setMorph(false);
+      setFrom(null);
+    }
   }
-  if (peek && peek !== last) setLast(peek);
+  if (peek && peek !== last) {
+    setLast(peek);
+    if (wasOpen) {
+      setMorph(true);
+      setFrom(last);
+      setEpoch((n) => n + 1);
+    }
+  }
   const shown = peek ?? last;
+  mountedFor.current[shown] = epoch;
 
   useLayoutEffect(() => {
     const el = panes.current[shown];
@@ -64,12 +83,13 @@ export function NavPeek({
   }, []);
 
   const go = (to: string, section?: string) => () => onGo(to, section);
-  const idx = PEEK_ORDER.indexOf(shown);
 
   return (
     <div
       className="nav-peek"
       data-open={peek || undefined}
+      data-morph={morph || undefined}
+      data-from={from || undefined}
       style={{ left, '--h': `${h}px`, '--caret': `${caret - left}px` } as CSSProperties}
       onPointerEnter={onEnter}
       onPointerLeave={onLeave}
@@ -77,8 +97,20 @@ export function NavPeek({
       inert={peek ? undefined : ''}
     >
       <i className="nav-peek-caret" aria-hidden="true" />
+      {/* Research opens as a drop of liquid: the filter blurs the drop and the panel blob together, then cuts
+          the blur back to a hard edge, so where they touch they melt into one shape. */}
+      <svg className="peek-goo-defs" aria-hidden="true">
+        <filter id="peek-goo" colorInterpolationFilters="sRGB">
+          <feGaussianBlur stdDeviation="10" />
+          <feColorMatrix values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 24 -10" />
+        </filter>
+      </svg>
+      <div className="peek-goo" aria-hidden="true">
+        <i className="peek-goo-drop" />
+        <i className="peek-goo-body" />
+      </div>
       <div className="nav-peek-body">
-        {PEEK_ORDER.map((id, i) => (
+        {PEEK_ORDER.map((id) => (
           <div
             key={id}
             id={`peek-${id}`}
@@ -87,10 +119,9 @@ export function NavPeek({
             }}
             className="nav-peek-pane"
             data-on={id === shown || undefined}
-            data-from={id === shown ? undefined : i < idx ? 'left' : 'right'}
             aria-hidden={id !== shown}
           >
-            <Fragment key={id === shown ? `${id}-${epoch}` : id}>
+            <Fragment key={`${id}-${mountedFor.current[id] ?? 0}`}>
               {id === 'research' && <ResearchPeek go={go} />}
               {id === 'capabilities' && <CapabilitiesPeek go={go} />}
               {id === 'services' && <ServicesPeek go={go} />}
@@ -126,7 +157,7 @@ function ResearchPeek({ go }: { go: Go }) {
   return (
     <div className="peek-visual">
       <ul className="peek-domains">
-        {DOMAINS.map((d, i) => (
+        {DOMAINS.slice(0, 3).map((d, i) => (
           <li key={d.id} style={toneStyle(DOMAIN_TONES[i], { '--k': i } as CSSProperties)}>
             <button className="peek-tile peek-domain" onClick={go('/research', d.id)}>
               <span className="peek-domain-art">

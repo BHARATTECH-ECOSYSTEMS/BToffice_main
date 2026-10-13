@@ -478,7 +478,8 @@ function CoverArt({ kind }: { kind: number }) {
   switch (kind) {
     case 0: // why AI must remember: sessions on a line, each one carried into the next
       return (
-        <g>
+        // the sessions run 14…290, so they shift right to sit centred in the 320-wide frame
+        <g transform="translate(8 0)">
           <path d="M30 120H290" className="cv-dash" />
           {[40, 112, 184, 256].map((x, k) => (
             <g key={x} className="cv-pop" style={{ '--k': k } as CSSProperties}>
@@ -492,7 +493,8 @@ function CoverArt({ kind }: { kind: number }) {
       );
     case 1: // generative intelligence is not generative AI: content on one side, capability on the other
       return (
-        <g>
+        // the drawing spans 52…144, so it lifts to sit centred in the 180-high frame
+        <g transform="translate(0 -8)">
           {[0, 1, 2, 3, 4].map((k) => (
             <path key={k} d={`M40 ${52 + k * 16}H${120 - (k % 2) * 26}`} className="cv-pop" style={{ '--k': k } as CSSProperties} />
           ))}

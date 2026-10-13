@@ -42,29 +42,6 @@ export function sampleThread(points: Vec2[], perSegment = 24): Vec2[] {
 
 export const SAMPLED_THREADS = THREADS.map((t) => sampleThread(t));
 
-function distToSegment(px: number, py: number, a: Vec2, b: Vec2) {
-  const dx = b[0] - a[0];
-  const dy = b[1] - a[1];
-  const len2 = dx * dx + dy * dy || 1e-9;
-  let t = ((px - a[0]) * dx + (py - a[1]) * dy) / len2;
-  t = Math.max(0, Math.min(1, t));
-  const x = a[0] + dx * t - px;
-  const y = a[1] + dy * t - py;
-  return Math.sqrt(x * x + y * y);
-}
-
-/** Distance from a unit-disk point to the nearest thread centreline. */
-export function distToThreads(x: number, y: number): number {
-  let best = Infinity;
-  for (const curve of SAMPLED_THREADS) {
-    for (let i = 0; i < curve.length - 1; i++) {
-      const d = distToSegment(x, y, curve[i], curve[i + 1]);
-      if (d < best) best = d;
-    }
-  }
-  return best;
-}
-
 /** SVG path data for each thread in a viewBox of "-1 -1 2 2" (y flipped for SVG). */
 export function threadPaths(): string[] {
   return SAMPLED_THREADS.map((curve) =>

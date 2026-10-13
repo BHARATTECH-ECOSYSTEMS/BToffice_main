@@ -8,126 +8,7 @@
   overflow-x: clip;
   background-color: var(--bg);
   color: var(--ink);
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 10px 0;
-  /* One vertical rhythm for every content sheet */
-  --sheet-pad-y: clamp(64px, 8vw, 104px);
-}
-
-/* Every section is a full-width sheet inset 10px from the viewport, matching the
-   pinned "How we work" sheet. Content width still comes from the inner .wrap. */
-.about-sheet {
-  margin: 0 var(--sheet-x);
-  border-radius: var(--r-lg);
-  background: var(--paper);
-  box-shadow: var(--shadow-sm);
-}
-
-/* The sheet is inset from the viewport, so its content wrap gives that inset back: content then sits on the
-   same text column as every other page. */
-.about-sheet > .wrap {
-  max-width: calc(var(--content) + (var(--gutter) - var(--sheet-x)) * 2);
-  padding-inline: calc(var(--gutter) - var(--sheet-x));
-}
-
-/* Global `.section` padding rules load after this file; this selector outranks them
-   for About sheets only, leaving other pages' sections untouched. */
-.company-about-page > .section.about-sheet {
-  padding: var(--sheet-pad-y) 0;
-}
-
-/* Shared sheet header: label + title on the left, optional lede on the right */
-.about-sheet-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 20px 48px;
-  margin-bottom: clamp(36px, 5vw, 56px);
-}
-
-.about-sheet-head > p {
-  max-width: 420px;
-  font-size: 16px;
-  line-height: 1.6;
-  color: var(--ink-soft);
-  margin: 0;
-}
-
-/* Shared index label for list items inside sheets (01, 02, …) */
-.about-item-num {
-  display: block;
-  font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  color: var(--violet);
-}
-
-/* ── Common Eyebrows & Typography ── */
-.about-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-family: var(--mono);
-  font-size: 11.5px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
-  color: var(--violet);
-  margin-bottom: 12px;
-}
-
-.about-eyebrow-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--violet);
-  box-shadow: 0 0 8px rgba(110, 88, 245, 0.45);
-  display: inline-block;
-}
-
-/* ── 1. CLEAN EDITORIAL HERO (NATURAL BACKGROUND) ── */
-.about-hero-section {
-  padding-top: calc(var(--nav-h) + clamp(56px, 7vw, 104px));
-  padding-bottom: clamp(64px, 8vw, 112px);
-  text-align: center;
-}
-
-.about-hero-content {
-  max-width: 920px;
-  margin: 0 auto;
-}
-
-.about-hero-title {
-  font-family: var(--display);
-  font-size: clamp(40px, 5.8vw, 76px);
-  font-weight: 750;
-  line-height: 1.06;
-  letter-spacing: -0.04em;
-  color: var(--ink);
-  margin: 0 0 24px;
-}
-
-.about-hero-title .hero-accent,
-.about-hero-title em {
-  font-style: normal;
-  font-weight: 800;
-  color: var(--violet);
-  background: linear-gradient(135deg, var(--violet) 0%, color-mix(in srgb, var(--violet) 80%, #9D8CFF) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  display: inline-block;
-  letter-spacing: -0.04em;
-}
-
-.about-hero-lead {
-  font-size: clamp(17px, 1.6vw, 20px);
-  line-height: 1.62;
-  color: var(--ink-soft);
-  max-width: 740px;
-  margin: 0 auto;
+  --sheet-pad-y: var(--section-y);
 }
 
 /* ── 2. SECTION: WHO WE ARE & WHAT DRIVES US ── */
@@ -138,13 +19,13 @@
 .about-overview-grid {
   display: grid;
   grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
-  gap: clamp(36px, 6vw, 72px);
+  gap: var(--split-gap);
   align-items: start;
 }
 
 .about-who-sticky {
   position: sticky;
-  top: calc(var(--nav-h) + 28px);
+  top: var(--sticky-top);
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -152,10 +33,10 @@
 
 .about-section-h2 {
   font-family: var(--display);
-  font-size: clamp(30px, 3.8vw, 54px);
-  font-weight: 700;
-  line-height: 1.06;
-  letter-spacing: -0.035em;
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-head);
+  line-height: 1;
+  letter-spacing: -0.045em;
   color: var(--ink);
   margin: 0;
 }
@@ -210,7 +91,7 @@
 
 .about-chip {
   padding: 6px 13px;
-  border-radius: 20px;
+  border-radius: var(--r-md);
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 600;
@@ -237,7 +118,7 @@
 .about-drives-card h3 {
   font-family: var(--display);
   font-size: clamp(19px, 2.1vw, 23px);
-  font-weight: 650;
+  font-weight: var(--fw-head);
   letter-spacing: -0.025em;
   color: var(--ink);
   margin: 4px 0 2px;
@@ -272,7 +153,7 @@
 .about-reason-col h3 {
   font-family: var(--display);
   font-size: clamp(20px, 2.2vw, 24px);
-  font-weight: 650;
+  font-weight: var(--fw-head);
   letter-spacing: -0.025em;
   color: var(--ink);
   margin: 0;
@@ -291,8 +172,7 @@
    ═══════════════════════════════════════════════════════════════════════════ */
 .about-process-section {
   position: relative;
-  /* The sticky frame pads itself by 10px; this keeps the gap to neighbouring sheets at 10px too. */
-  margin: -10px 0;
+  margin: 0;
 }
 
 /* The scroll track is what gets pinned; its height sets how long the story lasts. */
@@ -330,16 +210,12 @@
   gap: 24px;
 }
 
-.how-paper-head .about-eyebrow {
-  margin-bottom: 14px;
-}
-
 .how-paper-title {
   font-family: var(--display);
-  font-size: clamp(30px, 3.8vw, 54px);
-  font-weight: 700;
-  line-height: 1.04;
-  letter-spacing: -0.035em;
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-head);
+  line-height: 1;
+  letter-spacing: -0.045em;
   color: var(--ink);
   margin: 0;
   max-width: 24ch;
@@ -379,9 +255,12 @@
   position: absolute;
   top: -1px;
   left: 0;
+  width: 100%;
   height: 1px;
-  width: calc(var(--how-progress, 0) * 100%);
   background: var(--violet);
+  /* scaled rather than sized, so following the scroll never forces a layout */
+  transform-origin: 0 50%;
+  transform: scaleX(var(--how-progress, 0));
 }
 
 .how-paper-step {
@@ -418,9 +297,9 @@
 .how-paper-num {
   display: block;
   font-family: var(--mono);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--violet);
 }
@@ -428,7 +307,7 @@
 .how-paper-step h3 {
   font-family: var(--display);
   font-size: clamp(17px, 1.6vw, 22px);
-  font-weight: 650;
+  font-weight: var(--fw-head);
   line-height: 1.2;
   letter-spacing: -0.02em;
   color: var(--ink);
@@ -443,7 +322,7 @@
 }
 
 /* Short desktop windows: keep the drawing room by trimming copy */
-@media (min-width: 1025px) and (max-height: 760px) {
+@media (min-width: 901px) and (max-height: 760px) {
   .how-paper-step p {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -484,7 +363,7 @@
 .about-award-card h3 {
   font-family: var(--display);
   font-size: clamp(19px, 2.2vw, 24px);
-  font-weight: 650;
+  font-weight: var(--fw-head);
   letter-spacing: -0.025em;
   color: var(--ink);
   margin: 0 0 10px;
@@ -510,7 +389,7 @@
 .about-contact-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
-  gap: clamp(32px, 5vw, 56px);
+  gap: var(--split-gap);
   align-items: center;
 }
 
@@ -532,13 +411,14 @@
   gap: 12px;
 }
 
+/* the site's standard card */
 .about-contact-details {
   display: flex;
   flex-direction: column;
   gap: 16px;
-  background: color-mix(in srgb, var(--ink) 2%, var(--paper));
-  border: 1px solid var(--line);
-  padding: clamp(20px, 2.5vw, 28px);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+  padding: var(--card-pad);
   border-radius: var(--r-lg);
 }
 
@@ -556,7 +436,7 @@
 
 .about-detail-text span {
   display: block;
-  font-size: 11.5px;
+  font-size: var(--fs-label);
   font-family: var(--mono);
   text-transform: uppercase;
   letter-spacing: 0.1em;
@@ -579,10 +459,11 @@
 }
 
 /* ── RESPONSIVE DESIGN ── */
-@media (max-width: 1024px) {
+/* the same breakpoints as the rest of the site (900 and 640), so pages never disagree between them */
+@media (max-width: 900px) {
   .about-overview-grid {
     grid-template-columns: 1fr;
-    gap: 40px;
+    gap: var(--split-gap);
   }
   .about-who-sticky {
     position: static;
@@ -610,15 +491,12 @@
   }
   .about-contact-grid {
     grid-template-columns: 1fr;
-    gap: 32px;
+    gap: var(--split-gap);
   }
 }
 
-@media (max-width: 768px) {
-  .about-sheet-head {
-    flex-direction: column;
-    align-items: flex-start;
-  }
+@media (max-width: 640px) {
+
   .about-awards-grid {
     grid-template-columns: 1fr;
   }

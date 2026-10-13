@@ -31,6 +31,7 @@ uniform mat3 uRot;
 uniform int uA;
 uniform int uB;
 uniform float uMix;
+uniform float uMorph;    // how far the field has blended into uB's shape (only the frozen gem is a different shape)
 uniform float uTime;
 uniform float uSteps;
 uniform sampler2D uBg;
@@ -125,8 +126,9 @@ vec3 toLocal(vec3 w) { return uRot * ((w - uCenter) / uScale); }
 float map(vec3 w) {
   vec3 p = toLocal(w);
   float a = shape(uA, p);
-  // two orb forms are the same field with moving numbers; only the frozen form is blended
-  float d = uMix < 0.001 || (uA != 3 && uB != 3) ? a : mix(a, shape(uB, p), uMix);
+  // two orb forms are the same field with moving numbers; only the frozen form is blended, and Studio times
+  // that blend so it happens on the plain sphere, never between the gem and the scattered orbs
+  float d = uMorph < 0.001 || (uA != 3 && uB != 3) ? a : mix(a, shape(uB, p), uMorph);
   return d * uScale;
 }
 
@@ -234,13 +236,15 @@ void main() {
   float ndv = max(dot(n, v), 0.0);
   float fres = 0.04 + 0.96 * pow(1.0 - ndv, 5.0);
 
-  // through the glass: march inside to the far side
+  // through the glass: march inside to the far side. Always take the first step: where lobes blend, the field
+  // reads smaller than the true distance, so a point just inside looked like the surface itself and the march
+  // stopped with no glass at all, showing the bare background in bands along the crease.
   vec3 r1 = refract(rd, n, 1.0 / 1.47);
   vec3 q = p - n * 0.004;
   float th = 0.0;
   for (int i = 0; i < 28; i++) {
     float d = -map(q);
-    if (d < 0.002) break;
+    if (d < 0.002 && i > 0) break;
     q += r1 * max(d, 0.02);
     th += max(d, 0.02);
   }
@@ -254,14 +258,15 @@ void main() {
   vec3 absorb = exp(-th * uDensity * (vec3(1.0) - uTint));
   vec3 col = seen * absorb;
 
-  // where the form is on its way between two shapes, so is the mark on it
+  // the mark belongs to one form at a time: when the shape changes, Studio draws the threads back into the
+  // origin before the halfway point and out again after it, so the switch happens while nothing is drawn
   vec3 lp = toLocal(p);
   vec2 uvA, uvB;
   float mark = threadsOf(uA, lp, uvA);
   vec2 uv = uvA;
   if (uMix > 0.001) {
     float mb = threadsOf(uB, lp, uvB);
-    mark = mix(mark, mb, uMix);
+    if (uMix >= 0.5) mark = mb;
     uv = mix(uvA, uvB, uMix);
   }
 

@@ -115,5 +115,3 @@ export const CONTINENTS: LonLat[][] = [
   [[172, -35], [178, -38], [174, -41], [167, -46], [171, -44]]
 ];
 
-export const isLandmass = (pt: LonLat) => CONTINENTS.some(poly => inPolygon(pt, poly));
-

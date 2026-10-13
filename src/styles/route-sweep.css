@@ -1,7 +1,7 @@
 .route-sweep {
   position: fixed;
   z-index: 100;
-  border-radius: 999px;
+  border-radius: var(--r-pill);
   overflow: hidden;
   visibility: hidden;
   pointer-events: none;

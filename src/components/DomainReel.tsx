@@ -7,6 +7,61 @@ import '../styles/domain-cinema.css';
 const CHAPTER_SEC = 4;
 const CHAPTERS = 4;
 const LOOP_SEC = CHAPTER_SEC * CHAPTERS;
+/**
+ * The reels sit in a stacked deck right where the home page's network globe lands, so they all near the viewport
+ * within a second of each other. Building a world takes 100–200 ms of main thread, so each is built ahead of
+ * time, one at a time, after the opening film has had its turn — and only while the visitor isn't scrolling:
+ * built on a plain timer, the builds landed in the middle of the hero story and froze it for up to 0.9 s.
+ * Shaders are compiled in the background (compileWorld) before a reel's first frame.
+ */
+const WARM_AFTER_MS = 6000;
+const WARM_GAP_MS = 700;
+/** How long the page must have been still before a build may start. */
+const WARM_QUIET_MS = 600;
+
+type WarmTask = { run: () => void; cancelled: boolean };
+const warmQueue: WarmTask[] = [];
+let warmPumping = false;
+let listening = false;
+let lastScrollAt = 0;
+const idle = (fn: () => void) =>
+  window.requestIdleCallback ? window.requestIdleCallback(fn) : window.setTimeout(fn, 0);
+
+function pumpWarm() {
+  while (warmQueue[0]?.cancelled) warmQueue.shift();
+  if (!warmQueue.length) {
+    warmPumping = false;
+    return;
+  }
+  const quietFor = performance.now() - lastScrollAt;
+  if (quietFor < WARM_QUIET_MS) {
+    window.setTimeout(pumpWarm, WARM_QUIET_MS - quietFor + 50);
+    return;
+  }
+  idle(() => {
+    // the visitor may have started scrolling again while this waited for an idle moment
+    if (performance.now() - lastScrollAt < WARM_QUIET_MS) return pumpWarm();
+    warmQueue.shift()?.run();
+    window.setTimeout(pumpWarm, WARM_GAP_MS);
+  });
+}
+
+/** Queues a build for a quiet moment; returns a cancel function. */
+function warmWhenQuiet(run: () => void): () => void {
+  const task: WarmTask = { run, cancelled: false };
+  warmQueue.push(task);
+  if (!warmPumping) {
+    warmPumping = true;
+    if (!listening) {
+      listening = true;
+      window.addEventListener('scroll', () => (lastScrollAt = performance.now()), { passive: true });
+    }
+    window.setTimeout(pumpWarm, WARM_AFTER_MS);
+  }
+  return () => {
+    task.cancelled = true;
+  };
+}
 
 export interface DomainReelProps {
   index: number;
@@ -93,7 +148,7 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
       });
 
       const exit = playingRef.current && act === CHAPTERS - 1 ? span(progress, 0.9, 1) : 0;
-      painter?.paint({ act, progress, exit, pointer, t: reduced ? 0 : now / 1000 });
+      if (compiled) painter?.paint({ act, progress, exit, pointer, t: reduced ? 0 : now / 1000 });
 
       rafId = animating ? requestAnimationFrame(render) : 0;
       if (!rafId) last = 0;
@@ -110,20 +165,42 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
     });
     ro.observe(container);
 
-    // Worlds are built the first time the reel nears the viewport, not all six on page load.
+    // Nothing is drawn until the world's shaders are compiled, so the first frame never stalls the page.
+    let ready: Promise<void> | null = null;
+    let compiled = false;
+    let disposed = false;
+    const build = () => {
+      if (!ready) {
+        const p = (painter = createWorldPainter(index, canvas) ?? createInkPainter(index, canvas));
+        resize();
+        ready = (p ? p.prepare() : Promise.resolve()).then(() => {
+          compiled = true;
+        });
+      }
+      return ready;
+    };
+    const buildThenDraw = () => build().then(() => !disposed && start());
+
+    // Worlds are built the first time the reel nears the viewport, not all six on page load...
     const io = new IntersectionObserver(
       ([entry]) => {
         visible = entry.isIntersecting;
-        if (!visible) return;
-        if (!painter) {
-          painter = createWorldPainter(index, canvas) ?? createInkPainter(index, canvas);
-          resize();
-        }
-        start();
+        if (visible) buildThenDraw();
       },
       { rootMargin: '200px 0px' }
     );
     io.observe(container);
+
+    // ...and ahead of that, built and drawn once off screen at a quiet moment. A visitor who never pauses on the
+    // way down still gets it built a couple of screens early rather than as it arrives.
+    const cancelWarm = warmWhenQuiet(buildThenDraw);
+    const near = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) buildThenDraw();
+      },
+      { rootMargin: '200% 0px' }
+    );
+    near.observe(container);
 
     const onPointerMove = (e: PointerEvent) => {
       const r = container.getBoundingClientRect();
@@ -138,10 +215,13 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
     container.addEventListener('pointerleave', onPointerLeave);
 
     return () => {
+      disposed = true;
       cancelAnimationFrame(rafId);
+      cancelWarm();
       redrawRef.current = () => {};
       ro.disconnect();
       io.disconnect();
+      near.disconnect();
       container.removeEventListener('pointermove', onPointerMove);
       container.removeEventListener('pointerleave', onPointerLeave);
       painter?.dispose();
@@ -185,7 +265,8 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
         </button>
       </div>
 
-      <p className="reel__caption" aria-live="polite">
+      {/* silent while the reel advances on its own; the chapter buttons already name each chapter */}
+      <p className="reel__caption" aria-live={isPlaying ? 'off' : 'polite'}>
         <span>{domain.chapters[activeAct]?.tag}</span>
         {domain.chapters[activeAct]?.title}
       </p>

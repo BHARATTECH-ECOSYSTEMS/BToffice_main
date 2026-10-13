@@ -108,7 +108,7 @@ export function Nav() {
   const [hover, setHover] = useState(-1);
   const [inCaps, setInCaps] = useState(false);
   const linksRef = useRef<HTMLDivElement>(null);
-  const [hl, setHl] = useState({ x: 0, w: 0, glide: false });
+  const [hl, setHl] = useState<{ x: number; w: number; glide: boolean; tone?: HueName }>({ x: 0, w: 0, glide: false });
   const progressRef = useRef<HTMLDivElement>(null);
   const chapter = useChapterProgress(home, progressRef);
   const { peek, open: openPeek, close: closePeek, hold } = usePeek();
@@ -122,7 +122,7 @@ export function Nav() {
       if (raf) return;
       raf = requestAnimationFrame(() => {
         raf = 0;
-        const y = window.scrollY;
+        const y = pageScroll();
         const isCompact = y > 24;
         setCompact((p) => (p !== isCompact ? isCompact : p));
 
@@ -167,7 +167,7 @@ export function Nav() {
     const y0 = window.scrollY;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closePeek(true);
     const onDown = (e: PointerEvent) => !(e.target as Element).closest('.nav') && closePeek(true);
-    const onScroll = () => Math.abs(window.scrollY - y0) > 80 && closePeek(true);
+    const onScroll = () => Math.abs(pageScroll() - y0) > 80 && closePeek(true);
     window.addEventListener('keydown', onKey);
     window.addEventListener('pointerdown', onDown);
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -192,14 +192,31 @@ export function Nav() {
   const openIdx = peek ? LINKS.findIndex((l) => l.peek === peek) : -1;
   const lit = hover >= 0 ? hover : openIdx >= 0 ? openIdx : active;
 
-  // the highlight glides between links; the first time it appears it fades in place instead of sliding from 0
+  // The highlight glides between links. When it comes back after fading out it appears in place instead of
+  // sliding over from wherever it was last; a quick return, before the fade has finished, still glides.
+  const litBefore = useRef(-1);
+  const hidAt = useRef(-Infinity);
   useLayoutEffect(() => {
     const b = linksRef.current?.querySelectorAll<HTMLElement>('a, button')[lit];
     if (b) {
-      setHl((p) => ({ x: b.offsetLeft, w: b.offsetWidth, glide: p.w > 0 }));
+      const glide = litBefore.current >= 0 || performance.now() - hidAt.current < 200;
+      setHl({ x: b.offsetLeft, w: b.offsetWidth, glide, tone: LINKS[lit].tone });
       const r = b.getBoundingClientRect();
       setCaret(r.left + r.width / 2);
-    }
+    } else if (litBefore.current >= 0) hidAt.current = performance.now();
+    litBefore.current = lit;
+  }, [lit]);
+  // The links change width when the web font arrives, after the highlight was first placed; follow them.
+  useEffect(() => {
+    const el = linksRef.current;
+    const b = el?.querySelectorAll<HTMLElement>('a, button')[lit];
+    if (!el || !b) return;
+    const ro = new ResizeObserver(() =>
+      setHl((p) => (p.x === b.offsetLeft && p.w === b.offsetWidth ? p : { ...p, x: b.offsetLeft, w: b.offsetWidth, glide: false })),
+    );
+    ro.observe(el);
+    ro.observe(b);
+    return () => ro.disconnect();
   }, [lit]);
 
   const go = useCallback(
@@ -271,7 +288,8 @@ export function Nav() {
             aria-hidden="true"
             data-show={lit >= 0 || undefined}
             data-glide={hl.glide || undefined}
-            style={{ transform: `translateX(${hl.x}px)`, width: hl.w, ...(lit >= 0 ? toneStyle(LINKS[lit].tone) : {}) }}
+            // keeps the last link's tone while it fades out, instead of snapping to the fallback colour
+            style={{ transform: `translateX(${hl.x}px)`, width: hl.w, ...(hl.tone ? toneStyle(hl.tone) : {}) }}
           />
           {LINKS.map((l, i) =>
             l.section ? (

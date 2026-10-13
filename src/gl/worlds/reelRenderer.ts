@@ -32,6 +32,20 @@ export function getReelRenderer(): THREE.WebGLRenderer | null {
   return renderer;
 }
 
+/**
+ * Compiles every shader `world` will need, without blocking the page: the browser links them in the background
+ * (parallel shader compile) and the promise settles when they are ready. Drawing a world for the first time
+ * without this compiled them on the spot, which froze the page for 200–400 ms per reel.
+ */
+export async function compileWorld(world: DomainWorld): Promise<void> {
+  const r = getReelRenderer();
+  if (!r) return;
+  const { scene, camera } = world;
+  if (!scene.environment) scene.environment = environment;
+  // covers objects a later chapter reveals too: the compile walks hidden objects' materials as well
+  await r.compileAsync(scene, camera);
+}
+
 /** Insets (device pixels) that the reel's own UI covers, plus breathing room on every side. */
 export interface ReelInsets {
   top: number;

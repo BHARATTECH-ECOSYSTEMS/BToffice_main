@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState, useCallback, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router';
 import { ArrowUpRight } from 'lucide-react';
 import { useScene } from '../gl/Scene';
+import { pageScroll, trackBox } from './trackBox';
 import {
   type Palette,
   type Pt,
@@ -50,7 +51,7 @@ const STEPS: StepData[] = [
 
 const STEP_COUNT = STEPS.length;
 
-/** Below 1024px the CSS drops `position: sticky`, so the section scrolls like normal content. */
+/** At 900px and below the CSS drops `position: sticky`, so the section scrolls like normal content. */
 const isPinned = (track: HTMLElement) => {
   const frame = track.firstElementChild;
   return !!frame && getComputedStyle(frame).position === 'sticky';
@@ -339,18 +340,20 @@ export function HowWeWorkPipeline() {
   const trackRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { scrollTo } = useScene();
-  const [progress, setProgress] = useState(0);
-  // The draw loop reads this ref so it never restarts on React updates.
+  const stepsRef = useRef<HTMLOListElement>(null);
+  // Progress changes every scroll frame, so it lives in a ref and a CSS variable; React re-renders only when
+  // the active step changes. The draw loop reads the ref, so it never restarts on React updates.
   const progressRef = useRef(0);
-  // Wakes the draw loop after a state change (it idles off-screen and under reduced motion).
+  const [activeStep, setActiveStep] = useState(0);
+  // Wakes the draw loop after a change (it idles off-screen and under reduced motion).
   const redrawRef = useRef<() => void>(() => {});
 
-  const activeStep = Math.min(STEP_COUNT - 1, Math.floor(progress * STEP_COUNT));
-
-  useEffect(() => {
-    progressRef.current = progress;
+  const setProgress = useCallback((p: number) => {
+    progressRef.current = p;
+    stepsRef.current?.style.setProperty('--how-progress', p.toFixed(4));
+    setActiveStep(Math.min(STEP_COUNT - 1, Math.floor(p * STEP_COUNT)));
     redrawRef.current();
-  }, [progress]);
+  }, []);
 
   const handleStepClick = useCallback(
     (index: number) => {
@@ -366,7 +369,7 @@ export function HowWeWorkPipeline() {
       // Land after the walk, while the station is being drawn.
       scrollTo(window.scrollY + rect.top + ((index + 0.7) / STEP_COUNT) * totalScrollable);
     },
-    [scrollTo]
+    [scrollTo, setProgress]
   );
 
   useEffect(() => {
@@ -476,30 +479,47 @@ export function HowWeWorkPipeline() {
     });
     io.observe(canvas);
 
-    const onScroll = () => {
-      if (!isPinned(track)) return;
-      const rect = track.getBoundingClientRect();
-      const totalScrollable = rect.height - window.innerHeight;
+    // The track's cached box and pinned state, re-read only when layout changes, so scrolling never
+    // forces the browser to recalculate layout.
+    let pinned = false;
+    const { box, release } = trackBox(track, () => {
+      pinned = isPinned(track);
+    });
+    let scrollRaf = 0;
+    let last = -1;
+    const measure = () => {
+      scrollRaf = 0;
+      if (!pinned) return;
+      const totalScrollable = box.height - window.innerHeight;
       if (totalScrollable <= 0) return;
-      setProgress(clamp01(-rect.top / totalScrollable));
+      const p = clamp01((pageScroll() - box.top) / totalScrollable);
+      // off screen the value stops changing, so there is nothing to update
+      if (p === last) return;
+      last = p;
+      setProgress(p);
+    };
+    const onScroll = () => {
+      if (!scrollRaf) scrollRaf = requestAnimationFrame(measure);
     };
 
     // Unpinned layouts have no scroll story, so open on the first step already drawn.
-    if (!isPinned(track)) setProgress(0.999 / STEP_COUNT);
+    if (!pinned) setProgress(0.999 / STEP_COUNT);
 
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onScroll);
-    onScroll();
+    measure();
 
     return () => {
       cancelAnimationFrame(rafId);
+      cancelAnimationFrame(scrollRaf);
+      release();
       redrawRef.current = () => {};
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
       ro.disconnect();
       io.disconnect();
     };
-  }, []);
+  }, [setProgress]);
 
   return (
     <div className="how-scroll-track" ref={trackRef}>
@@ -518,7 +538,7 @@ export function HowWeWorkPipeline() {
             <canvas ref={canvasRef} className="how-paper-canvas" aria-hidden="true" />
           </div>
 
-          <ol className="how-paper-steps" style={{ '--how-progress': progress } as CSSProperties}>
+          <ol className="how-paper-steps" ref={stepsRef}>
             {STEPS.map((s, idx) => {
               const state = idx === activeStep ? 'is-active' : idx < activeStep ? 'is-done' : '';
               return (

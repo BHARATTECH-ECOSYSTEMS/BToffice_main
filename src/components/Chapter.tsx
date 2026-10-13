@@ -7,7 +7,9 @@ import { pageScroll, trackBox } from './trackBox';
 /**
  * A pinned chapter: the section is several screens tall, its frame stays on screen, and scrolling walks
  * through `n` steps. `step` changes once per step; `progress` (0…1 through the whole chapter) is kept in a
- * ref and in the `--p` custom property, so 3D poses and CSS can follow the scroll without re-rendering.
+ * ref, so 3D poses can follow the scroll without re-rendering. Progress through the current step goes to
+ * `--local` on the elements marked `data-local` only: custom properties inherit, so writing it on the section
+ * made the browser restyle the whole section every frame.
  */
 export function usePinned(ref: RefObject<HTMLElement>, n: number) {
   const [step, setStep] = useState(0);
@@ -20,20 +22,18 @@ export function usePinned(ref: RefObject<HTMLElement>, n: number) {
     // positions come from the cached box, so scrolling never forces the browser to recalculate layout
     const { box, release } = trackBox(el);
     let raf = 0;
-    let shown = '';
+    let shown = -1;
     const measure = () => {
       raf = 0;
       const run = Math.max(1, box.height - window.innerHeight);
       const p = Math.min(1, Math.max(0, (pageScroll() - box.top) / run));
       progress.current = p;
       const s = Math.min(n - 1, Math.floor(p * n));
-      const local = (p * n - s).toFixed(4);
-      // off-screen the values stop changing, so there is nothing to write
-      const next = `${p.toFixed(4)} ${local}`;
-      if (next !== shown) {
-        shown = next;
-        el.style.setProperty('--p', p.toFixed(4));
-        el.style.setProperty('--local', local);
+      const local = Math.round((p * n - s) * 1e4) / 1e4;
+      // off-screen the value stops changing, so there is nothing to write
+      if (local !== shown) {
+        shown = local;
+        el.querySelectorAll<HTMLElement>('[data-local]').forEach((m) => m.style.setProperty('--local', String(local)));
       }
       setStep((prev) => (prev === s ? prev : s));
     };
@@ -88,29 +88,6 @@ export function Chapter({
     <section id={id} ref={innerRef} className={`chapter ${className}`} style={toneStyle(tone, { '--n': n, '--screens': screens } as CSSProperties)}>
       <div className="chapter-pin">{children}</div>
     </section>
-  );
-}
-
-/** Numbered tabs that fill as their step is read; pressing one scrolls to it. */
-export function StepTabs({ labels, step, goTo, tones, className = '' }: { labels: string[]; step: number; goTo: (i: number) => void; tones?: HueName[]; className?: string }) {
-  return (
-    <div className={`step-tabs ${className}`} role="tablist" aria-label="Steps">
-      {labels.map((l, i) => (
-        <button
-          key={l}
-          role="tab"
-          aria-selected={i === step}
-          data-done={i < step || undefined}
-          onClick={() => goTo(i)}
-          style={tones ? toneStyle(tones[i]) : undefined}
-        >
-          <span className="step-tab-bar" aria-hidden="true">
-            <span />
-          </span>
-          <b>{l}</b>
-        </button>
-      ))}
-    </div>
   );
 }
 

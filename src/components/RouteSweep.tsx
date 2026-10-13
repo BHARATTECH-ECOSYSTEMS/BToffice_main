@@ -2,6 +2,9 @@ import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import '../styles/route-sweep.css';
 
+/** How long the old page fades before the new one mounts. Every click waits this long, so it stays short. */
+const LEAVE_MS = 120;
+
 /** Keep the transition inside the navigation, with the page changing beneath it. */
 export function RouteSweep() {
   const ref = useRef<HTMLDivElement>(null);
@@ -58,31 +61,35 @@ export function RouteSweep() {
         Object.assign(sweep.style, { top: `${rect.top}px`, left: `${rect.left}px`, width: `${rect.width}px`, height: `${rect.height}px` });
       }
       sweep.classList.add('is-running');
+      // the site's easing tokens (the Web Animations API cannot read CSS variables itself)
+      const root = getComputedStyle(document.documentElement);
+      const ease = root.getPropertyValue('--ease').trim() || 'ease-out';
+      const easeIo = root.getPropertyValue('--ease-io').trim() || 'ease-in-out';
       // In and out as one animation, so the compositor plays it through even while the next page is
       // mounting on the main thread; chaining the exit from JS left the sweep parked over the nav.
       const sweepIn = 360;
       const sweepOut = 440;
       const total = sweepIn + 40 + sweepOut;
       const sweepDone = animate(sweep, [
-        { transform: 'translate3d(-104%,0,0)', opacity: 0, easing: 'cubic-bezier(.65,0,.35,1)' },
+        { transform: 'translate3d(-104%,0,0)', opacity: 0, easing: easeIo },
         { opacity: .88, offset: (sweepIn * .18) / total },
         { transform: 'translate3d(0,0,0)', opacity: .82, offset: sweepIn / total },
-        { transform: 'translate3d(0,0,0)', opacity: .82, offset: (sweepIn + 40) / total, easing: 'cubic-bezier(.22,1,.36,1)' },
+        { transform: 'translate3d(0,0,0)', opacity: .82, offset: (sweepIn + 40) / total, easing: ease },
         { transform: 'translate3d(104%,0,0)', opacity: 0 },
       ], { duration: total, fill: 'forwards' })?.finished;
-      animate(document.querySelector('#main'), [{ opacity: 1, transform: 'translate3d(0,0,0)' }, { opacity: .18, transform: 'translate3d(0,-8px,0)' }], { duration: 260, easing: 'ease-out', fill: 'forwards' });
+      animate(document.querySelector('#main'), [{ opacity: 1, transform: 'translate3d(0,0,0)' }, { opacity: .18, transform: 'translate3d(0,-8px,0)' }], { duration: LEAVE_MS, easing: 'ease-out', fill: 'forwards' });
       const footer = document.querySelector('.footer');
-      animate(footer, [{ opacity: 1 }, { opacity: .18 }], { duration: 260, easing: 'ease-out', fill: 'forwards' });
+      animate(footer, [{ opacity: 1 }, { opacity: .18 }], { duration: LEAVE_MS, easing: 'ease-out', fill: 'forwards' });
       timer = window.setTimeout(() => {
         const { route: to, state } = pending!;
         pending = null;
         navigate(to, state && { state });
         frame = requestAnimationFrame(() => {
-          const pageIn = animate(document.querySelector('#main'), [{ opacity: 0, transform: 'translate3d(0,18px,0)' }, { opacity: 1, transform: 'translate3d(0,0,0)' }], { duration: 560, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'both' });
+          const pageIn = animate(document.querySelector('#main'), [{ opacity: 0, transform: 'translate3d(0,18px,0)' }, { opacity: 1, transform: 'translate3d(0,0,0)' }], { duration: 560, easing: ease, fill: 'both' });
           animate(footer, [{ opacity: .18 }, { opacity: 1 }], { duration: 420, easing: 'ease-out', fill: 'forwards' });
           Promise.all([sweepDone, pageIn?.finished]).then(clear, () => {});
         });
-      }, 280);
+      }, LEAVE_MS);
     };
     document.addEventListener('click', click, true);
     return () => {

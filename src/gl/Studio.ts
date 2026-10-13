@@ -64,6 +64,13 @@ const LOOKS: Look[] = [
 ];
 /** Forms whose threads draw themselves back in as the form arrives. */
 const REDRAW = new Set([5]);
+/** Forms that are the sphere itself (the frozen gem is cut from it): the mark sits on these face on. */
+const SPHERES = new Set([0, 1, 3, 5, 7]);
+/** The one form that is a different shape rather than the orb family with other numbers. */
+const FROZEN = 3;
+/** Arm values in `orbs[3]`. */
+const NO_ARM = 0;
+const BRIDGE = 2;
 
 /** The camera's orbit: one shot per beat, in degrees round the form. */
 export interface Shot {
@@ -88,6 +95,18 @@ export interface Anchor {
   narrow: [number, number];
 }
 const ANCHOR: Anchor = { wide: [0.71, 0.5], narrow: [0.5, 0.31] };
+
+/**
+ * Where the first form sits in a w×h frame, in pixels, and the radius it fills: the same framing `frame()`
+ * computes for beat 0, so page overlays can gather to the form before the renderer has drawn anything.
+ */
+export function formOnScreen(w: number, h: number, compact: boolean, fill = 0.54) {
+  const narrow = compact || w / h < 0.9;
+  const [ax, ay] = narrow ? ANCHOR.narrow : ANCHOR.wide;
+  // at beat 0 the form's bound is its full reach, so its radius is the share of the half-height it was given
+  const share = Math.min(narrow ? fill * 0.76 : fill, (w / h) * (narrow ? 0.68 : 0.48));
+  return { x: ax * w, y: ay * h, r: (h / 2) * share };
+}
 
 // ── Canvas textures ──────────────────────────────────────────────────────────
 
@@ -231,6 +250,11 @@ const GradeShader = {
 
 // ── The studio ───────────────────────────────────────────────────────────────
 
+/** The hero bounce, in world units and seconds: the first hop after the logo forms, then every hop after. */
+const BOUNCE_FIRST = 0.34;
+const BOUNCE_REST = 0.1;
+const BOUNCE_PERIOD = 1.15;
+
 export class Studio {
   private renderer: THREE.WebGLRenderer;
   private composer: EffectComposer;
@@ -277,6 +301,10 @@ export class Studio {
   private anchor: Anchor;
   private bound = 1.06;
   private drawn = 1;
+  /** The opening's hold on the form: how far it has grown from its origin point, how much of its threads exist. */
+  private reveal = { grow: 1, draw: 1 };
+  /** When the logo finished forming (in `time`); the hero bounce counts from here. Null while it is forming. */
+  private formedAt: number | null = null;
 
   /**
    * `bare` drops the studio set (floor sweep, dust) and paints the given page colour behind the form, for
@@ -387,6 +415,7 @@ export class Studio {
       uA: { value: 0 },
       uB: { value: 0 },
       uMix: { value: 0 },
+      uMorph: { value: 0 },
       uTime: { value: 0 },
       uSteps: { value: lite ? 64 : 100 },
       uBg: { value: this.bgRT.texture },
@@ -470,6 +499,12 @@ export class Studio {
     this.beat = Math.min(this.seq.length, Math.max(0, b));
   }
 
+  /** Driven by the home opening: `grow` 0 the form is a point, 1 full size; `draw` how much of its threads exist. */
+  setReveal(grow: number, draw: number) {
+    this.reveal.grow = clamp01(grow);
+    this.reveal.draw = clamp01(draw);
+  }
+
   start() {
     if (this.running) return;
     this.running = true;
@@ -548,8 +583,10 @@ export class Studio {
     const tanH = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
     const reach = 1.06 * Math.pow((this.bound * scale) / 1.06, 0.72);
     const dist = Math.max(reach / (tanH * (narrow ? this.fill * 0.76 : this.fill)), reach / (tanH * aspect * (narrow ? 0.68 : 0.48)));
-    this.lean.x = damp(this.lean.x, this.pointer.x, 2.5, dt);
-    this.lean.y = damp(this.lean.y, this.pointer.y, 2.5, dt);
+    // with reduced motion the camera and sculpture hold still: no leaning toward the pointer, spin or sway
+    const moving = this.reduced ? 0 : 1;
+    this.lean.x = damp(this.lean.x, this.pointer.x * moving, 2.5, dt);
+    this.lean.y = damp(this.lean.y, this.pointer.y * moving, 2.5, dt);
     const s = this.shot(b);
     const goal = this.orbit({ yaw: s.yaw + this.lean.x * 4, pitch: s.pitch - this.lean.y * 2.5 }, dist);
     this.camPos.lerp(goal, 1 - Math.exp(-8 * dt));
@@ -561,20 +598,36 @@ export class Studio {
     // ── the sculpture
     // the orbs turn about the centre; whenever the mark is whole it comes back to face the viewer upright
     const spin = L('spin');
-    if (spin > 0.02) this.angle += dt * 0.3 * spin * (1 - freeze);
+    if (spin > 0.02 && moving) this.angle += dt * 0.3 * spin * (1 - freeze);
     else this.angle = damp(this.angle, Math.round(this.angle / (Math.PI * 2)) * Math.PI * 2, 2.5, dt);
-    const sway = Math.sin(life * 0.35) * 0.1 * (1 - freeze) + this.lean.x * 0.12;
-    const tilt = Math.sin(life * 0.27) * 0.04 * (1 - freeze) + this.lean.y * 0.06;
+    const sway = Math.sin(life * 0.35) * 0.1 * (1 - freeze) * moving + this.lean.x * 0.12;
+    const tilt = Math.sin(life * 0.27) * 0.04 * (1 - freeze) * moving + this.lean.y * 0.06;
     const e = new THREE.Euler(tilt, sway, this.angle, 'YXZ');
     const inv = new THREE.Matrix4().makeRotationFromEuler(e).invert();
     (this.su.uRot.value as THREE.Matrix3).setFromMatrix4(inv);
-    const bob = Math.sin(life * 0.9) * 0.05;
+    // On the hero the formed logo bounces like a ball on the floor: one big hop the moment it has formed,
+    // settling into a steady bounce that never stops. Scrolling into the story eases it back to a gentle drift.
+    if (this.reveal.grow < 0.999 || this.reveal.draw < 0.999) this.formedAt = null;
+    else if (this.formedAt === null) this.formedAt = this.time;
+    const drift = Math.sin(life * 0.9) * 0.05;
+    let bounce = 0;
+    if (this.formedAt !== null) {
+      const t = this.time - this.formedAt;
+      // |sin| meets the floor in a sharp landing and rises in a soft arc; the first hop is the big one
+      const height = BOUNCE_REST + (BOUNCE_FIRST - BOUNCE_REST) * Math.exp(-t * 1.6);
+      bounce = height * Math.abs(Math.sin((Math.PI * t) / BOUNCE_PERIOD));
+    }
+    const onHero = 1 - smooth(0, 0.6, b);
+    const bob = (bounce * onHero + drift * (1 - onHero)) * moving;
     (this.su.uCenter.value as THREE.Vector3).set(CENTER.x, CENTER.y + bob, CENTER.z);
     this.sculpture.position.copy(this.su.uCenter.value as THREE.Vector3);
-    this.su.uScale.value = scale;
+    // the camera keeps framing the full-size form (above), so a growing form rises in place instead of the
+    // shot zooming in on it; never quite zero, because the ray march divides by it
+    const grown = scale * Math.max(0.02, this.reveal.grow);
+    this.su.uScale.value = grown;
     const bound = m === 0 ? BOUNDS[a] : Math.max(BOUNDS[a], BOUNDS[n]) + 0.08;
     this.su.uBound.value = bound;
-    this.sculpture.scale.setScalar(bound * scale * 1.02);
+    this.sculpture.scale.setScalar(bound * grown * 1.02);
     this.su.uA.value = a;
     this.su.uB.value = n;
     this.su.uMix.value = m;
@@ -590,23 +643,46 @@ export class Studio {
     this.su.uIrid.value = L('irid');
     this.su.uBody.value = L('body');
     this.su.uGlow.value = L('glow');
-    const o = A.orbs.map((x, k) => mixN(x, B.orbs[k], m));
+    // Every change passes through the plain sphere instead of averaging two unrelated shapes: into the gem,
+    // the orbs gather first and the facets cut in after; out of it, the facets melt away before the orbs move.
+    let moved = m; // how far the orb numbers have gone from A's to B's
+    let morph = m; // how far the field has blended into B's shape (only matters to and from the gem)
+    if (n === FROZEN && a !== FROZEN) {
+      moved = smooth(0, 0.55, m);
+      morph = smooth(0.45, 1, m);
+    } else if (a === FROZEN && n !== FROZEN) {
+      morph = smooth(0, 0.55, m);
+      moved = smooth(0.45, 1, m);
+    }
+    this.su.uMorph.value = morph;
+    const o = A.orbs.map((x, k) => mixN(x, B.orbs[k], moved));
+    // Between bridged and armless forms the arms stay bridges, shortening as the orbs travel along them, so the
+    // change never passes through the short, failing arms of 'alone' (the values between). Near the centre the
+    // bridge is inside the sphere, and a zero-length one would divide by zero in the shader, so it is dropped.
+    const arms = [A.orbs[3], B.orbs[3]];
+    if (arms.includes(BRIDGE) && arms.includes(NO_ARM)) o[3] = o[0] > 0.05 ? BRIDGE : NO_ARM;
     (this.su.uOrbs.value as THREE.Vector4).set(o[0], o[1], o[2], o[3]);
-    this.su.uGhost.value = L('ghost');
+    // When the shape changes, the threads draw back into the origin point before halfway and out again on the
+    // new form after it, rather than being painted across the lumpy shape in between (the shader switches
+    // marks at halfway, while nothing is drawn).
+    const reshaping = m > 0 && !(SPHERES.has(a) && SPHERES.has(n));
+    const swap = !reshaping ? 1 : m < 0.5 ? 1 - smooth(0, 0.4, m) : smooth(0.6, 1, m);
+    this.su.uGhost.value = L('ghost') * swap;
     // threads erase or draw in across the change of form; entering a REDRAW form they are drawn out afresh
     const goalDraw = REDRAW.has(n) && n !== a ? smooth(0.45, 1, m) : L('draw');
     this.drawn = this.reduced ? goalDraw : damp(this.drawn, goalDraw, 10, dt);
-    this.su.uDraw.value = this.drawn;
+    this.su.uDraw.value = this.drawn * this.reveal.draw * swap;
     (this.su.uViewProj.value as THREE.Matrix4).multiplyMatrices(this.camera.projectionMatrix, this.camera.matrixWorldInverse);
 
     // ── floor
     const lift = CENTER.y + bob - scale;
     const tint = this.su.uTint.value as THREE.Color;
     this.shadow.scale.set(2.6 * scale + lift, (2.6 * scale + lift) * 0.8, 1);
-    this.shadowMat.opacity = 0.9 - freeze * 0.2;
+    // the shadow fades a little while the logo is up in the air
+    this.shadowMat.opacity = (0.9 - freeze * 0.2) * this.reveal.grow * (1 - Math.min(0.45, Math.max(0, bob) * 1.4));
     this.causticMat.color.copy(tint).lerp(this.su.uCoreCol.value as THREE.Color, clamp01(L('coreI') * 0.4));
-    this.causticMat.opacity = 0.42 + growing * 0.3;
-    this.caustic.scale.setScalar(1.5 * scale + growing * 0.6);
+    this.causticMat.opacity = (0.42 + growing * 0.3) * this.reveal.grow;
+    this.caustic.scale.setScalar(1.5 * grown + growing * 0.6);
     this.ripples.forEach(({ mesh, mat }, i) => {
       const k = (((life * 0.4 + i / 3) % 1) + 1) % 1;
       mesh.scale.setScalar(1.2 + k * 4.2);
