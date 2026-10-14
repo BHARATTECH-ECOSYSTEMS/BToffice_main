@@ -2,7 +2,7 @@ import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties } from 
 import { Arrow, toneStyle } from './ui';
 import { Cover, DomainArt, MetricsArt, SearchArt, WorkflowArt } from './art';
 import { Icon, type IconName } from './fx';
-import { AWARDS, CAPABILITIES, CAPABILITY_GROUPS, DOMAINS, EMAIL, HQ, POSTS, PRINCIPLES, PRIVACY_EMAIL, ROLES } from '../content';
+import { AWARDS, CAPABILITIES, CAPABILITY_GROUPS, DOMAINS, EMAIL, EMAIL_HREF, HQ, POSTS, PRINCIPLES, PRIVACY_EMAIL, ROLES } from '../content';
 import type { HueName } from '../gl/palette';
 
 export type PeekId = 'research' | 'capabilities' | 'services' | 'careers' | 'about' | 'contact';
@@ -290,7 +290,7 @@ function AboutPeek({ go }: { go: Go }) {
         <button className="peek-go" onClick={go('/contact')}>
           Start a conversation <Arrow size={13} />
         </button>
-        <a className="peek-mail" href={`mailto:${EMAIL}`}>
+        <a className="peek-mail" href={EMAIL_HREF} target="_blank" rel="noopener noreferrer">
           {EMAIL}
         </a>
       </div>
@@ -299,7 +299,7 @@ function AboutPeek({ go }: { go: Go }) {
 }
 
 const CONTACT_ROWS: { icon: IconName; title: string; body: string; tone: HueName; href?: string; to?: string }[] = [
-  { icon: 'mail', title: EMAIL, body: 'General inquiries, briefings & early access.', tone: 'violet', href: `mailto:${EMAIL}` },
+  { icon: 'mail', title: EMAIL, body: 'General inquiries, briefings & early access.', tone: 'violet', href: EMAIL_HREF },
   { icon: 'flask', title: 'Research collaboration', body: 'For universities, fellows & foundational partners.', tone: 'saffron', to: '/contact' },
   { icon: 'shield', title: PRIVACY_EMAIL, body: 'Data governance, security & compliance queries.', tone: 'tangerine', href: `mailto:${PRIVACY_EMAIL}` },
   { icon: 'pin', title: HQ, body: 'Engineered in Bharat for the world.', tone: 'violet', to: '/about' },
@@ -312,7 +312,7 @@ function ContactPeek({ go }: { go: Go }) {
         {CONTACT_ROWS.map((r, k) => (
           <li key={r.title} style={toneStyle(r.tone, { '--k': k } as CSSProperties)}>
             {r.href ? (
-              <a className="peek-row" href={r.href}>
+              <a className="peek-row" href={r.href} {...(r.href.startsWith('http') ? { target: '_blank', rel: 'noopener noreferrer' } : {})}>
                 <span className="peek-icon">
                   <Icon name={r.icon} size={16} />
                 </span>
@@ -343,7 +343,7 @@ function ContactPeek({ go }: { go: Go }) {
         <button className="peek-go" onClick={go('/contact')}>
           Send a brief <Arrow size={13} />
         </button>
-        <a className="peek-mail" href={`mailto:${EMAIL}`}>
+        <a className="peek-mail" href={EMAIL_HREF} target="_blank" rel="noopener noreferrer">
           {EMAIL}
         </a>
       </div>

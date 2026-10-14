@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageHero, Quiet } from '../components/PageHero';
 import { Arrow, Reveal, toneStyle } from '../components/ui';
-import { DEPT_TONES, EMAIL, ROLES, VALUES } from '../content';
+import { DEPT_TONES, EMAIL, EMAIL_HREF, ROLES, VALUES } from '../content';
 import { Icon, type IconName } from '../components/fx';
 import { useScene } from '../gl/Scene';
 import { DomainArt } from '../components/art';
@@ -163,7 +163,7 @@ export function Careers() {
           </ul>
           {roles.length === 0 && (
             <p className="empty">
-              No roles match. Write to us anyway at <a href={`mailto:${EMAIL}`}>{EMAIL}</a>
+              No roles match. Write to us anyway at <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer">{EMAIL}</a>
             </p>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { Link } from 'react-router';
 import { Arrow } from '../components/ui';
-import { EMAIL, HQ } from '../content';
+import { EMAIL, EMAIL_HREF, HQ } from '../content';
 
 export function Finale() {
   return (
@@ -15,7 +15,7 @@ export function Finale() {
             <Link to="/contact" className="btn btn-primary btn-lg">
               Start a conversation <Arrow />
             </Link>
-            <a href={`mailto:${EMAIL}`} className="btn btn-ghost btn-lg">
+            <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-lg">
               {EMAIL}
             </a>
           </div>

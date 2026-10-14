@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { PageHero, Quiet } from '../components/PageHero';
+import { OfficeMap } from '../components/OfficeMap';
+import { useScene } from '../gl/Scene';
+import '../styles/contact.css';
 import { Accordion, ThreadMark } from '../sections/Faq';
 import { Arrow, Headline, Reveal, toneStyle } from '../components/ui';
-import { CONTACT_FAQ, CONTACT_NEEDS, EMAIL, HQ, HQ_MAP } from '../content';
+import { CONTACT_FAQ, CONTACT_NEEDS, EMAIL, EMAIL_HREF, HQ, HQ_MAP } from '../content';
 import type { HueName } from '../gl/palette';
 
 const NEED_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
@@ -10,6 +13,7 @@ const NEED_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tang
 export function Contact() {
   const [need, setNeed] = useState(0);
   const [sent, setSent] = useState(false);
+  const { scrollTo } = useScene();
 
   // there is no backend yet: the brief opens in the visitor's own mail app, and the page says so
   const submit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -23,15 +27,71 @@ export function Contact() {
 
   return (
     <>
-      <PageHero
-        tone="violet"
-        title={['Let’s build', 'what comes next.']}
-        lede="Direct access to our research and engineering teams. Every message is read by a person."
-      />
-      <Quiet>
-        <div className="wrap">
-          <div className="bento contact-bento">
-            <Reveal className="cell contact-form">
+      <PageHero tone="violet" title={['Let’s build', 'what comes next.']} lede="Direct access to our research and engineering teams. Every message is read by a person.">
+        <div className="contact-hero-actions">
+          <a
+            href="#brief"
+            className="btn btn-primary"
+            onClick={(e) => {
+              e.preventDefault();
+              const brief = document.getElementById('brief');
+              if (brief) scrollTo(brief);
+            }}
+          >
+            Send a brief <Arrow dir="down" />
+          </a>
+          <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
+            {EMAIL} <Arrow />
+          </a>
+        </div>
+      </PageHero>
+      <Quiet id="brief">
+        <div className="wrap wrap-sheet">
+          <div className="contact-sheet">
+            <div className="contact-intro">
+              <p className="cell-label">Contact</p>
+              <Headline tone="violet" lines={['Tell us what', 'you are building.']} />
+              <ul className="contact-rows">
+                <Reveal as="li" style={toneStyle('violet')} delay={60}>
+                  <span className="icon-tile">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M4 6h16v12H4zM4 7l8 6 8-6" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p>Questions, or more detail before a brief</p>
+                    <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer" className="text-link">
+                      {EMAIL}
+                    </a>
+                  </div>
+                </Reveal>
+                <Reveal as="li" style={toneStyle('tangerine')} delay={120}>
+                  <span className="icon-tile">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p>Headquarters</p>
+                    <a href={HQ_MAP} target="_blank" rel="noopener noreferrer" className="text-link">
+                      {HQ} <Arrow dir="up-right" size={12} />
+                    </a>
+                  </div>
+                </Reveal>
+                <Reveal as="li" style={toneStyle('saffron')} delay={180}>
+                  <span className="icon-tile">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3" />
+                    </svg>
+                  </span>
+                  <div>
+                    <p>Research collaboration</p>
+                    <b>For universities, institutions and foundational partners.</b>
+                  </div>
+                </Reveal>
+              </ul>
+            </div>
+            <Reveal className="cell contact-form" delay={100}>
               <p className="cell-label">Send a brief</p>
               <form onSubmit={submit}>
                 <fieldset>
@@ -68,49 +128,32 @@ export function Contact() {
                     Open in my email app <Arrow />
                   </button>
                   <p className="form-note" aria-live="polite">
-                    {sent ? 'Your email app should have opened with the brief ready to send. Nothing has been sent yet.' : 'This opens your email app with the brief filled in; nothing is sent from this page.'}
+                    {sent
+                      ? 'Your email app should have opened with the brief ready to send. Nothing has been sent yet.'
+                      : 'This opens your email app with the brief filled in; nothing is sent from this page.'}
                   </p>
                 </div>
               </form>
             </Reveal>
-            <div className="contact-side">
-              <Reveal className="cell cell-row" style={toneStyle('violet')} delay={80}>
-                <span className="icon-tile">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M4 6h16v12H4zM4 7l8 6 8-6" />
-                  </svg>
-                </span>
-                <div>
-                  <h3>Email</h3>
-                  <a href={`mailto:${EMAIL}`} className="text-link">
-                    {EMAIL}
-                  </a>
-                </div>
-              </Reveal>
-              <Reveal className="cell cell-row" style={toneStyle('tangerine')} delay={140}>
-                <span className="icon-tile">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21zM12 12a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
-                  </svg>
-                </span>
-                <div>
-                  <h3>Headquarters</h3>
-                  <a href={HQ_MAP} target="_blank" rel="noopener noreferrer" className="text-link">
-                    {HQ} <Arrow dir="up-right" size={12} />
-                  </a>
-                </div>
-              </Reveal>
-              <Reveal className="cell cell-row" style={toneStyle('saffron')} delay={200}>
-                <span className="icon-tile">
-                  <svg viewBox="0 0 24 24" aria-hidden="true">
-                    <path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3" />
-                  </svg>
-                </span>
-                <div>
-                  <h3>Research collaboration</h3>
-                  <p>For universities, institutions and foundational partners.</p>
-                </div>
-              </Reveal>
+          </div>
+        </div>
+      </Quiet>
+      <Quiet>
+        <div className="wrap visit">
+          <Reveal className="visit-card">
+            <OfficeMap />
+          </Reveal>
+          <div className="visit-copy">
+            <p className="cell-label">Headquarters</p>
+            <Headline tone="tangerine" lines={['Visit us', 'in Kanpur.']} />
+            <p className="lede">Our research and engineering teams work from {HQ}. Write to us before you visit, so the right people are there to meet you.</p>
+            <div className="visit-actions">
+              <a href={HQ_MAP} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+                Get directions <Arrow dir="up-right" />
+              </a>
+              <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
+                Email us first <Arrow />
+              </a>
             </div>
           </div>
         </div>

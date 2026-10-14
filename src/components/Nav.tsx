@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import { Arrow, Brand, toneStyle } from './ui';
-import { CHAPTERS, EMAIL, EMPLOYEE_LOGIN_URL } from '../content';
+import { CHAPTERS, EMAIL, EMAIL_HREF, EMPLOYEE_LOGIN_URL } from '../content';
 import { useScene } from '../gl/Scene';
 import { NavPeek, type PeekId } from './NavPeek';
 import type { HueName } from '../gl/palette';
@@ -100,7 +100,7 @@ function useChapterProgress(enabled: boolean, bars: RefObject<HTMLDivElement>) {
 export function Nav() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { scrollTo, lenis } = useScene();
+  const { scrollTo, glideTo, lenis } = useScene();
   const home = pathname === '/';
   const [compact, setCompact] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -223,12 +223,13 @@ export function Nav() {
     (l: (typeof LINKS)[number]) => {
       setOpen(false);
       if (!l.section) return;
+      // a short glide in, not the whole way: gliding through every pinned film in between stuttered
       if (home) {
         const el = document.getElementById(l.section);
-        if (el) scrollTo(el);
+        if (el) glideTo(el);
       } else navigate('/', { state: { scrollTo: l.section } });
     },
-    [home, navigate, scrollTo],
+    [home, navigate, glideTo],
   );
 
   const fromPeek = useCallback(
@@ -236,11 +237,11 @@ export function Nav() {
       closePeek(true);
       if (to === pathname && section) {
         const el = document.getElementById(section);
-        if (el) scrollTo(el);
-      } else if (to === pathname) scrollTo(0);
+        if (el) glideTo(el);
+      } else if (to === pathname) glideTo(0);
       else navigate(to, section ? { state: { scrollTo: section } } : undefined);
     },
-    [closePeek, navigate, pathname, scrollTo],
+    [closePeek, navigate, pathname, glideTo],
   );
 
   const toChapter = (id: string) => {
@@ -356,7 +357,7 @@ export function Nav() {
           <a href={EMPLOYEE_LOGIN_URL} className="btn btn-primary" tabIndex={open ? 0 : -1} target="_blank" rel="noopener noreferrer">
             Employee login <Arrow />
           </a>
-          <a href={`mailto:${EMAIL}`} className="nav-sheet-mail" tabIndex={open ? 0 : -1}>
+          <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer" className="nav-sheet-mail" tabIndex={open ? 0 : -1}>
             {EMAIL}
           </a>
         </div>

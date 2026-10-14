@@ -10,7 +10,7 @@ import {
 import { Reveal } from '../components/ui';
 import { PageHero } from '../components/PageHero';
 import { HowWeWorkPipeline } from '../components/HowWeWorkPipeline';
-import { AWARDS, EMAIL, HQ, HQ_MAP, PRODUCTS } from '../content';
+import { AWARDS, EMAIL, EMAIL_HREF, HQ, HQ_MAP, PRODUCTS } from '../content';
 import '../styles/company-about.css';
 
 
@@ -196,7 +196,7 @@ export function About() {
                   <Mail className="about-detail-icon" size={18} />
                   <div className="about-detail-text">
                     <span>Direct Inquiries</span>
-                    <a href={`mailto:${EMAIL}`}>{EMAIL}</a>
+                    <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer">{EMAIL}</a>
                   </div>
                 </div>
 

@@ -362,7 +362,11 @@ export function LayerStack({ names, active, tones }: { names: string[]; active: 
             style={{ '--i': i, '--n': names.length, '--tone': tones[i] } as CSSProperties}
           >
             <svg viewBox="0 0 300 300" className="plate-art">
-              <PlateArt i={i} />
+              {/* drawn at 84% towards the plate's top edge, so the bottom strip stays clear for the name: several
+                  drawings ran to the plate's corner and sat under it (x' = 0.84x + 24, y' = 0.84y + 1.6) */}
+              <g transform="translate(24 1.6) scale(0.84)">
+                <PlateArt i={i} />
+              </g>
             </svg>
             <span className="stack-chip">
               <b>{n}</b>

@@ -3,6 +3,9 @@
 import type { HueName } from './gl/palette';
 
 export const EMAIL = 'hello@bharattechorigin.com';
+/** Gmail's compose window, addressed to `to`: the site's email links open this in a new tab instead of a mail app. */
+export const gmailCompose = (to: string) => `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}`;
+export const EMAIL_HREF = gmailCompose(EMAIL);
 export const PRIVACY_EMAIL = 'privacy@bharattechorigin.com';
 
 const isLocal = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);

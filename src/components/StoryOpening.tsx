@@ -125,6 +125,9 @@ export function StoryOpening({ hero, onReveal }: Props) {
         defaults: { ease: 'power3.out' },
         onComplete: () => {
           plays = false;
+          // the component stays mounted (it only stops rendering), so its listeners go now, not on unmount:
+          // left attached, the scroll one kept reading the page position on every scroll of the visit
+          detach();
           setDone(true);
         },
       });
@@ -186,13 +189,14 @@ export function StoryOpening({ hero, onReveal }: Props) {
       if (document.hidden) tl.pause();
       document.addEventListener('visibilitychange', onVisible);
 
-      return () => {
+      const detach = () => {
         window.removeEventListener('wheel', hurry);
         window.removeEventListener('touchstart', hurry);
         window.removeEventListener('keydown', hurry);
         window.removeEventListener('scroll', finish);
         document.removeEventListener('visibilitychange', onVisible);
       };
+      return detach;
     }, el);
 
     return () => {

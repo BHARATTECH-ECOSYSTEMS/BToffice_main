@@ -417,20 +417,6 @@
   margin-bottom: 4px;
 }
 
-.contact-bento {
-  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
-}
-.contact-side {
-  display: grid;
-  gap: 16px;
-  grid-template-rows: repeat(3, 1fr);
-  align-content: stretch;
-}
-.contact-side .cell {
-  height: 100%;
-  display: flex;
-  align-items: center;
-}
 .contact-form form {
   display: grid;
   gap: 24px;
@@ -2490,10 +2476,6 @@
 .how-panel {
     grid-template-columns: minmax(0, 1fr);
   }
-  .contact-side {
-    grid-template-rows: auto;
-  }
-
   .network-visual {
     height: 420px;
   }

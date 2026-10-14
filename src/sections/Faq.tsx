@@ -2,13 +2,14 @@ import { useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Arrow, Headline, Reveal } from '../components/ui';
 import { useQuiet } from '../gl/Scene';
-import { EMAIL, FAQ } from '../content';
+import { EMAIL, EMAIL_HREF, FAQ } from '../content';
 import { ORIGIN_POINT, threadPaths } from '../gl/threads';
 import type { HueName } from '../gl/palette';
 
 /** An accordion whose panels open to their real height. */
-export function Accordion({ items, tone = 'cobalt', tags }: { items: { q: string; a: string }[]; tone?: HueName; tags?: string[] }) {
-  const [open, setOpen] = useState<number | null>(0);
+/** `initial` is the question open on arrival; null starts with every question closed. */
+export function Accordion({ items, tone = 'cobalt', tags, initial = 0 }: { items: { q: string; a: string }[]; tone?: HueName; tags?: string[]; initial?: number | null }) {
+  const [open, setOpen] = useState<number | null>(initial);
   return (
     <div className="accordion" style={{ '--tone': `var(--${tone})` } as React.CSSProperties}>
       {items.map((f, i) => (
@@ -77,7 +78,7 @@ export function Faq() {
                 <Link to="/contact" className="btn btn-light">
                   Write to us <Arrow />
                 </Link>
-                <a href={`mailto:${EMAIL}`} className="faq-mail">
+                <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer" className="faq-mail">
                   {EMAIL}
                 </a>
               </div>
@@ -85,7 +86,7 @@ export function Faq() {
           </Reveal>
         </div>
         <Reveal delay={120}>
-          <Accordion items={FAQ} tone="violet" tags={TAGS} />
+          <Accordion items={FAQ} tone="violet" tags={TAGS} initial={null} />
         </Reveal>
       </div>
     </section>

@@ -49,11 +49,13 @@
 
 /* ── 2. Stacking deck ─────────────────────────────────────────────────────── */
 
-/* the cards take the hero's warm off-white instead of pure white */
-.section.research .stack-card__inner {
+/* the cards take the hero's warm off-white instead of pure white, on Home and on the Research page */
+.section.research .stack-card__inner,
+.research-domains-section .stack-card__inner {
   background: var(--bg-2);
 }
-.section.research .stack-card__tags li {
+.section.research .stack-card__tags li,
+.research-domains-section .stack-card__tags li {
   background: color-mix(in srgb, var(--ink) 6%, var(--bg-2));
 }
 

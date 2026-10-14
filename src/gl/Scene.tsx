@@ -19,6 +19,8 @@ interface SceneApi {
   lenis: Lenis | null;
   register: (entry: Entry) => () => void;
   scrollTo: (target: HTMLElement | number, immediate?: boolean) => void;
+  /** A smooth arrival at a far section without gliding the whole way (see the implementation). */
+  glideTo: (target: HTMLElement | number) => void;
 }
 
 const SceneContext = createContext<SceneApi | null>(null);
@@ -101,6 +103,7 @@ export function SceneProvider({ children }: { children: ReactNode }) {
       };
     },
     scrollTo: (t) => (typeof t === 'number' ? window.scrollTo(0, t) : t.scrollIntoView()),
+    glideTo: (t) => (typeof t === 'number' ? window.scrollTo(0, t) : t.scrollIntoView()),
   }));
 
   useEffect(() => {
@@ -171,6 +174,25 @@ export function SceneProvider({ children }: { children: ReactNode }) {
         if (lenis) lenis.scrollTo(t, { immediate, offset: 0, duration: 1 });
         else if (typeof t === 'number') window.scrollTo(0, t);
         else t.scrollIntoView({ behavior: immediate || reduced ? 'auto' : 'smooth' });
+      },
+      // Gliding all the way to a far section runs every pinned film in between and stutters. Instead the page
+      // jumps to within most of a screen of it, then glides the last stretch, so the arrival still reads as motion.
+      glideTo: (t) => {
+        const from = window.scrollY;
+        const to = typeof t === 'number' ? t : t.getBoundingClientRect().top + from;
+        const lead = window.innerHeight * 0.85;
+        if (reduced) {
+          if (lenis) lenis.scrollTo(to, { immediate: true });
+          else window.scrollTo(0, to);
+          return;
+        }
+        if (Math.abs(to - from) > lead) {
+          const near = to - Math.sign(to - from) * lead;
+          if (lenis) lenis.scrollTo(near, { immediate: true, force: true });
+          else window.scrollTo(0, near);
+        }
+        if (lenis) lenis.scrollTo(to, { duration: 0.9, easing: (k) => 1 - Math.pow(1 - k, 4), force: true });
+        else window.scrollTo({ top: to, behavior: 'smooth' });
       },
     }));
 
