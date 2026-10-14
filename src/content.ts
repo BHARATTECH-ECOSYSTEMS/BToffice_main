@@ -8,6 +8,8 @@ export const gmailCompose = (to: string) => `https://mail.google.com/mail/?view=
 export const EMAIL_HREF = gmailCompose(EMAIL);
 export const PRIVACY_EMAIL = 'privacy@bharattechorigin.com';
 
+// The existing employee system's login. The site now opens its own login pop-up (components/Login.tsx), which
+// isn't connected to a backend yet; this address is kept for when it is.
 const isLocal = typeof window !== 'undefined' && ['localhost', '127.0.0.1'].includes(window.location.hostname);
 export const EMPLOYEE_LOGIN_URL = isLocal
   ? 'http://localhost:5173/login'

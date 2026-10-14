@@ -579,12 +579,41 @@ h3 {
 .how-paper-step button {
   transition: scale var(--dur-press) var(--ease);
 }
-.btn .arrow {
-  transition: transform 200ms var(--ease);
+/* Hover: the label rolls up and an identical copy rolls in from below (the copy is the label's own text-shadow,
+   one line down, so the text isn't duplicated in the page), and the arrow slides out as a second one, waiting
+   just outside the icon's box (Arrow's .arrow-next), slides in. Quick and small: buttons are hovered constantly. */
+.btn-text {
+  display: inline-block;
+  overflow: hidden;
+  line-height: 1.3;
+  vertical-align: middle;
+}
+.btn-text > span {
+  display: block;
+  text-shadow: 0 1.3em currentColor;
+  transition: transform 240ms var(--ease);
+}
+.btn .arrow path,
+.nav-cta .arrow path {
+  transition: transform 240ms var(--ease) 40ms;
 }
 @media (hover: hover) and (pointer: fine) {
-  .btn:hover .arrow {
-    transform: translateX(3px);
+  :is(.btn, .nav-cta):hover .btn-text > span {
+    transform: translateY(-1.3em);
+  }
+  :is(.btn, .nav-cta):hover .arrow path {
+    transform: translateX(16px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-text > span,
+  .btn .arrow path,
+  .nav-cta .arrow path {
+    transition: none;
+  }
+  :is(.btn, .nav-cta):hover .btn-text > span,
+  :is(.btn, .nav-cta):hover .arrow path {
+    transform: none;
   }
 }
 .btn-lg {
@@ -603,8 +632,10 @@ h3 {
     box-shadow: 0 14px 30px -10px rgb(110 88 245 / 0.55);
   }
 }
-/* purple bloom expands out from wherever the cursor came in */
-.btn-primary::before {
+/* purple bloom expands out from wherever the cursor came in (the outline and white buttons fill the same way) */
+.btn-primary::before,
+.btn-ghost::before,
+.btn-light::before {
   content: '';
   position: absolute;
   left: var(--mx, 50%);
@@ -623,9 +654,16 @@ h3 {
     opacity var(--dur-press) var(--ease);
 }
 @media (hover: hover) and (pointer: fine) {
-  .btn-primary:hover::before {
+  .btn-primary:hover::before,
+  .btn-ghost:hover::before,
+  .btn-light:hover::before {
     opacity: 1;
     transform: scale(60);
+  }
+  /* their dark text turns white on the purple */
+  .btn-ghost:hover,
+  .btn-light:hover {
+    color: #fff;
   }
 }
 .btn-ghost {
@@ -923,7 +961,8 @@ h3 {
   align-items: center;
   gap: 8px;
   height: 38px;
-  padding: 0 14px;
+  /* extra room on the right for the dot that marks the current (and hovered) link */
+  padding: 0 24px 0 14px;
   border-radius: var(--r-pill);
   font-size: 14px;
   font-weight: 550;
@@ -941,14 +980,14 @@ h3 {
 }
 .nav-links i {
   position: absolute;
-  left: 50%;
-  bottom: 5px;
+  right: 11px;
+  top: 50%;
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--tone, var(--violet));
   opacity: 0;
-  transform: translateX(-50%) scale(0.7);
+  transform: translateY(-50%) scale(0.7);
   transition:
     opacity 0.3s var(--ease),
     transform 0.4s var(--ease);
@@ -960,7 +999,7 @@ h3 {
 /* the link's own dot marks the current page; the hover dot rides inside .nav-hl */
 .nav-links > [aria-current] i {
   opacity: 1;
-  transform: translateX(-50%) scale(1);
+  transform: translateY(-50%) scale(1);
 }
 .nav-hl {
   position: absolute;
@@ -984,11 +1023,11 @@ h3 {
 .nav-hl::after {
   content: '';
   position: absolute;
-  left: 50%;
-  bottom: 5px;
+  right: 11px;
+  top: 50%;
   width: 6px;
   height: 6px;
-  margin-left: -3px;
+  margin-top: -3px;
   border-radius: 50%;
   background: var(--tone, var(--violet));
   transition: background-color 0.22s var(--ease);
@@ -1312,12 +1351,14 @@ h3 {
   display: grid;
   gap: 16px;
 }
-.footer-col a {
+.footer-col a,
+.footer-col button {
   color: var(--ink-soft);
   font-size: 15px;
   transition: color 0.2s var(--ease);
 }
-.footer-col a:hover {
+.footer-col a:hover,
+.footer-col button:hover {
   color: var(--cobalt);
 }
 .footer-base {

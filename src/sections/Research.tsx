@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Link } from 'react-router';
 import { useQuiet } from '../gl/Scene';
-import { Arrow, Headline } from '../components/ui';
+import { Arrow, Headline, BtnText } from '../components/ui';
 import { DomainGrid } from '../components/DomainGrid';
 
 export function Research() {
@@ -15,7 +15,7 @@ export function Research() {
             <Headline tone="violet" lines={['Six domains.', 'One intelligence.']} />
           </div>
           <Link to="/research" className="btn btn-primary">
-            Explore all research <Arrow />
+            <BtnText>Explore all research</BtnText> <Arrow />
           </Link>
         </div>
         <DomainGrid />

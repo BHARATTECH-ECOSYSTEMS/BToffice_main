@@ -1,6 +1,6 @@
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { Link } from 'react-router';
-import { Arrow, Headline, toneStyle } from '../components/ui';
+import { Arrow, Headline, toneStyle, BtnText } from '../components/ui';
 import { useQuiet, useScene, WIDE_QUERY } from '../gl/Scene';
 import { Cover } from '../components/art';
 import { trackBox } from '../components/trackBox';
@@ -129,7 +129,7 @@ export function Journal() {
               </div>
               <div className="swing-side">
                 <Link to="/services" className="btn btn-ghost">
-                  All services <Arrow />
+                  <BtnText>All services</BtnText> <Arrow />
                 </Link>
               </div>
             </div>

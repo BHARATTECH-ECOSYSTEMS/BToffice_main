@@ -1706,11 +1706,13 @@
   isolation: isolate;
 }
 
-/* the dark sheet, inset and rounded like the architecture chapter's, with its two glows */
-.svc-section .chapter-pin::before {
+/* the dark sheet, rounded like the architecture chapter's, with its two glows. It wraps the content
+   (--sheet-pad on every side, which lands its side edges on --sheet-x) rather than filling the pinned
+   screen, which left tall empty bands above and below on large screens. */
+.svc-showcase::before {
   content: '';
   position: absolute;
-  inset: 10px var(--sheet-x);
+  inset: calc(-1 * var(--sheet-pad));
   z-index: -1;
   border-radius: var(--r-sheet);
   background:

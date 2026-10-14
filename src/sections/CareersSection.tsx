@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
-import { Arrow, Headline, Reveal, toneStyle, useInView } from '../components/ui';
+import { Arrow, Headline, Reveal, toneStyle, useInView, BtnText } from '../components/ui';
 import { useQuiet } from '../gl/Scene';
 import { DEPT_TONES, ROLES } from '../content';
 import '../styles/careers-section.css';
@@ -36,7 +36,7 @@ export function CareersSection() {
           </div>
           <Reveal className="section-head-link" delay={120}>
             <Link to="/careers" className="btn btn-ghost">
-              All roles <Arrow />
+              <BtnText>All roles</BtnText> <Arrow />
             </Link>
           </Reveal>
         </div>

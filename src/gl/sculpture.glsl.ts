@@ -39,6 +39,8 @@ uniform sampler2D uLogo;  // r: the threads, g: how far along its thread a point
 uniform mat4 uViewProj;
 uniform vec3 uTint;      // what the glass absorbs least
 uniform float uDensity;  // how strongly it absorbs
+uniform vec3 uBack;      // dark pages: the light colour the glass shows through, as it would on a light page
+uniform float uBackLift; // how far what it sees is lifted towards uBack (0 on light pages)
 uniform float uBody;     // how much of the logo's own violet the glass carries
 uniform vec3 uCoreCol;
 uniform float uCoreI;
@@ -255,6 +257,9 @@ void main() {
   vec3 seenR = behind(screenUv(q + (r2 + n2 * 0.03) * 1.6));
   vec3 seenB = behind(screenUv(q + (r2 - n2 * 0.03) * 1.6));
   seen = vec3(seenR.r, seen.g, seenB.b);
+  // on a dark page the glass only saw near-black, and its violet came out a dusty grey-lilac; lifting what it
+  // sees keeps the same vivid violet as on a light page
+  seen = mix(seen, uBack, uBackLift);
   vec3 absorb = exp(-th * uDensity * (vec3(1.0) - uTint));
   vec3 col = seen * absorb;
 

@@ -14,6 +14,7 @@ import { Privacy, Terms } from './pages/Legal';
 import { NotFound } from './pages/NotFound';
 import { RouteSweep } from './components/RouteSweep';
 import { BackToTop } from './components/BackToTop';
+import { LoginProvider } from './components/Login';
 
 function Layout() {
   const { pathname, state } = useLocation();
@@ -59,13 +60,13 @@ function Layout() {
     return () => io.disconnect();
   }, [pathname]);
 
-  // Cards and solid buttons light up where the cursor is.
+  // Cards and buttons light up where the cursor is.
   useEffect(() => {
     let raf = 0;
     let last: PointerEvent | null = null;
     const update = () => {
       raf = 0;
-      const t = (last?.target as HTMLElement | null)?.closest?.('.cell, .btn-primary, .nav-cta') as HTMLElement | null;
+      const t = (last?.target as HTMLElement | null)?.closest?.('.cell, .btn-primary, .btn-ghost, .btn-light, .nav-cta') as HTMLElement | null;
       if (!t || !last) return;
       const r = t.getBoundingClientRect();
       t.style.setProperty('--mx', `${last.clientX - r.left}px`);
@@ -83,18 +84,20 @@ function Layout() {
   }, []);
 
   return (
-    <div className="app">
-      <a className="skip" href="#main" onClick={(e) => (e.preventDefault(), document.getElementById('main')?.focus())}>
-        Skip to content
-      </a>
-      <RouteSweep />
-      <Nav />
-      <main id="main" tabIndex={-1} key={pathname}>
-        <Outlet />
-      </main>
-      <Footer />
-      <BackToTop />
-    </div>
+    <LoginProvider>
+      <div className="app">
+        <a className="skip" href="#main" onClick={(e) => (e.preventDefault(), document.getElementById('main')?.focus())}>
+          Skip to content
+        </a>
+        <RouteSweep />
+        <Nav />
+        <main id="main" tabIndex={-1} key={pathname}>
+          <Outlet />
+        </main>
+        <Footer />
+        <BackToTop />
+      </div>
+    </LoginProvider>
   );
 }
 

@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { Arrow, Headline, Reveal } from '../components/ui';
+import { Arrow, Headline, Reveal, BtnText } from '../components/ui';
 import { useQuiet } from '../gl/Scene';
 import { EMAIL, EMAIL_HREF, FAQ } from '../content';
 import { ORIGIN_POINT, threadPaths } from '../gl/threads';
@@ -76,7 +76,7 @@ export function Faq() {
               <p>Researchers, institutions and teams interested in early collaboration hear back from the research group directly.</p>
               <div className="faq-actions">
                 <Link to="/contact" className="btn btn-light">
-                  Write to us <Arrow />
+                  <BtnText>Write to us</BtnText> <Arrow />
                 </Link>
                 <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer" className="faq-mail">
                   {EMAIL}

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { BtnText, Arrow } from './ui';
 import { Link } from 'react-router';
-import { ArrowUpRight } from 'lucide-react';
 import { useScene } from '../gl/Scene';
 import { pageScroll, trackBox } from './trackBox';
 import {
@@ -530,7 +530,7 @@ export function HowWeWorkPipeline() {
               <h2 className="how-paper-title">From foundational hypothesis to sovereign scale</h2>
             </div>
             <Link to="/contact" className="btn btn-primary">
-              Start a Conversation <ArrowUpRight size={15} />
+              <BtnText>Start a Conversation</BtnText> <Arrow dir="up-right" />
             </Link>
           </div>
 

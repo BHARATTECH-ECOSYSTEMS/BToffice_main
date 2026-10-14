@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { Arrow, Brand, toneStyle } from './ui';
-import { CHAPTERS, EMAIL, EMAIL_HREF, EMPLOYEE_LOGIN_URL } from '../content';
+import { Arrow, Brand, toneStyle, BtnText } from './ui';
+import { CHAPTERS, EMAIL, EMAIL_HREF } from '../content';
+import { useOpenLogin } from './Login';
 import { useScene } from '../gl/Scene';
 import { NavPeek, type PeekId } from './NavPeek';
 import type { HueName } from '../gl/palette';
@@ -105,6 +106,7 @@ export function Nav() {
   const [compact, setCompact] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
+  const openLogin = useOpenLogin();
   const [hover, setHover] = useState(-1);
   const [inCaps, setInCaps] = useState(false);
   const linksRef = useRef<HTMLDivElement>(null);
@@ -308,12 +310,12 @@ export function Nav() {
         </nav>
 
         <div className="nav-end">
-          <a href={EMPLOYEE_LOGIN_URL} className="nav-cta" target="_blank" rel="noopener noreferrer">
-            <span>Employee login</span>
+          <button type="button" className="nav-cta" onClick={openLogin} aria-haspopup="dialog">
+            <BtnText>Employee login</BtnText>
             <span className="nav-cta-icon">
               <Arrow dir="up-right" size={13} />
             </span>
-          </a>
+          </button>
           <button className="nav-burger" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="nav-sheet" aria-label={open ? 'Close menu' : 'Open menu'}>
             <span />
             <span />
@@ -354,9 +356,18 @@ export function Nav() {
           ))}
         </ul>
         <div className="nav-sheet-foot" style={{ '--i': LINKS.length } as CSSProperties}>
-          <a href={EMPLOYEE_LOGIN_URL} className="btn btn-primary" tabIndex={open ? 0 : -1} target="_blank" rel="noopener noreferrer">
-            Employee login <Arrow />
-          </a>
+          <button
+            type="button"
+            className="btn btn-primary"
+            tabIndex={open ? 0 : -1}
+            aria-haspopup="dialog"
+            onClick={() => {
+              setOpen(false);
+              openLogin();
+            }}
+          >
+            <BtnText>Employee login</BtnText> <Arrow />
+          </button>
           <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer" className="nav-sheet-mail" tabIndex={open ? 0 : -1}>
             {EMAIL}
           </a>

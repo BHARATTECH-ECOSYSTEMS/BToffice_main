@@ -1,0 +1,541 @@
+/* Employee login pop-up (components/Login.tsx): the 3D logo on the left, the form on the right, over the
+   dimmed and blurred page. Colours are set here once and swapped for the dark theme at the bottom. */
+
+.login {
+  --login-art: #EEEAFE;
+  --login-panel: var(--paper);
+  --login-field: var(--bg);
+  position: fixed;
+  inset: 0;
+  width: min(940px, calc(100vw - 48px));
+  max-width: none;
+  height: fit-content;
+  max-height: calc(100svh - 48px);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-lg);
+  background: transparent;
+  color: var(--ink);
+  overflow: visible;
+}
+.login::backdrop {
+  background: rgb(20 19 15 / 0.34);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: login-fade 0.3s var(--ease) both;
+}
+/* The card opens as a circle spreading out from where the glass logo grows (--open-at), while the logo
+   itself grows from that point (LogoGlass `entrance`). The shadow sits on its own layer behind the card,
+   because the clip-path would cut it off until the circle had covered the corners. */
+.login::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  box-shadow: 0 0 0 1px var(--line), 0 50px 100px -40px rgb(40 24 110 / 0.55);
+  animation: login-fade 0.5s var(--ease) 0.1s both;
+}
+.login-card {
+  --open-at: 25% 40%;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  /* one height for every view, so switching tabs never resizes the card; a view that runs taller (sign-up
+     showing errors on a short screen) scrolls inside the form side */
+  height: min(720px, calc(100svh - 48px));
+  max-height: calc(100svh - 48px);
+  overflow: hidden;
+  border-radius: inherit;
+  background: var(--login-panel);
+  animation: login-in 0.5s var(--ease-expo) both;
+}
+.login[data-closing] .login-card,
+.login[data-closing]::before {
+  animation: login-out 0.22s var(--ease) both;
+}
+.login[data-closing]::backdrop {
+  animation: login-fade 0.22s var(--ease) reverse both;
+}
+@keyframes login-in {
+  from {
+    clip-path: circle(0% at var(--open-at));
+    transform: scale(0.985);
+  }
+  to {
+    clip-path: circle(150% at var(--open-at));
+  }
+}
+/* On opening, the form's lines rise in one after another, just behind the circle's edge. Once the visitor
+   switches view (data-switched), the whole view slides in instead and the stagger doesn't replay. */
+.login:not([data-switched]) :is(.login-main > .cell-label, .login-tabs, .login-back, .login-title, .login-sub, .login-form > *) {
+  animation: login-rise 0.36s var(--ease-expo) both;
+}
+.login-main > .cell-label { animation-delay: 0.12s; }
+:is(.login-tabs, .login-back) { animation-delay: 0.14s; }
+.login-title { animation-delay: 0.17s; }
+.login-sub { animation-delay: 0.2s; }
+.login-form > :nth-child(1) { animation-delay: 0.23s; }
+.login-form > :nth-child(2) { animation-delay: 0.26s; }
+.login-form > :nth-child(3) { animation-delay: 0.29s; }
+.login-form > :nth-child(4) { animation-delay: 0.32s; }
+.login-form > :nth-child(5) { animation-delay: 0.35s; }
+.login-form > :nth-child(n + 6) { animation-delay: 0.38s; }
+@keyframes login-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+.login[data-switched='next'] .login-view {
+  animation: login-view-next 0.28s var(--ease-expo) both;
+}
+.login[data-switched='back'] .login-view {
+  animation: login-view-back 0.28s var(--ease-expo) both;
+}
+@keyframes login-view-next {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+}
+@keyframes login-view-back {
+  from {
+    opacity: 0;
+    transform: translateX(-16px);
+  }
+}
+@keyframes login-out {
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+}
+@keyframes login-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ── left: the glass logo with soft colour drifting behind it ── */
+
+.login-art {
+  --lx: 0;
+  --ly: 0;
+  position: relative;
+  display: grid;
+  align-content: end;
+  gap: 8px;
+  padding: 28px;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--login-art);
+  /* a faint dotted grid, fading towards the edges */
+  background-image: radial-gradient(color-mix(in srgb, var(--violet) 22%, transparent) 1px, transparent 1.4px);
+  background-size: 18px 18px;
+}
+.login-glow {
+  position: absolute;
+  z-index: -1;
+  width: 60%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.55;
+  animation: login-drift 14s ease-in-out infinite alternate;
+}
+.login-glow.is-a {
+  left: -10%;
+  top: -8%;
+  background: var(--violet);
+}
+.login-glow.is-b {
+  right: -18%;
+  top: 30%;
+  background: var(--tangerine);
+  opacity: 0.32;
+  animation-duration: 17s;
+  animation-delay: -6s;
+}
+.login-glow.is-c {
+  left: 20%;
+  bottom: -26%;
+  background: var(--saffron);
+  opacity: 0.3;
+  animation-duration: 19s;
+  animation-delay: -11s;
+}
+@keyframes login-drift {
+  to {
+    transform: translate(12%, 10%) scale(1.15);
+  }
+}
+.login-logo {
+  position: absolute;
+  inset: 0 0 18% 0;
+  perspective: 900px;
+}
+.login-logo .logo-glass {
+  transform: rotateY(calc(var(--lx) * 9deg)) rotateX(calc(var(--ly) * -9deg));
+  transition: transform 0.5s var(--ease);
+}
+.login-art .brand {
+  position: relative;
+}
+/* the live mark (the back-to-top button's) at the still logo's size */
+.login-art .brand .faq-mark {
+  flex: none;
+  width: 28px;
+  height: 28px;
+}
+.login-art-line {
+  position: relative;
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+/* ── right: the form ── */
+
+.login-main {
+  position: relative;
+  display: grid;
+  align-content: center;
+  padding: clamp(28px, 3.4vw, 44px) clamp(28px, 4vw, 48px);
+  overflow-y: auto;
+}
+.login-close {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-2);
+  color: var(--ink-soft);
+  transition: background var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+}
+.login-close svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+@media (hover: hover) and (pointer: fine) {
+  .login-close:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}
+/* Sign in / Sign up: a segmented switch whose white pill slides under the chosen tab */
+.login-tabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  margin: 12px 0 18px;
+  padding: 4px;
+  border-radius: var(--r-pill);
+  background: var(--bg-2);
+  isolation: isolate;
+}
+.login-tabs::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  inset: 4px auto 4px 4px;
+  width: calc(50% - 4px);
+  border-radius: inherit;
+  background: var(--login-panel);
+  box-shadow: 0 1px 2px rgb(20 19 15 / 0.08), 0 0 0 1px var(--line);
+  transition: transform var(--dur-ui) var(--ease);
+}
+.login-tabs[data-on='signup']::before {
+  transform: translateX(100%);
+}
+.login-tabs [role='tab'] {
+  height: 36px;
+  border-radius: var(--r-pill);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  transition: color var(--dur-hover) var(--ease);
+}
+.login-tabs [aria-selected='true'] {
+  color: var(--ink);
+}
+.login-tabs [role='tab']:focus-visible,
+.login-back:focus-visible,
+.login-provider:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+}
+.login-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  justify-self: start;
+  margin: 12px 0 18px;
+  height: 44px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  transition: color var(--dur-hover) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .login-tabs [role='tab']:hover,
+  .login-back:hover {
+    color: var(--ink);
+  }
+}
+.login-title {
+  margin: 0 0 6px;
+  font-family: var(--display);
+  font-size: clamp(30px, 3vw, 40px);
+  font-weight: var(--fw-head);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+.login-sub {
+  margin: 0 0 18px;
+  color: var(--ink-soft);
+}
+.login-form {
+  display: grid;
+  gap: 12px;
+}
+.login-field {
+  display: grid;
+  gap: 6px;
+}
+.login-field > span:first-child {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.login-field input {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--login-field);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 15.5px;
+  color: var(--ink);
+  outline: 0;
+  transition: box-shadow 0.25s var(--ease), background 0.25s var(--ease);
+}
+.login-field input:focus {
+  background: var(--login-panel);
+  box-shadow: inset 0 0 0 1.5px var(--violet), 0 0 0 4px color-mix(in srgb, var(--violet) 14%, transparent);
+}
+.login-field input[aria-invalid] {
+  box-shadow: inset 0 0 0 1.5px #D9443A, 0 0 0 4px rgb(217 68 58 / 0.12);
+}
+.login-error {
+  font-style: normal;
+  font-size: 13px;
+  color: #C23A30;
+}
+.login-password {
+  position: relative;
+  display: block;
+}
+.login-password input {
+  padding-right: 72px;
+}
+.login-reveal {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  translate: 0 -50%;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.login-reveal:hover {
+  color: var(--ink);
+}
+.login-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+.login-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.login-check input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--violet);
+}
+.login-link {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--violet);
+}
+.login-link:hover {
+  text-decoration: underline;
+}
+.login-hint {
+  font-size: 13px;
+  color: var(--muted);
+}
+.login-submit {
+  width: 100%;
+}
+.login-providers {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.login-provider {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  background: var(--login-panel);
+  box-shadow: inset 0 0 0 1px var(--line);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  transition: box-shadow var(--dur-hover) var(--ease), background var(--dur-hover) var(--ease);
+}
+.login-provider svg {
+  flex: none;
+  width: 17px;
+  height: 17px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .login-provider:hover {
+    background: var(--login-field);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--violet) 45%, var(--line));
+  }
+}
+.login-provider:active {
+  scale: 0.97;
+}
+.login-submit {
+  margin-top: 6px;
+}
+.login-submit:disabled {
+  cursor: progress;
+  opacity: 0.85;
+}
+.login-spinner {
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 2px solid rgb(255 255 255 / 0.35);
+  border-top-color: #fff;
+  animation: login-spin 0.7s linear infinite;
+}
+@keyframes login-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.login-or {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.login-or::before,
+.login-or::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.login-notice {
+  min-height: 20px;
+  margin: 2px 0 0;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+.login-notice:not(:empty) {
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--violet) 8%, var(--login-panel));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--violet) 22%, transparent);
+  color: var(--ink);
+}
+
+/* reduced motion: the card and its shadow simply fade in; nothing grows, spreads or rises */
+@media (prefers-reduced-motion: reduce) {
+  .login-card,
+  .login::before {
+    animation: login-fade 0.2s ease both;
+  }
+  .login::backdrop,
+  .login-glow,
+  .login[data-switched] .login-view,
+  .login:not([data-switched]) :is(.login-main > .cell-label, .login-tabs, .login-back, .login-title, .login-sub, .login-form > *) {
+    animation: none;
+  }
+  .login-tabs::before {
+    transition: none;
+  }
+}
+
+/* narrow screens: the form alone; the 3D side is hidden (its logo stops drawing while out of view) */
+@media (max-width: 900px) {
+  .login-card {
+    --open-at: 50% 0%;
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+  .login-art {
+    display: none;
+  }
+}
+
+/* ── dark theme ── */
+
+:root[data-theme='dark'] .login,
+.dark .login {
+  --login-art: #1A1830;
+  --login-panel: #161523;
+  --login-field: #0F0E18;
+}
+:root[data-theme='dark'] .login::backdrop,
+.dark .login::backdrop {
+  background: rgb(5 4 10 / 0.6);
+}
+:root[data-theme='dark'] .login::before,
+.dark .login::before {
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1), 0 50px 100px -40px rgb(0 0 0 / 0.8);
+}
+:root[data-theme='dark'] .login-close,
+.dark .login-close,
+:root[data-theme='dark'] .login-tabs,
+.dark .login-tabs {
+  background: rgb(255 255 255 / 0.08);
+}
+:root[data-theme='dark'] .login-field input[aria-invalid],
+.dark .login-field input[aria-invalid] {
+  box-shadow: inset 0 0 0 1.5px #F0776E, 0 0 0 4px rgb(240 119 110 / 0.16);
+}
+:root[data-theme='dark'] .login-error,
+.dark .login-error {
+  color: #F0877E;
+}

@@ -1,7 +1,7 @@
 import { Link } from 'react-router';
 import { PageHero, Quiet } from '../components/PageHero';
 import { DomainGrid, DOMAIN_TONES } from '../components/DomainGrid';
-import { Arrow, Headline, Reveal } from '../components/ui';
+import { Arrow, Headline, Reveal, BtnText } from '../components/ui';
 import { Beams, Icon, Marquee, type IconName } from '../components/fx';
 import { DOMAINS, TECHNOLOGY } from '../content';
 
@@ -29,7 +29,7 @@ export function Research() {
             </div>
             <Reveal className="section-head-link" delay={100}>
               <Link to="/contact" className="btn btn-primary">
-                Propose a collaboration <Arrow />
+                <BtnText>Propose a collaboration</BtnText> <Arrow />
               </Link>
             </Reveal>
           </div>

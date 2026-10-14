@@ -204,6 +204,42 @@
   }
 }
 
+/* dark theme: the city at night (gl/officeMap NIGHT); the card, labels and chip follow it */
+:root[data-theme='dark'] .visit-map,
+.dark .visit-map {
+  background: #12111B;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 40px 80px -50px rgb(0 0 0 / 0.7);
+}
+:root[data-theme='dark'] .visit-map__fallback,
+.dark .visit-map__fallback {
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px) 0 0 / 56px 56px;
+}
+:root[data-theme='dark'] .visit-map__tag.is-pin,
+.dark .visit-map__tag.is-pin {
+  background: rgb(26 25 39 / 0.92);
+  box-shadow: 0 0 0 1px rgb(110 88 245 / 0.45), 0 14px 30px -14px rgb(0 0 0 / 0.7);
+}
+:root[data-theme='dark'] .visit-map__tag.is-pin b,
+.dark .visit-map__tag.is-pin b {
+  color: #FAF9F6;
+}
+:root[data-theme='dark'] .visit-map__tag.is-pin span,
+.dark .visit-map__tag.is-pin span {
+  color: rgb(250 249 246 / 0.65);
+}
+:root[data-theme='dark'] .visit-map__tag.is-place,
+.dark .visit-map__tag.is-place {
+  color: rgb(160 172 235 / 0.8);
+}
+:root[data-theme='dark'] .visit-map__chip,
+.dark .visit-map__chip {
+  background: rgb(26 25 39 / 0.9);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.14), 0 10px 24px -14px rgb(0 0 0 / 0.7);
+  color: #FAF9F6;
+}
+
 @media (max-width: 900px) {
   .contact-sheet,
   .visit {

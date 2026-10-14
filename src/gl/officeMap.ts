@@ -11,7 +11,58 @@ import { HUE } from './palette';
 
 const CELL = 6;
 const ROAD = 1.5;
-const BG = '#F4F1EA';
+// The same city by day (light theme) and by night (dark theme); only the colours and the light change.
+const DAY = {
+  bg: '#F4F1EA',
+  sky: '#ffffff',
+  earth: '#ded7c8',
+  skyI: 1.45,
+  sun: '#fff6e8',
+  sunI: 2.1,
+  ground: '#E5E0D5',
+  plinth: '#F1EDE4',
+  park: '#DCE4CC',
+  tree: '#A9BD92',
+  buildings: ['#FFFFFF', '#F3F0EA'],
+  tintMix: ['#ffffff', 0.55] as [string, number],
+  river: '#D3DAF3',
+  streak: ['#ffffff', 0.75] as [string, number],
+  dash: '#ffffff',
+  windows: 'rgba(255,255,255,0.42)',
+  windowGlow: 0,
+  routePale: '#C8BFFB',
+  bridge: '#EFEAE0',
+  rail: '#ffffff',
+  carNeutrals: ['#ffffff', '#ffffff', '#D9D3C6'],
+  clothesNeutrals: ['#ffffff', '#5C574E', '#8EA3D6', '#C9C1B2'],
+  halo: 0.38,
+};
+const NIGHT: typeof DAY = {
+  bg: '#12111B',
+  sky: '#A49DFF',
+  earth: '#0B0A12',
+  skyI: 1.25,
+  sun: '#C2BCFF',
+  sunI: 1.2,
+  ground: '#1A1927',
+  plinth: '#222031',
+  park: '#1C2B25',
+  tree: '#35553F',
+  buildings: ['#312F45', '#2A283C'],
+  tintMix: ['#1c1b28', 0.62],
+  river: '#1D2347',
+  streak: ['#8C9BE0', 0.45],
+  dash: '#45425F',
+  // lit windows: warm light in the violet tower, which glows a little so it reads against the dark city
+  windows: 'rgba(255,232,180,0.85)',
+  windowGlow: 0.55,
+  routePale: '#3A3270',
+  bridge: '#2C2A3B',
+  rail: '#55516E',
+  carNeutrals: ['#ECEAF7', '#C9C4E8', '#8A86A6'],
+  clothesNeutrals: ['#ECEAF7', '#A39FC2', '#8EA3D6', '#C9C1B2'],
+  halo: 0.6,
+};
 const OFFICE = { x: 0, z: 0, w: 2.6, h: 7.2 };
 const RIVER_Z = -16;
 const riverZ = (x: number) => RIVER_Z + Math.sin(x * 0.045) * 2.6;
@@ -21,11 +72,15 @@ export interface OfficeMapOptions {
   label: [string, string];
   /** Visitors who asked for less motion get one still frame. */
   reduced: boolean;
+  /** The site's dark theme: the city at night. */
+  dark?: boolean;
   /** Called once the first frame is on screen, so the card can swap its fallback for the canvas. */
   onReady?: () => void;
 }
 
-export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: OfficeMapOptions) {
+export function mountOfficeMap(host: HTMLElement, { label, reduced, dark = false, onReady }: OfficeMapOptions) {
+  const C = dark ? NIGHT : DAY;
+  const BG = C.bg;
   let seed = 7;
   const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
 
@@ -45,8 +100,8 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: O
   const camera = new THREE.PerspectiveCamera(30, 1.6, 0.5, 200);
   const target = new THREE.Vector3(OFFICE.x - 1, 2.6, OFFICE.z + 1);
 
-  scene.add(new THREE.HemisphereLight('#ffffff', '#ded7c8', 1.45));
-  const sun = new THREE.DirectionalLight('#fff6e8', 2.1);
+  scene.add(new THREE.HemisphereLight(C.sky, C.earth, C.skyI));
+  const sun = new THREE.DirectionalLight(C.sun, C.sunI);
   sun.position.set(-16, 30, 14);
   sun.castShadow = true;
   sun.shadow.mapSize.set(1024, 1024);
@@ -56,7 +111,7 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: O
   scene.add(sun);
 
   // ---------- ground: the roads are the ground, every block is a low plinth on it ----------
-  const ground = new THREE.Mesh(new THREE.PlaneGeometry(260, 260).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: '#E5E0D5' }));
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(260, 260).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: C.ground }));
   ground.receiveShadow = true;
   scene.add(ground);
 
@@ -93,7 +148,7 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: O
         // kept low so the streets, the route and the office tower read over the roofs
         const h = 0.5 + rand() * 1.1 + near * near * rand() * 2.2;
         // a few buildings pick up a pale brand colour; the rest are white and warm grey
-        const c = rand() < 0.07 ? new THREE.Color(tints[Math.floor(rand() * 3)]).lerp(new THREE.Color('#ffffff'), 0.55) : new THREE.Color(rand() < 0.5 ? '#FFFFFF' : '#F3F0EA');
+        const c = rand() < 0.07 ? new THREE.Color(tints[Math.floor(rand() * 3)]).lerp(new THREE.Color(C.tintMix[0]), C.tintMix[1]) : new THREE.Color(rand() < 0.5 ? C.buildings[0] : C.buildings[1]);
         blocks.push({ x: cx + ox, z: cz + oz, size, h, c });
       }
     }
@@ -107,9 +162,9 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: O
     scene.add(mesh);
     return mesh;
   };
-  instanced(box, new THREE.MeshLambertMaterial({ color: '#F1EDE4' }), plinths);
-  instanced(box, new THREE.MeshLambertMaterial({ color: '#DCE4CC' }), parks);
-  instanced(new THREE.ConeGeometry(0.5, 1, 7).translate(0, 0.5, 0), new THREE.MeshLambertMaterial({ color: '#A9BD92' }), trees, true);
+  instanced(box, new THREE.MeshLambertMaterial({ color: C.plinth }), plinths);
+  instanced(box, new THREE.MeshLambertMaterial({ color: C.park }), parks);
+  instanced(new THREE.ConeGeometry(0.5, 1, 7).translate(0, 0.5, 0), new THREE.MeshLambertMaterial({ color: C.tree }), trees, true);
   const buildings = instanced(box, new THREE.MeshLambertMaterial({ color: '#ffffff' }), blocks.map((b) => m4(b.x, 0.12, b.z, b.size, b.h, b.size)), true);
   // the intro grows the city up from the ground in a wave that starts at the office and runs outwards
   const growDelay = blocks.map((b) => Math.min(1.1, Math.hypot(b.x - OFFICE.x, b.z - OFFICE.z) * 0.03));
@@ -139,11 +194,11 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: O
   // the shape is drawn in x/y and laid flat, where its y becomes -z: so it is drawn at y = -z
   xs.forEach((x, i) => (i ? riverShape.lineTo(x, -(riverZ(x) - RIVER_W / 2)) : riverShape.moveTo(x, -(riverZ(x) - RIVER_W / 2))));
   [...xs].reverse().forEach((x) => riverShape.lineTo(x, -(riverZ(x) + RIVER_W / 2)));
-  const river = new THREE.Mesh(new THREE.ShapeGeometry(riverShape).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: '#D3DAF3' }));
+  const river = new THREE.Mesh(new THREE.ShapeGeometry(riverShape).rotateX(-Math.PI / 2), new THREE.MeshLambertMaterial({ color: C.river }));
   river.position.y = 0.02;
   scene.add(river);
   const STREAKS = 26;
-  const streaks = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.6, 0.09).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.75 }), STREAKS);
+  const streaks = new THREE.InstancedMesh(new THREE.PlaneGeometry(1.6, 0.09).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: C.streak[0], transparent: true, opacity: C.streak[1] }), STREAKS);
   const streakAt = Array.from({ length: STREAKS }, () => ({ x: -70 + rand() * 140, off: (rand() - 0.5) * (RIVER_W - 2), v: 0.6 + rand() * 0.8 }));
   scene.add(streaks);
 
@@ -153,7 +208,7 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: O
   const STREET_X = OFFICE.x - CELL / 2;
   for (let x = -60; x <= 60; x += 2.2) dashes.push(m4(x, 0.03, AVENUE_Z, 0.9, 0.01, 0.12));
   for (let z = riverZ(STREET_X) + RIVER_W; z <= 50; z += 2.2) dashes.push(m4(STREET_X, 0.03, z, 0.12, 0.01, 0.9));
-  instanced(box, new THREE.MeshBasicMaterial({ color: '#ffffff' }), dashes);
+  instanced(box, new THREE.MeshBasicMaterial({ color: C.dash }), dashes);
 
   // ---------- the office: a violet tower with lit floors, under a floating pin ----------
   const floors = document.createElement('canvas');
@@ -162,11 +217,11 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: O
   const g = floors.getContext('2d')!;
   g.fillStyle = HUE.violet;
   g.fillRect(0, 0, 64, 256);
-  g.fillStyle = 'rgba(255,255,255,0.42)';
+  g.fillStyle = C.windows;
   for (let y = 10; y < 250; y += 16) for (let x = 6; x < 60; x += 14) g.fillRect(x, y, 9, 7);
   const floorTex = new THREE.CanvasTexture(floors);
   floorTex.colorSpace = THREE.SRGBColorSpace;
-  const towerSide = new THREE.MeshLambertMaterial({ map: floorTex });
+  const towerSide = new THREE.MeshLambertMaterial({ map: floorTex, emissive: '#ffffff', emissiveMap: floorTex, emissiveIntensity: C.windowGlow });
   const towerTop = new THREE.MeshLambertMaterial({ color: '#8F7DF8' });
   const tower = new THREE.Mesh(box, [towerSide, towerSide, towerTop, towerTop, towerSide, towerSide]);
   tower.scale.set(OFFICE.w, OFFICE.h, OFFICE.w);
@@ -191,7 +246,7 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: O
   glow.width = glow.height = 128;
   const gg = glow.getContext('2d')!;
   const grad = gg.createRadialGradient(64, 64, 0, 64, 64, 64);
-  grad.addColorStop(0, 'rgba(110,88,245,0.38)');
+  grad.addColorStop(0, `rgba(110,88,245,${C.halo})`);
   grad.addColorStop(1, 'rgba(110,88,245,0)');
   gg.fillStyle = grad;
   gg.fillRect(0, 0, 128, 128);
@@ -212,7 +267,7 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: O
   const STEPS = 120;
   const routeDots = new THREE.InstancedMesh(new THREE.BoxGeometry(0.42, 0.06, 0.22), new THREE.MeshBasicMaterial({ color: '#ffffff' }), STEPS);
   const routeColor = new THREE.Color();
-  const pale = new THREE.Color('#C8BFFB');
+  const pale = new THREE.Color(C.routePale);
   const bright = new THREE.Color(HUE.violet);
   for (let i = 0; i < STEPS; i++) {
     const u = i / (STEPS - 1);
@@ -232,8 +287,8 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: O
   const bridgeZ1 = riverZ(STREET_X) + RIVER_W / 2 + 0.9;
   const bridgeLen = bridgeZ1 - bridgeZ0;
   const bridgeMid = (bridgeZ0 + bridgeZ1) / 2;
-  const bridgeMat = new THREE.MeshLambertMaterial({ color: '#EFEAE0' });
-  const railMat = new THREE.MeshLambertMaterial({ color: '#ffffff' });
+  const bridgeMat = new THREE.MeshLambertMaterial({ color: C.bridge });
+  const railMat = new THREE.MeshLambertMaterial({ color: C.rail });
   const deck = new THREE.Mesh(box, bridgeMat);
   deck.scale.set(2.1, BRIDGE_DECK, bridgeLen);
   deck.position.set(STREET_X, 0, bridgeMid);
@@ -261,7 +316,7 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: O
   };
 
   // ---------- traffic: four lanes, each with its own speed, its cars evenly spaced so none overlap ----------
-  const carColors = [HUE.tangerine, HUE.saffron, '#ffffff', '#ffffff', '#D9D3C6'];
+  const carColors = [HUE.tangerine, HUE.saffron, ...C.carNeutrals];
   const LANES = [
     { alongX: true, dir: 1, v: 2.6 },
     { alongX: true, dir: -1, v: 2.1 },
@@ -290,7 +345,7 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, onReady }: O
   const carP = new THREE.Vector3();
 
   // ---------- people: walking round the blocks near the office, and a few heading in at the door ----------
-  const clothes = [HUE.violet, HUE.tangerine, HUE.saffron, '#ffffff', '#5C574E', '#8EA3D6', '#C9C1B2'];
+  const clothes = [HUE.violet, HUE.tangerine, HUE.saffron, ...C.clothesNeutrals];
   const skin = ['#E9C6A4', '#C99A72', '#9A6B4A', '#F1D6BD'];
   const SIDEWALK = inner / 2 - 0.22;
   const walkers = walkable.flatMap(([cx, cz]) =>

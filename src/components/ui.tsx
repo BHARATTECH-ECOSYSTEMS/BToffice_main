@@ -32,10 +32,11 @@ export function LogoMark({ size = 28 }: { size?: number }) {
   );
 }
 
-export function Brand({ size = 28 }: { size?: number }) {
+/** `mark` swaps the still logo for another, such as the live ThreadMark. */
+export function Brand({ size = 28, mark }: { size?: number; mark?: ReactNode }) {
   return (
     <span className="brand">
-      <LogoMark size={size} />
+      {mark ?? <LogoMark size={size} />}
       <span className="brand-word">
         Bharattech<span>Origin</span>
       </span>
@@ -48,7 +49,19 @@ export function Arrow({ dir = 'right', size = 14 }: { dir?: 'right' | 'down' | '
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" aria-hidden="true" style={{ transform: `rotate(${rot}deg)` }} className="arrow">
       <path d="M2.5 8h10.5M9 3.5 13.5 8 9 12.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
+      {/* the same arrow one frame to the left, outside the icon's box (so hidden): on a button's hover both slide
+          right, the first one out and this one in */}
+      <path className="arrow-next" d="M-13.5 8h10.5M-7 3.5-2.5 8-7 12.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
+  );
+}
+
+/** A button's label, set up for the hover roll (see .btn-text in base.css): it rolls up and an identical copy rolls in. */
+export function BtnText({ children }: { children: ReactNode }) {
+  return (
+    <span className="btn-text">
+      <span>{children}</span>
+    </span>
   );
 }
 

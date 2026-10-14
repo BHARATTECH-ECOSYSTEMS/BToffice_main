@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { Link } from 'react-router';
 import { isCompact, useQuiet, useScene } from '../gl/Scene';
 import { BEATS, Studio } from '../gl/Studio';
-import { Arrow } from '../components/ui';
+import { Arrow, BtnText } from '../components/ui';
 import { StoryOpening } from '../components/StoryOpening';
 import { pageScroll, trackBox } from '../components/trackBox';
 import { PILLARS_PLAIN, PROBLEMS } from '../content';
@@ -149,17 +149,17 @@ export function Story() {
                 {i === 0 && (
                   <div className="beat-actions">
                     <Link to="/contact" className="btn btn-primary btn-lg">
-                      Start a conversation <Arrow />
+                      <BtnText>Start a conversation</BtnText> <Arrow />
                     </Link>
                     <Link to="/research" className="btn btn-ghost btn-lg">
-                      Explore research
+                      <BtnText>Explore research</BtnText>
                     </Link>
                   </div>
                 )}
                 {i === BEATS - 1 && (
                   <div className="beat-actions">
                     <a href="#how" className="btn btn-ghost" onClick={(e) => (e.preventDefault(), scrollTo(document.getElementById('how') ?? 0))}>
-                      See how it works <Arrow />
+                      <BtnText>See how it works</BtnText> <Arrow />
                     </a>
                   </div>
                 )}

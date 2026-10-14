@@ -7,7 +7,7 @@ import {
   Mail, 
   Globe 
 } from 'lucide-react';
-import { Reveal } from '../components/ui';
+import { Reveal, BtnText, Arrow } from '../components/ui';
 import { PageHero } from '../components/PageHero';
 import { HowWeWorkPipeline } from '../components/HowWeWorkPipeline';
 import { AWARDS, EMAIL, EMAIL_HREF, HQ, HQ_MAP, PRODUCTS } from '../content';
@@ -183,10 +183,10 @@ export function About() {
                 </p>
                 <div className="about-contact-actions">
                   <Link to="/contact" className="btn btn-primary">
-                    Start a Conversation <ArrowUpRight size={15} />
+                    <BtnText>Start a Conversation</BtnText> <Arrow dir="up-right" />
                   </Link>
                   <Link to="/careers" className="btn btn-ghost">
-                    Explore Careers
+                    <BtnText>Explore Careers</BtnText>
                   </Link>
                 </div>
               </div>

@@ -303,6 +303,7 @@ export class Studio {
   private drawn = 1;
   /** The opening's hold on the form: how far it has grown from its origin point, how much of its threads exist. */
   private reveal = { grow: 1, draw: 1 };
+  private destroyed = false;
   /** When the logo finished forming (in `time`); the hero bounce counts from here. Null while it is forming. */
   private formedAt: number | null = null;
 
@@ -422,6 +423,8 @@ export class Studio {
       uViewProj: { value: new THREE.Matrix4() },
       uTint: { value: new THREE.Color() },
       uDensity: { value: 1 },
+      uBack: { value: new THREE.Color('#EEEAFE') },
+      uBackLift: { value: isDark ? 0.7 : 0 },
       uCoreCol: { value: new THREE.Color() },
       uCoreI: { value: 0 },
       uCore: { value: new THREE.Vector3() },
@@ -503,6 +506,29 @@ export class Studio {
   setReveal(grow: number, draw: number) {
     this.reveal.grow = clamp01(grow);
     this.reveal.draw = clamp01(draw);
+  }
+
+  /**
+   * Links the shaders in the background, so a studio built mid-animation (the login pop-up) doesn't freeze the
+   * page on its first frame. Resolves once they're ready, after `maxMs` at most (some browsers never report
+   * ready until something draws; the first frame then compiles them as before), or at once if destroyed.
+   * Not three's compileAsync: its polling throws if the renderer is disposed mid-compile, and never gives up.
+   */
+  warm(maxMs = 500) {
+    const pending = this.renderer.compile(this.scene, this.camera);
+    const until = performance.now() + maxMs;
+    return new Promise<void>((resolve) => {
+      const check = () => {
+        if (this.destroyed) return resolve();
+        pending.forEach((m) => {
+          const program = (this.renderer.properties.get(m) as { currentProgram?: { isReady(): boolean } }).currentProgram;
+          if (program?.isReady() !== false) pending.delete(m);
+        });
+        if (pending.size === 0 || performance.now() > until) resolve();
+        else window.setTimeout(check, 16);
+      };
+      check();
+    });
   }
 
   start() {
@@ -711,6 +737,7 @@ export class Studio {
   };
 
   destroy() {
+    this.destroyed = true;
     this.stop();
     window.removeEventListener('pointermove', this.onPointer);
     this.trash.forEach((t) => t.dispose());

@@ -1,8 +1,9 @@
 import { Link } from 'react-router';
 import { Brand } from './ui';
-import { EMPLOYEE_LOGIN_URL, LINKEDIN_URL } from '../content';
+import { useOpenLogin } from './Login';
+import { LINKEDIN_URL } from '../content';
 
-const COLS: { title: string; links: { label: string; to?: string; href?: string }[] }[] = [
+const COLS: { title: string; links: { label: string; to?: string; href?: string; login?: boolean }[] }[] = [
   {
     title: 'Company',
     links: [
@@ -26,12 +27,13 @@ const COLS: { title: string; links: { label: string; to?: string; href?: string 
     links: [
       { label: 'Privacy', to: '/privacy' },
       { label: 'Terms', to: '/terms' },
-      { label: 'Employee login', href: EMPLOYEE_LOGIN_URL },
+      { label: 'Employee login', login: true },
     ],
   },
 ];
 
 export function Footer() {
+  const openLogin = useOpenLogin();
   return (
     <footer className="footer">
       <div className="wrap">
@@ -54,7 +56,17 @@ export function Footer() {
               <h4>{c.title}</h4>
               <ul>
                 {c.links.map((l) => (
-                  <li key={l.label}>{l.to ? <Link to={l.to}>{l.label}</Link> : <a href={l.href}>{l.label}</a>}</li>
+                  <li key={l.label}>
+                    {l.to ? (
+                      <Link to={l.to}>{l.label}</Link>
+                    ) : l.login ? (
+                      <button type="button" onClick={openLogin} aria-haspopup="dialog">
+                        {l.label}
+                      </button>
+                    ) : (
+                      <a href={l.href}>{l.label}</a>
+                    )}
+                  </li>
                 ))}
               </ul>
             </div>

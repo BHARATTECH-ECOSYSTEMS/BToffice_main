@@ -4,7 +4,7 @@ import { OfficeMap } from '../components/OfficeMap';
 import { useScene } from '../gl/Scene';
 import '../styles/contact.css';
 import { Accordion, ThreadMark } from '../sections/Faq';
-import { Arrow, Headline, Reveal, toneStyle } from '../components/ui';
+import { Arrow, Headline, Reveal, toneStyle, BtnText } from '../components/ui';
 import { CONTACT_FAQ, CONTACT_NEEDS, EMAIL, EMAIL_HREF, HQ, HQ_MAP } from '../content';
 import type { HueName } from '../gl/palette';
 
@@ -38,10 +38,10 @@ export function Contact() {
               if (brief) scrollTo(brief);
             }}
           >
-            Send a brief <Arrow dir="down" />
+            <BtnText>Send a brief</BtnText> <Arrow dir="down" />
           </a>
           <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
-            {EMAIL} <Arrow />
+            <BtnText>{EMAIL}</BtnText> <Arrow />
           </a>
         </div>
       </PageHero>
@@ -125,7 +125,7 @@ export function Contact() {
                 </div>
                 <div className="form-foot">
                   <button className="btn btn-primary" type="submit">
-                    Open in my email app <Arrow />
+                    <BtnText>Open in my email app</BtnText> <Arrow />
                   </button>
                   <p className="form-note" aria-live="polite">
                     {sent
@@ -149,10 +149,10 @@ export function Contact() {
             <p className="lede">Our research and engineering teams work from {HQ}. Write to us before you visit, so the right people are there to meet you.</p>
             <div className="visit-actions">
               <a href={HQ_MAP} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
-                Get directions <Arrow dir="up-right" />
+                <BtnText>Get directions</BtnText> <Arrow dir="up-right" />
               </a>
               <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer" className="btn btn-ghost">
-                Email us first <Arrow />
+                <BtnText>Email us first</BtnText> <Arrow />
               </a>
             </div>
           </div>

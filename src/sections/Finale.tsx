@@ -1,5 +1,5 @@
 import { Link } from 'react-router';
-import { Arrow } from '../components/ui';
+import { Arrow, BtnText } from '../components/ui';
 import { EMAIL, EMAIL_HREF, HQ } from '../content';
 
 export function Finale() {
@@ -13,10 +13,10 @@ export function Finale() {
           <p className="finale-lede">Direct access to our research and engineering teams: joint research, fellowships and foundational deployments.</p>
           <div className="beat-actions finale-actions">
             <Link to="/contact" className="btn btn-primary btn-lg">
-              Start a conversation <Arrow />
+              <BtnText>Start a conversation</BtnText> <Arrow />
             </Link>
             <a href={EMAIL_HREF} target="_blank" rel="noopener noreferrer" className="btn btn-ghost btn-lg">
-              {EMAIL}
+              <BtnText>{EMAIL}</BtnText>
             </a>
           </div>
           <p className="finale-meta">{HQ} · Made in Bharat</p>

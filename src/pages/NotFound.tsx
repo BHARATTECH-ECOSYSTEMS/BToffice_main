@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import { Link } from 'react-router';
 import { useQuiet } from '../gl/Scene';
-import { Arrow } from '../components/ui';
+import { Arrow, BtnText } from '../components/ui';
 
 /** A page that was forgotten: the number itself comes apart. */
 export function NotFound() {
@@ -18,7 +18,7 @@ export function NotFound() {
         <h1 className="h1">This page was forgotten.</h1>
         <p className="lede">Which is exactly the problem we are working on.</p>
         <Link to="/" className="btn btn-primary">
-          Back to the start <Arrow />
+          <BtnText>Back to the start</BtnText> <Arrow />
         </Link>
       </div>
     </section>

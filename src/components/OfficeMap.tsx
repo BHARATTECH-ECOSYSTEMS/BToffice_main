@@ -25,6 +25,7 @@ export function OfficeMap() {
             cleanup = mountOfficeMap(el, {
               label: ['Bharattech Origin', 'Headquarters · Kanpur'],
               reduced: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+              dark: document.documentElement.getAttribute('data-theme') === 'dark',
               onReady: () => setReady(true),
             });
           })

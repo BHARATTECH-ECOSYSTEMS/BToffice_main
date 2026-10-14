@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { PageHero, Quiet } from '../components/PageHero';
-import { Arrow, Reveal, toneStyle } from '../components/ui';
+import { Arrow, Reveal, toneStyle, BtnText } from '../components/ui';
 import { DEPT_TONES, EMAIL, EMAIL_HREF, ROLES, VALUES } from '../content';
 import { Icon, type IconName } from '../components/fx';
 import { useScene } from '../gl/Scene';
@@ -96,7 +96,7 @@ export function Careers() {
             const roles = document.getElementById('roles');
             if (roles) scrollTo(roles);
           }}>
-          See open roles <Arrow dir="down" />
+          <BtnText>See open roles</BtnText> <Arrow dir="down" />
         </a>
       </PageHero>
 
