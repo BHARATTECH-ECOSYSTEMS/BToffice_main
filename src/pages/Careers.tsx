@@ -55,10 +55,6 @@ function CareersVisual() {
           </span>
         </a>
       ))}
-      <div className="deck-badge" aria-hidden="true">
-        <b>{String(ROLES.length).padStart(2, '0')}</b>
-        open roles
-      </div>
     </div>
   );
 }
@@ -100,7 +96,7 @@ export function Careers() {
             const roles = document.getElementById('roles');
             if (roles) scrollTo(roles);
           }}>
-          {ROLES.length} open roles <Arrow dir="down" />
+          See open roles <Arrow dir="down" />
         </a>
       </PageHero>
 
@@ -128,7 +124,6 @@ export function Careers() {
                 <button key={d} aria-pressed={dept === d} style={toneStyle(DEPT_TONES[d] ?? 'violet')} onClick={() => setDept(d)}>
                   <i aria-hidden="true" />
                   {d}
-                  <small>{d === 'All' ? ROLES.length : ROLES.filter((r) => r.dept === d).length}</small>
                 </button>
               ))}
             </div>

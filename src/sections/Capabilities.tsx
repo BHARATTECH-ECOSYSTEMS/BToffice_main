@@ -118,11 +118,13 @@ export function Capabilities() {
                 style={{ stroke: `var(--${t})`, strokeDasharray: `${5 * STEP - 3} ${360 - 5 * STEP + 3}`, strokeDashoffset: `${-(i * 5 * STEP - STEP / 2 + 1.5)}` } as CSSProperties}
               />
             ))}
-            {Array.from({ length: N * 4 }, (_, k) => {
-              const a = (k / (N * 4)) * Math.PI * 2;
-              const long = k % 4 === 0;
-              return <line key={k} x1={Math.cos(a) * 64} y1={Math.sin(a) * 64} x2={Math.cos(a) * (long ? 58 : 61)} y2={Math.sin(a) * (long ? 58 : 61)} className={long ? 'wheel-tick is-long' : 'wheel-tick'} />;
-            })}
+            <g className="wheel-ticks">
+              {Array.from({ length: N * 4 }, (_, k) => {
+                const a = (k / (N * 4)) * Math.PI * 2;
+                const long = k % 4 === 0;
+                return <line key={k} x1={Math.cos(a) * 64} y1={Math.sin(a) * 64} x2={Math.cos(a) * (long ? 58 : 61)} y2={Math.sin(a) * (long ? 58 : 61)} className={long ? 'wheel-tick is-long' : 'wheel-tick'} />;
+              })}
+            </g>
             <circle r="50" className="wheel-inner" />
           </svg>
           {CAPABILITIES.map((c, i) => (

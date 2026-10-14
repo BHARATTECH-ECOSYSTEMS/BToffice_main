@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import { Arrow, Headline, Reveal } from '../components/ui';
 import { useQuiet } from '../gl/Scene';
@@ -37,13 +37,15 @@ export function Accordion({ items, tone = 'cobalt', tags }: { items: { q: string
 
 /** The mark drawn flat: its three threads draw in, meet at the origin, and let go again. */
 export function ThreadMark() {
+  // the mark also sits in the footer, so each copy needs its own clip id
+  const clip = `faq-disc-${useId().replace(/:/g, '')}`;
   return (
     <svg className="faq-mark" viewBox="-1.1 -1.1 2.2 2.2" aria-hidden="true">
-      <clipPath id="faq-disc">
+      <clipPath id={clip}>
         <circle r="1" />
       </clipPath>
       <circle r="1" className="faq-mark-disc" />
-      <g clipPath="url(#faq-disc)">
+      <g clipPath={`url(#${clip})`}>
         {THREADS.map((d, i) => (
           <path key={i} d={d} pathLength={1} className="faq-mark-thread" style={{ '--k': i } as React.CSSProperties} />
         ))}

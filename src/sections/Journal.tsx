@@ -29,7 +29,6 @@ const PIVOT = '30% 230%';
 const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const smooth = (x: number) => x * x * (3 - 2 * x);
 const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
-const pad = (n: number) => String(n).padStart(2, '0');
 
 /**
  * Services, one card at a time. The section pins while it is read; scrolling, the front card
@@ -41,7 +40,6 @@ export function Journal() {
   const ref = useRef<HTMLElement>(null);
   const track = useRef<HTMLDivElement>(null);
   const cards = useRef<(HTMLElement | null)[]>([]);
-  const counter = useRef<HTMLSpanElement>(null);
   const { lenis } = useScene();
   useQuiet(ref);
 
@@ -53,7 +51,6 @@ export function Journal() {
     const calm = window.matchMedia('(prefers-reduced-motion: reduce)');
     let box: { top: number; height: number } | null = null;
     let last = -1;
-    let front = -1;
 
     const apply = (scroll: number, force = false) => {
       if (!box) return;
@@ -91,11 +88,6 @@ export function Journal() {
           el.style.visibility = rel >= 2.5 ? 'hidden' : '';
         }
       });
-      const now = Math.min(COUNT - 1, Math.round(gone));
-      if (now !== front && counter.current) {
-        front = now;
-        counter.current.textContent = pad(now + 1);
-      }
     };
 
     // measured on layout changes only; trackBox calls back at once, then whenever the page reflows
@@ -136,9 +128,6 @@ export function Journal() {
                 <Headline tone="cobalt" lines={['Services,', 'and people.']} />
               </div>
               <div className="swing-side">
-                <span className="swing-count" aria-hidden="true">
-                  <span ref={counter}>01</span> / {pad(COUNT)}
-                </span>
                 <Link to="/services" className="btn btn-ghost">
                   All services <Arrow />
                 </Link>
@@ -150,7 +139,7 @@ export function Journal() {
                   <Link to={`/services/${p.slug}`} className="stack-card__inner swing-face" style={toneStyle(TONES[i])}>
                     <div className="stack-card__copy">
                       <span className="stack-card__num">
-                        {pad(i + 1)} / {pad(COUNT)} · {p.category}
+                        {p.category}
                       </span>
                       <h3 className="stack-card__title">{p.title}</h3>
                       <p className="stack-card__body">{p.excerpt}</p>

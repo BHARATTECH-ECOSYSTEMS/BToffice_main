@@ -12,6 +12,3 @@ export const HUE = {
 
 export type HueName = keyof typeof HUE;
 
-/** Particle hue slots, in the order the shader's palette uniform holds them. */
-export const PARTICLE_HUES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
-

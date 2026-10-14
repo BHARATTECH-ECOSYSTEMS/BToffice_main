@@ -53,19 +53,7 @@ export function Blog() {
         title={['Notes from', 'the lab.']}
         lede="Essays and research notes on persistent memory, generative intelligence and the infrastructure underneath them."
         visual={<CoverFan />}
-      >
-        <ul className="hero-stats">
-          <li>
-            <b>{String(POSTS.length).padStart(2, '0')}</b> essays
-          </li>
-          <li>
-            <b>{String(CATS.length - 1).padStart(2, '0')}</b> topics
-          </li>
-          <li>
-            <b>{POSTS.reduce((t, p) => t + parseInt(p.read, 10), 0)}</b> min of reading
-          </li>
-        </ul>
-      </PageHero>
+      />
       <Quiet className="section section-tight">
         <div className="wrap">
           <div className="segmented" role="group" aria-label="Category">
@@ -73,7 +61,6 @@ export function Blog() {
               <button key={c} aria-pressed={cat === c} style={toneStyle(CAT_TONE[c] ?? 'ink')} onClick={() => setCat(c)}>
                 <i aria-hidden="true" />
                 {c}
-                <small>{c === 'All' ? POSTS.length : POSTS.filter((p) => p.category === c).length}</small>
               </button>
             ))}
           </div>

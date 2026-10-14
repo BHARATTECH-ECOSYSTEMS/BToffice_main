@@ -46,7 +46,6 @@ export function Audiences() {
                     style={toneStyle(tone)}
                   >
                     <div className="svc-list__header">
-                      <span className="svc-list__num">0{idx + 1}</span>
                       <span className="svc-list__name">{item.name}</span>
                     </div>
 

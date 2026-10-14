@@ -7,7 +7,6 @@ import { StoryOpening } from '../components/StoryOpening';
 import { pageScroll, trackBox } from '../components/trackBox';
 import { PILLARS_PLAIN, PROBLEMS } from '../content';
 
-/** Screens of scroll per beat. */
 // screens of scroll per beat (cut by a third from 1: long pins made visitors feel stuck)
 const PACE = 0.67;
 
@@ -36,6 +35,7 @@ const BEAT_COPY: Beat[] = [
 export function Story() {
   const ref = useRef<HTMLElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
+  const veil = useRef<HTMLDivElement>(null);
   const beats = useRef<(HTMLElement | null)[]>([]);
   const [gl, setGl] = useState(true);
   const [current, setCurrent] = useState(0);
@@ -74,14 +74,17 @@ export function Story() {
       // past the film the progress stays pinned at 0 or 1: nothing to redraw
       if (p === lastP && !force) return;
       lastP = p;
+      // the veil rides as if fixed to the section's bottom edge, so it rises into the frame over the last stretch
+      if (veil.current) veil.current.style.transform = `translate3d(0, ${Math.min(window.innerHeight, (1 - p) * run).toFixed(1)}px, 0)`;
       const b = p * BEATS;
       studio?.setBeat(b);
       beats.current.forEach((node, i) => {
         if (!node) return;
-        // the first headline is at rest until the scroll begins
-        const d = i === 0 ? Math.max(0, b - 0.5) : b - (i + 0.5);
+        // The first headline is at rest until the scroll begins. The last one stays settled once it arrives and
+        // leaves by scrolling away with the page: fading it here left it stuck half-faded as the frame let go.
+        const d = i === 0 ? Math.max(0, b - 0.5) : i === BEATS - 1 ? Math.min(0, b - (i + 0.5)) : b - (i + 0.5);
         // fully set for most of the beat, then out quickly at the edges
-        const v = i === 0 && d < 0 ? 1 : i === BEATS - 1 && d > 0 ? Math.min(1, Math.max(0, 1 - (d - 0.3) / 0.25)) : 1 - Math.min(1, Math.max(0, (Math.abs(d) - 0.3) / 0.2));
+        const v = 1 - Math.min(1, Math.max(0, (Math.abs(d) - 0.3) / 0.2));
         node.style.setProperty('--d', Math.max(-1, Math.min(1, d)).toFixed(4));
         node.style.setProperty('--v', v.toFixed(4));
         node.style.visibility = v > 0.001 ? 'visible' : 'hidden';
@@ -122,6 +125,7 @@ export function Story() {
 
       <div className="story-pin">
         <canvas ref={canvas} className="story-canvas" aria-hidden="true" />
+        <div ref={veil} className="story-veil" aria-hidden="true" />
 
         <div className="story-copy">
           {BEAT_COPY.map((c, i) => {

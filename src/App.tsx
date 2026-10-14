@@ -13,6 +13,7 @@ import { Contact } from './pages/Contact';
 import { Privacy, Terms } from './pages/Legal';
 import { NotFound } from './pages/NotFound';
 import { RouteSweep } from './components/RouteSweep';
+import { BackToTop } from './components/BackToTop';
 
 function Layout() {
   const { pathname, state } = useLocation();
@@ -92,6 +93,7 @@ function Layout() {
         <Outlet />
       </main>
       <Footer />
+      <BackToTop />
     </div>
   );
 }

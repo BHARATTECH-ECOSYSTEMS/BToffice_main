@@ -49,7 +49,7 @@ function Scene({ i }: { i: number }) {
       <div className="how-scene scene-plan">
         {['Recall the study', 'Compare new imagery', 'Draft the brief'].map((t, k) => (
           <span key={t} style={{ '--k': k } as CSSProperties}>
-            <i>{k + 1}</i>
+            <i aria-hidden="true" />
             {t}
           </span>
         ))}
@@ -181,7 +181,7 @@ export function HowItWorks() {
             </ol>
             <p className="console-foot">
               <i aria-hidden="true" />
-              {step + 1} / {FLOW.length} steps · {step === FLOW.length - 1 ? 'learning from the result' : 'running'}
+              {step === FLOW.length - 1 ? 'learning from the result' : 'running'}
             </p>
           </div>
         </div>

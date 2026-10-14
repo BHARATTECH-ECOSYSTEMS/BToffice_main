@@ -41,22 +41,17 @@ export function NavPeek({
   const [wasOpen, setWasOpen] = useState(false);
   // true once the pointer has moved to another section while open; only then does the caret glide
   const [morph, setMorph] = useState(false);
-  // the section the pointer came from while open; About and Contact share their dark card, so between them
-  // the panel stays put instead of replaying its whole entrance (which blanked the card for a moment)
-  const [from, setFrom] = useState<PeekId | null>(null);
   if (!!peek !== wasOpen) {
     setWasOpen(!!peek);
     if (peek) {
       setEpoch((n) => n + 1);
       setMorph(false);
-      setFrom(null);
     }
   }
   if (peek && peek !== last) {
     setLast(peek);
     if (wasOpen) {
       setMorph(true);
-      setFrom(last);
       setEpoch((n) => n + 1);
     }
   }
@@ -89,7 +84,6 @@ export function NavPeek({
       className="nav-peek"
       data-open={peek || undefined}
       data-morph={morph || undefined}
-      data-from={from || undefined}
       style={{ left, '--h': `${h}px`, '--caret': `${caret - left}px` } as CSSProperties}
       onPointerEnter={onEnter}
       onPointerLeave={onLeave}
@@ -138,11 +132,12 @@ export function NavPeek({
 
 type Go = (to: string, section?: string) => () => void;
 
-function Foot({ figure, label, blurb, cta, onClick, tone }: { figure: string; label: string; blurb: string; cta: string; onClick: () => void; tone: HueName }) {
+/** `figure` is optional: the Services panel names its library without a count. */
+function Foot({ figure, label, blurb, cta, onClick, tone }: { figure?: string; label: string; blurb: string; cta: string; onClick: () => void; tone: HueName }) {
   return (
     <div className="peek-foot" style={toneStyle(tone, { '--k': 7 } as CSSProperties)}>
       <p>
-        <b>{figure}</b>
+        {figure && <b>{figure}</b>}
         <span>{label}</span>
         <small>{blurb}</small>
       </p>
@@ -220,7 +215,7 @@ function ServicesPeek({ go }: { go: Go }) {
           </li>
         ))}
       </ul>
-      <Foot figure={String(POSTS.length).padStart(2, '0')} label="essays and notes" blurb="On memory, generative intelligence and infrastructure." cta="All services" onClick={go('/services')} tone="violet" />
+      <Foot label="Essays and notes" blurb="On memory, generative intelligence and infrastructure." cta="All services" onClick={go('/services')} tone="violet" />
     </div>
   );
 }
@@ -246,14 +241,12 @@ function CareersPeek({ go }: { go: Go }) {
         ))}
       </ul>
       <div className="peek-side" style={toneStyle('tangerine', { '--k': 6 } as CSSProperties)}>
-        <p className="peek-side-figure">{String(ROLES.length).padStart(2, '0')}</p>
-        <p className="peek-side-label">open roles</p>
+        <p className="peek-side-figure is-words">Open roles</p>
         <ul className="peek-depts">
           {depts.map((d) => (
             <li key={d} style={toneStyle(DEPT_TONE[d])}>
               <i />
               {d}
-              <b>{ROLES.filter((r) => r.dept === d).length}</b>
             </li>
           ))}
         </ul>

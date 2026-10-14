@@ -41,8 +41,14 @@
 
   --content: 1240px;
   --gutter: clamp(16px, 4vw, 40px);
-  /* how far the full-bleed dark sheets sit in from the viewport edges */
-  --sheet-x: clamp(8px, 1.4vw, 20px);
+  /* How far the sheets and big cards sit in from the viewport edges: exactly where the nav bar's edges are
+     (12px in on narrow screens, the bar's centred 1272px width on wide ones), so every section lines up with
+     the nav. 100cqw is #main's width, which excludes the scrollbar just as the fixed nav does. */
+  --sheet-x: max(12px, (100cqw - var(--content) - 32px) / 2);
+  /* breathing room inside a dark sheet, from its edge to its content, the same on both sides */
+  --sheet-pad: clamp(20px, 4.4vw, 64px);
+  /* from a sheet's edge in to the shared text column (.wrap's), so headings inside sheets still line up */
+  --sheet-col: max(var(--gutter) - var(--sheet-x), (100cqw - var(--content)) / 2 - var(--sheet-x));
   --r-sheet: 36px; /* boxes that run to the sheet edge */
   --r-lg: 28px;
   --r-md: 20px;
@@ -381,6 +387,11 @@ main:focus {
 
 /* ── Layout ─────────────────────────────────────────────────────────────── */
 
+/* the container --sheet-x and --sheet-col measure (100cqw) */
+#main {
+  container-type: inline-size;
+}
+
 .wrap {
   width: 100%;
   max-width: calc(var(--content) + var(--gutter) * 2);
@@ -397,9 +408,7 @@ main:focus {
   padding-inline: var(--sheet-x);
 }
 .wrap-sheet > .wrap-col {
-  max-width: calc(var(--content) + (var(--gutter) - var(--sheet-x)) * 2);
-  margin-inline: auto;
-  padding-inline: calc(var(--gutter) - var(--sheet-x));
+  padding-inline: var(--sheet-col);
 }
 .section-tight {
   padding-top: 24px;
@@ -563,11 +572,8 @@ h3 {
 }
 /* Everything else that can be clicked gives a little under the press too. The scale property, not transform,
    so cards that already sit on a transform (the fan, the deck, a lifted card) don't jump. */
-:is(.cell:has(.cell-link), .roles a, .careers-role a, .step-tabs button, .pipe-step, .wheel-fams button, .arch-family button, .deck-card, .fan-card, .peek-tile, .peek-row, .how-paper-step button):active {
+:is(.cell:has(.cell-link), .roles a, .careers-role a, .pipe-step, .wheel-fams button, .arch-family button, .deck-card, .fan-card, .peek-tile, .peek-row, .how-paper-step button):active {
   scale: 0.98;
-}
-.reel__toggle:active {
-  scale: 0.97;
 }
 .careers-role a,
 .how-paper-step button {
@@ -728,6 +734,92 @@ h3 {
   letter-spacing: 0.24em;
   text-transform: uppercase;
   color: var(--muted);
+}
+
+/* ── Back to top: the live mark, floating bottom right once the page is 40% scrolled ── */
+
+/* its height (40% of the page's scroll) is set by BackToTop */
+.to-top-sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  pointer-events: none;
+}
+.to-top {
+  position: fixed;
+  right: clamp(16px, 2.4vw, 32px);
+  bottom: clamp(16px, 2.4vw, 32px);
+  /* above the page, below the nav (50) and its menus */
+  z-index: 45;
+  display: inline-flex;
+  border-radius: 50%;
+  box-shadow: 0 12px 28px -12px color-mix(in srgb, var(--violet) 70%, transparent);
+  opacity: 0;
+  visibility: hidden;
+  translate: 0 12px;
+  transition: opacity var(--dur-ui) var(--ease), translate var(--dur-ui) var(--ease), visibility 0s linear var(--dur-ui), box-shadow var(--dur-hover) var(--ease);
+}
+.to-top[data-shown] {
+  opacity: 1;
+  visibility: visible;
+  translate: 0 0;
+  transition: opacity var(--dur-ui) var(--ease), translate var(--dur-ui) var(--ease), visibility 0s, box-shadow var(--dur-hover) var(--ease);
+}
+.to-top .faq-mark {
+  width: 48px;
+  height: 48px;
+}
+.to-top:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 3px;
+}
+@media (hover: hover) and (pointer: fine) {
+  /* lifts, so the mark still reads as "up" */
+  .to-top[data-shown]:hover {
+    translate: 0 -3px;
+    box-shadow: 0 16px 30px -10px color-mix(in srgb, var(--violet) 75%, transparent);
+  }
+}
+.to-top:active {
+  scale: 0.94;
+}
+/* anchored to the right edge: the button sits in the screen's right corner, so a centred tip would leave it */
+.to-top-tip {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 10px);
+  padding: 7px 11px;
+  border-radius: var(--r-xs);
+  background: var(--ink);
+  color: var(--bg);
+  font-family: var(--mono);
+  font-size: var(--fs-label);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  translate: 0 4px;
+  transition: opacity var(--dur-ui) var(--ease), translate var(--dur-ui) var(--ease);
+}
+.to-top:focus-visible .to-top-tip {
+  opacity: 1;
+  translate: 0 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .to-top:hover .to-top-tip {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .to-top,
+  .to-top[data-shown],
+  .to-top-tip {
+    transition: none;
+  }
 }
 
 /* ── Nav ────────────────────────────────────────────────────────────────── */
@@ -1239,23 +1331,6 @@ h3 {
   border-top: 1px solid var(--line);
   font-size: 14px;
   color: var(--ink-soft);
-}
-.footer-base button {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--ink-2);
-  transition: color 0.2s var(--ease), transform 0.2s var(--ease);
-}
-@media (hover: hover) and (pointer: fine) {
-  .footer-base button:hover {
-    color: var(--cobalt);
-    transform: translateY(-2px);
-  }
-}
-.footer-base button span {
-  font-size: 18px;
-  line-height: 1;
 }
 .footer-origin {
   width: max-content;

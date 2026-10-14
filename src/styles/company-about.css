@@ -197,7 +197,7 @@
   background: var(--paper);
   box-shadow: var(--shadow-sm);
   /* side padding puts the paper's content on the page's text column */
-  padding: clamp(24px, 3.4vw, 48px) max(calc(var(--gutter) - var(--sheet-x)), calc((100% - var(--content)) / 2));
+  padding: clamp(24px, 3.4vw, 48px) var(--sheet-col);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   gap: clamp(12px, 2.4vh, 24px);

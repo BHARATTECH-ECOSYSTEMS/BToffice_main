@@ -43,6 +43,22 @@
   width: 100%;
   height: 100%;
 }
+/* The studio's backdrop is warmer than the page. This veil rises over the bottom of the frame during the last
+   stretch of "It keeps learning." (Story moves it), so the backdrop has faded into the page's own colour by the
+   time the frame lifts away: no hard edge against the next section. It lives inside the pin, over the 3D scene
+   but under the headlines (.story-copy), so the words and buttons stay crisp. Outside the pin it painted over
+   them, because a sticky element is its own stacking context. */
+.story-veil {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  height: 30svh;
+  background: linear-gradient(to bottom, transparent, var(--bg) 85%);
+  transform: translate3d(0, 100svh, 0);
+  pointer-events: none;
+}
 
 /* ── the opening (StoryOpening): a point of light, the domains wired to it, the logo grown from it ── */
 
@@ -164,6 +180,7 @@
 .story-copy {
   position: absolute;
   inset: 0;
+  z-index: 2;
   pointer-events: none;
 }
 .beat {
@@ -176,6 +193,8 @@
   translate: 0 -50%;
   pointer-events: auto;
   opacity: var(--v, 0);
+  /* how far the copy slides sideways as beats change */
+  --shift: 1;
   --tone: var(--tangerine);
 }
 .beat.is-act-0 {
@@ -204,7 +223,7 @@
 .beat-line > span {
   display: inline-block;
   /* each line moves a little faster than the one above it, so a headline shears as it passes */
-  transform: translate3d(calc(var(--d, 0) * -1 * (70px + var(--k) * 46px)), calc((1 - var(--v, 1)) * 0.5em), 0);
+  transform: translate3d(calc(var(--d, 0) * -1 * var(--shift) * (70px + var(--k) * 46px)), calc((1 - var(--v, 1)) * 0.5em), 0);
   will-change: transform;
 }
 .is-hero .beat-line:last-child > span,
@@ -222,7 +241,7 @@
   line-height: 1.55;
   color: var(--ink-2);
   font-weight: 450;
-  transform: translate3d(calc(var(--d, 0) * -36px), 0, 0);
+  transform: translate3d(calc(var(--d, 0) * var(--shift) * -36px), 0, 0);
 }
 .beat-fact {
   display: inline-flex;
@@ -237,7 +256,7 @@
   font-size: 12px;
   letter-spacing: 0.02em;
   color: var(--ink-2);
-  transform: translate3d(calc(var(--d, 0) * -24px), 0, 0);
+  transform: translate3d(calc(var(--d, 0) * var(--shift) * -24px), 0, 0);
 }
 .beat-fact b {
   width: 6px;
@@ -251,7 +270,7 @@
   flex-wrap: wrap;
   gap: 14px;
   margin-top: 30px;
-  transform: translate3d(calc(var(--d, 0) * -24px), 0, 0);
+  transform: translate3d(calc(var(--d, 0) * var(--shift) * -24px), 0, 0);
 }
 .is-hero .beat-actions .btn-primary {
   box-shadow: 0 14px 30px -10px rgb(110 88 245 / 0.55);
@@ -269,6 +288,8 @@
     bottom: 76px;
     width: auto;
     translate: none;
+    /* the copy sits a gutter from the edge here, so the desktop slide would carry it off the screen while still visible */
+    --shift: 0.25;
   }
   .beat-title {
     font-size: clamp(38px, 10.5vw, 60px);
@@ -451,6 +472,35 @@
   height: var(--d);
   transform: translateY(-50%);
 }
+/* The wheel is taller than the screen, so as it turns its chips pass the top and bottom edges. Fading the wheel
+   out over the last stretch before each edge lets a chip dissolve there instead of being cut in half. The wheel
+   is centred on the screen, so the screen's edges sit at (wheel height - 100svh) / 2 from its own. */
+@media (min-width: 901px) {
+  .wheel {
+    --edge: calc((var(--d) - 100svh) / 2);
+    -webkit-mask-image: linear-gradient(to bottom, transparent var(--edge), #000 calc(var(--edge) + 96px), #000 calc(var(--d) - var(--edge) - 76px), transparent calc(var(--d) - var(--edge) - 6px));
+    mask-image: linear-gradient(to bottom, transparent var(--edge), #000 calc(var(--edge) + 96px), #000 calc(var(--d) - var(--edge) - 76px), transparent calc(var(--d) - var(--edge) - 6px));
+    /* The labels keep their pixel size while the wheel shrinks with the screen's height, so on shorter laptops
+       the longer ones (scaled up when active) ran into the ticks and the arc. The inner disc and its ticks
+       shrink to 84% around the centre, and the labels sit midway between the ticks' outer end (64 x 0.84)
+       and the arc's inner edge (96.3, in the ring's 200-unit box): room for the widest active label at 768px tall. */
+    --chip-r: 0.376;
+  }
+  .wheel-inner,
+  .wheel-ticks {
+    transform: scale(0.84);
+  }
+  /* the scale thins the hairlines too: put them back to their drawn weight */
+  .wheel-tick {
+    stroke-width: 0.3;
+  }
+  .wheel-tick.is-long {
+    stroke-width: 0.42;
+  }
+  .wheel-inner {
+    stroke-width: 0.3;
+  }
+}
 .wheel-ring {
   position: absolute;
   inset: 0;
@@ -488,7 +538,7 @@
   left: 50%;
   width: 0;
   height: 0;
-  transform: rotate(calc(var(--a) + var(--turn) + 180deg)) translateX(calc(var(--d) * 0.395)) rotate(calc(-1 * (var(--a) + var(--turn) + 180deg)));
+  transform: rotate(calc(var(--a) + var(--turn) + 180deg)) translateX(calc(var(--d) * var(--chip-r, 0.395))) rotate(calc(-1 * (var(--a) + var(--turn) + 180deg)));
 }
 .wheel-chip > span {
   position: absolute;

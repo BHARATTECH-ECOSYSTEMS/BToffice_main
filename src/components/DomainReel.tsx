@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DOMAIN_REELS } from '../data/reelScreenplays';
 import { span } from '../gl/ink';
-import { type ReelPainter, createInkPainter, createWorldPainter } from '../gl/reelPainters';
+import type { ReelPainter } from '../gl/reelPainters';
 import '../styles/domain-cinema.css';
 
 const CHAPTER_SEC = 4;
@@ -79,13 +79,12 @@ export interface DomainReelProps {
 export function DomainReel({ index, live = true }: DomainReelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const fillRefs = useRef<(HTMLElement | null)[]>([]);
   const reduced = useRef(
     typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
   ).current;
 
-  // Under reduced motion the reel starts paused on the finished picture.
-  const [isPlaying, setIsPlaying] = useState(!reduced);
+  // Under reduced motion the reel holds the finished picture; otherwise it always plays.
+  const isPlaying = !reduced;
   const [activeAct, setActiveAct] = useState(reduced ? CHAPTERS - 1 : 0);
 
   const timeRef = useRef(reduced ? LOOP_SEC - 0.001 : 0);
@@ -101,14 +100,6 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
     liveRef.current = live;
     redrawRef.current();
   }, [isPlaying, live]);
-
-  const seek = useCallback((act: number) => {
-    // When paused, jump to the end of the chapter so it's shown complete.
-    timeRef.current = (act + (playingRef.current ? 0 : 0.999)) * CHAPTER_SEC;
-    reportedActRef.current = act;
-    setActiveAct(act);
-    redrawRef.current();
-  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -143,9 +134,6 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
         reportedActRef.current = act;
         setActiveAct(act);
       }
-      fillRefs.current.forEach((el, i) => {
-        if (el) el.style.transform = `scaleX(${i < act ? 1 : i === act ? progress : 0})`;
-      });
 
       const exit = playingRef.current && act === CHAPTERS - 1 ? span(progress, 0.9, 1) : 0;
       if (compiled) painter?.paint({ act, progress, exit, pointer, t: reduced ? 0 : now / 1000 });
@@ -171,11 +159,17 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
     let disposed = false;
     const build = () => {
       if (!ready) {
-        const p = (painter = createWorldPainter(index, canvas) ?? createInkPainter(index, canvas));
-        resize();
-        ready = (p ? p.prepare() : Promise.resolve()).then(() => {
-          compiled = true;
-        });
+        // The six worlds are home-only and built at idle anyway, so their code loads then too, not with the page.
+        ready = import('../gl/reelPainters')
+          .then(({ createWorldPainter, createInkPainter }) => {
+            if (disposed) return;
+            const p = (painter = createWorldPainter(index, canvas) ?? createInkPainter(index, canvas));
+            resize();
+            return p?.prepare();
+          })
+          .then(() => {
+            compiled = true;
+          });
       }
       return ready;
     };
@@ -242,52 +236,6 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
         <span className="vf-cross vf-tr">+</span>
         <span className="vf-cross vf-bl">+</span>
         <span className="vf-cross vf-br">+</span>
-      </div>
-
-      <div className="reel__corner-ctrl">
-        <button
-          type="button"
-          className="reel__toggle"
-          onClick={() => setIsPlaying((p) => !p)}
-          aria-label={isPlaying ? 'Pause animation' : 'Play animation'}
-          title={isPlaying ? 'Pause animation' : 'Play animation'}
-        >
-          {isPlaying ? (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <rect x="5" y="3" width="4" height="18" rx="1" />
-              <rect x="15" y="3" width="4" height="18" rx="1" />
-            </svg>
-          ) : (
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <polygon points="5,3 21,12 5,21" />
-            </svg>
-          )}
-        </button>
-      </div>
-
-      {/* silent while the reel advances on its own; the chapter buttons already name each chapter */}
-      <p className="reel__caption" aria-live={isPlaying ? 'off' : 'polite'}>
-        <span>{domain.chapters[activeAct]?.tag}</span>
-        {domain.chapters[activeAct]?.title}
-      </p>
-
-      <div className="reel__progress">
-        {domain.chapters.map((ch, i) => (
-          <button
-            key={ch.act}
-            type="button"
-            className={`reel__progress-seg ${i === activeAct ? 'is-active' : ''}`}
-            onClick={() => seek(i)}
-            aria-label={`${ch.act}: ${ch.title}`}
-            title={`${ch.act}: ${ch.title}`}
-          >
-            <em
-              ref={(el) => {
-                fillRefs.current[i] = el;
-              }}
-            />
-          </button>
-        ))}
       </div>
     </div>
   );

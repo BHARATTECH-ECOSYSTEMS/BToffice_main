@@ -99,8 +99,7 @@ export function AudienceCorridor({ audiences, active, progress }: AudienceCorrid
       card.className = `svc-corridor__card ${LOOKS[mod(n, LOOKS.length)]}`;
       card.dataset.tone = a.tone;
       card.style.setProperty('--tone', `var(--${a.tone})`);
-      const [num, name, use] = card.querySelectorAll('b, span, p');
-      num.textContent = String(u + 1).padStart(2, '0');
+      const [name, use] = card.querySelectorAll('span, p');
       name.textContent = a.name;
       use.textContent = a.uses[u];
     };
@@ -216,7 +215,6 @@ export function AudienceCorridor({ audiences, active, progress }: AudienceCorrid
         {Array.from({ length: RING }, (_, i) => (
           <div key={i} ref={(n) => (cards.current[i] = n)} className="svc-corridor__card" hidden>
             <div className="svc-corridor__top">
-              <b />
               <span />
             </div>
             <p />

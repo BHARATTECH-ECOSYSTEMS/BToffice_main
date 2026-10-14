@@ -22,7 +22,8 @@ export const DOMAIN_TONES = [
  * Stacking deck of research domains: each card pins just below the one before it as you
  * scroll, so the deck reads one domain at a time.
  */
-export function DomainGrid({ link = true }: { link?: boolean }) {
+/** `numbered` adds the "01 / 06" index to each card (the Research page keeps it; the home page does not). */
+export function DomainGrid({ link = true, numbered = false }: { link?: boolean; numbered?: boolean }) {
   const [activeIdx, setActiveIdx] = useState(0);
   const deckRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<(HTMLElement | null)[]>([]);
@@ -92,7 +93,8 @@ export function DomainGrid({ link = true }: { link?: boolean }) {
           <div className="stack-card__inner">
             <div className="stack-card__copy">
               <span className="stack-card__num">
-                {String(i + 1).padStart(2, '0')} / {total} · {d.field}
+                {numbered && `${String(i + 1).padStart(2, '0')} / ${total} · `}
+                {d.field}
               </span>
               <h3 className="stack-card__title">{d.name}</h3>
               <p className="stack-card__body">{d.body}</p>

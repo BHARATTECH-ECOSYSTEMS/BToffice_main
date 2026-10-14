@@ -164,22 +164,49 @@
 }
 /* the panel spans edge to edge like the architecture sheet below it */
 .how-frame {
+  /* one even margin inside the orange panel, on all four sides; the heading and the steps share it */
+  --how-pad: clamp(14px, 1.6vw, 22px);
+  --node: 56px;
   max-width: none;
   padding-inline: var(--sheet-x);
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
   gap: clamp(10px, 1.8svh, 20px);
 }
-/* left-aligned on the shared text column like every other Home section, though the frame itself is sheet-wide */
+/* the heading starts where the panel's boxes do */
 .how-head {
   width: 100%;
-  max-width: calc(var(--content) + (var(--gutter) - var(--sheet-x)) * 2);
-  margin-inline: auto;
-  padding-inline: calc(var(--gutter) - var(--sheet-x));
+  padding-inline: var(--how-pad);
+  /* room between the heading and the step line; it shrinks with the screen so short laptops still fit */
+  margin-bottom: clamp(6px, 2.2svh, 22px);
 }
-/* the step tabs span the same width as the panel under them */
+/* The first step sits over the left box's edge and the last over the right box's, so the line between them
+   spans the boxes' full width. Each step is as wide as its icon; its label hangs centred below. */
 .ch-how .pipe {
+  display: flex;
+  justify-content: space-between;
   width: 100%;
+  padding-inline: var(--how-pad);
+}
+.ch-how .pipe-step {
+  width: var(--node);
+  white-space: nowrap;
+}
+.ch-how .pipe-node {
+  width: var(--node);
+  height: var(--node);
+}
+/* the end labels read inward, so they never pass the boxes' edges */
+.ch-how .pipe-step:first-of-type {
+  justify-items: start;
+}
+.ch-how .pipe-step:last-of-type {
+  justify-items: end;
+}
+.ch-how .pipe-rail {
+  top: calc(var(--node) / 2 - 1px);
+  left: calc(var(--how-pad) + var(--node) / 2);
+  right: calc(var(--how-pad) + var(--node) / 2);
 }
 .ch-how .pipe-fill {
   background: var(--ink);
@@ -187,9 +214,12 @@
 }
 .ch-how .how-panel {
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1.15fr);
+  /* the boxes take the panel's height rather than their content's, so on short screens they shrink with the
+     panel and keep its bottom margin instead of running past it and being cut off */
+  grid-template-rows: minmax(0, 1fr);
   align-items: stretch;
   gap: 16px;
-  padding: 18px 20px 20px;
+  padding: var(--how-pad);
   border-radius: var(--r-sheet);
   /* fills the frame's 1fr row so the panel matches the full-height chapters around it */
   min-height: 0;
@@ -242,6 +272,9 @@
   gap: 8px;
   overflow: hidden;
   padding: 14px 16px 16px;
+  /* on short screens the trace can run past the box; it fades out rather than ending on a cut line */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent);
 }
 /* finished steps fold to two lines at most, so the step being run always has room */
 .ch-how .console-log li[data-done] > span:last-child {
@@ -387,28 +420,21 @@
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 10px 24px -5px rgba(0, 0, 0, 0.4);
 }
 .scene-plan span {
-  grid-template-columns: 28px 1fr;
+  grid-template-columns: 10px 1fr;
   align-items: center;
   gap: 12px;
 }
+/* a plain bullet: the plan's steps read in order without numbers */
 .scene-plan i {
-  display: grid;
-  place-items: center;
-  width: 28px;
-  height: 28px;
+  width: 10px;
+  height: 10px;
   border-radius: 50%;
   background: #fff;
-  color: var(--tone);
-  font-style: normal;
-  font-family: var(--mono);
-  font-size: 12px;
-  font-weight: 700;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 :root[data-theme='dark'] .scene-plan i,
 .dark .scene-plan i {
   background: rgba(255, 255, 255, 0.22);
-  color: #fff;
 }
 .scene-act .scene-core {
   left: 9%;
@@ -490,6 +516,9 @@
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
   align-items: center;
   height: 100%;
+  /* measured from the dark sheet's edges, so both sides get the same room inside it */
+  max-width: none;
+  padding-inline: calc(var(--sheet-x) + var(--sheet-pad));
 }
 .arch-side .arch-list {
   gap: 16px;
@@ -620,8 +649,8 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 4px;
   gap: 18px;
-  width: min(100%, 560px);
-  justify-self: center;
+  /* fills its column, so its right edge sits as far in from the sheet as the heading does on the left */
+  width: 100%;
   padding: 18px 20px 20px 22px;
   border-radius: var(--r-md);
   background: rgb(255 255 255 / 0.05);
@@ -712,6 +741,47 @@
 
 /* ══ Phones and short screens ═══════════════════════════════════════════════ */
 
+/* Short laptop screens: the pinned frame has to fit one screen, so the heading, the steps and the panel's
+   contents tighten up and the boxes keep their full height inside the panel. */
+@media (min-width: 901px) and (max-height: 760px) {
+  .ch-how .how-head .h2 {
+    font-size: min(var(--fs-h2), 7.4svh);
+  }
+  .how-frame {
+    --node: 44px;
+  }
+  .ch-how .pipe-step {
+    font-size: 15px;
+  }
+  .ch-how .pipe-node {
+    border-radius: var(--r-sm);
+  }
+  .ch-how .pipe-node svg {
+    width: 18px;
+    height: 18px;
+  }
+  .how-copy .how-main {
+    padding: 14px 16px;
+  }
+  .how-big {
+    font-size: clamp(30px, 6.4svh, 56px);
+  }
+  .how-main p {
+    margin-top: 6px;
+    font-size: 15px;
+  }
+  .how-powered {
+    padding-top: 10px;
+  }
+  .scene-plan {
+    gap: 8px;
+    padding: 14px;
+  }
+  .scene-plan span {
+    padding: 9px 12px;
+  }
+}
+
 @media (max-width: 1100px) {
 
   .ch-how .how-panel {
@@ -730,9 +800,10 @@
   .ch-how .pipe-step {
     font-size: 12px;
   }
+  .how-frame {
+    --node: 40px;
+  }
   .ch-how .pipe-node {
-    width: 40px;
-    height: 40px;
     border-radius: var(--r-sm);
   }
   .ch-how .how-panel {
@@ -888,28 +959,6 @@
   letter-spacing: -0.02em;
 }
 
-.hero-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px 28px;
-  margin-top: 30px;
-  font-size: 14px;
-  color: var(--ink-soft);
-}
-.hero-stats b {
-  margin-right: 4px;
-  font-family: var(--display);
-  font-size: 26px;
-  font-weight: 640;
-  letter-spacing: -0.03em;
-  color: var(--ink);
-}
-.segmented button small {
-  margin-left: 2px;
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--muted);
-}
 
 /* posts: a feature row, then rows that always fill */
 .posts-bento .cell-link {
@@ -1036,30 +1085,6 @@
   font-weight: 600;
   color: var(--ink);
 }
-.deck-badge {
-  position: absolute;
-  right: -34px;
-  top: -40px;
-  z-index: 20;
-  display: grid;
-  place-items: center;
-  align-content: center;
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  background: var(--brand);
-  color: #fff;
-  font-size: 11px;
-  line-height: 1.1;
-  text-align: center;
-  box-shadow: 0 20px 34px -18px rgb(53 24 154 / 0.8);
-}
-.deck-badge b {
-  font-family: var(--display);
-  font-size: 32px;
-  letter-spacing: -0.04em;
-}
-
 .role-grid {
   display: flex;
   flex-wrap: wrap;
@@ -1176,9 +1201,6 @@
   }
   .posts-bento .post.is-row .cell-link {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .deck-badge {
-    right: 0;
   }
 }
 
@@ -1506,18 +1528,6 @@
     transform: scale(0.92);
   }
 }
-/* About and Contact both end in the same dark card: moving between them keeps the panel and the card in
-   place and only brings in the new rows */
-.nav-peek[data-open='contact'][data-from='about'] .nav-peek-body,
-.nav-peek[data-open='about'][data-from='contact'] .nav-peek-body {
-  animation: none;
-}
-.nav-peek[data-open='contact'][data-from='about'] .nav-peek-pane[data-on] .peek-list > [style*='--k'] {
-  animation-delay: calc(var(--k) * 40ms);
-}
-.nav-peek[data-open='about'][data-from='contact'] .nav-peek-pane[data-on] .peek-side-ink {
-  animation: none;
-}
 .peek-visual {
   display: grid;
   gap: 8px;
@@ -1837,6 +1847,11 @@
   letter-spacing: -0.035em;
   color: color-mix(in srgb, var(--tone) 80%, var(--ink));
 }
+/* a title in place of the count: smaller, so the two words sit on one line in the side panel */
+.peek-side-figure.is-words {
+  font-size: 30px;
+  line-height: 1.05;
+}
 .peek-side-label {
   margin-top: 4px;
   font-size: 15px;
@@ -1865,11 +1880,6 @@
   height: 7px;
   border-radius: 50%;
   background: var(--tone);
-}
-.peek-depts b {
-  margin-left: auto;
-  font-family: var(--mono);
-  font-size: 12px;
 }
 .peek-side .peek-go {
   margin-top: auto;

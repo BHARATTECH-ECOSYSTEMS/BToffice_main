@@ -18,7 +18,7 @@ export function Research() {
       />
       <Quiet className="section section-tight research-domains-section">
         <div className="wrap">
-          <DomainGrid link={false} />
+          <DomainGrid link={false} numbered />
         </div>
       </Quiet>
       <Quiet className="section research-fields-section">
