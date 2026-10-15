@@ -40,9 +40,8 @@
   display: grid;
   /* the form gets the wider side, so titles stay on one line in the compact card */
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  /* one height for every view, so switching tabs never resizes the card; a view that runs taller (sign-up
-     showing errors on a short screen) scrolls inside the form side */
-  height: min(656px, calc(100svh - 48px));
+  /* one height for both views, so going to password reset and back never resizes the card */
+  height: min(520px, calc(100svh - 48px));
   max-height: calc(100svh - 48px);
   overflow: hidden;
   border-radius: inherit;
@@ -66,11 +65,11 @@
 }
 /* On opening, the form's lines rise in one after another, just behind the circle's edge. Once the visitor
    switches view (data-switched), the whole view slides in instead and the stagger doesn't replay. */
-.login:not([data-switched]) :is(.login-main > .cell-label, .login-tabs, .login-back, .login-title, .login-sub, .login-form > *) {
+.login:not([data-switched]) :is(.login-main > .cell-label, .login-back, .login-title, .login-sub, .login-form > *) {
   animation: login-rise 0.36s var(--ease-expo) both;
 }
 .login-main > .cell-label { animation-delay: 0.12s; }
-:is(.login-tabs, .login-back) { animation-delay: 0.14s; }
+.login-back { animation-delay: 0.14s; }
 .login-title { animation-delay: 0.17s; }
 .login-sub { animation-delay: 0.2s; }
 .login-form > :nth-child(1) { animation-delay: 0.23s; }
@@ -200,8 +199,7 @@
   display: grid;
   align-content: center;
   padding: clamp(20px, 2.4vw, 28px) clamp(24px, 3vw, 32px);
-  /* still scrolls on very short screens, but never shows a bar: a few px of overflow would otherwise
-     put a scrollbar beside the sign-up form */
+  /* still scrolls on very short screens, but never shows a bar beside the form */
   overflow-y: auto;
   scrollbar-width: none;
 }
@@ -235,45 +233,7 @@
     color: var(--paper);
   }
 }
-/* Sign in / Sign up: a segmented switch whose white pill slides under the chosen tab */
-.login-tabs {
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin: 12px 0 18px;
-  padding: 4px;
-  border-radius: var(--r-pill);
-  background: var(--bg-2);
-  isolation: isolate;
-}
-.login-tabs::before {
-  content: '';
-  position: absolute;
-  z-index: -1;
-  inset: 4px auto 4px 4px;
-  width: calc(50% - 4px);
-  border-radius: inherit;
-  background: var(--login-panel);
-  box-shadow: 0 1px 2px rgb(20 19 15 / 0.08), 0 0 0 1px var(--line);
-  transition: transform var(--dur-ui) var(--ease);
-}
-.login-tabs[data-on='signup']::before {
-  transform: translateX(100%);
-}
-.login-tabs [role='tab'] {
-  height: 36px;
-  border-radius: var(--r-pill);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink-soft);
-  transition: color var(--dur-hover) var(--ease);
-}
-.login-tabs [aria-selected='true'] {
-  color: var(--ink);
-}
-.login-tabs [role='tab']:focus-visible,
-.login-back:focus-visible,
-.login-provider:focus-visible {
+.login-back:focus-visible {
   outline: 2px solid var(--violet);
   outline-offset: 2px;
 }
@@ -290,7 +250,6 @@
   transition: color var(--dur-hover) var(--ease);
 }
 @media (hover: hover) and (pointer: fine) {
-  .login-tabs [role='tab']:hover,
   .login-back:hover {
     color: var(--ink);
   }
@@ -394,46 +353,8 @@
 .login-link:hover {
   text-decoration: underline;
 }
-.login-hint {
-  font-size: 13px;
-  color: var(--muted);
-}
 .login-submit {
   width: 100%;
-}
-.login-providers {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-}
-.login-provider {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  height: 44px;
-  padding: 0 10px;
-  border-radius: var(--r-pill);
-  background: var(--login-panel);
-  box-shadow: inset 0 0 0 1px var(--line);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
-  transition: box-shadow var(--dur-hover) var(--ease), background var(--dur-hover) var(--ease);
-}
-.login-provider svg {
-  flex: none;
-  width: 17px;
-  height: 17px;
-}
-@media (hover: hover) and (pointer: fine) {
-  .login-provider:hover {
-    background: var(--login-field);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--violet) 45%, var(--line));
-  }
-}
-.login-provider:active {
-  scale: 0.97;
 }
 .login-submit {
   margin-top: 6px;
@@ -454,20 +375,6 @@
   to {
     transform: rotate(360deg);
   }
-}
-.login-or {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--muted);
-}
-.login-or::before,
-.login-or::after {
-  content: '';
-  flex: 1;
-  height: 1px;
-  background: var(--line);
 }
 .login-notice {
   min-height: 20px;
@@ -496,38 +403,12 @@
   .login::backdrop,
   .login-glow,
   .login[data-switched] .login-view,
-  .login:not([data-switched]) :is(.login-main > .cell-label, .login-tabs, .login-back, .login-title, .login-sub, .login-form > *) {
+  .login:not([data-switched]) :is(.login-main > .cell-label, .login-back, .login-title, .login-sub, .login-form > *) {
     animation: none;
-  }
-  .login-tabs::before {
-    transition: none;
   }
 }
 
 /* narrow screens: the form alone; the 3D side is hidden (its logo stops drawing while out of view) */
-/* short laptop screens: the card is capped at the screen height, so the form tightens up to keep the
-   longest view (sign-up) inside it */
-@media (max-height: 760px) and (min-width: 901px) {
-  .login-main {
-    padding-block: 16px;
-  }
-  .login-tabs {
-    margin-block: 8px 12px;
-  }
-  .login-title {
-    font-size: 28px;
-  }
-  .login-sub {
-    margin-bottom: 10px;
-  }
-  .login-form {
-    gap: 8px;
-  }
-  .login-field input {
-    height: 40px;
-  }
-}
-
 @media (max-width: 900px) {
   .login-card {
     grid-template-columns: minmax(0, 1fr);
@@ -555,9 +436,7 @@
   box-shadow: 0 0 0 1px rgb(255 255 255 / 0.1), 0 50px 100px -40px rgb(0 0 0 / 0.8);
 }
 :root[data-theme='dark'] .login-close,
-.dark .login-close,
-:root[data-theme='dark'] .login-tabs,
-.dark .login-tabs {
+.dark .login-close {
   background: rgb(255 255 255 / 0.08);
 }
 :root[data-theme='dark'] .login-field input[aria-invalid],

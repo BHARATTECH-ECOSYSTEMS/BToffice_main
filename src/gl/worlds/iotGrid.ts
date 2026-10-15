@@ -51,7 +51,10 @@ export function createIotGrid(): DomainWorld {
       { radius: 1.45, bottom: -0.5, top: 1.0 },
       { radius: 0.75, bottom: -0.5, top: 1.5 },
     ],
-    0.56
+    0.56,
+    30,
+    new THREE.Vector3(0, -0.37, 0),
+    1.15
   );
   const world = new THREE.Group();
   world.position.y = -0.4;

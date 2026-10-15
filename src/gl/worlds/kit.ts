@@ -91,7 +91,12 @@ export interface Stage {
 
 const FIT_SAMPLES = 16;
 
-export function createStage(bounds: BoundsShape[], elevation: number, fov = 30, target = new THREE.Vector3()): Stage {
+/**
+ * `fit` above 1 frames the bounds tighter than their full extent. The bounds hold for any spin, so they
+ * run wider than what a world draws at most angles; worlds whose pictures sit small in the box use it,
+ * set from a measured full loop so nothing ever reaches the box edge.
+ */
+export function createStage(bounds: BoundsShape[], elevation: number, fov = 30, target = new THREE.Vector3(), fit = 1): Stage {
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(fov, 1, 0.05, 100);
 
@@ -127,6 +132,7 @@ export function createStage(bounds: BoundsShape[], elevation: number, fov = 30, 
       samples.push(new THREE.Vector3(Math.cos(a) * radius * cover, top, Math.sin(a) * radius * cover));
     }
   });
+  samples.forEach((p) => p.divideScalar(fit));
 
   let view: SafeView = { tanH: Math.tan(THREE.MathUtils.degToRad(fov / 2)), tanV: Math.tan(THREE.MathUtils.degToRad(fov / 2)) };
   const look = { yaw: 0, pitch: 0 };

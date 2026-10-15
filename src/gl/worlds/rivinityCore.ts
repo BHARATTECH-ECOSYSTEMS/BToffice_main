@@ -52,7 +52,10 @@ export function createRivinityCore(): DomainWorld {
       { radius: 1.95, bottom: -0.82, top: 0.45 },
       { radius: 1.3, bottom: -0.82, top: 1.15 },
     ],
-    0.6
+    0.6,
+    30,
+    new THREE.Vector3(0, -0.29, 0),
+    1.45
   );
   const world = new THREE.Group();
   world.position.y = 0.25;

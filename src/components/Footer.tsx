@@ -3,7 +3,7 @@ import { Brand } from './ui';
 import { useOpenLogin } from './Login';
 import { LINKEDIN_URL } from '../content';
 
-const COLS: { title: string; links: { label: string; to?: string; href?: string; login?: boolean }[] }[] = [
+const COLS: { title: string; links: { label: string; to?: string; login?: boolean }[] }[] = [
   {
     title: 'Company',
     links: [
@@ -18,8 +18,6 @@ const COLS: { title: string; links: { label: string; to?: string; href?: string;
     title: 'Products',
     links: [
       { label: 'Rivinity', to: '/research' },
-      { label: 'CollegeCue', href: '#' },
-      { label: 'RECAG', href: '#' },
     ],
   },
   {
@@ -59,12 +57,10 @@ export function Footer() {
                   <li key={l.label}>
                     {l.to ? (
                       <Link to={l.to}>{l.label}</Link>
-                    ) : l.login ? (
+                    ) : (
                       <button type="button" onClick={openLogin} aria-haspopup="dialog">
                         {l.label}
                       </button>
-                    ) : (
-                      <a href={l.href}>{l.label}</a>
                     )}
                   </li>
                 ))}

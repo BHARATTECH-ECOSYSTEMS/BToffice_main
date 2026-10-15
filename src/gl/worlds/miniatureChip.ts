@@ -56,7 +56,10 @@ export function createMiniatureChip(): DomainWorld {
       { radius: 1.95, bottom: -1.02, top: 0.2 },
       { radius: 1.05, bottom: -1.02, top: 1.35 },
     ],
-    0.22
+    0.22,
+    30,
+    new THREE.Vector3(0, -0.07, 0),
+    1.22
   );
   const world = new THREE.Group();
   scene.add(world);

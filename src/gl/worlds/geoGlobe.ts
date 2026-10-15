@@ -153,7 +153,7 @@ interface Spot {
 }
 
 export function createGeoGlobe(): DomainWorld {
-  const { scene, camera, rig, frame } = createStage([{ radius: 1.56, bottom: -1.56, top: 1.56, round: true }], 0.22);
+  const { scene, camera, rig, frame } = createStage([{ radius: 1.56, bottom: -1.56, top: 1.56, round: true }], 0.22, 30, new THREE.Vector3(0, -0.12, 0), 1.08);
   const world = new THREE.Group();
   scene.add(world);
   // Longitude L sits at angle L + yaw from +x, so this yaw brings India's meridian round to +z, towards the camera;

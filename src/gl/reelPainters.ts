@@ -27,10 +27,7 @@ export interface ReelPainter {
   dispose(): void;
 }
 
-/** Space the chapter caption (top) and the progress bar (bottom) take from the stage, in CSS pixels. */
-const CAPTION_SPACE = 58;
-const PROGRESS_SPACE = 24;
-/** Clear space kept between a 3D world and every edge of the box. */
+/** Clear space kept between a world and every edge of the box (the box has no caption or progress bar). */
 const STAGE_PAD = 18;
 
 /** The 3D world for this domain, or null when WebGL is unavailable or the domain has no world. */
@@ -49,12 +46,12 @@ export function createWorldPainter(index: number, canvas: HTMLCanvasElement): Re
     },
     prepare: () => compileWorld(world),
     paint({ act, progress, t, exit, pointer }) {
-      const insets = { top: CAPTION_SPACE * dpr, bottom: PROGRESS_SPACE * dpr, pad: STAGE_PAD * dpr };
+      const insets = { top: 0, bottom: 0, pad: STAGE_PAD * dpr };
       world.frame(safeView(world.camera.fov, canvas.width, canvas.height, insets));
       world.update({ act, progress, t, pointer });
       // Fade at the loop's seam; the world itself resets underneath.
       canvas.style.opacity = String(act === 0 ? span(progress, 0, 0.06) : 1 - exit);
-      renderWorld(world, ctx, canvas.width, canvas.height, ((CAPTION_SPACE - PROGRESS_SPACE) / 2) * dpr);
+      renderWorld(world, ctx, canvas.width, canvas.height);
     },
     dispose() {
       world.dispose();
@@ -88,8 +85,8 @@ export function createInkPainter(index: number, canvas: HTMLCanvasElement): Reel
     paint({ act, progress, t, exit }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
-      const u = Math.min(W / 460, (H - CAPTION_SPACE - PROGRESS_SPACE) / 390);
-      ctx.translate(W / 2, CAPTION_SPACE + (H - CAPTION_SPACE - PROGRESS_SPACE) / 2);
+      const u = Math.min(W / 460, H / 390);
+      ctx.translate(W / 2, H / 2);
       ctx.scale(u, u);
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';

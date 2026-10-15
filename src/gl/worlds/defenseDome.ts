@@ -137,7 +137,10 @@ export function createDefenseDome(): DomainWorld {
       { radius: 1.95, bottom: -0.56, top: 0.6 },
       { radius: 1.55, bottom: -0.56, top: 1.15 },
     ],
-    0.4
+    0.4,
+    30,
+    new THREE.Vector3(0, -0.14, 0),
+    1.1
   );
   const world = new THREE.Group();
   world.position.y = 0.05;
