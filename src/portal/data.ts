@@ -8,6 +8,8 @@ import type { Role } from './session';
  */
 
 export type PersonRole = Role | 'intern';
+/** `invited` = added but not signed in yet; `inactive` = an admin switched the account off. */
+export type PersonStatus = 'active' | 'inactive' | 'invited';
 
 export interface Person {
   id: string;
@@ -16,7 +18,7 @@ export interface Person {
   role: PersonRole;
   phone: string;
   team: string;
-  status: 'active' | 'invited';
+  status: PersonStatus;
 }
 
 export const SEED_PEOPLE: Person[] = [
@@ -90,7 +92,8 @@ export interface Tool {
 const web = (icon: PortalIconName) => ({ label: 'Direct Web Access', url: '', icon });
 
 export const TOOLS: Tool[] = [
-  { id: 'coder', name: 'Coder', navLabel: 'Workspace', category: 'Tool', body: 'Open the BharatTech coding workspace.', tags: ['Windows', 'macOS'], url: '', icon: 'code', inNav: true, openLabel: 'Open', caption: "Don't have an app yet?", secondary: { label: 'Install / Update app', url: '', icon: 'download' } },
+  { id: 'huly', name: 'Huly.io', navLabel: 'Workspace', category: 'Team workspace', body: 'Projects, chat and documents for the whole team in one place.', tags: ['Projects & chat', 'Documents'], url: '', icon: 'users', inNav: true, openLabel: 'Open', secondary: web('users') },
+  { id: 'coder', name: 'Coder', category: 'Tool', body: 'Open the BharatTech coding workspace.', tags: ['Windows', 'macOS'], url: '', icon: 'code', openLabel: 'Open', caption: "Don't have an app yet?", secondary: { label: 'Install / Update app', url: '', icon: 'download' } },
   { id: 'filesync', name: 'File Transfer', category: 'Files', body: 'Send large files between teammates and devices.', tags: ['Peer to peer', 'Self-hosted'], url: '', icon: 'transfer', inNav: true, navOnly: true },
   { id: 'plane', name: 'Plane', navLabel: 'Projects (Plane)', category: 'Project management', body: 'Agile project management with issues, cycles and modules.', tags: ['Kanban & cycles', 'SSO ready'], url: '', icon: 'kanban', inNav: true, caption: 'Self-Hosted Workspace Suite', secondary: web('kanban') },
   { id: 'securo', name: 'Securo', navLabel: 'Securo (Finance)', category: 'Personal finance', body: 'Track accounts, spending, budgets and transactions.', tags: ['Accounts & budgets', 'SSO ready'], url: '', icon: 'shield', inNav: true, caption: 'Self-Hosted Finance Suite', secondary: web('shield') },
@@ -115,6 +118,95 @@ export interface LinkResource {
 export const SEED_LINKS: LinkResource[] = [
   { id: 'L1', name: 'React documentation', url: 'https://react.dev/learn', assignedTo: [] },
   { id: 'L2', name: 'Class Central', url: 'https://www.classcentral.com/', assignedTo: [] },
+];
+
+/* ── HR OPS: verification requests ── */
+
+export type VerificationStatus = 'pending' | 'verified' | 'rejected';
+
+/** The documents an admin ticks off before a request can be marked verified. */
+export const COMPANY_CHECKS = [
+  { id: 'registration', label: 'Registration certificate' },
+  { id: 'tax', label: 'GST / tax registration' },
+  { id: 'address', label: 'Registered address' },
+  { id: 'bank', label: 'Bank account details' },
+  { id: 'director', label: 'Director identity' },
+] as const;
+export const EMPLOYEE_CHECKS = [
+  { id: 'identity', label: 'Government ID' },
+  { id: 'address', label: 'Address proof' },
+  { id: 'education', label: 'Education certificates' },
+  { id: 'employment', label: 'Previous employment' },
+  { id: 'references', label: 'References' },
+] as const;
+
+interface VerificationBase {
+  id: string;
+  status: VerificationStatus;
+  /** Ids of the checks already ticked off. */
+  done: string[];
+  note: string;
+  requestedBy: string;
+  requested: string;
+  decidedBy?: string;
+  decided?: string;
+  /** What happened, oldest first: the audit trail a verification has to keep. */
+  log: { at: string; by: string; text: string }[];
+}
+export type Verification =
+  | (VerificationBase & { kind: 'company'; company: string; registration: string; website: string; contactEmail: string })
+  | (VerificationBase & { kind: 'employee'; personId: string });
+export type VerificationKind = Verification['kind'];
+
+// Sample records only: every company, number and address here is made up.
+export const SEED_VERIFICATIONS: Verification[] = [
+  {
+    kind: 'company', id: 'V1', company: 'Northwind Logistics Pvt Ltd', registration: 'DEMO-CIN-0001', website: 'https://northwind.example.com', contactEmail: 'accounts@northwind.example.com',
+    status: 'pending', done: ['registration', 'tax'], note: '', requestedBy: 'Aanya Sharma', requested: '2026-10-08',
+    log: [
+      { at: '2026-10-08T10:12', by: 'Aanya Sharma', text: 'Opened the request' },
+      { at: '2026-10-09T15:40', by: 'Aanya Sharma', text: 'Checked Registration certificate' },
+      { at: '2026-10-09T15:42', by: 'Aanya Sharma', text: 'Checked GST / tax registration' },
+    ],
+  },
+  {
+    kind: 'company', id: 'V2', company: 'Contoso Analytics LLP', registration: 'DEMO-LLPIN-0002', website: 'https://contoso.example.com', contactEmail: 'legal@contoso.example.com',
+    status: 'verified', done: ['registration', 'tax', 'address', 'bank', 'director'], note: 'All documents match the registry.', requestedBy: 'Aanya Sharma', requested: '2026-09-22', decidedBy: 'Arjun Rao', decided: '2026-09-29',
+    log: [
+      { at: '2026-09-22T09:30', by: 'Aanya Sharma', text: 'Opened the request' },
+      { at: '2026-09-25T12:05', by: 'Arjun Rao', text: 'Checked all 5 documents' },
+      { at: '2026-09-29T11:20', by: 'Arjun Rao', text: 'Marked verified' },
+    ],
+  },
+  {
+    kind: 'company', id: 'V3', company: 'Fabrikam Components', registration: 'DEMO-CIN-0003', website: '', contactEmail: 'hello@fabrikam.example.com',
+    status: 'rejected', done: ['registration'], note: 'Tax registration number did not match the company name.', requestedBy: 'Arjun Rao', requested: '2026-09-15', decidedBy: 'Arjun Rao', decided: '2026-09-18',
+    log: [
+      { at: '2026-09-15T14:00', by: 'Arjun Rao', text: 'Opened the request' },
+      { at: '2026-09-16T10:15', by: 'Arjun Rao', text: 'Checked Registration certificate' },
+      { at: '2026-09-18T16:45', by: 'Arjun Rao', text: 'Rejected' },
+    ],
+  },
+  {
+    kind: 'employee', id: 'V4', personId: 'EMP8', status: 'pending', done: ['identity', 'address'], note: '', requestedBy: 'Aanya Sharma', requested: '2026-10-10',
+    log: [
+      { at: '2026-10-10T09:05', by: 'Aanya Sharma', text: 'Opened the request' },
+      { at: '2026-10-12T11:30', by: 'Aanya Sharma', text: 'Checked Government ID' },
+      { at: '2026-10-12T11:34', by: 'Aanya Sharma', text: 'Checked Address proof' },
+    ],
+  },
+  {
+    kind: 'employee', id: 'V5', personId: 'EMP7', status: 'verified', done: ['identity', 'address', 'education', 'employment', 'references'], note: '', requestedBy: 'Aanya Sharma', requested: '2026-09-01', decidedBy: 'Aanya Sharma', decided: '2026-09-09',
+    log: [
+      { at: '2026-09-01T10:00', by: 'Aanya Sharma', text: 'Opened the request' },
+      { at: '2026-09-08T17:10', by: 'Aanya Sharma', text: 'Checked all 5 documents' },
+      { at: '2026-09-09T09:45', by: 'Aanya Sharma', text: 'Marked verified' },
+    ],
+  },
+  {
+    kind: 'employee', id: 'V6', personId: 'EMP5', status: 'pending', done: [], note: '', requestedBy: 'Arjun Rao', requested: '2026-10-13',
+    log: [{ at: '2026-10-13T13:25', by: 'Arjun Rao', text: 'Opened the request' }],
+  },
 ];
 
 export type TaskStatus = 'todo' | 'doing' | 'done';
@@ -171,4 +263,4 @@ export type PortalIconName =
   | 'grid' | 'users' | 'cap' | 'book' | 'code' | 'transfer' | 'kanban' | 'shield' | 'chat' | 'screen' | 'invoice'
   | 'award' | 'file' | 'clipboard' | 'spark' | 'pen' | 'layers' | 'plus' | 'search' | 'trash' | 'external'
   | 'check' | 'clock' | 'target' | 'trend' | 'key' | 'calendar' | 'chevron' | 'menu' | 'close' | 'logout'
-  | 'upload' | 'link' | 'home' | 'alert' | 'eye' | 'download' | 'share' | 'refresh' | 'filter' | 'edit' | 'chart' | 'play' | 'lock';
+  | 'upload' | 'link' | 'home' | 'alert' | 'eye' | 'download' | 'share' | 'refresh' | 'filter' | 'edit' | 'chart' | 'play' | 'lock' | 'settings' | 'help' | 'bell';

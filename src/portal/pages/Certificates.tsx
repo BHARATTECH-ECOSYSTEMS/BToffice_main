@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { CERTIFICATE_TYPES, type Certificate, type CertificateType } from '../data';
-import { useSession } from '../session';
+import { managesPortal, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
 import { btnClass, BtnLabel, ConfirmDelete, Empty, Modal, PageHead, PIcon, SearchField, Stat, useNotice } from '../ui';
 import type { PortalIconName } from '../data';
@@ -9,15 +9,15 @@ const TYPE_ICON: Record<CertificateType, PortalIconName> = { bonafide: 'file', c
 const typeOf = (id: CertificateType) => CERTIFICATE_TYPES.find((t) => t.id === id)!;
 
 export function Certificates() {
-  const isAdmin = useSession()!.role === 'admin';
+  const isManager = managesPortal(useSession()!.role);
   const { certificates } = usePortal();
-  const [tab, setTab] = useState<'issue' | 'history'>(isAdmin ? 'issue' : 'history');
+  const [tab, setTab] = useState<'issue' | 'history'>(isManager ? 'issue' : 'history');
   const [notice, notify] = useNotice();
 
   return (
     <>
-      <PageHead title="Certificates" sub={isAdmin ? 'Generate certificates and keep track of every one issued.' : 'Certificates issued to you.'} />
-      {isAdmin && (
+      <PageHead title="Certificates" sub={isManager ? 'Generate certificates and keep track of every one issued.' : 'Certificates issued to you.'} />
+      {isManager && (
         <div className="p-tabs" role="tablist" aria-label="Certificates">
           <button type="button" role="tab" aria-selected={tab === 'issue'} onClick={() => setTab('issue')}>
             <PIcon name="plus" size={16} /> Issue certificate
@@ -27,7 +27,7 @@ export function Certificates() {
           </button>
         </div>
       )}
-      {isAdmin && tab === 'issue' ? (
+      {isManager && tab === 'issue' ? (
         <IssueWizard
           onIssued={(name, type) => {
             notify(`${typeOf(type).name} generated for ${name}. It's now in the history.`);
@@ -35,7 +35,7 @@ export function Certificates() {
           }}
         />
       ) : (
-        <History isAdmin={isAdmin} notify={notify} />
+        <History isManager={isManager} notify={notify} />
       )}
       {notice}
     </>
@@ -164,13 +164,14 @@ function IssueWizard({ onIssued }: { onIssued: (name: string, type: CertificateT
   );
 }
 
-function History({ isAdmin, notify }: { isAdmin: boolean; notify: (t: string) => void }) {
+function History({ isManager, notify }: { isManager: boolean; notify: (t: string) => void }) {
+  const canDelete = useSession()!.role === 'admin';
   const { certificates, me, removeCertificate } = usePortal();
   const byId = usePeopleById();
   const [q, setQ] = useState('');
   const [viewing, setViewing] = useState<Certificate | null>(null);
   const [deleting, setDeleting] = useState<Certificate | null>(null);
-  const mine = isAdmin ? certificates : certificates.filter((c) => c.recipientId === me.id);
+  const mine = isManager ? certificates : certificates.filter((c) => c.recipientId === me.id);
   const query = q.trim().toLowerCase();
   const rows = mine.filter((c) => !query || [typeOf(c.type).name, byId.get(c.recipientId)?.name ?? '', c.issuedBy].some((v) => v.toLowerCase().includes(query)));
   const latest = mine[0];
@@ -178,7 +179,7 @@ function History({ isAdmin, notify }: { isAdmin: boolean; notify: (t: string) =>
   return (
     <>
       <div className="p-stats is-two">
-        <Stat icon="award" label={isAdmin ? 'Total issued' : 'Issued to you'} value={mine.length} />
+        <Stat icon="award" label={isManager ? 'Total issued' : 'Issued to you'} value={mine.length} />
         <Stat icon="calendar" label="Latest" value={latest ? formatDate(latest.date) : 'None yet'} tone="saffron" />
       </div>
       <section className="p-card" aria-labelledby="cert-history">
@@ -190,7 +191,7 @@ function History({ isAdmin, notify }: { isAdmin: boolean; notify: (t: string) =>
             <h2 id="cert-history" className="p-card-title">
               Certificate history
             </h2>
-            <p className="p-muted">{isAdmin ? 'View and manage issued certificates.' : 'View the certificates issued to you.'}</p>
+            <p className="p-muted">{isManager ? 'View and manage issued certificates.' : 'View the certificates issued to you.'}</p>
           </div>
         </div>
         <SearchField value={q} onChange={setQ} label="Search certificates" placeholder="Search by type or person" />
@@ -200,7 +201,7 @@ function History({ isAdmin, notify }: { isAdmin: boolean; notify: (t: string) =>
               <thead>
                 <tr>
                   <th scope="col">Certificate type</th>
-                  {isAdmin && <th scope="col">Issued to</th>}
+                  {isManager && <th scope="col">Issued to</th>}
                   <th scope="col">Issued by</th>
                   <th scope="col">Date</th>
                   <th scope="col">
@@ -212,7 +213,7 @@ function History({ isAdmin, notify }: { isAdmin: boolean; notify: (t: string) =>
                 {rows.map((c) => (
                   <tr key={c.id}>
                     <td className="is-strong">{typeOf(c.type).name}</td>
-                    {isAdmin && <td>{byId.get(c.recipientId)?.name ?? 'Removed user'}</td>}
+                    {isManager && <td>{byId.get(c.recipientId)?.name ?? 'Removed user'}</td>}
                     <td>{c.issuedBy}</td>
                     <td>{formatDate(c.date)}</td>
                     <td className="is-end">
@@ -222,7 +223,7 @@ function History({ isAdmin, notify }: { isAdmin: boolean; notify: (t: string) =>
                             View<span className="sr-only"> {typeOf(c.type).name}</span>
                           </BtnLabel>
                         </button>
-                        {isAdmin && (
+                        {canDelete && (
                           <button type="button" className={btnClass('danger', { small: true })} onClick={() => setDeleting(c)}>
                             <BtnLabel icon="trash">
                               Delete<span className="sr-only"> {typeOf(c.type).name}</span>
@@ -238,7 +239,7 @@ function History({ isAdmin, notify }: { isAdmin: boolean; notify: (t: string) =>
           </div>
         ) : (
           <Empty icon="award" title={mine.length ? 'Nothing matches that search' : 'No certificates yet'}>
-            {!mine.length && !isAdmin ? 'Certificates an admin issues to you will be listed here.' : undefined}
+            {!mine.length && !isManager ? 'Certificates an admin issues to you will be listed here.' : undefined}
           </Empty>
         )}
       </section>

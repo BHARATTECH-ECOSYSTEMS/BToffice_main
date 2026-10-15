@@ -1,13 +1,14 @@
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
-import { CERTIFICATE_TYPES, toolById, type Person, type PersonRole, type PortalIconName, type SecurityEvent, type TaskStatus } from '../data';
-import { useSession } from '../session';
+import { CERTIFICATE_TYPES, toolById, type Person, type PersonRole, type PersonStatus, type PortalIconName, type SecurityEvent, type TaskStatus } from '../data';
+import { managesPortal, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, ConfirmDelete, Empty, initials, Modal, PageHead, PIcon, SearchField, Stat, useNotice } from '../ui';
 import { InviteModal } from './People';
 
 const STATUS_LABEL: Record<TaskStatus, string> = { todo: 'To do', doing: 'In progress', done: 'Done' };
-const ROLE_LABEL: Record<PersonRole, string> = { admin: 'Admin', employee: 'Employee', intern: 'Intern' };
+const ROLE_LABEL: Record<PersonRole, string> = { admin: 'Admin', subadmin: 'Sub Admin', employee: 'Employee', intern: 'Intern' };
+const PERSON_STATUS_LABEL: Record<PersonStatus, string> = { active: 'Active', inactive: 'Inactive', invited: 'Invited' };
 const certName = (id: string) => CERTIFICATE_TYPES.find((c) => c.id === id)?.name ?? id;
 
 // SecuPrompt reports these once it's connected; until then the panel shows that nothing is being reported.
@@ -16,12 +17,12 @@ const SECURITY_EVENTS: SecurityEvent[] = [];
 
 export function Dashboard() {
   const session = useSession()!;
-  return session.role === 'admin' ? <AdminDashboard /> : <EmployeeDashboard />;
+  return managesPortal(session.role) ? <AdminDashboard /> : <EmployeeDashboard />;
 }
 
-/** The header's shared actions: the coding workspace, and copying this page's link. */
+/** The header's shared actions: the Huly workspace, and copying this page's link. */
 function HeadActions({ notify }: { notify: (t: string) => void }) {
-  const coder = toolById('coder')!;
+  const huly = toolById('huly')!;
   const share = async () => {
     try {
       await navigator.clipboard.writeText(window.location.href);
@@ -33,13 +34,13 @@ function HeadActions({ notify }: { notify: (t: string) => void }) {
   return (
     <>
       {/* opens the workspace itself once its address is set; until then its page says it isn't connected */}
-      {coder.url ? (
-        <a className={btnClass('light')} href={coder.url} target="_blank" rel="noreferrer">
+      {huly.url ? (
+        <a className={btnClass('light')} href={huly.url} target="_blank" rel="noreferrer">
           <BtnLabel icon="users">Integrated Workspace</BtnLabel>
           <span className="sr-only">(opens in a new tab)</span>
         </a>
       ) : (
-        <Link to="/portal/tools/coder" className={btnClass('light')}>
+        <Link to="/portal/tools/huly" className={btnClass('light')}>
           <BtnLabel icon="users">Integrated Workspace</BtnLabel>
         </Link>
       )}
@@ -51,7 +52,7 @@ function HeadActions({ notify }: { notify: (t: string) => void }) {
 }
 
 function EmployeeDashboard() {
-  const { me, tasks, setTaskStatus } = usePortal();
+  const { me, tasks, setTaskStatus, setPersonStatus } = usePortal();
   const [notice, notify] = useNotice();
   const mine = tasks.filter((t) => t.assigneeId === me.id);
   const done = mine.filter((t) => t.status === 'done').length;
@@ -61,6 +62,23 @@ function EmployeeDashboard() {
   return (
     <>
       <PageHead title="Dashboard" sub="Your tasks, schedule and workspace tools in one place.">
+        <div className="p-seg is-status" role="group" aria-label="My status">
+          {(['active', 'inactive'] as const).map((s) => (
+            <button
+              key={s}
+              type="button"
+              className={`is-${s}`}
+              aria-pressed={me.status === s}
+              onClick={() => {
+                if (me.status === s) return;
+                setPersonStatus(me.id, s);
+                notify(`You're now marked ${PERSON_STATUS_LABEL[s].toLowerCase()}.`);
+              }}
+            >
+              <span className="p-status-dot" aria-hidden="true" /> {PERSON_STATUS_LABEL[s]}
+            </button>
+          ))}
+        </div>
         <HeadActions notify={notify} />
       </PageHead>
       {notice}
@@ -106,16 +124,6 @@ function EmployeeDashboard() {
             Tasks your admin assigns to you will show up here.
           </Empty>
         )}
-      </section>
-      <section className="p-card" aria-labelledby="reset-links">
-        <div className="p-card-head">
-          <h2 id="reset-links" className="p-card-title">
-            <PIcon name="link" /> Your password reset links
-          </h2>
-        </div>
-        <Empty icon="key" title="No reset links">
-          When an admin sends you a password reset link, it appears here until it expires.
-        </Empty>
       </section>
     </>
   );
@@ -393,6 +401,7 @@ function CertificatesPanel() {
 }
 
 function TeamPanel() {
+  const isAdmin = useSession()!.role === 'admin';
   const { people, me, invitePerson } = usePortal();
   const [q, setQ] = useState('');
   const [inviting, setInviting] = useState(false);
@@ -400,8 +409,8 @@ function TeamPanel() {
   const [notice, notify] = useNotice();
   const query = q.trim().toLowerCase();
   const rows = people.filter((p) => !query || [p.name, p.email, p.role].some((v) => v.toLowerCase().includes(query)));
-  // Same rule as People: admins manage employees and interns, never other admins or themselves.
-  const manageable = (p: Person) => p.role !== 'admin' && p.id !== me.id;
+  // Same rule as People: only admins manage, and never other admins or themselves.
+  const manageable = (p: Person) => isAdmin && p.role !== 'admin' && p.id !== me.id;
 
   return (
     <section className="p-card" aria-labelledby="team">
@@ -445,7 +454,7 @@ function TeamPanel() {
                   </td>
                   <td>{p.email}</td>
                   <td>
-                    <Badge kind={p.status}>{p.status === 'active' ? 'Active' : 'Invited'}</Badge>
+                    <Badge kind={p.status}>{PERSON_STATUS_LABEL[p.status]}</Badge>
                   </td>
                   <td>
                     <button
@@ -453,7 +462,7 @@ function TeamPanel() {
                       className={btnClass('ghost', { small: true })}
                       onClick={() => setManaging(p)}
                       disabled={!manageable(p)}
-                      title={manageable(p) ? undefined : p.id === me.id ? "You can't manage your own account" : "Admin accounts can't be managed"}
+                      title={manageable(p) ? undefined : !isAdmin ? 'Only admins can change roles or delete accounts' : p.id === me.id ? "You can't manage your own account" : "Admin accounts can't be managed"}
                     >
                       <BtnLabel icon="edit">
                         Manage<span className="sr-only"> {p.name}</span>
@@ -538,6 +547,7 @@ function ManagePerson({ person, onClose, notify }: { person: Person; onClose: ()
       <label className="p-field">
         <span>Role</span>
         <select className="p-select" value={role} onChange={(e) => setRole(e.target.value as PersonRole)} autoFocus>
+          <option value="subadmin">Sub Admin</option>
           <option value="employee">Employee</option>
           <option value="intern">Intern</option>
         </select>
@@ -547,6 +557,7 @@ function ManagePerson({ person, onClose, notify }: { person: Person; onClose: ()
 }
 
 function TasksPanel() {
+  const canDelete = useSession()!.role === 'admin';
   const { tasks, people, addTask, removeTask } = usePortal();
   const byId = usePeopleById();
   const [q, setQ] = useState('');
@@ -554,7 +565,8 @@ function TasksPanel() {
   const [notice, notify] = useNotice();
   const query = q.trim().toLowerCase();
   const rows = tasks.filter((t) => !query || t.title.toLowerCase().includes(query) || byId.get(t.assigneeId)?.name.toLowerCase().includes(query));
-  const assignable = people.filter((p) => p.role !== 'admin');
+  // sub admins get the managing dashboard, which has no task list of their own
+  const assignable = people.filter((p) => p.role !== 'admin' && p.role !== 'subadmin');
 
   return (
     <section className="p-card" aria-labelledby="task-mgmt">
@@ -594,9 +606,11 @@ function TasksPanel() {
                     <Badge kind={t.status}>{STATUS_LABEL[t.status]}</Badge>
                   </td>
                   <td className="is-end">
-                    <button type="button" className="p-icon-btn is-danger" onClick={() => (removeTask(t.id), notify('Task removed.'))} aria-label={`Remove task: ${t.title}`}>
-                      <PIcon name="trash" size={16} />
-                    </button>
+                    {canDelete && (
+                      <button type="button" className="p-icon-btn is-danger" onClick={() => (removeTask(t.id), notify('Task removed.'))} aria-label={`Remove task: ${t.title}`}>
+                        <PIcon name="trash" size={16} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}

@@ -8,15 +8,32 @@ import { useSyncExternalStore } from 'react';
  * storage key. When the real sign-in (the company Keycloak) is connected, replace `startSession` with the token
  * exchange and keep the rest of the portal as it is.
  *
- * Only the name, email and role are stored. The password is never kept.
+ * Stored: the name, email, role, and the person's own photo and notification choices. The password is never kept.
  */
 
-export type Role = 'employee' | 'admin';
+export type Role = 'employee' | 'subadmin' | 'admin';
+
+export const ROLE_NAME: Record<Role, string> = { admin: 'Admin', subadmin: 'Sub Admin', employee: 'Employee' };
+
+/** Admins and sub admins see the managing side of each page. Only admins delete, change roles or open admin-only tools. */
+export const managesPortal = (role: Role) => role === 'admin' || role === 'subadmin';
+
+export const NOTIFICATION_KINDS = [
+  { id: 'tasks', label: 'Task assigned to me', hint: 'When an admin gives you a new task.' },
+  { id: 'certificates', label: 'Certificate issued', hint: 'When a certificate is issued to you.' },
+  { id: 'policies', label: 'New policy to review', hint: 'When a policy you need to accept is published.' },
+  { id: 'courses', label: 'Course updates', hint: 'New lectures in courses you are enrolled in.' },
+] as const;
+export type NotificationKind = (typeof NOTIFICATION_KINDS)[number]['id'];
 
 export interface Session {
   name: string;
   email: string;
   role: Role;
+  /** A small square data: image, made in the browser from the photo the person picked. */
+  photo?: string;
+  /** Kinds switched off; everything else is on. */
+  mutedNotifications?: NotificationKind[];
 }
 
 const KEY = 'bt-portal-session';
@@ -38,8 +55,12 @@ function read(): Session | null {
       const raw = store.getItem(KEY);
       if (!raw) continue;
       const parsed = JSON.parse(raw) as Partial<Session>;
-      if (parsed.email && parsed.name && (parsed.role === 'employee' || parsed.role === 'admin')) {
-        return { name: parsed.name, email: parsed.email, role: parsed.role };
+      if (parsed.email && parsed.name && parsed.role && parsed.role in ROLE_NAME) {
+        // only an image data: address may come back as the photo, since it's used as an <img> source
+        const photo = typeof parsed.photo === 'string' && parsed.photo.startsWith('data:image/') ? parsed.photo : undefined;
+        const kinds = NOTIFICATION_KINDS.map((k) => k.id as NotificationKind);
+        const muted = Array.isArray(parsed.mutedNotifications) ? parsed.mutedNotifications.filter((k) => kinds.includes(k)) : [];
+        return { name: parsed.name, email: parsed.email, role: parsed.role, photo, mutedNotifications: muted };
       }
     } catch {
       // a malformed entry is treated as signed out
@@ -68,24 +89,32 @@ export function nameFromEmail(email: string) {
   return words.length ? words.map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ') : 'Team member';
 }
 
-export function startSession(email: string, remember = false) {
+/** The role is picked on the login form for now; the real sign-in will take it from the account instead. */
+export function startSession(email: string, role: Role, remember = false) {
   signedOutAt = 0;
-  write({ name: nameFromEmail(email), email: email.trim().toLowerCase(), role: 'employee' }, remember);
+  write({ name: nameFromEmail(email), email: email.trim().toLowerCase(), role }, remember);
 }
 
-/** Demo only: lets a reviewer see the admin and employee versions of each page. */
-export function setRole(role: Role) {
+// Keeps a "Remember me" session in the store it was saved to.
+function update(change: Partial<Session>) {
   const now = getSession();
   if (!now) return;
-  const remembered = (() => {
-    try {
-      return !!window.localStorage.getItem(KEY);
-    } catch {
-      return false;
-    }
-  })();
-  write({ ...now, role }, remembered);
+  let remembered = false;
+  try {
+    remembered = !!window.localStorage.getItem(KEY);
+  } catch {
+    // blocked storage: the session only lives in this page
+  }
+  write({ ...now, ...change }, remembered);
 }
+
+/** Demo only, while the pages are being built: lets a reviewer switch between the admin, sub admin and employee versions. */
+export const setRole = (role: Role) => update({ role });
+
+/** The name shown across the portal. Only saved in this browser until the real account service is connected. */
+export const setDisplayName = (name: string) => update({ name });
+export const setPhoto = (photo: string | undefined) => update({ photo });
+export const setMutedNotifications = (mutedNotifications: NotificationKind[]) => update({ mutedNotifications });
 
 // Set when the person signs out on purpose, so the portal sends them to the site without reopening the login.
 // It only covers the redirect right after signing out; opening a portal link later asks them to sign in again.

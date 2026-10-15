@@ -1,27 +1,28 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { TOOLS, toolById, type LinkResource, type Tool } from '../data';
-import { useSession } from '../session';
+import { managesPortal, useSession } from '../session';
 import { usePeopleById, usePortal } from '../store';
 import { btnClass, BtnLabel, ConfirmDelete, Empty, Modal, PageHead, PIcon, useNotice } from '../ui';
 import { NotConnected, ToolButton } from './Dashboard';
 
 // The cards keep the old portal's order, which differs from the sidebar's.
-const CARD_ORDER = ['coder', 'librechat', 'chatwoot', 'invoice', 'plane', 'securo', 'screego', 'excalidraw', 'lobehub'];
+const CARD_ORDER = ['coder', 'huly', 'librechat', 'chatwoot', 'invoice', 'plane', 'securo', 'screego', 'excalidraw', 'lobehub'];
 
 export function Resources() {
-  const isAdmin = useSession()!.role === 'admin';
+  const role = useSession()!.role;
+  const isManager = managesPortal(role);
   const { links, me, addLink } = usePortal();
   const [adding, setAdding] = useState(false);
   const [notice, notify] = useNotice();
-  const tools = TOOLS.filter((t) => t.id !== 'hrms' && !t.navOnly && (!t.adminOnly || isAdmin)).sort((a, b) => CARD_ORDER.indexOf(a.id) - CARD_ORDER.indexOf(b.id));
+  const tools = TOOLS.filter((t) => t.id !== 'hrms' && !t.navOnly && (!t.adminOnly || role === 'admin')).sort((a, b) => CARD_ORDER.indexOf(a.id) - CARD_ORDER.indexOf(b.id));
   // Employees see shared links that were assigned to them; admins see them all.
-  const visibleLinks = isAdmin ? links : links.filter((l) => l.assignedTo.includes(me.id));
+  const visibleLinks = isManager ? links : links.filter((l) => l.assignedTo.includes(me.id));
 
   return (
     <>
       <PageHead title="Resources" sub="Every tool and reference the team works with.">
-        {isAdmin && (
+        {isManager && (
           <button type="button" className={btnClass('light')} onClick={() => setAdding(true)}>
             <BtnLabel icon="plus">Add resource</BtnLabel>
           </button>
@@ -32,7 +33,7 @@ export function Resources() {
           <ToolCard key={t.id} tool={t} />
         ))}
         {visibleLinks.map((l) => (
-          <LinkCard key={l.id} link={l} isAdmin={isAdmin} notify={notify} />
+          <LinkCard key={l.id} link={l} isManager={isManager} canDelete={role === 'admin'} notify={notify} />
         ))}
       </div>
       {notice}
@@ -73,7 +74,7 @@ function ToolCard({ tool }: { tool: Tool }) {
   );
 }
 
-function LinkCard({ link, isAdmin, notify }: { link: LinkResource; isAdmin: boolean; notify: (t: string) => void }) {
+function LinkCard({ link, isManager, canDelete, notify }: { link: LinkResource; isManager: boolean; canDelete: boolean; notify: (t: string) => void }) {
   const { people, removeLink, assignLink } = usePortal();
   const byId = usePeopleById();
   const [who, setWho] = useState('');
@@ -92,7 +93,7 @@ function LinkCard({ link, isAdmin, notify }: { link: LinkResource; isAdmin: bool
             <BtnLabel arrow="up-right">Open</BtnLabel>
             <span className="sr-only">{link.name} (opens in a new tab)</span>
           </a>
-          {isAdmin && (
+          {canDelete && (
             <button type="button" className={btnClass('danger')} onClick={() => setDeleting(true)}>
               <BtnLabel icon="trash">
                 Delete<span className="sr-only"> {link.name}</span>
@@ -100,7 +101,7 @@ function LinkCard({ link, isAdmin, notify }: { link: LinkResource; isAdmin: bool
             </button>
           )}
         </div>
-        {isAdmin && (
+        {isManager && (
           <form
             className="p-assign"
             onSubmit={(e) => {
@@ -129,7 +130,7 @@ function LinkCard({ link, isAdmin, notify }: { link: LinkResource; isAdmin: bool
             </button>
           </form>
         )}
-        {isAdmin && link.assignedTo.length > 0 && <p className="p-dim">Assigned to {link.assignedTo.map((id) => byId.get(id)?.name ?? 'removed user').join(', ')}</p>}
+        {isManager && link.assignedTo.length > 0 && <p className="p-dim">Assigned to {link.assignedTo.map((id) => byId.get(id)?.name ?? 'removed user').join(', ')}</p>}
       </div>
       {deleting && <ConfirmDelete what={link.name} onClose={() => setDeleting(false)} onConfirm={() => (removeLink(link.id), notify(`${link.name} was deleted.`))} />}
     </article>
@@ -208,7 +209,6 @@ export function ToolPage() {
           ))}
         </p>
         <ToolButton url={tool.url} label="Open" name={tool.name} wide={false} />
-        {!tool.url && <p className="p-dim">This tool opens in its own window once its address is set up.</p>}
       </section>
     </>
   );

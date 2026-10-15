@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import type { PortalIconName } from '../../data';
 import { allLectures, finalPrice, formatMinutes, formatPrice, plural, totalMinutes, type Chapter, type Course, type Lecture } from '../../lmsData';
-import { useSession } from '../../session';
+import { managesPortal, useSession } from '../../session';
 import { usePeopleById, usePortal } from '../../store';
 import { btnClass, BtnLabel, PIcon } from '../../ui';
 
@@ -19,13 +19,13 @@ const EDUCATOR_TABS: [string, string, PortalIconName][] = [
 ];
 
 /**
- * Who may open the educator pages: admins, and anyone who already teaches a course. This is a browser-side
+ * Who may open the educator pages: admins and sub admins, and anyone who already teaches a course. This is a browser-side
  * demo check, like the portal's "View as" switch; the real rule has to be enforced by the server.
  */
 export function useCanTeach() {
   const session = useSession();
   const { me, courses } = usePortal();
-  return session?.role === 'admin' || courses.some((c) => c.educatorId === me.id);
+  return (!!session && managesPortal(session.role)) || courses.some((c) => c.educatorId === me.id);
 }
 
 /** The learning platform's own bar under the portal top bar: the student or educator pages, and the switch between them. */

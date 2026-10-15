@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useScene } from '../gl/Scene';
-import { getSession, startSession } from '../portal/session';
+import { getSession, ROLE_NAME, startSession, type Role } from '../portal/session';
 import { ThreadMark } from '../sections/Faq';
 import { LogoGlass } from './LogoGlass';
 import { Arrow, Brand, BtnText } from './ui';
@@ -139,7 +139,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
     }
     if (view === 'signin') {
       // Leaving the site's layout unmounts this pop-up, whose cleanup restores scrolling and focus.
-      startSession(mail, f.get('remember') === 'on');
+      startSession(mail, (f.get('role') as Role | null) ?? 'employee', f.get('remember') === 'on');
       navigate('/portal');
       return;
     }
@@ -236,6 +236,19 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
             <p className="login-sub">{copy.sub}</p>
 
             <form ref={form} className="login-form" onSubmit={submit} noValidate autoComplete="off">
+              {view === 'signin' && (
+                <fieldset className="login-roles">
+                  <legend>Sign in as</legend>
+                  <div>
+                    {(['admin', 'subadmin', 'employee'] as Role[]).map((r) => (
+                      <label key={r}>
+                        <input type="radio" name="role" value={r} defaultChecked={r === 'employee'} />
+                        <span>{ROLE_NAME[r]}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              )}
               <label className="login-field">
                 <span>Work email</span>
                 <input
@@ -277,7 +290,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
                   </>
                 )}
               </button>
-              {view === 'signin' && <p className="login-demo">Demo: sign-in isn’t connected yet. Any work email opens the portal, and no password is checked.</p>}
+              {view === 'signin' && <p className="login-demo">Demo: sign-in isn’t connected yet. Any work email opens the portal with the role you pick, and no password is checked.</p>}
               <p className="login-notice" role="status" aria-live="polite">
                 {status.kind === 'notice' ? status.text : ''}
               </p>

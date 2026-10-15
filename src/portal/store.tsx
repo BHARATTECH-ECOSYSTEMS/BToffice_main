@@ -5,15 +5,21 @@ import {
   SEED_PEOPLE,
   SEED_POLICIES,
   SEED_TASKS,
+  COMPANY_CHECKS,
+  EMPLOYEE_CHECKS,
+  SEED_VERIFICATIONS,
   type Acceptance,
   type Certificate,
   type CertificateType,
   type LinkResource,
   type Person,
   type PersonRole,
+  type PersonStatus,
   type PolicyDoc,
   type Task,
   type TaskStatus,
+  type Verification,
+  type VerificationStatus,
 } from './data';
 import { SEED_COMPLETED, SEED_COURSES, SEED_ENROLLMENTS, SEED_RATINGS, type Course, type Enrollment, type Rating } from './lmsData';
 import type { Session } from './session';
@@ -25,6 +31,12 @@ import type { Session } from './session';
  */
 
 const today = () => new Date().toISOString().slice(0, 10);
+// "2026-10-15T14:05" in the viewer's own time zone, matching how the log is read back
+const localMinute = () => {
+  const d = new Date();
+  const two = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`;
+};
 let counter = 100;
 const nextId = (prefix: string) => `${prefix}${++counter}`;
 
@@ -41,10 +53,12 @@ function usePortalState(session: Session) {
   const [policies, setPolicies] = useState<PolicyDoc[]>(SEED_POLICIES);
   const [acceptances, setAcceptances] = useState<Acceptance[]>([]);
 
-  // The demo role switch changes who the signed-in person is in the directory too.
+  // The demo role switch and a name change in Settings update the signed-in person in the directory too.
   useEffect(() => {
-    setPeople((list) => list.map((p) => (p.email === session.email && p.role !== session.role ? { ...p, role: session.role } : p)));
-  }, [session.email, session.role]);
+    setPeople((list) =>
+      list.map((p) => (p.email === session.email && (p.role !== session.role || p.name !== session.name) ? { ...p, role: session.role, name: session.name } : p))
+    );
+  }, [session.email, session.role, session.name]);
 
   const me = people.find((p) => p.email === session.email) ?? people[0];
 
@@ -55,6 +69,7 @@ function usePortalState(session: Session) {
     });
   }, []);
   const setPersonRole = useCallback((id: string, role: PersonRole) => setPeople((list) => list.map((p) => (p.id === id ? { ...p, role } : p))), []);
+  const setPersonStatus = useCallback((id: string, status: PersonStatus) => setPeople((list) => list.map((p) => (p.id === id ? { ...p, status } : p))), []);
   const removePerson = useCallback((id: string) => {
     setPeople((list) => list.filter((p) => p.id !== id));
     setTasks((list) => list.filter((t) => t.assigneeId !== id));
@@ -96,6 +111,43 @@ function usePortalState(session: Session) {
       setAcceptances((list) => (list.some((a) => a.docId === docId && a.personId === me.id) ? list : [...list, { docId, personId: me.id, date: today() }])),
     [me.id]
   );
+
+  // HR OPS verification requests. Every change is also written to the request's log, the audit trail a
+  // verification has to keep. A decision records who made it and when; reopening clears both.
+  const [verifications, setVerifications] = useState<Verification[]>(SEED_VERIFICATIONS);
+  const entry = useCallback((text: string) => ({ at: localMinute(), by: session.name, text }), [session.name]);
+  const requestVerification = useCallback(
+    (draft: { kind: 'company'; company: string; registration: string; website: string; contactEmail: string } | { kind: 'employee'; personId: string }) => {
+      const id = nextId('V');
+      setVerifications((list) => [{ ...draft, id, status: 'pending', done: [], note: '', requestedBy: session.name, requested: today(), log: [entry('Opened the request')] } as Verification, ...list]);
+      return id;
+    },
+    [session.name, entry]
+  );
+  const setVerificationCheck = useCallback(
+    (id: string, check: string, done: boolean) =>
+      setVerifications((list) =>
+        list.map((v) => {
+          if (v.id !== id) return v;
+          const checks: readonly { id: string; label: string }[] = v.kind === 'company' ? COMPANY_CHECKS : EMPLOYEE_CHECKS;
+          const label = checks.find((c) => c.id === check)?.label ?? check;
+          return { ...v, done: done ? [...new Set([...v.done, check])] : v.done.filter((c) => c !== check), log: [...v.log, entry(`${done ? 'Checked' : 'Unchecked'} ${label}`)] };
+        })
+      ),
+    [entry]
+  );
+  const decideVerification = useCallback(
+    (id: string, status: VerificationStatus, note: string) =>
+      setVerifications((list) =>
+        list.map((v) => {
+          if (v.id !== id) return v;
+          const log = [...v.log, entry(status === 'pending' ? 'Reopened' : status === 'verified' ? 'Marked verified' : 'Rejected')];
+          return status === 'pending' ? { ...v, status, note, log, decidedBy: undefined, decided: undefined } : { ...v, status, note, log, decidedBy: session.name, decided: today() };
+        })
+      ),
+    [session.name, entry]
+  );
+  const removeVerification = useCallback((id: string) => setVerifications((list) => list.filter((v) => v.id !== id)), []);
 
   // Learning platform. Completed lectures are stored as "personId:lectureId" so a lookup is one Set check.
   const [courses, setCourses] = useState<Course[]>(SEED_COURSES);
@@ -143,6 +195,7 @@ function usePortalState(session: Session) {
     acceptances,
     invitePerson,
     setPersonRole,
+    setPersonStatus,
     removePerson,
     issueCertificate,
     removeCertificate,
@@ -155,6 +208,11 @@ function usePortalState(session: Session) {
     addPolicy,
     removePolicy,
     acceptPolicy,
+    verifications,
+    requestVerification,
+    setVerificationCheck,
+    decideVerification,
+    removeVerification,
     courses,
     enrollments,
     completed,

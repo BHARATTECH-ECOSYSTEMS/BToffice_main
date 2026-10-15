@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { createHashRouter, Outlet, RouterProvider, useLocation } from 'react-router';
+import { createHashRouter, Navigate, Outlet, RouterProvider, useLocation } from 'react-router';
 import { SceneProvider, useScene } from './gl/Scene';
 import { Nav } from './components/Nav';
 import { Footer } from './components/Footer';
@@ -22,6 +22,8 @@ import { People } from './portal/pages/People';
 import { PortalNotFound, Resources, Soon, ToolPage } from './portal/pages/Resources';
 import { Certificates } from './portal/pages/Certificates';
 import { Policy } from './portal/pages/Policy';
+import { Settings } from './portal/pages/Settings';
+import { CompanyVerification, EmployeeVerification } from './portal/pages/Verification';
 import { LmsShell } from './portal/pages/lms/parts';
 import { CourseList, LmsHome } from './portal/pages/lms/Catalogue';
 import { CourseDetail } from './portal/pages/lms/CourseDetail';
@@ -127,6 +129,7 @@ const router = createHashRouter([
       { path: 'tools/:id', Component: ToolPage },
       { path: 'certificates', Component: Certificates },
       { path: 'policy', Component: Policy },
+      { path: 'settings', Component: Settings },
       {
         path: 'lms',
         Component: LmsShell,
@@ -148,7 +151,10 @@ const router = createHashRouter([
           },
         ],
       },
-      { path: 'tests', element: <Soon title="Tests" sub="Interview tests for candidates." body="This section will be connected once its screens are available." /> },
+      { path: 'interview', element: <Soon title="Interview" sub="Interview tests for candidates." body="This section will be connected once its screens are available." /> },
+      { path: 'verification', element: <Navigate to="company" replace /> },
+      { path: 'verification/company', Component: CompanyVerification },
+      { path: 'verification/employee', Component: EmployeeVerification },
       { path: '*', Component: PortalNotFound },
     ],
   },

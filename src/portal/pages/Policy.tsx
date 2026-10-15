@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { PolicyCategory, PolicyDoc } from '../data';
-import { useSession } from '../session';
+import { managesPortal, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, ConfirmDelete, Empty, Modal, PageHead, PIcon, Stat, useNotice } from '../ui';
 
@@ -8,7 +8,8 @@ const CATEGORY: Record<PolicyCategory, string> = { policy: 'Policy', compliance:
 const MAX_MB = 20;
 
 export function Policy() {
-  const isAdmin = useSession()!.role === 'admin';
+  const role = useSession()!.role;
+  const isManager = managesPortal(role);
   const { policies, acceptances, me, acceptPolicy, addPolicy, removePolicy } = usePortal();
   const byId = usePeopleById();
   const [uploading, setUploading] = useState(false);
@@ -19,8 +20,8 @@ export function Policy() {
 
   return (
     <>
-      <PageHead title="Policy & Compliance" sub={isAdmin ? 'Publish internal policies and see who has accepted them.' : 'Read and accept the internal policies that apply to you.'}>
-        {isAdmin && (
+      <PageHead title="Policy & Compliance" sub={isManager ? 'Publish internal policies and see who has accepted them.' : 'Read and accept the internal policies that apply to you.'}>
+        {isManager && (
           <button type="button" className={btnClass('light')} onClick={() => setUploading(true)}>
             <BtnLabel icon="upload">Upload document</BtnLabel>
           </button>
@@ -77,7 +78,7 @@ export function Policy() {
                       </td>
                       <td>{d.pages}</td>
                       <td>
-                        {isAdmin ? (
+                        {isManager ? (
                           <span className="p-dim">{count === 1 ? '1 acceptance' : `${count} acceptances`}</span>
                         ) : accepted(d.id) ? (
                           <Badge kind="done">Accepted</Badge>
@@ -86,12 +87,14 @@ export function Policy() {
                         )}
                       </td>
                       <td className="is-end">
-                        {isAdmin ? (
-                          <button type="button" className={btnClass('danger', { small: true })} onClick={() => setDeleting(d)}>
-                            <BtnLabel icon="trash">
-                              Delete<span className="sr-only"> {d.name}</span>
-                            </BtnLabel>
-                          </button>
+                        {isManager ? (
+                          role === 'admin' && (
+                            <button type="button" className={btnClass('danger', { small: true })} onClick={() => setDeleting(d)}>
+                              <BtnLabel icon="trash">
+                                Delete<span className="sr-only"> {d.name}</span>
+                              </BtnLabel>
+                            </button>
+                          )
                         ) : (
                           !accepted(d.id) &&
                           // accepting a document nobody can open would record agreement to something unread
@@ -114,13 +117,13 @@ export function Policy() {
           </div>
         ) : (
           <Empty icon="file" title="No documents yet">
-            {isAdmin ? 'Upload a policy or compliance PDF to publish it.' : 'Nothing to review right now.'}
+            {isManager ? 'Upload a policy or compliance PDF to publish it.' : 'Nothing to review right now.'}
           </Empty>
         )}
         {notice}
       </section>
 
-      {isAdmin && (
+      {isManager && (
         <section className="p-card" aria-labelledby="accepted">
           <div className="p-card-head">
             <h2 id="accepted" className="p-card-title">

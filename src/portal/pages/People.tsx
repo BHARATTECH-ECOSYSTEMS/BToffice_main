@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import type { Person, PersonRole } from '../data';
-import { useSession } from '../session';
+import { managesPortal, useSession } from '../session';
 import { usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, ConfirmDelete, Empty, Modal, PageHead, SearchField, useNotice } from '../ui';
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const ROLE_LABEL: Record<PersonRole, string> = { admin: 'Admin', employee: 'Employee', intern: 'Intern' };
+const ROLE_LABEL: Record<PersonRole, string> = { admin: 'Admin', subadmin: 'Sub Admin', employee: 'Employee', intern: 'Intern' };
 
 export function People() {
-  const isAdmin = useSession()!.role === 'admin';
+  const role = useSession()!.role;
+  const isManager = managesPortal(role);
+  const isAdmin = role === 'admin';
   const { people, me, setPersonRole, removePerson, invitePerson } = usePortal();
   const [q, setQ] = useState('');
   const [inviting, setInviting] = useState(false);
@@ -16,13 +18,13 @@ export function People() {
   const [notice, notify] = useNotice();
   const query = q.trim().toLowerCase();
   const rows = people.filter((p) => !query || [p.id, p.name, p.email, p.role].some((v) => v.toLowerCase().includes(query)));
-  // Admins manage employees and interns; other admins (and themselves) are left alone.
+  // Only admins change roles or delete, and other admins (and themselves) are left alone.
   const manageable = (p: Person) => isAdmin && p.role !== 'admin' && p.id !== me.id;
 
   return (
     <>
-      <PageHead title="People" sub={isAdmin ? 'Manage users and roles in your organisation.' : 'Everyone in the organisation.'}>
-        {isAdmin && (
+      <PageHead title="People" sub={isManager ? 'Manage users and roles in your organisation.' : 'Everyone in the organisation.'}>
+        {isManager && (
           <button type="button" className={btnClass('light')} onClick={() => setInviting(true)}>
             <BtnLabel icon="plus">Add people</BtnLabel>
           </button>
@@ -41,8 +43,8 @@ export function People() {
                   <th scope="col">Role</th>
                   <th scope="col">Phone no.</th>
                   <th scope="col">Details</th>
-                  {isAdmin && <th scope="col">Assign role</th>}
-                  {isAdmin && (
+                  {isManager && <th scope="col">Assign role</th>}
+                  {isManager && (
                     <th scope="col" className="is-end">
                       Delete
                     </th>
@@ -70,7 +72,7 @@ export function People() {
                       )}
                     </td>
                     <td>{p.team}</td>
-                    {isAdmin && (
+                    {isManager && (
                       <td>
                         {manageable(p) ? (
                           <label className="p-select-wrap">
@@ -83,6 +85,7 @@ export function People() {
                                 notify(`${p.name} is now ${ROLE_LABEL[e.target.value as PersonRole].toLowerCase()}.`);
                               }}
                             >
+                              <option value="subadmin">Sub Admin</option>
                               <option value="employee">Employee</option>
                               <option value="intern">Intern</option>
                             </select>
@@ -92,7 +95,7 @@ export function People() {
                         )}
                       </td>
                     )}
-                    {isAdmin && (
+                    {isManager && (
                       <td className="is-end">
                         {/* shown but disabled for admins and yourself, so it's clear the row can't be deleted rather than missing */}
                         <button
@@ -100,7 +103,7 @@ export function People() {
                           className={btnClass('danger', { small: true })}
                           onClick={() => setDeleting(p)}
                           disabled={!manageable(p)}
-                          title={manageable(p) ? undefined : p.id === me.id ? "You can't delete your own account" : 'Admin accounts can\'t be deleted'}
+                          title={manageable(p) ? undefined : !isAdmin ? 'Only admins can delete accounts' : p.id === me.id ? "You can't delete your own account" : 'Admin accounts can\'t be deleted'}
                         >
                           <BtnLabel icon="trash">
                             Delete<span className="sr-only"> {p.name}</span>
@@ -135,6 +138,8 @@ export function People() {
 }
 
 export function InviteModal({ taken, onClose, onInvite }: { taken: (email: string) => boolean; onClose: () => void; onInvite: (name: string, email: string, role: PersonRole) => void }) {
+  // only admins can hand out sub admin rights
+  const isAdmin = useSession()!.role === 'admin';
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<PersonRole>('employee');
@@ -175,6 +180,7 @@ export function InviteModal({ taken, onClose, onInvite }: { taken: (email: strin
       <label className="p-field">
         <span>Role</span>
         <select className="p-select" value={role} onChange={(e) => setRole(e.target.value as PersonRole)}>
+          {isAdmin && <option value="subadmin">Sub Admin</option>}
           <option value="employee">Employee</option>
           <option value="intern">Intern</option>
         </select>
