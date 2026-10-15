@@ -15,6 +15,19 @@ import { NotFound } from './pages/NotFound';
 import { RouteSweep } from './components/RouteSweep';
 import { BackToTop } from './components/BackToTop';
 import { LoginProvider } from './components/Login';
+import { usePointerBloom } from './components/usePointerBloom';
+import { PortalLayout } from './portal/PortalLayout';
+import { Dashboard } from './portal/pages/Dashboard';
+import { People } from './portal/pages/People';
+import { PortalNotFound, Resources, Soon, ToolPage } from './portal/pages/Resources';
+import { Certificates } from './portal/pages/Certificates';
+import { Policy } from './portal/pages/Policy';
+import { LmsShell } from './portal/pages/lms/parts';
+import { CourseList, LmsHome } from './portal/pages/lms/Catalogue';
+import { CourseDetail } from './portal/pages/lms/CourseDetail';
+import { MyEnrollments, Player } from './portal/pages/lms/Learning';
+import { EducatorDashboard, EducatorOnly, MyCourses, StudentsEnrolled } from './portal/pages/lms/Educator';
+import { AddCourse } from './portal/pages/lms/AddCourse';
 
 function Layout() {
   const { pathname, state } = useLocation();
@@ -60,28 +73,7 @@ function Layout() {
     return () => io.disconnect();
   }, [pathname]);
 
-  // Cards and buttons light up where the cursor is.
-  useEffect(() => {
-    let raf = 0;
-    let last: PointerEvent | null = null;
-    const update = () => {
-      raf = 0;
-      const t = (last?.target as HTMLElement | null)?.closest?.('.cell, .btn-primary, .btn-ghost, .btn-light, .nav-cta') as HTMLElement | null;
-      if (!t || !last) return;
-      const r = t.getBoundingClientRect();
-      t.style.setProperty('--mx', `${last.clientX - r.left}px`);
-      t.style.setProperty('--my', `${last.clientY - r.top}px`);
-    };
-    const on = (e: PointerEvent) => {
-      last = e;
-      if (!raf) raf = requestAnimationFrame(update);
-    };
-    window.addEventListener('pointermove', on, { passive: true });
-    return () => {
-      cancelAnimationFrame(raf);
-      window.removeEventListener('pointermove', on);
-    };
-  }, []);
+  usePointerBloom();
 
   return (
     <LoginProvider>
@@ -122,6 +114,42 @@ const router = createHashRouter([
       { path: 'privacy', Component: Privacy },
       { path: 'terms', Component: Terms },
       { path: '*', Component: NotFound },
+    ],
+  },
+  // The employee portal, opened by signing in. It has its own shell, so the site's nav and footer stay out.
+  {
+    path: '/portal',
+    Component: PortalLayout,
+    children: [
+      { index: true, Component: Dashboard },
+      { path: 'people', Component: People },
+      { path: 'resources', Component: Resources },
+      { path: 'tools/:id', Component: ToolPage },
+      { path: 'certificates', Component: Certificates },
+      { path: 'policy', Component: Policy },
+      {
+        path: 'lms',
+        Component: LmsShell,
+        children: [
+          { index: true, Component: LmsHome },
+          { path: 'courses', Component: CourseList },
+          { path: 'course/:id', Component: CourseDetail },
+          { path: 'enrollments', Component: MyEnrollments },
+          { path: 'player/:id', Component: Player },
+          {
+            path: 'educator',
+            Component: EducatorOnly,
+            children: [
+              { index: true, Component: EducatorDashboard },
+              { path: 'add', Component: AddCourse },
+              { path: 'courses', Component: MyCourses },
+              { path: 'students', Component: StudentsEnrolled },
+            ],
+          },
+        ],
+      },
+      { path: 'tests', element: <Soon title="Tests" sub="Interview tests for candidates." body="This section will be connected once its screens are available." /> },
+      { path: '*', Component: PortalNotFound },
     ],
   },
 ]);

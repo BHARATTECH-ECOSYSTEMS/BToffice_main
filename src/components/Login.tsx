@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { useLocation, useNavigate } from 'react-router';
 import { useScene } from '../gl/Scene';
+import { getSession, startSession } from '../portal/session';
 import { ThreadMark } from '../sections/Faq';
 import { LogoGlass } from './LogoGlass';
 import { Arrow, Brand, BtnText } from './ui';
@@ -9,8 +11,9 @@ import '../styles/login.css';
  * Employee login, as a pop-up over whatever page is open (the nav, the phone menu and the footer all open it).
  * Two views share the form side: sign in and password reset. Accounts are made by an administrator, so
  * there is no sign-up.
- * There is no login backend yet: each form checks what was typed, then says plainly that it isn't
- * connected. Nothing typed here is stored or sent anywhere.
+ * There is no login backend yet. Sign in opens the employee portal as a DEMO session (src/portal/session.ts):
+ * any well-formed email gets in and no password is checked, and the form says so. Password reset still only
+ * says it isn't connected. Nothing typed here is sent anywhere, and the password is never stored.
  */
 
 const LoginContext = createContext<() => void>(() => {});
@@ -20,8 +23,17 @@ export const useOpenLogin = () => useContext(LoginContext);
 
 export function LoginProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
-  const openLogin = useCallback(() => setOpen(true), []);
+  const navigate = useNavigate();
+  const { state } = useLocation();
+  // someone already signed in goes straight to the portal instead of seeing the form again
+  const openLogin = useCallback(() => (getSession() ? navigate('/portal') : setOpen(true)), [navigate]);
   const close = useCallback(() => setOpen(false), []);
+
+  // the portal sends signed-out visitors here with the login open
+  const asked = (state as { openLogin?: boolean } | null)?.openLogin;
+  useEffect(() => {
+    if (asked) setOpen(true);
+  }, [asked]);
   return (
     <LoginContext.Provider value={openLogin}>
       {children}
@@ -36,10 +48,7 @@ type Field = 'email' | 'password';
 type Status = { kind: 'idle' } | { kind: 'loading' } | { kind: 'notice'; text: string };
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const NOT_CONNECTED: Record<View, string> = {
-  signin: 'Sign-in isn’t connected yet, so nothing was sent. What you typed stays on this page.',
-  forgot: 'Password reset isn’t connected yet, so no email was sent. Please ask your administrator for now.',
-};
+const RESET_NOT_CONNECTED = 'Password reset isn’t connected yet, so no email was sent. Please ask your administrator for now.';
 const COPY: Record<View, { title: string; sub: string; submit: string; busy: string }> = {
   signin: { title: 'Welcome back', sub: 'Sign in to your workspace.', submit: 'Sign in', busy: 'Signing in…' },
   forgot: { title: 'Reset your password', sub: 'Enter your work email and we’ll send you a reset link.', submit: 'Send reset link', busy: 'Sending…' },
@@ -63,6 +72,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
   const { lenis } = useScene();
+  const navigate = useNavigate();
   const ids = useId();
   const dark = document.documentElement.getAttribute('data-theme') === 'dark';
   const copy = COPY[view];
@@ -127,9 +137,15 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
       e.currentTarget.querySelector<HTMLInputElement>(`[name="${first}"]`)?.focus();
       return;
     }
+    if (view === 'signin') {
+      // Leaving the site's layout unmounts this pop-up, whose cleanup restores scrolling and focus.
+      startSession(mail, f.get('remember') === 'on');
+      navigate('/portal');
+      return;
+    }
     setStatus({ kind: 'loading' });
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setStatus({ kind: 'notice', text: NOT_CONNECTED[view] }), 900);
+    timer.current = window.setTimeout(() => setStatus({ kind: 'notice', text: RESET_NOT_CONNECTED }), 900);
   };
 
   const clearError = (k: Field) => errors[k] && setErrors((x) => ({ ...x, [k]: undefined }));
@@ -261,6 +277,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
                   </>
                 )}
               </button>
+              {view === 'signin' && <p className="login-demo">Demo: sign-in isn’t connected yet. Any work email opens the portal, and no password is checked.</p>}
               <p className="login-notice" role="status" aria-live="polite">
                 {status.kind === 'notice' ? status.text : ''}
               </p>
