@@ -225,7 +225,7 @@ export function Nav() {
     (l: (typeof LINKS)[number]) => {
       setOpen(false);
       if (!l.section) return;
-      // a short glide in, not the whole way: gliding through every pinned film in between stuttered
+      // straight to the section: travelling through the pinned films in between read as lag
       if (home) {
         const el = document.getElementById(l.section);
         if (el) glideTo(el);

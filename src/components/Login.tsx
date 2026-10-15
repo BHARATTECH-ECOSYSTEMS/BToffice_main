@@ -116,6 +116,12 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
     const d = dialog.current!;
     // the button that opened it gets focus back on close, so keyboard users keep their place
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // the card grows out of that button: its offset from the screen centre, where the dialog sits
+    if (opener && opener !== document.body) {
+      const r = opener.getBoundingClientRect();
+      d.style.setProperty('--from-x', `${r.left + r.width / 2 - window.innerWidth / 2}px`);
+      d.style.setProperty('--from-y', `${r.top + r.height / 2 - window.innerHeight / 2}px`);
+    }
     d.showModal();
     form.current?.querySelector<HTMLInputElement>('input')?.focus();
     lenis?.stop();

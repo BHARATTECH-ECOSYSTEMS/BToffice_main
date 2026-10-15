@@ -175,24 +175,13 @@ export function SceneProvider({ children }: { children: ReactNode }) {
         else if (typeof t === 'number') window.scrollTo(0, t);
         else t.scrollIntoView({ behavior: immediate || reduced ? 'auto' : 'smooth' });
       },
-      // Gliding all the way to a far section runs every pinned film in between and stutters. Instead the page
-      // jumps to within most of a screen of it, then glides the last stretch, so the arrival still reads as motion.
+      // Nav jumps land on the section at once: any glide (even a short last stretch) scrolls through the
+      // pinned films before it and reads as lag. A quick fade on the page softens the cut.
       glideTo: (t) => {
-        const from = window.scrollY;
-        const to = typeof t === 'number' ? t : t.getBoundingClientRect().top + from;
-        const lead = window.innerHeight * 0.85;
-        if (reduced) {
-          if (lenis) lenis.scrollTo(to, { immediate: true });
-          else window.scrollTo(0, to);
-          return;
-        }
-        if (Math.abs(to - from) > lead) {
-          const near = to - Math.sign(to - from) * lead;
-          if (lenis) lenis.scrollTo(near, { immediate: true, force: true });
-          else window.scrollTo(0, near);
-        }
-        if (lenis) lenis.scrollTo(to, { duration: 0.9, easing: (k) => 1 - Math.pow(1 - k, 4), force: true });
-        else window.scrollTo({ top: to, behavior: 'smooth' });
+        const to = typeof t === 'number' ? t : t.getBoundingClientRect().top + window.scrollY;
+        if (lenis) lenis.scrollTo(to, { immediate: true, force: true });
+        else window.scrollTo(0, to);
+        if (!reduced) document.getElementById('main')?.animate([{ opacity: 0.4 }, { opacity: 1 }], { duration: 240, easing: 'ease-out' });
       },
     }));
 
