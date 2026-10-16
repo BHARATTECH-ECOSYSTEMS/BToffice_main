@@ -18,18 +18,61 @@ export interface Person {
   role: PersonRole;
   phone: string;
   team: string;
+  /** The line of work they're in; it decides which community they join when they leave. */
+  stream: Stream;
   status: PersonStatus;
 }
 
+/* ── Community: people who have left, grouped by the stream they worked in ── */
+
+export type Stream = 'tech' | 'operations' | 'hr' | 'finance';
+export const STREAMS: { id: Stream; label: string }[] = [
+  { id: 'tech', label: 'Tech' },
+  { id: 'operations', label: 'Operations' },
+  { id: 'hr', label: 'HR' },
+  { id: 'finance', label: 'Finance' },
+];
+export const STREAM_LABEL = Object.fromEntries(STREAMS.map((s) => [s.id, s.label])) as Record<Stream, string>;
+
+/** Someone who has left. Marking a person as left moves them here, into their stream's community. */
+export type Alumnus = Person & { left: string };
+
+/** A job opening passed on to former colleagues in one stream. */
+export interface Referral {
+  id: string;
+  stream: Stream;
+  title: string;
+  company: string;
+  /** An https link to the opening, or empty. */
+  link: string;
+  note: string;
+  postedBy: string;
+  posted: string;
+}
+
+// Sample records only: every person, company and link here is made up.
+export const SEED_ALUMNI: Alumnus[] = [
+  { id: 'EMP9', name: 'Neha Kapoor', email: 'neha.kapoor@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'inactive', left: '2026-06-30' },
+  { id: 'EMP10', name: 'Vikram Joshi', email: 'vikram.joshi@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'operations', status: 'inactive', left: '2026-03-31' },
+  { id: 'EMP11', name: 'Farah Khan', email: 'farah.khan@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'finance', status: 'inactive', left: '2025-12-15' },
+  { id: 'EMP12', name: 'Aditya Bose', email: 'aditya.bose@example.com', role: 'subadmin', phone: '', team: 'BharatTech', stream: 'hr', status: 'inactive', left: '2026-08-14' },
+  { id: 'EMP13', name: 'Tanvi Shah', email: 'tanvi.shah@example.com', role: 'intern', phone: '', team: 'BharatTech', stream: 'tech', status: 'inactive', left: '2025-11-30' },
+];
+export const SEED_REFERRALS: Referral[] = [
+  { id: 'R1', stream: 'tech', title: 'Backend Engineer (Go)', company: 'Northwind Logistics', link: 'https://northwind.example.com/careers', note: 'Their platform team is hiring two people; ask for Meghna in the referral.', postedBy: 'Aanya Sharma', posted: '2026-10-11' },
+  { id: 'R2', stream: 'finance', title: 'Senior Accounts Executive', company: 'Contoso Analytics', link: '', note: 'Bengaluru office, hybrid.', postedBy: 'Arjun Rao', posted: '2026-10-06' },
+  { id: 'R3', stream: 'operations', title: 'Operations Lead', company: 'Fabrikam Components', link: 'https://fabrikam.example.com/jobs', note: '', postedBy: 'Aanya Sharma', posted: '2026-09-28' },
+];
+
 export const SEED_PEOPLE: Person[] = [
-  { id: 'EMP1', name: 'Aanya Sharma', email: 'aanya.sharma@example.com', role: 'admin', phone: '', team: 'BharatTech', status: 'active' },
-  { id: 'EMP2', name: 'Kabir Mehta', email: 'kabir.mehta@example.com', role: 'employee', phone: '', team: 'BharatTech', status: 'active' },
-  { id: 'EMP3', name: 'Ishita Verma', email: 'ishita.verma@example.com', role: 'employee', phone: '', team: 'BharatTech', status: 'active' },
-  { id: 'EMP4', name: 'Rohan Iyer', email: 'rohan.iyer@example.com', role: 'employee', phone: '', team: 'BharatTech', status: 'active' },
-  { id: 'EMP5', name: 'Meera Nair', email: 'meera.nair@example.com', role: 'intern', phone: '', team: 'BharatTech', status: 'active' },
-  { id: 'EMP6', name: 'Arjun Rao', email: 'arjun.rao@example.com', role: 'admin', phone: '', team: 'BharatTech', status: 'active' },
-  { id: 'EMP7', name: 'Sana Qureshi', email: 'sana.qureshi@example.com', role: 'employee', phone: '', team: 'BharatTech', status: 'active' },
-  { id: 'EMP8', name: 'Dev Malhotra', email: 'dev.malhotra@example.com', role: 'intern', phone: '', team: 'BharatTech', status: 'active' },
+  { id: 'EMP1', name: 'Aanya Sharma', email: 'aanya.sharma@example.com', role: 'admin', phone: '', team: 'BharatTech', stream: 'hr', status: 'active' },
+  { id: 'EMP2', name: 'Kabir Mehta', email: 'kabir.mehta@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'active' },
+  { id: 'EMP3', name: 'Ishita Verma', email: 'ishita.verma@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'active' },
+  { id: 'EMP4', name: 'Rohan Iyer', email: 'rohan.iyer@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'active' },
+  { id: 'EMP5', name: 'Meera Nair', email: 'meera.nair@example.com', role: 'intern', phone: '', team: 'BharatTech', stream: 'operations', status: 'active' },
+  { id: 'EMP6', name: 'Arjun Rao', email: 'arjun.rao@example.com', role: 'admin', phone: '', team: 'BharatTech', stream: 'operations', status: 'active' },
+  { id: 'EMP7', name: 'Sana Qureshi', email: 'sana.qureshi@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'active' },
+  { id: 'EMP8', name: 'Dev Malhotra', email: 'dev.malhotra@example.com', role: 'intern', phone: '', team: 'BharatTech', stream: 'finance', status: 'active' },
 ];
 
 export const CERTIFICATE_TYPES = [
@@ -139,6 +182,35 @@ export const EMPLOYEE_CHECKS = [
   { id: 'employment', label: 'Previous employment' },
   { id: 'references', label: 'References' },
 ] as const;
+/**
+ * The government IDs an employee uploads for their verification, from the link HR sends. Both are required: PAN is
+ * what lets us show their employment. PDFs only, 1 MB at most. They are personal data, so they are deleted
+ * automatically ID_RETENTION_DAYS after the person leaves; only their basic record stays.
+ */
+export const ID_DOCS = [
+  { id: 'aadhaar', label: 'Aadhaar card', hint: 'A masked Aadhaar, with only the last 4 digits showing, is enough and is safer.' },
+  { id: 'pan', label: 'PAN card', hint: 'Needed to show your employment with us.' },
+] as const;
+export type IdDocKind = (typeof ID_DOCS)[number]['id'];
+export const ID_DOC_MAX_MB = 1;
+export const ID_RETENTION_DAYS = 60;
+export interface IdDocument {
+  personId: string;
+  kind: IdDocKind;
+  fileName: string;
+  size: number;
+  /** A browser object URL: the file only lives in this tab until there is a backend. */
+  url: string;
+  uploaded: string;
+}
+
+/** For a request from another company asking us to confirm that someone worked here. */
+export const EMPLOYMENT_CHECKS = [
+  { id: 'record', label: 'Found in our records' },
+  { id: 'dates', label: 'Dates of employment match' },
+  { id: 'designation', label: 'Designation matches' },
+  { id: 'consent', label: 'Candidate consent on file' },
+] as const;
 
 interface VerificationBase {
   id: string;
@@ -155,7 +227,19 @@ interface VerificationBase {
 }
 export type Verification =
   | (VerificationBase & { kind: 'company'; company: string; registration: string; website: string; contactEmail: string })
-  | (VerificationBase & { kind: 'employee'; personId: string });
+  | (VerificationBase & { kind: 'employee'; personId: string })
+  // sent in from the website's footer form; from/to are months ("2024-03"), an empty `to` means still here
+  | (VerificationBase & {
+      kind: 'employment';
+      requesterCompany: string;
+      requesterName: string;
+      requesterEmail: string;
+      candidate: string;
+      employeeId: string;
+      designation: string;
+      from: string;
+      to: string;
+    });
 export type VerificationKind = Verification['kind'];
 
 // Sample records only: every company, number and address here is made up.
@@ -206,6 +290,25 @@ export const SEED_VERIFICATIONS: Verification[] = [
   {
     kind: 'employee', id: 'V6', personId: 'EMP5', status: 'pending', done: [], note: '', requestedBy: 'Arjun Rao', requested: '2026-10-13',
     log: [{ at: '2026-10-13T13:25', by: 'Arjun Rao', text: 'Opened the request' }],
+  },
+  {
+    kind: 'employment', id: 'V7', requesterCompany: 'Tailspin Consulting', requesterName: 'Priya Desai', requesterEmail: 'hr@tailspin.example.com',
+    candidate: 'Neha Kapoor', employeeId: '', designation: 'Data Analyst', from: '2024-02', to: '2026-06',
+    status: 'pending', done: ['consent'], note: '', requestedBy: 'Priya Desai (Tailspin Consulting)', requested: '2026-10-14',
+    log: [
+      { at: '2026-10-14T11:02', by: 'Priya Desai (Tailspin Consulting)', text: 'Sent the request from the website' },
+      { at: '2026-10-14T16:20', by: 'Aanya Sharma', text: 'Checked Candidate consent on file' },
+    ],
+  },
+  {
+    kind: 'employment', id: 'V8', requesterCompany: 'Wingtip Background Checks', requesterName: 'Rahul Menon', requesterEmail: 'verify@wingtip.example.com',
+    candidate: 'Sana Qureshi', employeeId: 'EMP7', designation: 'Research Engineer', from: '2025-01', to: '',
+    status: 'verified', done: ['record', 'dates', 'designation', 'consent'], note: 'Currently employed; dates and designation confirmed.', requestedBy: 'Rahul Menon (Wingtip Background Checks)', requested: '2026-10-02', decidedBy: 'Arjun Rao', decided: '2026-10-03',
+    log: [
+      { at: '2026-10-02T09:40', by: 'Rahul Menon (Wingtip Background Checks)', text: 'Sent the request from the website' },
+      { at: '2026-10-03T10:15', by: 'Arjun Rao', text: 'Checked all 4 items' },
+      { at: '2026-10-03T10:16', by: 'Arjun Rao', text: 'Marked verified' },
+    ],
   },
 ];
 

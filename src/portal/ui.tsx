@@ -1,4 +1,5 @@
-import { useEffect, useId, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { SearchPill } from '../components/SearchPill';
 import { Arrow, BtnText } from '../components/ui';
 import type { PortalIconName } from './data';
 
@@ -47,7 +48,7 @@ const PATHS: Record<PortalIconName, string> = {
   chart: 'M4 20V10M10 20V4M16 20v-7M22 20H2',
   play: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM10 8.5v7l6-3.5z',
   lock: 'M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
-  settings: 'M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6zM12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1',
+  settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
   help: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01',
   bell: 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0',
 };
@@ -88,7 +89,6 @@ export function PageHead({ title, sub, children }: { title: string; sub: string;
   return (
     <header className="p-head">
       <div>
-        <p className="cell-label">Bharattech platform</p>
         <h1 className="p-title">{title}</h1>
         <p className="p-sub">{sub}</p>
       </div>
@@ -139,6 +139,7 @@ export function Badge({ kind, children }: { kind: string; children: ReactNode })
   return <span className={`p-badge is-${kind}`}>{children}</span>;
 }
 
+/** The portal's search box: the shared site-wide search pill (components/SearchPill.tsx), opening from the right. */
 export function SearchField({
   value,
   onChange,
@@ -153,18 +154,7 @@ export function SearchField({
   /** Print the label above the box instead of keeping it for screen readers only. */
   showLabel?: boolean;
 }) {
-  const id = useId();
-  return (
-    <div className="p-search-wrap">
-      <label htmlFor={id} className={showLabel ? 'p-search-label' : 'sr-only'}>
-        {label}
-      </label>
-      <div className="p-search">
-        <PIcon name="search" size={16} />
-        <input id={id} type="search" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
-      </div>
-    </div>
-  );
+  return <SearchPill value={value} onChange={onChange} label={label} placeholder={placeholder} showLabel={showLabel} />;
 }
 
 /**
@@ -172,7 +162,6 @@ export function SearchField({
  * open, so each opening starts with fresh form state.
  */
 export function Modal({
-  eyebrow,
   title,
   icon,
   onClose,
@@ -180,7 +169,6 @@ export function Modal({
   footer,
   onSubmit,
 }: {
-  eyebrow?: string;
   title: string;
   icon?: PortalIconName;
   onClose: () => void;
@@ -191,6 +179,34 @@ export function Modal({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
+  // However it closes (Cancel, Save, Esc, a click outside), the parent simply stops rendering it. So the exit is
+  // played by a copy: this cleanup runs while the dialog is still on screen, leaves a look-alike in its place and lets
+  // that fade and shrink away. The copy is aria-hidden and takes no clicks; the real dialog is already gone.
+  useLayoutEffect(
+    () => () => {
+      const d = ref.current;
+      if (!d?.open || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      const box = d.getBoundingClientRect();
+      const veil = document.createElement('div');
+      veil.className = 'p-modal-veil';
+      const ghost = document.createElement('div');
+      ghost.className = 'p-modal p-modal-ghost';
+      Object.assign(ghost.style, { left: `${box.left}px`, top: `${box.top}px`, width: `${box.width}px`, height: `${box.height}px` });
+      ghost.append(d.firstElementChild!.cloneNode(true));
+      for (const el of [veil, ghost]) el.setAttribute('aria-hidden', 'true');
+      document.body.append(veil, ghost);
+      // exits are quicker than the 260ms entrance
+      veil.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: 'ease', fill: 'forwards' });
+      ghost
+        .animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(0.97) translateY(4px)' }], {
+          duration: 160,
+          easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+          fill: 'forwards',
+        })
+        .finished.finally(() => (veil.remove(), ghost.remove()));
+    },
+    [],
+  );
   useEffect(() => {
     const d = ref.current!;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -226,7 +242,6 @@ export function Modal({
             </span>
           )}
           <div>
-            {eyebrow && <p className="cell-label">{eyebrow}</p>}
             <h2 id={`${id}-t`} className="p-modal-title">
               {title}
             </h2>
@@ -257,7 +272,6 @@ export function Modal({
 export function ConfirmDelete({ what, onConfirm, onClose }: { what: string; onConfirm: () => void; onClose: () => void }) {
   return (
     <Modal
-      eyebrow="Delete"
       title={`Delete ${what}?`}
       icon="trash"
       onClose={onClose}
@@ -309,3 +323,48 @@ export const initials = (name: string) =>
     .slice(0, 2)
     .map((w) => w[0].toUpperCase())
     .join('');
+
+/**
+ * When a filter changes which rows show, the rows that stay slide from where they were to where they are now, and
+ * rows that appear fade in. Mark each row with data-flip="<its id>" and pass a key that changes with the filter.
+ * Only transform and opacity animate (FLIP), so nothing is laid out again while it moves.
+ */
+export function useListFlip<T extends HTMLElement>(filterKey: string) {
+  const ref = useRef<T>(null);
+  const lastKey = useRef(filterKey);
+  const before = useRef<Map<string, number> | null>(null);
+
+  // Where each row is relative to the list, as drawn right now (mid-slide rows report where they are on screen).
+  const measure = (host: HTMLElement) => {
+    const top = host.getBoundingClientRect().top;
+    const at = new Map<string, number>();
+    host.querySelectorAll<HTMLElement>('[data-flip]').forEach((el) => at.set(el.dataset.flip!, el.getBoundingClientRect().top - top));
+    return at;
+  };
+
+  // The old positions are read during the render that changes the key, while the page still shows the old list.
+  // Reading earlier would go stale: fonts, cards and notices above can move the list in the meantime.
+  if (filterKey !== lastKey.current) {
+    lastKey.current = filterKey;
+    before.current = ref.current ? measure(ref.current) : null;
+  }
+
+  useLayoutEffect(() => {
+    const host = ref.current;
+    const was = before.current;
+    before.current = null;
+    if (!host || !was || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    // a slide still running from the last change would skew where the rows now sit; it is replaced, not stacked
+    host.querySelectorAll<HTMLElement>('[data-flip]').forEach((el) => el.getAnimations().forEach((an) => an.cancel()));
+    // the same curve as the site's --ease token
+    const timing = { duration: 240, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' };
+    measure(host).forEach((now, id) => {
+      const el = host.querySelector<HTMLElement>(`[data-flip="${CSS.escape(id)}"]`)!;
+      const from = was.get(id);
+      if (from === undefined) el.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], timing);
+      else if (Math.abs(from - now) > 0.5) el.animate([{ transform: `translateY(${from - now}px)` }, { transform: 'none' }], timing);
+    });
+  }, [filterKey]);
+
+  return ref;
+}

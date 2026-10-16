@@ -23,7 +23,9 @@ import { PortalNotFound, Resources, Soon, ToolPage } from './portal/pages/Resour
 import { Certificates } from './portal/pages/Certificates';
 import { Policy } from './portal/pages/Policy';
 import { Settings } from './portal/pages/Settings';
-import { CompanyVerification, EmployeeVerification } from './portal/pages/Verification';
+import { Community } from './portal/pages/Community';
+import { Profile } from './portal/pages/Profile';
+import { CompanyVerification, EmployeeVerification, EmploymentVerification } from './portal/pages/Verification';
 import { LmsShell } from './portal/pages/lms/parts';
 import { CourseList, LmsHome } from './portal/pages/lms/Catalogue';
 import { CourseDetail } from './portal/pages/lms/CourseDetail';
@@ -125,6 +127,8 @@ const router = createHashRouter([
     children: [
       { index: true, Component: Dashboard },
       { path: 'people', Component: People },
+      { path: 'community', Component: Community },
+      { path: 'profile', Component: Profile },
       { path: 'resources', Component: Resources },
       { path: 'tools/:id', Component: ToolPage },
       { path: 'certificates', Component: Certificates },
@@ -155,6 +159,7 @@ const router = createHashRouter([
       { path: 'verification', element: <Navigate to="company" replace /> },
       { path: 'verification/company', Component: CompanyVerification },
       { path: 'verification/employee', Component: EmployeeVerification },
+      { path: 'verification/requests', Component: EmploymentVerification },
       { path: '*', Component: PortalNotFound },
     ],
   },

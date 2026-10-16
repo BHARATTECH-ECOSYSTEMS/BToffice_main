@@ -22,10 +22,13 @@ const EDUCATOR_TABS: [string, string, PortalIconName][] = [
  * Who may open the educator pages: admins and sub admins, and anyone who already teaches a course. This is a browser-side
  * demo check, like the portal's "View as" switch; the real rule has to be enforced by the server.
  */
+/**
+ * Educator pages are for admins and sub admins only. Employees never get them, even when a course lists them as its
+ * educator; this one check decides both the "View as educator" switch and the educator routes.
+ */
 export function useCanTeach() {
   const session = useSession();
-  const { me, courses } = usePortal();
-  return (!!session && managesPortal(session.role)) || courses.some((c) => c.educatorId === me.id);
+  return !!session && managesPortal(session.role);
 }
 
 /** The learning platform's own bar under the portal top bar: the student or educator pages, and the switch between them. */
@@ -135,7 +138,6 @@ export function CourseCard({ course }: { course: Course }) {
   return (
     <article className="p-card p-course">
       <CourseThumb course={course} />
-      <p className="cell-label">Course</p>
       <h2 className="p-card-title">{course.title}</h2>
       <p className="p-muted">{byId.get(course.educatorId)?.name ?? 'Former educator'}</p>
       <p className="p-rating">
@@ -189,7 +191,9 @@ export function CourseStructure({ chapters, action, current }: { chapters: Chapt
                 </span>
               </button>
             </h3>
-            <ul id={`ch-${c.id}`} className="p-lectures" hidden={!isOpen}>
+            {/* closed lists stay rendered so they can fold open; visibility: hidden (portal.css) keeps them out of the
+                tab order and away from screen readers, as `hidden` did */}
+            <ul id={`ch-${c.id}`} className="p-lectures" data-open={isOpen || undefined}>
               {c.lectures.map((l) => (
                 <li key={l.id} className={l.id === current ? 'is-current' : ''} aria-current={l.id === current ? 'true' : undefined}>
                   <PIcon name="play" size={16} />

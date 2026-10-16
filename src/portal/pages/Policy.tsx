@@ -184,7 +184,6 @@ function UploadModal({ onClose, onAdd }: { onClose: () => void; onAdd: (doc: Omi
   const [error, setError] = useState('');
   return (
     <Modal
-      eyebrow="Document"
       title="Add document"
       icon="upload"
       onClose={onClose}

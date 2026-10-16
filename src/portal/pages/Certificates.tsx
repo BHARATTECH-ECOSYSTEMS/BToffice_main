@@ -245,7 +245,6 @@ function History({ isManager, notify }: { isManager: boolean; notify: (t: string
       </section>
       {viewing && (
         <Modal
-          eyebrow="Certificate"
           title={typeOf(viewing.type).name}
           icon="award"
           onClose={() => setViewing(null)}

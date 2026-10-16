@@ -23,7 +23,7 @@ const GROUPS: { title: string; icon: PortalIconName; topics: Topic[] }[] = [
     title: 'Getting started',
     icon: 'grid',
     topics: [
-      { q: 'Where do I start?', a: 'Your dashboard shows your tasks, your calendar and your workspace tools. The menu on the left lists every section, and Settings and Sign out sit at its bottom.', link: { to: '/portal', label: 'Open the dashboard' } },
+      { q: 'Where do I start?', a: 'Your dashboard shows your tasks, your calendar and your workspace tools. The bar along the top lists every section, and the ones with an arrow, like Resources, open a menu of their own. Settings, Help and Sign out are under your name in the top right.', link: { to: '/portal', label: 'Open the dashboard' } },
       { q: 'How do I mark myself active or inactive?', a: 'Use the Active / Inactive switch at the top of your dashboard. Green means active, red means inactive, and your admins see the same colour in their team list.', only: 'employee', link: { to: '/portal', label: 'Go to my dashboard' } },
       { q: 'How do I update a task?', a: 'Under My tasks on your dashboard, change a task’s status to To do, In progress or Done. Your progress figure updates as you go.', only: 'employee' },
     ],
@@ -80,7 +80,6 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
 
   return (
     <Modal
-      eyebrow="Help"
       title="How can we help?"
       icon="help"
       onClose={onClose}

@@ -1,15 +1,16 @@
 import { useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
-import { COMPANY_CHECKS, EMPLOYEE_CHECKS, type PersonRole, type Verification, type VerificationKind, type VerificationStatus } from '../data';
+import { COMPANY_CHECKS, EMPLOYEE_CHECKS, EMPLOYMENT_CHECKS, ID_DOCS, ID_RETENTION_DAYS, type PersonRole, type Verification, type VerificationKind, type VerificationStatus } from '../data';
 import { useSession } from '../session';
-import { formatDate, usePeopleById, usePortal } from '../store';
+import { documentsDeleteOn, formatDate, usePeopleById, usePortal } from '../store';
+import { formatSize } from './Profile';
 import { Badge, btnClass, BtnLabel, ConfirmDelete, Empty, initials, Modal, PageHead, PIcon, SearchField, useNotice } from '../ui';
 import { PortalNotFound } from './Resources';
 
 const STATUS_LABEL: Record<VerificationStatus, string> = { pending: 'Pending', verified: 'Verified', rejected: 'Rejected' };
 // status badges reuse the portal's existing colours: amber waiting, green done, red stopped
 const STATUS_BADGE: Record<VerificationStatus, string> = { pending: 'todo', verified: 'done', rejected: 'rejected' };
-const CHECKS: Record<VerificationKind, readonly { id: string; label: string }[]> = { company: COMPANY_CHECKS, employee: EMPLOYEE_CHECKS };
+const CHECKS: Record<VerificationKind, readonly { id: string; label: string }[]> = { company: COMPANY_CHECKS, employee: EMPLOYEE_CHECKS, employment: EMPLOYMENT_CHECKS };
 const ROLE_LABEL: Record<PersonRole, string> = { admin: 'Admin', subadmin: 'Sub Admin', employee: 'Employee', intern: 'Intern' };
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 // a pending check older than this is flagged, so stale requests don't sit unnoticed
@@ -27,16 +28,24 @@ const COPY = {
     sub: 'Background and document checks for employees and interns.',
     search: 'Search name or email',
   },
+  employment: {
+    title: 'Verification Requests',
+    sub: 'Other companies asking us to confirm that someone worked here, sent from the website’s form.',
+    search: 'Search candidate, company or email',
+  },
 } as const;
 
 const DAY = 864e5;
 const daysBetween = (from: string, to: string) => Math.max(0, Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / DAY));
 const todayIso = () => new Date().toISOString().slice(0, 10);
+// "2024-02" → "Feb 2024"
+const formatMonth = (month: string) => new Date(`${month}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 const formatStamp = (at: string) =>
   new Date(at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
 
 export const CompanyVerification = () => <VerificationPage kind="company" />;
 export const EmployeeVerification = () => <VerificationPage kind="employee" />;
+export const EmploymentVerification = () => <VerificationPage kind="employment" />;
 
 /**
  * A case-file desk: the requests on the left, the open file on the right. The open file lives in the address
@@ -58,10 +67,11 @@ function VerificationPage({ kind }: { kind: VerificationKind }) {
 
   const copy = COPY[kind];
   const mine = verifications.filter((v) => v.kind === kind);
-  const subjectOf = (v: Verification) => (v.kind === 'company' ? v.company : (byId.get(v.personId)?.name ?? 'Removed user'));
-  const sublineOf = (v: Verification) => (v.kind === 'company' ? v.contactEmail : (byId.get(v.personId)?.email ?? ''));
+  const subjectOf = (v: Verification) => (v.kind === 'company' ? v.company : v.kind === 'employment' ? v.candidate : (byId.get(v.personId)?.name ?? 'Removed user'));
+  const sublineOf = (v: Verification) => (v.kind === 'company' ? v.contactEmail : v.kind === 'employment' ? `For ${v.requesterCompany}` : (byId.get(v.personId)?.email ?? ''));
   const query = q.trim().toLowerCase();
-  const matches = (v: Verification) => !query || [subjectOf(v), sublineOf(v), v.kind === 'company' ? v.registration : ''].some((t) => t.toLowerCase().includes(query));
+  const extraOf = (v: Verification) => (v.kind === 'company' ? [v.registration] : v.kind === 'employment' ? [v.requesterEmail, v.designation] : []);
+  const matches = (v: Verification) => !query || [subjectOf(v), sublineOf(v), ...extraOf(v)].some((t) => t.toLowerCase().includes(query));
   const rows = mine.filter((v) => (!status || v.status === status) && matches(v));
   // the file that's open: the one in the address, else the oldest waiting request, else the first on the list
   const fileId = params.get('file');
@@ -75,9 +85,12 @@ function VerificationPage({ kind }: { kind: VerificationKind }) {
   return (
     <>
       <PageHead title={copy.title} sub={copy.sub}>
-        <button type="button" className={btnClass('light')} onClick={() => setCreating(true)}>
-          <BtnLabel icon="plus">New request</BtnLabel>
-        </button>
+        {/* requests from other companies come in through the website's form, not from here */}
+        {kind !== 'employment' && (
+          <button type="button" className={btnClass('light')} onClick={() => setCreating(true)}>
+            <BtnLabel icon="plus">New request</BtnLabel>
+          </button>
+        )}
       </PageHead>
       {notice}
       {mine.length ? (
@@ -114,7 +127,7 @@ function VerificationPage({ kind }: { kind: VerificationKind }) {
                               ))}
                             </span>
                             <span>
-                              {v.done.length}/{total} documents
+                              {v.done.length}/{total} {kind === 'employment' ? 'checked' : 'documents'}
                             </span>
                             <span data-stale={stale || undefined}>{v.status === 'pending' ? (age === 0 ? 'Opened today' : `Open ${age} ${age === 1 ? 'day' : 'days'}`) : formatDate(v.decided ?? v.requested)}</span>
                           </span>
@@ -146,11 +159,11 @@ function VerificationPage({ kind }: { kind: VerificationKind }) {
       ) : (
         <section className="p-card">
           <Empty icon="shield" title="No requests yet">
-            Click "New request" to start a verification.
+            {kind === 'employment' ? 'Requests that companies send from the website’s footer form show up here.' : 'Click "New request" to start a verification.'}
           </Empty>
         </section>
       )}
-      {creating && <NewRequest kind={kind} existing={mine} onClose={() => setCreating(false)} onCreated={select} notify={notify} />}
+      {creating && kind !== 'employment' && <NewRequest kind={kind} existing={mine} onClose={() => setCreating(false)} onCreated={select} notify={notify} />}
     </>
   );
 }
@@ -170,7 +183,7 @@ function CaseFile({
   onDeleted: () => void;
   notify: (t: string) => void;
 }) {
-  const { setVerificationCheck, decideVerification, removeVerification } = usePortal();
+  const { setVerificationCheck, decideVerification, removeVerification, documents, deleted, alumni } = usePortal();
   const byId = usePeopleById();
   const [note, setNote] = useState(request.note);
   const [error, setError] = useState('');
@@ -180,6 +193,19 @@ function CaseFile({
   const pending = request.status === 'pending';
   const person = request.kind === 'employee' ? byId.get(request.personId) : undefined;
   const age = daysBetween(request.requested, request.decided ?? todayIso());
+  // the employee's own uploads (employee files only), and when the 60-day rule removes them
+  const ids = request.kind === 'employee' ? documents.filter((d) => d.personId === request.personId) : [];
+  const idsComplete = ID_DOCS.every((d) => ids.some((u) => u.kind === d.id));
+  const leftOn = request.kind === 'employee' ? alumni.find((a) => a.id === request.personId)?.left : undefined;
+  const deletedOn = request.kind === 'employee' ? deleted[request.personId] : undefined;
+  // One link for every employee's upload: it opens their own profile once they sign in. A real one carries a
+  // single-use token for this request.
+  const uploadLink = `${window.location.origin}${window.location.pathname}#/portal/profile?docs=1`;
+  const copyLink = () =>
+    navigator.clipboard
+      .writeText(uploadLink)
+      .then(() => notify('Upload link copied.'))
+      .catch(() => notify(`Couldn't copy it. The link is ${uploadLink}`));
 
   const decide = (status: VerificationStatus) => {
     // a rejection without a reason leaves nobody able to fix it
@@ -187,8 +213,14 @@ function CaseFile({
     decideVerification(request.id, status, note.trim());
     setError('');
     if (status !== 'pending') onDecided();
-    notify(status === 'pending' ? `${subject} was reopened.` : `${subject} was marked ${STATUS_LABEL[status].toLowerCase()}.`);
+    // the answer is meant to go back by email on its own; until that's connected, say so instead of implying it went
+    const unsent = request.kind === 'employment' && status !== 'pending' ? ` Email isn’t connected yet, so ${request.requesterCompany} hasn’t been sent the answer.` : '';
+    notify(status === 'pending' ? `${subject} was reopened.` : `${subject} was marked ${STATUS_LABEL[status].toLowerCase()}.${unsent}`);
   };
+  const directoryMatch =
+    request.kind === 'employment'
+      ? [...byId.values()].find((p) => (request.employeeId && p.id === request.employeeId.toUpperCase()) || p.name.toLowerCase() === request.candidate.toLowerCase())
+      : undefined;
 
   const facts: [string, ReactNode][] =
     request.kind === 'company'
@@ -207,6 +239,16 @@ function CaseFile({
             ),
           ],
         ]
+      : request.kind === 'employment'
+      ? [
+          ['Asked by', `${request.requesterName}, ${request.requesterCompany}`],
+          ['Reply to', request.requesterEmail],
+          ['Designation', request.designation],
+          ['Worked here', `${formatMonth(request.from)} to ${request.to ? formatMonth(request.to) : 'now'}`],
+          ['Employee ID', request.employeeId ? <span className="p-mono">{request.employeeId}</span> : 'Not given'],
+          // a lead for the "Found in our records" check, not a decision: names can repeat
+          ['In our directory', directoryMatch ? `${directoryMatch.name} (${directoryMatch.id})` : 'No match found'],
+        ]
       : [
           ['Email', person?.email ?? 'Removed user'],
           ['Role', person ? ROLE_LABEL[person.role] : 'Not found'],
@@ -220,12 +262,11 @@ function CaseFile({
           {initials(subject)}
         </span>
         <div>
-          <p className="p-file-kicker">{request.kind === 'company' ? 'Company file' : 'Employee file'}</p>
           <h2 id="file-title" className="p-file-title">
             {subject}
           </h2>
           <p className="p-dim">
-            Opened by {request.requestedBy} on {formatDate(request.requested)} · {pending ? `open ${age} ${age === 1 ? 'day' : 'days'}` : `decided in ${age} ${age === 1 ? 'day' : 'days'}`}
+            {request.kind === 'company' ? 'Company file' : request.kind === 'employee' ? 'Employee file' : 'Verification request'} · {request.kind === 'employment' ? 'sent' : 'opened'} by {request.requestedBy} on {formatDate(request.requested)} · {pending ? `open ${age} ${age === 1 ? 'day' : 'days'}` : `decided in ${age} ${age === 1 ? 'day' : 'days'}`}
           </p>
         </div>
         {/* the decision lands like a rubber stamp; only the one made just now animates */}
@@ -246,10 +287,57 @@ function CaseFile({
         ))}
       </dl>
 
+      {request.kind === 'employee' && (
+        <section className="p-file-ids" aria-labelledby="file-ids">
+          <h3 id="file-ids">Government ID from {subject}</h3>
+          {deletedOn ? (
+            <p className="p-dim">
+              Deleted automatically on {formatDate(deletedOn)}, {ID_RETENTION_DAYS} days after they left. Their name, dates and this result are kept.
+            </p>
+          ) : (
+            <ul>
+              {ID_DOCS.map((d) => {
+                const file = ids.find((u) => u.kind === d.id);
+                return (
+                  <li key={d.id} data-done={file ? '' : undefined}>
+                    <PIcon name={file ? 'check' : 'clock'} size={15} />
+                    <strong>{d.label}</strong>
+                    {file ? (
+                      <span>
+                        <a href={file.url} target="_blank" rel="noreferrer">
+                          {file.fileName}
+                          <span className="sr-only"> (opens in a new tab)</span>
+                        </a>{' '}
+                        · {formatSize(file.size)} · {formatDate(file.uploaded)}
+                      </span>
+                    ) : (
+                      <span className="p-dim">Not uploaded yet</span>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {leftOn && !deletedOn && ids.length > 0 && (
+            <p className="p-dim">
+              They left on {formatDate(leftOn)}, so these files are deleted automatically on {formatDate(documentsDeleteOn(leftOn))}.
+            </p>
+          )}
+          {pending && !idsComplete && !deletedOn && (
+            <p className="p-file-ids-link">
+              <span className="p-dim">Email isn't connected yet, so send {subject} the upload link yourself.</span>
+              <button type="button" className={btnClass('ghost', { small: true })} onClick={copyLink}>
+                <BtnLabel icon="link">Copy upload link</BtnLabel>
+              </button>
+            </p>
+          )}
+        </section>
+      )}
+
       <div className="p-file-body">
         <fieldset className="p-file-docs" disabled={!pending}>
           <legend>
-            <span>Documents</span>
+            <span>{request.kind === 'employment' ? 'Checks' : 'Documents'}</span>
             <span className="p-dim">
               {request.done.length} of {checks.length} checked
             </span>
@@ -259,15 +347,22 @@ function CaseFile({
               <i key={c.id} data-on={request.done.includes(c.id) || undefined} />
             ))}
           </span>
-          {checks.map((c) => (
-            <label key={c.id} className="p-doc">
-              <input type="checkbox" checked={request.done.includes(c.id)} onChange={(e) => setVerificationCheck(request.id, c.id, e.target.checked)} />
-              <span className="p-doc-box" aria-hidden="true">
-                <PIcon name="check" size={12} />
-              </span>
-              <span>{c.label}</span>
-            </label>
-          ))}
+          {checks.map((c) => {
+            // the Government ID can't be ticked off before the Aadhaar and PAN are in
+            const waiting = request.kind === 'employee' && c.id === 'identity' && !idsComplete && !request.done.includes(c.id);
+            return (
+              <label key={c.id} className="p-doc">
+                <input type="checkbox" checked={request.done.includes(c.id)} disabled={waiting} onChange={(e) => setVerificationCheck(request.id, c.id, e.target.checked)} />
+                <span className="p-doc-box" aria-hidden="true">
+                  <PIcon name="check" size={12} />
+                </span>
+                <span>
+                  {c.label}
+                  {waiting && <span className="p-dim"> (waiting for Aadhaar and PAN)</span>}
+                </span>
+              </label>
+            );
+          })}
         </fieldset>
 
         <section className="p-file-log" aria-labelledby="file-log">
@@ -296,6 +391,7 @@ function CaseFile({
           {error}
         </p>
       )}
+      {request.kind === 'employment' && !pending && <p className="p-field-hint">Email isn’t connected yet, so {request.requesterEmail} hasn’t been sent this answer.</p>}
 
       <footer className="p-file-foot">
         <button type="button" className="p-text-btn is-danger" onClick={() => setDeleting(true)}>
@@ -304,7 +400,7 @@ function CaseFile({
         <span className="p-file-actions">
           {pending ? (
             <>
-              {!allDone && <span className="p-dim">Check every document to verify</span>}
+              {!allDone && <span className="p-dim">{request.kind === 'employment' ? 'Tick every check to verify' : 'Check every document to verify'}</span>}
               <button type="button" className={btnClass('ghost')} onClick={() => decide('rejected')}>
                 <BtnLabel icon="close">Reject</BtnLabel>
               </button>
@@ -341,7 +437,7 @@ function NewRequest({
   onCreated,
   notify,
 }: {
-  kind: VerificationKind;
+  kind: Exclude<VerificationKind, 'employment'>;
   existing: Verification[];
   onClose: () => void;
   onCreated: (id: string) => void;
@@ -363,7 +459,7 @@ function NewRequest({
     if (kind === 'employee') {
       if (!personId) return setError('Pick who to verify.');
       onCreated(requestVerification({ kind, personId }));
-      notify(`Verification started for ${people.find((p) => p.id === personId)?.name}.`);
+      notify(`Verification started for ${people.find((p) => p.id === personId)?.name}. Email isn't connected yet, so copy the upload link from the request and send it to them.`);
       return onClose();
     }
     const name = company.trim();
@@ -389,8 +485,7 @@ function NewRequest({
 
   return (
     <Modal
-      eyebrow={COPY[kind].title}
-      title="New verification request"
+      title={`New ${kind} verification request`}
       icon="shield"
       onClose={onClose}
       onSubmit={submit}

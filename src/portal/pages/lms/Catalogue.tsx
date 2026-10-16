@@ -1,7 +1,8 @@
 import { useState } from 'react';
+import { SearchPill } from '../../../components/SearchPill';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { usePeopleById, usePortal } from '../../store';
-import { btnClass, BtnLabel, Empty, PIcon } from '../../ui';
+import { btnClass, BtnLabel, Empty } from '../../ui';
 import { CourseCard } from './parts';
 
 /** The search box on both pages: it always lands on the course list, with the words in the address so it can be shared. */
@@ -9,24 +10,18 @@ function CourseSearch({ initial = '' }: { initial?: string }) {
   const [q, setQ] = useState(initial);
   const navigate = useNavigate();
   return (
-    <form
-      className="p-lms-search"
-      role="search"
-      onSubmit={(e) => {
-        e.preventDefault();
+    <SearchPill
+      id="course-search"
+      align="center"
+      value={q}
+      onChange={setQ}
+      label="Search for courses"
+      placeholder="Search for courses, then press Enter"
+      onSubmit={() => {
         const words = q.trim();
         navigate(words ? `/portal/lms/courses?q=${encodeURIComponent(words)}` : '/portal/lms/courses');
       }}
-    >
-      <PIcon name="search" size={18} />
-      <label className="sr-only" htmlFor="course-search">
-        Search for courses
-      </label>
-      <input id="course-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search for courses" />
-      <button type="submit" className={btnClass('primary')}>
-        <BtnLabel>Search</BtnLabel>
-      </button>
-    </form>
+    />
   );
 }
 
@@ -37,7 +32,6 @@ export function LmsHome() {
   return (
     <>
       <header className="p-lms-hero">
-        <p className="cell-label">Bharattech LMS</p>
         <h1 className="p-lms-hero-title">Master new skills with courses that match your ambition</h1>
         <p className="p-lms-hero-sub">
           Learn from <strong>industry experts</strong>, work through <strong>interactive content</strong>, and grow your career <strong>at your own pace</strong>.
@@ -72,7 +66,6 @@ export function CourseList() {
   return (
     <>
       <header className="p-lms-hero is-compact">
-        <p className="cell-label">Bharattech LMS</p>
         <h1 className="p-lms-hero-title">
           Explore our <em>courses</em>
         </h1>

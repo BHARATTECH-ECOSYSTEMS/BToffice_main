@@ -90,8 +90,33 @@ export function nameFromEmail(email: string) {
 }
 
 /** The role is picked on the login form for now; the real sign-in will take it from the account instead. */
+// The dashboard's arrival plays once per sign-in; this tab-only flag remembers it has played.
+const ARRIVED = 'bt-portal-arrived';
+const forgetArrival = () => {
+  try {
+    sessionStorage.removeItem(ARRIVED);
+  } catch {
+    // storage blocked: the arrival just plays again, which is harmless
+  }
+};
+export function hasArrived() {
+  try {
+    return sessionStorage.getItem(ARRIVED) === '1';
+  } catch {
+    return true;
+  }
+}
+export function markArrived() {
+  try {
+    sessionStorage.setItem(ARRIVED, '1');
+  } catch {
+    // see forgetArrival
+  }
+}
+
 export function startSession(email: string, role: Role, remember = false) {
   signedOutAt = 0;
+  forgetArrival();
   write({ name: nameFromEmail(email), email: email.trim().toLowerCase(), role }, remember);
 }
 
@@ -123,6 +148,7 @@ export const didSignOut = () => Date.now() - signedOutAt < 2000;
 
 export function endSession() {
   signedOutAt = Date.now();
+  forgetArrival();
   write(null);
 }
 

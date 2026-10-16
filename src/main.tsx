@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 // Imported after App they came last and silently overrode those section rules.
 import './styles/base.css';
 import './styles/fx.css';
+import './styles/search-pill.css';
 import './styles/story.css';
 import './styles/film.css';
 import App from './App';

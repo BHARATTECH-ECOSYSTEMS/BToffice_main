@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { SearchPill } from '../components/SearchPill';
 import { PageHero, Quiet } from '../components/PageHero';
 import { Arrow, Reveal, toneStyle, BtnText } from '../components/ui';
 import { DEPT_TONES, EMAIL, EMAIL_HREF, ROLES, VALUES } from '../content';
@@ -127,13 +128,7 @@ export function Careers() {
                 </button>
               ))}
             </div>
-            <label className="search">
-              <svg viewBox="0 0 16 16" aria-hidden="true">
-                <circle cx="7" cy="7" r="5" />
-                <path d="M11 11l3.5 3.5" />
-              </svg>
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search roles, teams, places" aria-label="Search roles" />
-            </label>
+            <SearchPill value={q} onChange={setQ} label="Search roles" placeholder="Search roles, teams, places" />
           </div>
           <ul className="role-grid">
             {roles.map((r, i) => (

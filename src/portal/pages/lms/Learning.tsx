@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { allLectures, formatMinutes, plural, totalMinutes, youtubeId, type Course } from '../../lmsData';
 import { usePortal } from '../../store';
@@ -13,34 +14,41 @@ export function MyEnrollments() {
     .filter((c): c is Course => !!c);
 
   return (
-    <section className="p-card" aria-labelledby="my-enrollments">
-      <h1 id="my-enrollments" className="p-card-title p-lms-h1">
-        My enrollments
-      </h1>
-      {mine.length ? (
-        <div className="p-table-wrap">
-          <table className="p-table">
-            <thead>
-              <tr>
-                <th scope="col">Course</th>
-                <th scope="col">Duration</th>
-                <th scope="col">Completed</th>
-                <th scope="col">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {mine.map((c) => (
-                <EnrollmentRow key={c.id} course={c} />
-              ))}
-            </tbody>
-          </table>
+    <>
+      <header className="p-edu-head">
+        <div>
+          <h1 id="my-enrollments" className="p-lms-h1">
+            My enrollments
+          </h1>
+          <p className="p-muted">The courses you've joined, and how far through each one you are.</p>
         </div>
-      ) : (
-        <Empty icon="cap" title="You haven't enrolled in a course yet">
-          <Link to="/portal/lms/courses">Browse the courses</Link> to find one.
-        </Empty>
-      )}
-    </section>
+      </header>
+      <section className="p-card" aria-labelledby="my-enrollments">
+        {mine.length ? (
+          <div className="p-table-wrap">
+            <table className="p-table">
+              <thead>
+                <tr>
+                  <th scope="col">Course</th>
+                  <th scope="col">Duration</th>
+                  <th scope="col">Completed</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {mine.map((c) => (
+                  <EnrollmentRow key={c.id} course={c} />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <Empty icon="cap" title="You haven't enrolled in a course yet">
+            <Link to="/portal/lms/courses">Browse the courses</Link> to find one.
+          </Empty>
+        )}
+      </section>
+    </>
   );
 }
 
@@ -94,6 +102,7 @@ function PlayerView({ course }: { course: Course }) {
   const video = current ? youtubeId(current.videoUrl) : null;
   const myRating = ratings.find((r) => r.courseId === course.id && r.personId === me.id)?.stars ?? 0;
   const watch = (lectureId: string) => setParams({ lecture: lectureId });
+  const complete = progress.enrolled && progress.total > 0 && progress.done === progress.total;
 
   return (
     <div className="p-player">
@@ -102,11 +111,7 @@ function PlayerView({ course }: { course: Course }) {
           <Link to={`/portal/lms/course/${course.id}`}>{course.title}</Link> / <span aria-current="page">Player</span>
         </p>
         <h1 className="p-card-title">Course structure</h1>
-        {progress.enrolled && (
-          <p className="p-dim">
-            {progress.done} of {plural(progress.total, 'lecture')} done
-          </p>
-        )}
+        {progress.enrolled && <CourseProgress done={progress.done} total={progress.total} complete={complete} />}
         <CourseStructure
           chapters={course.chapters}
           current={current?.id}
@@ -171,9 +176,8 @@ function PlayerView({ course }: { course: Course }) {
         {current && (
           <div className="p-player-bar">
             <div>
-              <p className="cell-label">Now playing</p>
               <h2 className="p-card-title">{current.title}</h2>
-              <p className="p-dim">{formatMinutes(current.minutes)}</p>
+              <p className="p-dim">Now playing · {formatMinutes(current.minutes)}</p>
             </div>
             <div className="p-row">
               {progress.enrolled && (
@@ -190,6 +194,41 @@ function PlayerView({ course }: { course: Course }) {
           </div>
         )}
       </section>
+    </div>
+  );
+}
+
+/**
+ * How far through the course you are: a bar that grows as lectures are marked complete. Finishing the last one is a
+ * rare, earned moment, so only then the check draws itself and the badge pops in; a course that was already done
+ * when the page opened just shows the badge.
+ */
+function CourseProgress({ done, total, complete }: { done: number; total: number; complete: boolean }) {
+  const wasComplete = useRef(complete);
+  const [justFinished, setJustFinished] = useState(false);
+  useEffect(() => {
+    if (complete && !wasComplete.current) setJustFinished(true);
+    if (!complete) setJustFinished(false);
+    wasComplete.current = complete;
+  }, [complete]);
+
+  return (
+    <div className="p-course-progress" data-complete={complete || undefined} data-fresh={justFinished || undefined}>
+      <span className="p-course-bar" aria-hidden="true">
+        <i style={{ transform: `scaleX(${total ? done / total : 0})` }} />
+      </span>
+      {complete ? (
+        <p className="p-course-done" role="status">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path d="M5 12.5l4.5 4.5L19 7.5" />
+          </svg>
+          Course complete · every lecture done
+        </p>
+      ) : (
+        <p className="p-dim">
+          {done} of {plural(total, 'lecture')} done
+        </p>
+      )}
     </div>
   );
 }

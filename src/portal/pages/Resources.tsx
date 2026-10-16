@@ -56,8 +56,10 @@ function ToolCard({ tool }: { tool: Tool }) {
       <span className="p-tile-icon">
         <PIcon name={tool.icon} />
       </span>
-      <p className="cell-label">{tool.category}</p>
-      <h2 className="p-card-title">{tool.name}</h2>
+      <div>
+        <h2 className="p-card-title">{tool.name}</h2>
+        <p className="p-card-meta">{tool.category}</p>
+      </div>
       <p className="p-muted">{tool.body}</p>
       <div className="p-resource-foot">
         <ToolButton url={tool.url} label={tool.openLabel ?? 'Open Platform'} name={tool.name} />
@@ -84,7 +86,6 @@ function LinkCard({ link, isManager, canDelete, notify }: { link: LinkResource; 
       <span className="p-tile-icon">
         <PIcon name="link" />
       </span>
-      <p className="cell-label">Resource</p>
       <h2 className="p-card-title">{link.name}</h2>
       <p className="p-muted p-url">{link.url}</p>
       <div className="p-resource-foot">
@@ -143,7 +144,6 @@ function AddLink({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string
   const [error, setError] = useState('');
   return (
     <Modal
-      eyebrow="Resource"
       title="Add resource"
       icon="link"
       onClose={onClose}
@@ -201,8 +201,10 @@ export function ToolPage() {
         <span className="p-tile-icon is-large">
           <PIcon name={tool.icon} size={26} />
         </span>
-        <p className="cell-label">{tool.category}</p>
-        <h2 className="p-card-title">{tool.name}</h2>
+        <div>
+          <h2 className="p-card-title">{tool.name}</h2>
+          <p className="p-card-meta">{tool.category}</p>
+        </div>
         <p className="p-tags">
           {tool.tags.map((t) => (
             <span key={t}>{t}</span>

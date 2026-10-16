@@ -1,14 +1,21 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
+  SEED_ALUMNI,
   SEED_CERTIFICATES,
   SEED_LINKS,
   SEED_PEOPLE,
   SEED_POLICIES,
+  SEED_REFERRALS,
   SEED_TASKS,
   COMPANY_CHECKS,
   EMPLOYEE_CHECKS,
+  EMPLOYMENT_CHECKS,
   SEED_VERIFICATIONS,
+  ID_RETENTION_DAYS,
   type Acceptance,
+  type IdDocKind,
+  type IdDocument,
+  type Alumnus,
   type Certificate,
   type CertificateType,
   type LinkResource,
@@ -16,12 +23,15 @@ import {
   type PersonRole,
   type PersonStatus,
   type PolicyDoc,
+  type Referral,
+  type Stream,
   type Task,
   type TaskStatus,
   type Verification,
   type VerificationStatus,
 } from './data';
 import { SEED_COMPLETED, SEED_COURSES, SEED_ENROLLMENTS, SEED_RATINGS, type Course, type Enrollment, type Rating } from './lmsData';
+import { localMinute, receivedRequests } from './inbox';
 import type { Session } from './session';
 
 /**
@@ -31,13 +41,15 @@ import type { Session } from './session';
  */
 
 const today = () => new Date().toISOString().slice(0, 10);
-// "2026-10-15T14:05" in the viewer's own time zone, matching how the log is read back
-const localMinute = () => {
-  const d = new Date();
-  const two = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}T${two(d.getHours())}:${two(d.getMinutes())}`;
-};
 let counter = 100;
+
+// Verification requests, uploaded ID documents and deletion dates outlive a sign-out (but not a reload): HR opens a
+// request, signs out, and the employee signs in to upload, so both sides must see the same records. Everything else
+// in the portal still starts fresh with each sign-in.
+const kept: { verifications?: Verification[]; documents?: IdDocument[]; deleted?: Record<string, string> } = {};
+const DAY_MS = 864e5;
+/** The day a person's ID documents are deleted: ID_RETENTION_DAYS after their last working day. */
+export const documentsDeleteOn = (left: string) => new Date(new Date(`${left}T00:00:00`).getTime() + ID_RETENTION_DAYS * DAY_MS).toISOString().slice(0, 10);
 const nextId = (prefix: string) => `${prefix}${++counter}`;
 
 function usePortalState(session: Session) {
@@ -45,7 +57,7 @@ function usePortalState(session: Session) {
   const [people, setPeople] = useState<Person[]>(() =>
     SEED_PEOPLE.some((p) => p.email === session.email)
       ? SEED_PEOPLE
-      : [{ id: 'EMP0', name: session.name, email: session.email, role: session.role, phone: '', team: 'BharatTech', status: 'active' }, ...SEED_PEOPLE]
+      : [{ id: 'EMP0', name: session.name, email: session.email, role: session.role, phone: '', team: 'BharatTech', stream: 'tech', status: 'active' }, ...SEED_PEOPLE]
   );
   const [certificates, setCertificates] = useState<Certificate[]>(SEED_CERTIFICATES);
   const [links, setLinks] = useState<LinkResource[]>(SEED_LINKS);
@@ -62,12 +74,28 @@ function usePortalState(session: Session) {
 
   const me = people.find((p) => p.email === session.email) ?? people[0];
 
-  const invitePerson = useCallback((name: string, email: string, role: PersonRole) => {
-    setPeople((list) => {
-      const max = list.reduce((n, p) => Math.max(n, Number(p.id.replace(/\D/g, '')) || 0), 0);
-      return [...list, { id: `EMP${max + 1}`, name, email, role, phone: '', team: 'BharatTech', status: 'invited' }];
-    });
-  }, []);
+  // People who have left. Ids keep counting past them, so a new person never reuses a former colleague's id.
+  const [alumni, setAlumni] = useState<Alumnus[]>(SEED_ALUMNI);
+  const invitePerson = useCallback(
+    (name: string, email: string, role: PersonRole, stream: Stream) => {
+      setPeople((list) => {
+        const max = [...list, ...alumni].reduce((n, p) => Math.max(n, Number(p.id.replace(/\D/g, '')) || 0), 0);
+        return [...list, { id: `EMP${max + 1}`, name, email, role, phone: '', team: 'BharatTech', stream, status: 'invited' }];
+      });
+    },
+    [alumni]
+  );
+  // Leaving moves a person out of the directory and into their stream's community, in one step, so nobody has to
+  // remember to add them. Their tasks and certificates keep pointing at them (usePeopleById still finds them).
+  const markLeft = useCallback(
+    (id: string, left: string, stream: Stream) => {
+      const person = people.find((p) => p.id === id);
+      if (!person) return;
+      setPeople((list) => list.filter((p) => p.id !== id));
+      setAlumni((list) => [{ ...person, stream, status: 'inactive', left }, ...list]);
+    },
+    [people]
+  );
   const setPersonRole = useCallback((id: string, role: PersonRole) => setPeople((list) => list.map((p) => (p.id === id ? { ...p, role } : p))), []);
   const setPersonStatus = useCallback((id: string, status: PersonStatus) => setPeople((list) => list.map((p) => (p.id === id ? { ...p, status } : p))), []);
   const removePerson = useCallback((id: string) => {
@@ -114,7 +142,13 @@ function usePortalState(session: Session) {
 
   // HR OPS verification requests. Every change is also written to the request's log, the audit trail a
   // verification has to keep. A decision records who made it and when; reopening clears both.
-  const [verifications, setVerifications] = useState<Verification[]>(SEED_VERIFICATIONS);
+  // requests sent from the website's footer form in this tab come first, newest on top
+  const [verifications, setVerifications] = useState<Verification[]>(() =>
+    kept.verifications
+      ? [...receivedRequests().filter((r) => !kept.verifications!.some((v) => v.id === r.id)), ...kept.verifications]
+      : [...receivedRequests(), ...SEED_VERIFICATIONS]
+  );
+  useEffect(() => void (kept.verifications = verifications), [verifications]);
   const entry = useCallback((text: string) => ({ at: localMinute(), by: session.name, text }), [session.name]);
   const requestVerification = useCallback(
     (draft: { kind: 'company'; company: string; registration: string; website: string; contactEmail: string } | { kind: 'employee'; personId: string }) => {
@@ -129,7 +163,7 @@ function usePortalState(session: Session) {
       setVerifications((list) =>
         list.map((v) => {
           if (v.id !== id) return v;
-          const checks: readonly { id: string; label: string }[] = v.kind === 'company' ? COMPANY_CHECKS : EMPLOYEE_CHECKS;
+          const checks: readonly { id: string; label: string }[] = v.kind === 'company' ? COMPANY_CHECKS : v.kind === 'employee' ? EMPLOYEE_CHECKS : EMPLOYMENT_CHECKS;
           const label = checks.find((c) => c.id === check)?.label ?? check;
           return { ...v, done: done ? [...new Set([...v.done, check])] : v.done.filter((c) => c !== check), log: [...v.log, entry(`${done ? 'Checked' : 'Unchecked'} ${label}`)] };
         })
@@ -148,6 +182,54 @@ function usePortalState(session: Session) {
     [session.name, entry]
   );
   const removeVerification = useCallback((id: string) => setVerifications((list) => list.filter((v) => v.id !== id)), []);
+
+  // ID documents uploaded by employees for their verification. Replacing one frees the old file.
+  const [documents, setDocuments] = useState<IdDocument[]>(() => kept.documents ?? []);
+  // personId -> the day their documents were deleted, so the record can say so
+  const [deleted, setDeleted] = useState<Record<string, string>>(() => kept.deleted ?? {});
+  useEffect(() => void (kept.documents = documents), [documents]);
+  useEffect(() => void (kept.deleted = deleted), [deleted]);
+  const uploadDocument = useCallback(
+    (kind: IdDocKind, file: File) => {
+      const doc: IdDocument = { personId: me.id, kind, fileName: file.name, size: file.size, url: URL.createObjectURL(file), uploaded: today() };
+      setDocuments((list) => {
+        list.filter((d) => d.personId === me.id && d.kind === kind).forEach((d) => URL.revokeObjectURL(d.url));
+        return [...list.filter((d) => !(d.personId === me.id && d.kind === kind)), doc];
+      });
+      // the employee's own upload goes on the request's record too
+      setVerifications((list) =>
+        list.map((v) => (v.kind === 'employee' && v.personId === me.id && v.status === 'pending' ? { ...v, log: [...v.log, entry(`Uploaded ${kind === 'pan' ? 'PAN card' : 'Aadhaar card'}`)] } : v))
+      );
+    },
+    [me.id, entry]
+  );
+  // The 60-day rule: once ID_RETENTION_DAYS have passed since someone's last working day, their ID documents are
+  // deleted automatically and the deletion is logged. Their name, dates and verification result stay.
+  // With a backend this is a daily server job; here it runs whenever the portal's data changes.
+  useEffect(() => {
+    const due = new Set(alumni.filter((a) => documentsDeleteOn(a.left) <= today()).map((a) => a.id));
+    const gone = documents.filter((d) => due.has(d.personId));
+    if (!gone.length) return;
+    gone.forEach((d) => URL.revokeObjectURL(d.url));
+    const people = new Set(gone.map((d) => d.personId));
+    setDocuments((list) => list.filter((d) => !people.has(d.personId)));
+    setDeleted((map) => ({ ...map, ...Object.fromEntries([...people].map((id) => [id, today()])) }));
+    setVerifications((list) =>
+      list.map((v) =>
+        v.kind === 'employee' && people.has(v.personId)
+          ? { ...v, log: [...v.log, { at: localMinute(), by: 'System', text: `Deleted the ID documents automatically, ${ID_RETENTION_DAYS} days after they left` }] }
+          : v
+      )
+    );
+  }, [alumni, documents]);
+
+  // Job referrals shared with former colleagues, newest first.
+  const [referrals, setReferrals] = useState<Referral[]>(SEED_REFERRALS);
+  const shareReferral = useCallback(
+    (draft: Omit<Referral, 'id' | 'postedBy' | 'posted'>) => setReferrals((list) => [{ ...draft, id: nextId('R'), postedBy: session.name, posted: today() }, ...list]),
+    [session.name]
+  );
+  const removeReferral = useCallback((id: string) => setReferrals((list) => list.filter((r) => r.id !== id)), []);
 
   // Learning platform. Completed lectures are stored as "personId:lectureId" so a lookup is one Set check.
   const [courses, setCourses] = useState<Course[]>(SEED_COURSES);
@@ -197,6 +279,11 @@ function usePortalState(session: Session) {
     setPersonRole,
     setPersonStatus,
     removePerson,
+    alumni,
+    markLeft,
+    referrals,
+    shareReferral,
+    removeReferral,
     issueCertificate,
     removeCertificate,
     addLink,
@@ -213,6 +300,9 @@ function usePortalState(session: Session) {
     setVerificationCheck,
     decideVerification,
     removeVerification,
+    documents,
+    deleted,
+    uploadDocument,
     courses,
     enrollments,
     completed,
@@ -238,10 +328,11 @@ export function usePortal() {
   return data;
 }
 
-/** Looks people up by id, for tables that store only the id. */
+/** Looks people up by id, for tables that store only the id. Includes people who have left, so their old tasks,
+ * certificates and verifications still show their name. */
 export function usePeopleById() {
-  const { people } = usePortal();
-  return useMemo(() => new Map(people.map((p) => [p.id, p])), [people]);
+  const { people, alumni } = usePortal();
+  return useMemo(() => new Map<string, Person>([...people, ...alumni].map((p) => [p.id, p])), [people, alumni]);
 }
 
 export const formatDate = (iso: string) =>

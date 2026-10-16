@@ -300,53 +300,6 @@
   box-shadow: inset 0 0 0 1.5px #D9443A, 0 0 0 4px rgb(217 68 58 / 0.12);
 }
 /* demo role choice: radios drawn as three equal pills */
-.login-roles {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-}
-.login-roles legend {
-  margin-bottom: 6px;
-  padding: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-soft);
-}
-.login-roles div {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-.login-roles label {
-  position: relative;
-  cursor: pointer;
-}
-.login-roles input {
-  position: absolute;
-  opacity: 0;
-}
-.login-roles span {
-  display: grid;
-  place-items: center;
-  height: 38px;
-  border-radius: var(--r-sm);
-  background: var(--login-field);
-  box-shadow: inset 0 0 0 1px var(--line);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink-2);
-  transition: box-shadow var(--dur-ui) var(--ease), background var(--dur-ui) var(--ease), color var(--dur-ui) var(--ease);
-}
-.login-roles input:checked + span {
-  background: color-mix(in srgb, var(--violet) 10%, var(--login-panel));
-  box-shadow: inset 0 0 0 1.5px var(--violet);
-  color: var(--violet);
-}
-.login-roles input:focus-visible + span {
-  box-shadow: inset 0 0 0 1.5px var(--violet), 0 0 0 4px color-mix(in srgb, var(--violet) 14%, transparent);
-}
 .login-error {
   font-style: normal;
   font-size: 13px;
@@ -424,6 +377,251 @@
     transform: rotate(360deg);
   }
 }
+/* ── The sign-in walk (after the "Lunara" reel) ──
+   At rest a small figure stands by a glass door at the button's right end; hover opens the door a crack. On sign-in
+   (1.45s): the label dims, the door swings open onto warm light, the figure walks through and the door shuts. Then
+   (0.65s) the button floods teal from the doorway and a check draws itself. A rare moment, so it may take its time;
+   with reduced motion the button just turns teal. */
+.login-submit.is-door {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.login-submit.is-door[aria-disabled] {
+  cursor: progress;
+}
+.login-submit-label {
+  transition: opacity 240ms var(--ease);
+}
+.login-submit[data-phase] .login-submit-label {
+  opacity: 0.45;
+}
+.login-door {
+  position: absolute;
+  top: 50%;
+  right: 14px;
+  width: 20px;
+  height: 28px;
+  margin-top: -14px;
+  border-radius: 4px 4px 2px 2px;
+  box-shadow: inset 0 0 0 1px rgb(200 190 255 / 0.55);
+  background: rgb(20 18 40 / 0.9);
+  perspective: 80px;
+}
+.login-door-light {
+  position: absolute;
+  inset: 2px;
+  border-radius: 3px 3px 1px 1px;
+  background: radial-gradient(70% 60% at 50% 55%, #ffe7b8, #f2b56b 45%, rgb(242 181 107 / 0) 100%);
+  opacity: 0;
+  transition: opacity 240ms var(--ease);
+}
+.login-door-panel {
+  position: absolute;
+  inset: 1px;
+  border-radius: 3px 3px 1px 1px;
+  background: linear-gradient(160deg, rgb(190 176 255 / 0.55), rgb(110 88 245 / 0.35));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
+  transform-origin: left center;
+  transition: transform 260ms var(--ease);
+}
+/* the handle */
+.login-door-panel::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  right: 3px;
+  width: 2px;
+  height: 5px;
+  border-radius: 1px;
+  background: rgb(255 255 255 / 0.85);
+}
+@media (hover: hover) and (pointer: fine) {
+  .login-submit.is-door:not([data-phase]):hover .login-door-panel {
+    transform: rotateY(-28deg);
+  }
+  .login-submit.is-door:not([data-phase]):hover .login-door-light {
+    opacity: 0.6;
+  }
+}
+.login-walker {
+  position: absolute;
+  top: 50%;
+  right: 44px;
+  width: 11px;
+  height: 22px;
+  margin-top: -12px;
+  overflow: visible;
+  fill: #fff;
+  stroke: #fff;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+}
+.login-walker-leg,
+.login-walker-arm {
+  transform-box: view-box;
+  transform-origin: 6px 13.8px;
+}
+.login-walker-arm {
+  transform-origin: 6px 7.4px;
+}
+
+/* the walk */
+.login-submit[data-phase='entering'] .login-door-panel {
+  animation: login-door 1450ms var(--ease) forwards;
+}
+.login-submit[data-phase='entering'] .login-door-light {
+  animation: login-light 1450ms ease forwards;
+}
+.login-submit[data-phase='entering'] .login-walker {
+  animation: login-walk 1450ms cubic-bezier(0.45, 0, 0.55, 1) forwards;
+}
+.login-submit[data-phase='entering'] .login-walker-leg.is-a,
+.login-submit[data-phase='entering'] .login-walker-arm.is-b {
+  animation: login-stride 340ms ease-in-out infinite alternate;
+}
+.login-submit[data-phase='entering'] .login-walker-leg.is-b,
+.login-submit[data-phase='entering'] .login-walker-arm.is-a {
+  animation: login-stride 340ms ease-in-out infinite alternate-reverse;
+}
+@keyframes login-door {
+  0% {
+    transform: none;
+  }
+  18%,
+  74% {
+    transform: rotateY(-78deg);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes login-light {
+  0% {
+    opacity: 0;
+  }
+  18%,
+  66% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes login-walk {
+  0%,
+  14% {
+    opacity: 1;
+    transform: none;
+  }
+  58% {
+    opacity: 1;
+    transform: translateX(25px);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: translateX(29px) scale(0.82);
+  }
+}
+@keyframes login-stride {
+  from {
+    transform: rotate(-24deg);
+  }
+  to {
+    transform: rotate(24deg);
+  }
+}
+
+/* the welcome: teal grows out of the doorway, then the check draws */
+.login-flood {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background: linear-gradient(110deg, #10b981, #14b8a6 60%, #2dd4bf);
+  clip-path: circle(0 at calc(100% - 24px) 50%);
+  pointer-events: none;
+}
+.login-flood svg {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 24;
+  stroke-dashoffset: 24;
+}
+.login-submit[data-phase='welcome'] .login-flood {
+  clip-path: circle(150% at calc(100% - 24px) 50%);
+  transition: clip-path 460ms var(--ease);
+}
+.login-submit[data-phase='welcome'] .login-flood svg {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 340ms var(--ease) 180ms;
+}
+.login-submit[data-phase='welcome'] .login-walker {
+  opacity: 0;
+}
+/* the sparks: once the teal has filled and the check is drawn, five dots burst from the check and fade (with the
+   ting from Login.tsx). They live beside the button, in its wrapper, because the button clips its own contents. */
+.login-submit-wrap {
+  position: relative;
+}
+.login-sparks {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 3px);
+  pointer-events: none;
+}
+.login-sparks i {
+  position: absolute;
+  left: calc(var(--s) / -2);
+  top: calc(var(--s) / -2);
+  width: var(--s);
+  height: var(--s);
+  border-radius: 50%;
+  background: #2dd4bf;
+  box-shadow: 0 0 10px rgb(45 212 191 / 0.7);
+  opacity: 0;
+}
+.login-sparks i:nth-child(odd) {
+  background: #6ee7b7;
+}
+.login-sparks i:nth-child(3) {
+  background: #14b8a6;
+}
+.login-submit-wrap[data-phase='welcome'] .login-sparks i {
+  animation: login-spark 620ms var(--ease-expo) calc(380ms + var(--k) * 25ms) both;
+}
+@keyframes login-spark {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.3);
+  }
+  15% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--x), var(--y)) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-sparks {
+    display: none;
+  }
+  .login-submit[data-phase] * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
 .login-demo {
   margin: 0;
   font-size: 12.5px;

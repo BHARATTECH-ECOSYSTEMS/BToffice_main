@@ -7,45 +7,178 @@ body:has(.portal) .scene {
   visibility: hidden;
 }
 
+/* The portal's own warm palette (light theme only): cream page, warm-white cards, the brand violet as the accent. */
 .portal {
-  --side-w: 256px;
-  --top-h: 64px;
-  --p-gap: 20px;
-  --p-radius: var(--r-md);
-  --p-card: var(--paper);
+  --p-gap: 18px;
+  --p-radius: 26px;
   --p-line: var(--line-strong);
   min-height: 100vh;
+  /* the gutter round the frame is the portal's own padding: a margin on the frame would collapse out of the top and
+     bottom of this box and show the page's near-white behind it as two strips */
+  padding: 14px;
   background: var(--bg);
 }
+:root:not([data-theme='dark']) .portal {
+  --bg: #f6f4ee;
+  --paper: #fdfcf9;
+  --p-field: #fff;
+  background:
+    radial-gradient(60% 55% at 100% 100%, rgb(110 88 245 / 0.2), transparent 70%),
+    radial-gradient(45% 45% at 0% 0%, rgb(190 176 255 / 0.28), transparent 70%),
+    #f1eee6;
+  background-attachment: fixed;
+}
+.portal {
+  --p-card: var(--paper);
+  --p-field: var(--paper);
+  --p-shadow: 0 0 0 1px rgb(20 19 15 / 0.05), 0 18px 40px -30px rgb(40 30 90 / 0.3);
+}
 
-/* ── Sidebar ── */
+/* the whole app sits in one soft rounded frame, like a window on the page */
+.p-frame {
+  --p-col: 1400px;
+  --p-pad: clamp(18px, 2.4vw, 32px);
+  min-height: calc(100vh - 28px);
+  padding-inline: var(--p-pad);
+  border-radius: 34px;
+  background: color-mix(in srgb, var(--paper) 46%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--paper) 80%, transparent), 0 40px 90px -50px rgb(40 30 90 / 0.35);
+}
 
-.p-side {
-  position: fixed;
-  inset: 0 auto 0 0;
+/* ── Top bar: brand pill, page pills, then Settings and the user ── */
+
+.p-top {
+  /* its own layer above the page, so its menus open over page buttons that make their own layer (.btn isolates) */
+  position: relative;
   z-index: 30;
   display: flex;
-  flex-direction: column;
-  width: var(--side-w);
-  padding: 18px 14px;
-  background: var(--paper);
-  border-right: 1px solid var(--line);
-  overflow-y: auto;
-  overscroll-behavior: contain;
+  align-items: center;
+  gap: 8px;
+  max-width: var(--p-col);
+  margin-inline: auto;
+  padding-top: 18px;
 }
 .p-brand {
   display: inline-flex;
-  padding: 4px 10px 18px;
+  align-items: center;
+  height: 46px;
+  padding: 0 18px 0 12px;
+  border-radius: var(--r-pill);
   color: var(--ink);
+  background: var(--p-card);
+  box-shadow: var(--p-shadow);
 }
-.p-nav {
-  flex: 1;
+.p-pills {
+  position: relative;
+  margin-left: auto;
+  padding: 4px;
+  border-radius: var(--r-pill);
+  background: var(--p-card);
+  box-shadow: var(--p-shadow);
 }
-.p-nav-group + .p-nav-group {
-  margin-top: 18px;
+.p-pills > ul {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-.p-nav-label {
-  margin: 0 0 6px;
+/* one dark pill clipped to the active item; moving the clip is the slide */
+.p-pill-glide {
+  position: absolute;
+  inset: 4px;
+  /* above the real labels: it holds their light copy (see TopNav); clicks pass through to the links below */
+  z-index: 2;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  pointer-events: none;
+}
+.p-pill-row {
+  display: flex;
+  gap: 2px;
+}
+.p-pill-glide .p-pill {
+  color: var(--paper);
+  transition: none;
+}
+.p-pill-glide .p-pill[data-open] .p-icon {
+  rotate: -90deg;
+}
+.p-pill-glide[data-ready] {
+  transition: clip-path var(--dur-ui) var(--ease-io), opacity var(--dur-hover) var(--ease);
+}
+.p-pill-wrap {
+  position: relative;
+}
+.p-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--ink-2);
+  transition: color var(--dur-ui) var(--ease-io), background var(--dur-hover) var(--ease), scale var(--dur-press) var(--ease);
+}
+.p-pill .p-icon {
+  rotate: 90deg;
+  opacity: 0.6;
+  transition: rotate var(--dur-ui) var(--ease);
+}
+.p-pill[aria-expanded='true'] .p-icon {
+  rotate: -90deg;
+}
+@media (hover: hover) and (pointer: fine) {
+  .p-pill:not(.is-on):hover {
+    background: rgb(20 19 15 / 0.05);
+    color: var(--ink);
+  }
+}
+
+.p-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: -4px;
+  z-index: 40;
+  min-width: 250px;
+  max-height: min(72vh, 540px);
+  overflow-y: auto;
+  padding: 8px;
+  border-radius: 22px;
+  background: var(--p-card);
+  /* the cards below share this colour, so the menu needs a clear edge and a deep shadow to read as floating above them */
+  box-shadow:
+    0 0 0 1px var(--line-strong),
+    0 12px 24px -12px rgb(30 20 70 / 0.22),
+    0 36px 72px -24px rgb(30 20 70 / 0.38);
+  transform-origin: top right;
+  animation: p-menu-in 180ms var(--ease);
+}
+.p-menu:has(.p-menu-group + .p-menu-group) {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  width: 520px;
+}
+@keyframes p-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
+  }
+}
+.p-menu ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.p-menu-label {
+  margin: 6px 0 4px;
   padding: 0 12px;
   font-family: var(--mono);
   font-size: var(--fs-label);
@@ -54,151 +187,72 @@ body:has(.portal) .scene {
   text-transform: uppercase;
   color: var(--muted);
 }
-.p-nav ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.p-nav-link {
+.p-menu-link {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   min-height: 40px;
   padding: 0 12px;
-  border-radius: var(--r-xs);
-  font-size: 14.5px;
+  border-radius: 14px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--ink-2);
-  transition: background var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+  transition: background var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease), scale var(--dur-press) var(--ease);
 }
-.p-nav-link .p-icon {
+.p-menu-link .p-icon {
   flex: none;
   color: var(--ink-soft);
-  transition: color var(--dur-hover) var(--ease), translate var(--dur-hover) var(--ease);
 }
-@media (hover: hover) and (pointer: fine) {
-  .p-nav-link:hover {
-    background: color-mix(in srgb, var(--violet) 7%, transparent);
-    color: var(--ink);
-  }
-  .p-nav-link:hover .p-icon {
-    color: var(--violet);
-    translate: 2px 0;
-  }
-}
-.p-nav-link.active {
-  background: var(--ink);
-  color: var(--paper);
-}
-.p-nav-link.active .p-icon {
-  color: color-mix(in srgb, var(--violet) 55%, var(--paper));
-}
-/* a sidebar item that opens its sub-pages; the chevron turns to show which way it went */
-.p-nav-parent {
-  width: 100%;
-  font: inherit;
-  font-size: 14.5px;
-  font-weight: 500;
-  text-align: left;
-}
-.p-nav-parent > span {
-  flex: 1;
-}
-/* the chevron points right when closed and down when open, like the user menu's */
-.p-nav-parent > .p-icon:last-child {
-  transition: rotate var(--dur-ui) var(--ease);
-}
-.p-nav-parent[aria-expanded='true'] > .p-icon:last-child {
-  rotate: 90deg;
-}
-.p-nav-parent.is-inside {
+.p-menu-link.active {
   color: var(--ink);
+  background: color-mix(in srgb, var(--violet) 10%, transparent);
 }
-.p-nav-parent.is-inside > .p-icon:first-child {
+.p-menu-link.active .p-icon {
   color: var(--violet);
 }
-.p-nav .p-nav-sub {
-  margin: 2px 0 4px 21px;
-  padding-left: 12px;
-  border-left: 1px solid var(--line);
+@media (hover: hover) and (pointer: fine) {
+  .p-menu-link:hover {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--violet) 7%, transparent);
+  }
 }
-.p-nav-sub .p-nav-link {
-  min-height: 36px;
-  font-size: 14px;
-}
-/* Settings on the left, Sign out on the right; it stays in view while the menu above scrolls */
-.p-side-foot {
-  position: sticky;
-  bottom: -18px;
+
+.p-top-end {
   display: flex;
-  justify-content: space-between;
-  gap: 6px;
-  margin: 18px -14px -18px;
-  padding: 10px 14px 14px;
-  border-top: 1px solid var(--line);
-  background: var(--paper);
+  align-items: center;
+  gap: 8px;
 }
-.p-side-foot .p-nav-link {
-  flex: 1;
-  min-width: 0;
-  font: inherit;
-  font-size: 14px;
-  font-weight: 500;
-}
-.p-side-foot .p-signout {
-  position: relative;
-  flex: none;
-  width: 40px;
-  justify-content: center;
-  padding: 0;
-  color: #c2410c;
-}
-/* the tip rises from the icon: a short fade and lift, quick enough for something seen often */
-.p-signout::after {
-  content: attr(data-tip);
-  position: absolute;
-  bottom: calc(100% + 8px);
-  right: 0;
-  padding: 6px 10px;
-  border-radius: var(--r-xs);
-  font-size: 12.5px;
-  font-weight: 600;
+/* a long name ends in "…" instead of stretching the bar; the full name is in the menu */
+.p-user-name {
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
   white-space: nowrap;
+}
+.p-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 46px;
+  padding: 0 18px;
+  border-radius: var(--r-pill);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: var(--p-card);
+  box-shadow: var(--p-shadow);
+  transition: background var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease), scale var(--dur-press) var(--ease);
+}
+.p-chip.active {
   color: var(--paper);
   background: var(--ink);
-  pointer-events: none;
-  opacity: 0;
-  transform: translateY(4px) scale(0.97);
-  transform-origin: bottom right;
-  transition: opacity 125ms var(--ease), transform 125ms var(--ease);
-}
-.p-signout:focus-visible::after {
-  opacity: 1;
-  transform: none;
 }
 @media (hover: hover) and (pointer: fine) {
-  .p-signout:hover::after {
-    opacity: 1;
-    transform: none;
+  .p-chip:not(.active):hover {
+    color: var(--ink);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .p-signout::after {
-    transform: none;
-  }
-}
-.p-signout .p-icon {
-  color: currentColor;
-}
-@media (hover: hover) and (pointer: fine) {
-  .p-signout:hover {
-    background: rgb(194 65 12 / 0.08);
-    color: #c2410c;
-  }
-  .p-signout:hover .p-icon {
-    color: currentColor;
-  }
-}
+
 /* ── Settings: side tabs, then one card of labelled rows ── */
 .p-settings {
   display: grid;
@@ -210,7 +264,7 @@ body:has(.portal) .scene {
   --tab-h: 40px;
   --tab-gap: 2px;
   position: sticky;
-  top: 88px;
+  top: 24px;
   display: grid;
   gap: var(--tab-gap);
   padding: 6px;
@@ -495,10 +549,10 @@ body:has(.portal) .scene {
 }
 .p-desk-list {
   position: sticky;
-  top: 88px;
+  top: 24px;
   display: grid;
   gap: 12px;
-  max-height: calc(100svh - 112px);
+  max-height: calc(100svh - 48px);
   grid-template-rows: auto auto minmax(0, 1fr);
 }
 .p-desk-filters {
@@ -641,14 +695,6 @@ body:has(.portal) .scene {
   grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 16px;
-}
-.p-file-kicker {
-  margin: 0 0 2px;
-  font-family: var(--mono);
-  font-size: var(--fs-label);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--muted);
 }
 .p-file-title {
   margin: 0 0 4px;
@@ -1003,43 +1049,34 @@ body:has(.portal) .scene {
   color: var(--violet);
 }
 
-/* ── Top bar ── */
-
-.p-body {
-  margin-left: var(--side-w);
-  min-width: 0;
-}
-.p-top {
-  position: sticky;
-  top: 0;
-  z-index: 20;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  height: var(--top-h);
-  padding: 0 clamp(16px, 3vw, 36px);
-  background: color-mix(in srgb, var(--bg) 86%, transparent);
-  backdrop-filter: blur(12px);
-  border-bottom: 1px solid var(--line);
-}
-.p-top .p-menu-btn {
-  display: none;
-}
+/* Demo only: the "View as" switch floats bottom-left, out of the way of the pages being built */
 .p-role {
+  position: fixed;
+  left: 26px;
+  bottom: 26px;
+  z-index: 50;
   display: inline-flex;
-  /* pushes the role switch and the user menu to the right edge */
-  margin-left: auto;
   align-items: center;
   gap: 2px;
-  padding: 3px;
+  padding: 4px;
   border-radius: var(--r-pill);
-  background: var(--paper);
-  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: #fff;
+  background: #14130f;
+  box-shadow: 0 18px 40px -14px rgb(20 19 15 / 0.55);
 }
 .p-role-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   padding: 0 8px 0 10px;
   font-size: 12.5px;
-  color: var(--ink-soft);
+  color: rgb(255 255 255 / 0.7);
+}
+.p-role-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #b8a9ff;
 }
 .p-role button {
   min-height: 30px;
@@ -1047,12 +1084,12 @@ body:has(.portal) .scene {
   border-radius: var(--r-pill);
   font-size: 13px;
   font-weight: 600;
-  color: var(--ink-2);
+  color: rgb(255 255 255 / 0.72);
   transition: background var(--dur-ui) var(--ease), color var(--dur-ui) var(--ease);
 }
 .p-role button[aria-pressed='true'] {
-  background: var(--ink);
-  color: var(--paper);
+  background: #fff;
+  color: #14130f;
 }
 
 .p-user {
@@ -1062,13 +1099,15 @@ body:has(.portal) .scene {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  min-height: 42px;
-  padding: 4px 12px 4px 4px;
+  min-height: 46px;
+  padding: 5px 14px 5px 5px;
   border-radius: var(--r-pill);
   font-size: 14px;
   font-weight: 600;
   color: var(--ink);
-  transition: background var(--dur-hover) var(--ease);
+  background: var(--p-card);
+  box-shadow: var(--p-shadow);
+  transition: scale var(--dur-press) var(--ease);
 }
 .p-user-btn .p-icon {
   rotate: 90deg;
@@ -1114,6 +1153,7 @@ body:has(.portal) .scene {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
+  z-index: 40;
   width: 260px;
   padding: 8px;
   border-radius: var(--r-sm);
@@ -1170,45 +1210,71 @@ body:has(.portal) .scene {
 /* ── Page ── */
 
 .p-main {
+  padding: clamp(28px, 3vw, 40px) 0 96px;
+  outline: none;
+}
+.p-page {
   display: flex;
   flex-direction: column;
   gap: var(--p-gap);
-  max-width: 1280px;
-  padding: clamp(20px, 3vw, 36px) clamp(16px, 3vw, 36px) 64px;
-  outline: none;
+  max-width: var(--p-col);
+  margin: 0 auto;
 }
+/* a page's heading is its own group: more room below it than between the cards */
+.p-page > :is(.p-head, .p-hello) {
+  margin-bottom: 10px;
+}
+
+/* Cards rise in when a page opens. Pages open tens of times a day, so it stays small and quick: 8px and 240ms,
+   each card 40ms after the one before. */
+.p-page > *,
+.p-bento > * {
+  animation: p-rise var(--dur-ui) var(--ease) backwards;
+}
+@keyframes p-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.p-page > :nth-child(2),
+.p-bento > :nth-child(1) {
+  animation-delay: calc(var(--lead, 0ms) + 40ms);
+}
+.p-page > :nth-child(3),
+.p-bento > :nth-child(2) {
+  animation-delay: calc(var(--lead, 0ms) + 80ms);
+}
+.p-page > :nth-child(4),
+.p-bento > :nth-child(3) {
+  animation-delay: calc(var(--lead, 0ms) + 120ms);
+}
+.p-page > :nth-child(n + 5),
+.p-bento > :nth-child(n + 4) {
+  animation-delay: calc(var(--lead, 0ms) + 160ms);
+}
+
 .p-head {
   position: relative;
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 20px;
-  padding: clamp(22px, 3vw, 32px);
-  border-radius: var(--r-lg);
-  overflow: hidden;
-  color: #fff;
-  background:
-    radial-gradient(120% 140% at 100% 0%, rgb(110 88 245 / 0.55), transparent 55%),
-    radial-gradient(80% 120% at 0% 100%, rgb(255 134 67 / 0.18), transparent 60%),
-    #14130f;
-}
-.p-head .cell-label {
-  margin: 0 0 10px;
-  color: rgb(255 255 255 / 0.62);
+  gap: 24px;
+  color: var(--ink);
 }
 .p-title {
   margin: 0;
   font-family: var(--display);
-  font-weight: var(--fw-head);
-  font-size: clamp(30px, 3.4vw, 44px);
-  line-height: 1.02;
-  letter-spacing: -0.035em;
+  font-weight: 500;
+  font-size: clamp(38px, 4vw, 56px);
+  line-height: 1;
+  letter-spacing: -0.045em;
 }
 .p-sub {
-  margin: 10px 0 0;
-  max-width: 56ch;
+  margin: 12px 0 0;
+  max-width: 60ch;
   font-size: 15px;
-  color: rgb(255 255 255 / 0.74);
+  color: var(--ink-soft);
 }
 .p-head-actions {
   display: flex;
@@ -1220,10 +1286,10 @@ body:has(.portal) .scene {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: clamp(18px, 2vw, 24px);
+  padding: clamp(18px, 2vw, 26px);
   border-radius: var(--p-radius);
   background: var(--p-card);
-  box-shadow: 0 0 0 1px var(--line), 0 10px 30px -18px rgb(20 19 15 / 0.18);
+  box-shadow: var(--p-shadow);
 }
 .p-card-head {
   display: flex;
@@ -1291,39 +1357,50 @@ body:has(.portal) .scene {
 }
 .p-stat {
   display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto auto;
-  column-gap: 14px;
-  align-items: center;
-  padding: 18px;
-  border-radius: var(--p-radius);
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'value icon' 'label label' 'hint hint';
+  align-items: start;
+  row-gap: 6px;
+  padding: 20px 22px;
+  border-radius: 22px;
   background: var(--p-card);
-  box-shadow: 0 0 0 1px var(--line), inset 0 3px 0 color-mix(in srgb, var(--tone) 70%, transparent);
+  box-shadow: var(--p-shadow);
 }
 .p-stats.is-compact .p-stat {
-  box-shadow: 0 0 0 1px var(--line);
+  padding: 16px 18px;
+  background: var(--bg);
+  box-shadow: none;
 }
 .p-stat-icon {
-  grid-row: span 2;
+  grid-area: icon;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--r-sm);
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
   color: var(--tone);
   background: color-mix(in srgb, var(--tone) 12%, var(--paper));
 }
+.p-stat-icon .p-icon {
+  width: 17px;
+  height: 17px;
+}
 .p-stat-value {
+  grid-area: value;
   font-family: var(--display);
-  font-size: 26px;
-  font-weight: 650;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
+  font-size: clamp(34px, 3vw, 44px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.05em;
   color: var(--ink);
   font-variant-numeric: tabular-nums;
 }
+.p-stats.is-compact .p-stat-value {
+  font-size: 30px;
+}
 .p-stat-label {
-  font-size: 13px;
+  grid-area: label;
+  font-size: 13.5px;
   color: var(--ink-soft);
 }
 
@@ -1444,6 +1521,10 @@ body:has(.portal) .scene {
   flex: none;
 }
 /* many ghost buttons sit in tables; the blur behind each one is wasted work on a plain card */
+/* white buttons sit on white cards now, so they need an edge */
+.portal .btn-light {
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
 .portal .btn-ghost {
   backdrop-filter: none;
 }
@@ -1518,7 +1599,7 @@ body:has(.portal) .scene {
   height: 36px;
   border-radius: 50%;
   color: var(--ink-2);
-  transition: background var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+  transition: background var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease), scale var(--dur-press) var(--ease);
 }
 @media (hover: hover) and (pointer: fine) {
   .p-icon-btn:hover {
@@ -1535,30 +1616,6 @@ body:has(.portal) .scene {
   outline-offset: 2px;
 }
 
-.p-search {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 44px;
-  padding: 0 14px;
-  border-radius: var(--r-sm);
-  background: var(--bg);
-  box-shadow: inset 0 0 0 1px var(--line-strong);
-  color: var(--ink-soft);
-}
-.p-search:focus-within {
-  box-shadow: inset 0 0 0 1.5px var(--violet);
-}
-.p-search input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  outline: none;
-  background: none;
-  font: inherit;
-  font-size: 14.5px;
-  color: var(--ink);
-}
 .p-select {
   min-height: 36px;
   padding: 0 32px 0 12px;
@@ -1595,7 +1652,7 @@ body:has(.portal) .scene {
   font-size: 14.5px;
   font-weight: 450;
   color: var(--ink);
-  background-color: var(--bg);
+  background-color: var(--p-field);
   box-shadow: inset 0 0 0 1px var(--line-strong);
 }
 .p-field .p-select {
@@ -2139,18 +2196,9 @@ body:has(.portal) .scene {
 /* ── Matching the old portal's screens: captions, segmented view switch, toolbars, breakdown bars ── */
 
 .p-stat-hint {
-  grid-column: 2;
+  grid-area: hint;
   font-size: 12px;
   color: var(--muted);
-}
-.p-search-wrap {
-  display: grid;
-  gap: 6px;
-}
-.p-search-label {
-  font-size: 13.5px;
-  font-weight: 600;
-  color: var(--ink-2);
 }
 .p-resource-caption {
   margin: 0;
@@ -2182,26 +2230,38 @@ body:has(.portal) .scene {
 .p-seg {
   display: inline-flex;
   gap: 2px;
-  padding: 3px;
+  padding: 4px;
   border-radius: var(--r-pill);
-  background: rgb(255 255 255 / 0.1);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+  background: var(--p-card);
+  box-shadow: var(--p-shadow);
 }
 .p-seg button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 34px;
+  min-height: 36px;
   padding: 0 14px;
   border-radius: var(--r-pill);
   font-size: 13.5px;
   font-weight: 600;
-  color: rgb(255 255 255 / 0.78);
-  transition: background var(--dur-ui) var(--ease), color var(--dur-ui) var(--ease);
+  color: var(--ink-2);
+  transition: background var(--dur-ui) var(--ease), color var(--dur-ui) var(--ease), scale var(--dur-press) var(--ease);
 }
 .p-seg button[aria-pressed='true'] {
-  background: var(--paper);
-  color: var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+}
+/* on a photo or a coloured card */
+.p-seg.is-glass {
+  padding: 3px;
+  background: rgb(255 255 255 / 0.14);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.24);
+}
+.p-seg.is-glass button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: rgb(255 255 255 / 0.82);
 }
 /* an employee's own Active / Inactive switch: the chosen side fills green or red */
 .p-status-dot {
@@ -2216,8 +2276,12 @@ body:has(.portal) .scene {
 .p-seg.is-status [aria-pressed='true'] .p-status-dot { background: #fff; }
 @media (hover: hover) and (pointer: fine) {
   .p-seg button[aria-pressed='false']:hover {
+    color: var(--ink);
+    background: rgb(20 19 15 / 0.05);
+  }
+  .p-seg.is-glass button[aria-pressed='false']:hover {
     color: #fff;
-    background: rgb(255 255 255 / 0.08);
+    background: rgb(255 255 255 / 0.1);
   }
 }
 .p-person {
@@ -2235,9 +2299,40 @@ body:has(.portal) .scene {
   align-items: center;
   gap: 10px;
 }
-.p-toolbar .p-search-wrap {
-  flex: 1;
+.p-toolbar .search-pill-wrap {
+  flex: 0 1 360px;
   min-width: 0;
+}
+/* filter chips on the left, the search on the right */
+.p-toolbar.is-split {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.p-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.p-chips button {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: var(--r-pill);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+  background: var(--bg);
+  transition: background var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease), scale var(--dur-press) var(--ease);
+}
+.p-chips button[aria-pressed='true'] {
+  color: var(--paper);
+  background: var(--ink);
+}
+@media (hover: hover) and (pointer: fine) {
+  .p-chips button[aria-pressed='false']:hover {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--violet) 8%, var(--bg));
+  }
 }
 .p-filter {
   display: inline-flex;
@@ -2245,8 +2340,11 @@ body:has(.portal) .scene {
   gap: 8px;
   color: var(--ink-soft);
 }
+/* matches the pill search beside it */
 .p-filter .p-select {
   min-height: 44px;
+  padding-left: 16px;
+  border-radius: var(--r-pill);
 }
 .p-analytics {
   display: grid;
@@ -2334,68 +2432,45 @@ body:has(.portal) .scene {
   padding: clamp(36px, 6vw, 72px) clamp(20px, 4vw, 48px);
   border-radius: var(--r-lg);
   text-align: center;
-  color: #fff;
+  color: var(--ink);
   background:
-    radial-gradient(120% 140% at 100% 0%, rgb(110 88 245 / 0.6), transparent 55%),
-    radial-gradient(80% 120% at 0% 100%, rgb(255 134 67 / 0.2), transparent 60%),
-    #14130f;
+    radial-gradient(70% 90% at 100% 0%, rgb(110 88 245 / 0.22), transparent 65%),
+    radial-gradient(60% 80% at 0% 100%, rgb(190 176 255 / 0.3), transparent 65%),
+    var(--p-card);
+  box-shadow: var(--p-shadow);
 }
 .p-lms-hero.is-compact {
   padding-block: clamp(28px, 4vw, 44px);
 }
 .p-lms-hero .cell-label {
   margin: 0;
-  color: rgb(255 255 255 / 0.62);
+  color: var(--violet);
 }
 .p-lms-hero-title {
   max-width: 22ch;
   margin: 0;
   font-family: var(--display);
-  font-weight: var(--fw-head);
-  font-size: clamp(30px, 4vw, 52px);
-  line-height: 1.04;
-  letter-spacing: -0.035em;
+  font-weight: 500;
+  font-size: clamp(36px, 4.2vw, 58px);
+  line-height: 1;
+  letter-spacing: -0.045em;
 }
 .p-lms-hero-title em {
   font-style: normal;
-  color: #b9adff;
+  color: var(--violet);
 }
 .p-lms-hero-sub {
   max-width: 60ch;
   margin: 0;
   font-size: 15.5px;
-  color: rgb(255 255 255 / 0.74);
+  color: var(--ink-soft);
 }
 .p-lms-hero-sub strong {
-  color: #fff;
+  color: var(--ink);
 }
 .p-lms-hero .p-lms-crumbs,
 .p-lms-hero .p-lms-crumbs a {
-  color: rgb(255 255 255 / 0.7);
-}
-.p-lms-search {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: min(100%, 620px);
-  margin-top: 8px;
-  padding: 6px 6px 6px 18px;
-  border-radius: var(--r-pill);
-  background: var(--paper);
   color: var(--ink-soft);
-}
-.p-lms-search input {
-  flex: 1;
-  min-width: 0;
-  border: 0;
-  outline: none;
-  background: none;
-  font: inherit;
-  font-size: 15px;
-  color: var(--ink);
-}
-.p-lms-search:focus-within {
-  box-shadow: 0 0 0 2px var(--violet);
 }
 .p-lms-section {
   display: grid;
@@ -2627,10 +2702,10 @@ body:has(.portal) .scene {
 .p-detail-title {
   margin: 0;
   font-family: var(--display);
-  font-weight: var(--fw-head);
-  font-size: clamp(30px, 3.4vw, 44px);
-  line-height: 1.04;
-  letter-spacing: -0.035em;
+  font-weight: 500;
+  font-size: clamp(38px, 4vw, 56px);
+  line-height: 1;
+  letter-spacing: -0.045em;
   color: var(--ink);
 }
 .p-detail-summary {
@@ -2672,7 +2747,7 @@ body:has(.portal) .scene {
 }
 .p-buy {
   position: sticky;
-  top: 88px;
+  top: 24px;
 }
 .p-buy-stats {
   display: flex;
@@ -2786,7 +2861,7 @@ body:has(.portal) .scene {
   padding: 0;
   overflow: hidden;
   position: sticky;
-  top: 88px;
+  top: 24px;
 }
 .p-video {
   aspect-ratio: 16 / 9;
@@ -2844,23 +2919,29 @@ body:has(.portal) .scene {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 12px;
+  margin-bottom: 10px;
 }
 .p-edu-head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: 16px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--line);
+  margin-bottom: 10px;
+}
+.p-edu-head .p-muted {
+  margin-top: 12px;
+  font-size: 15px;
 }
 .p-edu-head .p-lms-h1 {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 0 0 4px;
+  gap: 12px;
+  margin: 0;
   font-family: var(--display);
-  font-weight: 650;
-  letter-spacing: -0.02em;
+  font-size: clamp(38px, 4vw, 56px);
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.045em;
   color: var(--ink);
 }
 .p-stats.is-three {
@@ -2889,7 +2970,7 @@ body:has(.portal) .scene {
   font-weight: 450;
   line-height: 1.5;
   color: var(--ink);
-  background: var(--bg);
+  background: var(--p-field);
   box-shadow: inset 0 0 0 1px var(--line-strong);
   resize: vertical;
 }
@@ -3081,11 +3162,907 @@ body:has(.portal) .scene {
   }
 }
 
-/* ── Smaller screens: the sidebar slides in from a menu button ── */
+/* ── Dashboard: greeting, figures, task meter and the bento grid ── */
 
-.p-scrim {
+.p-hello {
+  display: grid;
+  gap: 24px;
+}
+.p-hello-top {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+}
+.p-figures {
+  display: flex;
+  gap: clamp(20px, 3vw, 44px);
+  margin: 0;
+}
+.p-figures > div {
+  display: grid;
+  justify-items: end;
+}
+.p-figures dd {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(40px, 4.4vw, 60px);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.p-figures dt {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.p-hello-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+}
+
+/* the task tally: one pill per part, each as wide as its share, drawn in left to right once */
+.p-tally {
+  display: flex;
+  flex: 1;
+  gap: 8px;
+  min-width: 0;
+}
+.p-tally-part {
+  display: grid;
+  gap: 8px;
+  flex-basis: 0;
+  min-width: 96px;
+}
+.p-tally-part:only-child {
+  flex-grow: 1;
+}
+.p-tally-label {
+  font-size: 13px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.p-tally-pill {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 16px;
+  border-radius: var(--r-pill);
+  font-size: 13.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  animation: p-draw 420ms var(--ease) backwards;
+  animation-delay: calc(120ms + var(--i, 0) * 60ms);
+}
+.p-tally-part:nth-child(2) .p-tally-pill { --i: 1; }
+.p-tally-part:nth-child(3) .p-tally-pill { --i: 2; }
+@keyframes p-draw {
+  from {
+    clip-path: inset(0 100% 0 0 round 999px);
+  }
+  to {
+    clip-path: inset(0 0 0 0 round 999px);
+  }
+}
+.p-tally-pill.is-ink {
+  color: var(--paper);
+  background: var(--ink);
+}
+.p-tally-pill.is-violet {
+  color: #fff;
+  background: var(--violet);
+}
+.p-tally-pill.is-hatch {
+  color: var(--ink);
+  background:
+    repeating-linear-gradient(-45deg, rgb(20 19 15 / 0.09) 0 2px, transparent 2px 9px),
+    var(--p-card);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.p-tally-pill.is-empty {
+  color: var(--ink-soft);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+/* four columns: profile, progress, today, and the tall task board; then workspace and a wide calendar */
+.p-bento {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: minmax(300px, auto) auto;
+  gap: var(--p-gap);
+}
+.p-bento > .p-board {
+  grid-column: 4;
+  grid-row: 1 / span 2;
+}
+.p-bento > .p-cal {
+  grid-column: 2 / span 2;
+}
+
+.p-profile {
+  position: relative;
+  justify-content: flex-end;
+  min-height: 300px;
+  padding: 0;
+  overflow: hidden;
+  color: #fff;
+  background:
+    radial-gradient(90% 70% at 20% 0%, rgb(190 176 255 / 0.9), transparent 70%),
+    linear-gradient(160deg, #8a76ff, var(--violet) 55%, #3b2bb0);
+}
+.p-profile-photo,
+.p-profile-initials {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.p-profile-photo {
+  object-fit: cover;
+}
+.p-profile-initials {
+  display: grid;
+  place-items: center;
+  padding-bottom: 60px;
+  font-family: var(--display);
+  font-size: 96px;
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  color: rgb(255 255 255 / 0.9);
+}
+.p-profile-foot {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 60px 18px 18px;
+  background: linear-gradient(to top, rgb(20 15 50 / 0.55), transparent);
+}
+.p-profile-name {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.p-profile-role {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: rgb(255 255 255 / 0.78);
+}
+.p-profile-tag {
+  padding: 7px 14px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.45);
+}
+
+.p-round-link {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  transition: background var(--dur-hover) var(--ease), scale var(--dur-press) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .p-round-link:hover {
+    background: rgb(20 19 15 / 0.05);
+  }
+}
+
+/* the ring fills once to its share; the number beside it never moves */
+.p-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: min(170px, 100%);
+  margin: auto;
+  aspect-ratio: 1;
+}
+.p-ring svg {
+  position: absolute;
+  inset: 0;
+  rotate: -90deg;
+}
+.p-ring circle {
+  fill: none;
+  stroke-width: 10;
+}
+.p-ring-track {
+  stroke: rgb(20 19 15 / 0.07);
+}
+.p-ring-fill {
+  stroke: var(--violet);
+  stroke-linecap: round;
+  stroke-dasharray: var(--len);
+  stroke-dashoffset: var(--off);
+}
+/* every frame of the ring (arc, tip, ticks, number) is written by useRing in Dashboard.tsx */
+.p-ring-ticks line {
+  stroke: rgb(20 19 15 / 0.14);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+}
+.p-ring-ticks line.is-lit {
+  stroke: var(--violet);
+}
+.p-ring-head {
+  opacity: 0;
+  transform-box: view-box;
+  transform-origin: 64px 64px;
+}
+.p-ring-head circle {
+  fill: var(--paper);
+  stroke: var(--violet);
+  stroke-width: 3;
+}
+/* the one-time glow when the ring is full: only its opacity animates */
+.p-ring-glow {
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  opacity: 0;
+  box-shadow: 0 0 28px 4px rgb(110 88 245 / 0.45), inset 0 0 18px rgb(110 88 245 / 0.3);
+  pointer-events: none;
+}
+.p-ring-value {
+  position: relative;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+  font-family: var(--display);
+  font-size: 44px;
+  font-weight: 400;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+}
+.p-ring-value span + span {
+  font-size: 22px;
+  color: var(--ink-soft);
+}
+
+.p-today-date {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: auto 0 0;
+  font-family: var(--display);
+  font-size: 76px;
+  font-weight: 400;
+  line-height: 0.9;
+  letter-spacing: -0.06em;
+}
+.p-today-date span {
+  font-size: 24px;
+  letter-spacing: -0.02em;
+  color: var(--violet);
+}
+.p-today-day {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.p-today-next {
+  margin-top: 6px;
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: color-mix(in srgb, var(--violet) 7%, var(--paper));
+}
+.p-today-next .p-menu-label {
+  margin: 0 0 4px;
+  padding: 0;
+}
+.p-today-task {
+  margin: 0;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.p-today-task.is-none {
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.p-today-when {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.p-today-when.is-late {
+  color: #c2410c;
+}
+
+/* the dark task board */
+.p-card.p-board {
+  gap: 10px;
+  max-height: 640px;
+  overflow-y: auto;
+  color: #f4f2ec;
+  background: #17161c;
+  box-shadow: 0 30px 60px -30px rgb(20 19 15 / 0.6);
+}
+.p-board .p-card-title {
+  color: #fff;
+}
+.p-bento .p-card-head,
+.p-board-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 38px;
+}
+.p-bento > .p-card > .p-card-title:first-child {
+  min-height: 38px;
+}
+.p-board-count {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 34px;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.p-board-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.p-board-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 6px;
+  border-radius: 14px;
+}
+.p-board-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: #17161c;
+  background: #f4f2ec;
+}
+.p-board-item.is-doing .p-board-icon {
+  color: #fff;
+  background: var(--violet);
+}
+.p-board-item.is-done .p-board-icon {
+  color: rgb(255 255 255 / 0.6);
+  background: rgb(255 255 255 / 0.1);
+}
+.p-board-text {
+  flex: 1;
+  min-width: 0;
+}
+.p-board-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.p-board-item.is-done .p-board-title {
+  text-decoration: line-through;
+  color: rgb(255 255 255 / 0.5);
+}
+.p-board-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12.5px;
+  color: rgb(255 255 255 / 0.55);
+}
+.p-board-status select {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #fff;
+  background: rgb(255 255 255 / 0.1);
+  border: 1px solid rgb(255 255 255 / 0.16);
+  cursor: pointer;
+}
+.p-board-status option {
+  color: var(--ink);
+}
+.p-board-tag {
+  flex: none;
+  padding: 5px 10px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 600;
+  color: rgb(255 255 255 / 0.75);
+  background: rgb(255 255 255 / 0.08);
+}
+.p-board-tag.is-doing {
+  color: #fff;
+  background: var(--violet);
+}
+.p-board-empty {
+  margin: auto 0;
+  padding: 24px 6px;
+  font-size: 14px;
+  color: rgb(255 255 255 / 0.6);
+}
+
+/* folding rows */
+.p-card.p-fold {
+  gap: 0;
+  padding-block: calc(clamp(18px, 2vw, 26px) - 7px) 8px;
+}
+.p-fold details + details {
+  border-top: 1px solid var(--line);
+}
+.p-fold summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 52px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  list-style: none;
+  cursor: pointer;
+}
+.p-fold summary::-webkit-details-marker {
   display: none;
 }
+.p-fold summary .p-icon {
+  rotate: 90deg;
+  color: var(--ink-soft);
+  transition: rotate var(--dur-ui) var(--ease);
+}
+.p-fold details[open] summary .p-icon {
+  rotate: -90deg;
+}
+.p-fold-body {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 16px;
+}
+.p-fold-body.p-row {
+  display: flex;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* nothing slides or draws in, the cards just appear */
+  .p-page > *,
+  .p-bento > *,
+  .p-tally-pill,
+  .p-ring-fill {
+    animation: none;
+  }
+}
+
+@media (max-width: 1280px) {
+  .p-bento {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .p-bento > .p-board {
+    grid-column: 3;
+  }
+  .p-bento > .p-cal {
+    grid-column: 1 / -1;
+  }
+}
+@media (max-width: 1100px) {
+  .p-hello-top,
+  .p-hello-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .p-tally {
+    width: 100%;
+  }
+}
+
+
+
+/* ── The arrival: the first dashboard after signing in, once per sign-in ──
+   The greeting rises out of its own baseline, the figures follow 60ms apart, then the bento rises as on every
+   visit, held back by --lead so the greeting reads first. Numbers fade in place; they never count. */
+.p-page:has(> .p-hello[data-arrive]) {
+  --lead: 380ms;
+}
+.p-hello[data-arrive] {
+  animation: none;
+}
+.p-hello[data-arrive] .p-title {
+  /* the mask: tall enough for descenders, clipped so the line can rise from below */
+  overflow: clip;
+  padding-bottom: 0.1em;
+  margin-bottom: -0.1em;
+}
+.p-title-line {
+  display: inline-block;
+}
+.p-title-name {
+  color: var(--violet);
+}
+.p-hello[data-arrive] .p-title-line {
+  animation: p-line-up 620ms var(--ease-expo) 60ms backwards;
+}
+@keyframes p-line-up {
+  from {
+    transform: translateY(110%);
+  }
+}
+.p-hello[data-arrive] .p-sub,
+.p-hello[data-arrive] .p-figures > div,
+.p-hello[data-arrive] .p-hello-row {
+  animation: p-rise var(--dur-ui) var(--ease) backwards;
+}
+.p-hello[data-arrive] .p-sub {
+  animation-delay: 200ms;
+}
+.p-hello[data-arrive] .p-figures > div {
+  animation-delay: 240ms;
+}
+.p-hello[data-arrive] .p-figures > div:nth-child(2) {
+  animation-delay: 300ms;
+}
+.p-hello[data-arrive] .p-figures > div:nth-child(3) {
+  animation-delay: 360ms;
+}
+.p-hello[data-arrive] .p-figures > div:nth-child(4) {
+  animation-delay: 420ms;
+}
+.p-hello[data-arrive] .p-hello-row {
+  animation-delay: 300ms;
+}
+.p-hello[data-arrive] .p-tally-pill {
+  animation-delay: calc(420ms + var(--i, 0) * 60ms);
+}
+
+/* ── Task board: a new status swaps its icon in (the row's slide is useListFlip) ── */
+.p-board-icon .p-icon {
+  animation: p-icon-swap 180ms var(--ease);
+}
+@keyframes p-icon-swap {
+  from {
+    opacity: 0;
+    transform: scale(0.7);
+  }
+}
+
+/* ── Folding sections open and close instead of snapping (help, workspace rows, course chapters) ──
+   Height is the one layout property allowed to animate, for folds; browsers without these features just snap. */
+.portal {
+  interpolate-size: allow-keywords;
+}
+.p-fold details::details-content,
+.p-help-item::details-content {
+  block-size: 0;
+  overflow: clip;
+  opacity: 0;
+  transition: block-size 220ms var(--ease), opacity 180ms var(--ease), content-visibility 220ms allow-discrete;
+}
+.p-fold details[open]::details-content,
+.p-help-item[open]::details-content {
+  block-size: auto;
+  opacity: 1;
+}
+.p-lectures {
+  overflow: clip;
+  transition: block-size 220ms var(--ease), opacity 180ms var(--ease), visibility 220ms;
+}
+.p-lectures:not([data-open]) {
+  block-size: 0;
+  opacity: 0;
+  visibility: hidden;
+  border-top-color: transparent;
+}
+
+
+/* ── Calendar: the next month comes in from the right, the previous from the left ── */
+.p-cal-grid[data-dir] {
+  animation: p-cal-in 200ms var(--ease);
+}
+.p-cal-grid[data-dir='prev'] {
+  --from: -12px;
+}
+@keyframes p-cal-in {
+  from {
+    opacity: 0;
+    transform: translateX(var(--from, 12px));
+  }
+}
+
+/* ── Pop-ups leave the way they came, quicker (the copy left behind by Modal in ui.tsx) ── */
+.p-modal-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgb(20 19 15 / 0.42);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+.p-modal.p-modal-ghost {
+  position: fixed;
+  z-index: 1001;
+  margin: 0;
+  overflow: hidden;
+  animation: none;
+  pointer-events: none;
+}
+
+/* ── Course progress in the player; the finish is the one celebrated moment ── */
+.p-course-progress {
+  display: grid;
+  gap: 8px;
+}
+.p-course-bar {
+  display: block;
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--violet) 12%, var(--paper));
+  overflow: hidden;
+}
+.p-course-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--violet);
+  transform-origin: left;
+  transition: transform 400ms var(--ease);
+}
+.p-course-done {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  gap: 8px;
+  margin: 0;
+  padding: 7px 14px 7px 10px;
+  border-radius: var(--r-pill);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--violet) 10%, var(--paper));
+}
+.p-course-done svg {
+  fill: none;
+  stroke: var(--violet);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.p-course-done path {
+  stroke-dasharray: 24;
+}
+.p-course-progress[data-fresh] .p-course-done {
+  transform-origin: left center;
+  animation: p-done-in 240ms var(--ease) 380ms backwards;
+}
+.p-course-progress[data-fresh] .p-course-done path {
+  animation: p-check-draw 360ms var(--ease) 520ms backwards;
+}
+@keyframes p-done-in {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+@keyframes p-check-draw {
+  from {
+    stroke-dashoffset: 24;
+  }
+}
+
+
+/* ── Calendar: tasks pinned to their due dates (after a glass-and-light flow reference) ──
+   The card keeps its own light colours. Lines draw in from each date, then the label pops in; a spark runs along
+   each line every few seconds (constant motion, so linear). On a mouse the card leans towards the pointer. */
+.p-card.p-cal {
+  padding: 0;
+  transform-style: preserve-3d;
+  transition: transform 420ms var(--ease);
+}
+.p-cal-stage {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 14px;
+  padding: clamp(18px, 2vw, 26px);
+  border-radius: inherit;
+  transform-style: preserve-3d;
+}
+.p-cal-day.is-pinned {
+  color: var(--ink);
+  font-weight: 650;
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--violet) 55%, transparent);
+  transition: box-shadow var(--dur-hover) var(--ease), background var(--dur-hover) var(--ease);
+}
+.p-cal-day.is-pinned.is-hot {
+  background: color-mix(in srgb, var(--violet) 12%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--violet), 0 0 16px rgb(110 88 245 / 0.35);
+}
+.p-cal-links {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+  transform: translateZ(14px);
+}
+/* the labels' own strip under the month, pushed to the bottom of the card */
+.p-cal-lane {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: auto 0 0;
+  padding: 26px 0 0;
+  list-style: none;
+  transform-style: preserve-3d;
+}
+.p-cal-links path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.p-cal-line {
+  stroke: var(--violet);
+  stroke-width: 1.6;
+  stroke-dasharray: 1;
+  filter: drop-shadow(0 0 3px rgb(110 88 245 / 0.55));
+  transition: stroke-width var(--dur-hover) var(--ease);
+  animation: p-line-draw 560ms var(--ease) calc(180ms + var(--i, 0) * 140ms) backwards;
+}
+.p-cal-links .is-hot .p-cal-line {
+  stroke-width: 2.4;
+}
+@keyframes p-line-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+}
+.p-cal-spark {
+  stroke: #fff;
+  stroke-width: 2.6;
+  stroke-dasharray: 0.08 1.2;
+  stroke-dashoffset: 0.08;
+  filter: drop-shadow(0 0 4px var(--violet));
+  animation: p-spark 3.8s linear calc(1400ms + var(--i, 0) * 900ms) infinite;
+}
+@keyframes p-spark {
+  0% {
+    stroke-dashoffset: 0.08;
+  }
+  45%,
+  100% {
+    stroke-dashoffset: -1;
+  }
+}
+.p-cal-node {
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 300px;
+  padding: 9px 13px 10px 11px;
+  border-radius: 14px;
+  pointer-events: auto;
+  background: rgb(255 255 255 / 0.66);
+  backdrop-filter: blur(10px) saturate(1.15);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.8), 0 0 0 1px rgb(20 19 15 / 0.07), 0 14px 30px -16px rgb(40 30 90 / 0.4);
+  transform: translateZ(28px);
+  transition: box-shadow var(--dur-hover) var(--ease);
+  animation: p-node-in 260ms var(--ease) calc(600ms + var(--i, 0) * 140ms) backwards;
+}
+@keyframes p-node-in {
+  from {
+    opacity: 0;
+    transform: translateZ(28px) translateY(4px) scale(0.96);
+  }
+}
+@media (hover: hover) and (pointer: fine) {
+  .p-cal-node:hover {
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.9), 0 0 0 1.5px color-mix(in srgb, var(--violet) 45%, transparent), 0 16px 34px -14px rgb(40 30 90 / 0.45);
+  }
+}
+.p-cal-node-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.p-cal-node.is-doing .p-cal-node-dot {
+  background: var(--violet);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--violet) 20%, transparent);
+}
+.p-cal-node-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.p-cal-node-text strong,
+.p-cal-node-text small {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.p-cal-node-text strong {
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 1.3;
+  color: var(--ink);
+}
+.p-cal-node-text small {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+@media (prefers-reduced-motion: reduce) {
+  .p-card.p-cal {
+    transform: none !important;
+  }
+  .p-cal-spark {
+    display: none;
+  }
+}
+
+/* ── Finish: press feedback, browser surfaces, type details ── */
+
+/* everything pressable gives a little under the finger; the site's own .btn already does this */
+.portal :is(.p-pill, .p-chip, .p-chips button, .p-seg button, .p-round-link, .p-icon-btn, .p-menu-link, .p-user-btn):active {
+  scale: 0.97;
+}
+.portal ::selection {
+  color: var(--ink);
+  background: color-mix(in srgb, var(--violet) 24%, transparent);
+}
+.portal :is(input, textarea) {
+  caret-color: var(--violet);
+}
+html:has(.portal),
+.portal [data-lenis-prevent] {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(20 19 15 / 0.22) transparent;
+}
+.p-board {
+  scrollbar-color: rgb(255 255 255 / 0.2) transparent;
+}
+.portal :is(.p-title, .p-card-title, .p-lms-hero-title, .p-lms-h1, .p-detail-title, .p-modal-title) {
+  text-wrap: balance;
+}
+.portal :is(.p-sub, .p-muted, .p-empty-body) {
+  text-wrap: pretty;
+}
+/* numbers in tables line up column by column */
+.p-table td {
+  font-variant-numeric: tabular-nums;
+}
+.p-card-meta {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* ── Smaller screens (desktop comes first; phones are not designed yet) ── */
+
 @media (max-width: 1100px) {
   .p-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3094,28 +4071,33 @@ body:has(.portal) .scene {
     grid-template-columns: 1fr;
   }
 }
-@media (max-width: 900px) {
-  .p-side {
-    translate: -100% 0;
-    transition: translate 0.3s var(--ease);
-    box-shadow: 20px 0 50px -20px rgb(20 19 15 / 0.3);
+@media (max-width: 1180px) {
+  /* the pills take their own row under the brand and the user */
+  .p-top {
+    flex-wrap: wrap;
   }
-  .portal[data-menu] .p-side {
-    translate: 0 0;
+  /* a full-width break before the pills: without it, a bar that happens to fit on one line doesn't wrap, and the
+     reordered pills land after the user button instead of under it */
+  .p-top::after {
+    content: '';
+    order: 2;
+    flex-basis: 100%;
   }
-  .portal[data-menu] .p-scrim {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 25;
-    background: rgb(20 19 15 / 0.3);
-  }
-  .p-body {
+  .p-pills {
+    order: 3;
     margin-left: 0;
   }
-  .p-top .p-menu-btn {
-    display: inline-grid;
+  /* the pills now start at the left edge, so their menus open rightwards; right-aligned, a wide menu ran off screen */
+  .p-menu {
+    right: auto;
+    left: -4px;
+    transform-origin: top left;
   }
+  .p-top-end {
+    margin-left: auto;
+  }
+}
+@media (max-width: 900px) {
   .p-user-name,
   .p-role-label {
     display: none;
@@ -3133,4 +4115,195 @@ body:has(.portal) .scene {
   .p-stats.is-two {
     grid-template-columns: 1fr;
   }
+}
+/* ── Community (pages/Community.tsx): former colleagues by stream, and the referrals shared with them ── */
+
+.p-comm-streams {
+  margin-bottom: var(--p-gap);
+}
+.p-comm-list {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.p-comm-member,
+.p-comm-referral {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+}
+.p-comm-referral {
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 16px;
+}
+.p-comm-main {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.p-comm-main strong {
+  font-weight: 600;
+}
+.p-comm-main span,
+.p-comm-main small {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.p-comm-main p {
+  margin: 6px 0 4px;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.p-comm-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex: none;
+}
+/* People: "Mark as left" and "Delete" side by side in one column */
+.p-row-actions {
+  white-space: nowrap;
+}
+.p-row-actions > * + * {
+  margin-left: 6px;
+}
+
+/* ── My profile (pages/Profile.tsx) and the employee's ID documents, also shown in the verification file ── */
+
+.p-me-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+.p-me-head .p-card-title {
+  margin-bottom: 6px;
+}
+img.p-avatar {
+  object-fit: cover;
+}
+.p-docs {
+  display: grid;
+  gap: 8px;
+  margin: 18px 0 14px;
+  padding: 0;
+  border: 0;
+}
+.p-docs legend {
+  margin-bottom: 8px;
+  padding: 0;
+  font-weight: 600;
+}
+.p-doc-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+}
+.p-doc-mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  color: var(--ink-soft);
+  background: var(--p-card);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.p-doc-row[data-done] .p-doc-mark {
+  color: #166534;
+  background: rgb(34 197 94 / 0.13);
+  box-shadow: none;
+}
+.p-doc-main {
+  display: grid;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+.p-doc-main strong {
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.p-doc-main a,
+.p-file-ids a {
+  color: var(--violet);
+  font-weight: 600;
+}
+.p-file-ids {
+  margin: 16px 0 4px;
+  padding: 14px 16px;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+}
+.p-file-ids h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.p-file-ids ul {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.p-file-ids li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+.p-file-ids li > .p-icon {
+  color: #92400e;
+}
+.p-file-ids li[data-done] > .p-icon {
+  color: #166534;
+}
+.p-file-ids li strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+.p-file-ids > p {
+  margin: 10px 0 0;
+  font-size: 13px;
+}
+.p-file-ids-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+/* the name block at the top of the user menu is a link to the profile */
+a.p-user-meta {
+  border-radius: var(--r-xs);
+  transition: background var(--dur-hover) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  a.p-user-meta:hover {
+    background: color-mix(in srgb, var(--violet) 7%, transparent);
+  }
+}
+.p-user-view {
+  margin-top: 4px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--violet);
 }

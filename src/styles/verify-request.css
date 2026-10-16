@@ -1,0 +1,160 @@
+/* Employment verification request (components/VerifyRequest.tsx): a strip at the top of the site footer and the
+   form it opens. The fields reuse the contact form's .fields / .form-foot / .form-note. */
+
+.footer-verify {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px 32px;
+  flex-wrap: wrap;
+  margin-bottom: clamp(36px, 4vw, 52px);
+  padding: 22px 26px;
+  border-radius: var(--r-lg);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.footer-verify h3 {
+  margin: 0 0 4px;
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: var(--fw-head);
+  letter-spacing: -0.02em;
+}
+.footer-verify p {
+  max-width: 560px;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+.vr-dialog {
+  position: fixed;
+  inset: 0;
+  width: min(620px, calc(100vw - 32px));
+  max-width: none;
+  height: fit-content;
+  max-height: calc(100svh - 32px);
+  margin: auto;
+  padding: clamp(22px, 3vw, 32px);
+  border: 0;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: 0 0 0 1px var(--line), 0 50px 100px -40px rgb(40 24 110 / 0.45);
+  overflow-y: auto;
+  animation: vr-in var(--dur-ui) var(--ease) both;
+}
+.vr-dialog::backdrop {
+  background: rgb(20 19 15 / 0.34);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: vr-fade var(--dur-ui) var(--ease) both;
+}
+@keyframes vr-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+@keyframes vr-fade {
+  from {
+    opacity: 0;
+  }
+}
+.vr-dialog h2 {
+  margin: 0 40px 6px 0;
+  font-family: var(--display);
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: var(--fw-head);
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+.vr-sub {
+  margin: 0 0 18px;
+  color: var(--ink-soft);
+}
+.vr-dialog .form-foot {
+  margin-top: 18px;
+}
+.vr-close {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--bg-2);
+  color: var(--ink-soft);
+  transition: background var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease);
+}
+.vr-close svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+@media (hover: hover) and (pointer: fine) {
+  .vr-close:hover {
+    background: var(--ink);
+    color: var(--paper);
+  }
+}
+.vr-close:active {
+  scale: 0.97;
+}
+/* the consent line: box and sentence side by side, not stacked like the other fields */
+.fields .vr-consent {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+.fields .vr-consent input {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin: 1px 0 0;
+  padding: 0;
+  box-shadow: none;
+  accent-color: var(--violet);
+}
+.fields .vr-consent span {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.vr-error {
+  margin: 14px 0 0;
+  font-size: 14px;
+  color: #c23a30;
+}
+.vr-done p {
+  margin: 0 0 12px;
+}
+.vr-done .btn {
+  margin-top: 10px;
+}
+.vr-ref {
+  font-family: var(--mono, monospace);
+  letter-spacing: 0.04em;
+}
+
+@media (max-width: 560px) {
+  .vr-dialog .fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .vr-dialog .fields .span-2 {
+    grid-column: auto;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vr-dialog,
+  .vr-dialog::backdrop {
+    animation-duration: 1ms;
+  }
+}

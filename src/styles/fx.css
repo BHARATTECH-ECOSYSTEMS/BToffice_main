@@ -291,36 +291,6 @@
   flex-wrap: wrap;
   margin-bottom: 20px;
 }
-.search {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  height: 46px;
-  min-width: min(340px, 100%);
-  padding: 0 18px;
-  border-radius: var(--r-pill);
-  background: var(--paper);
-  box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.3s var(--ease);
-}
-.search:focus-within {
-  box-shadow: 0 0 0 1.5px var(--cobalt);
-}
-.search svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: var(--muted);
-  stroke-width: 1.5;
-  stroke-linecap: round;
-}
-.search input {
-  flex: 1;
-  border: 0;
-  outline: 0;
-  background: none;
-  font-size: 15px;
-}
 .roles {
   display: grid;
   gap: 8px;
