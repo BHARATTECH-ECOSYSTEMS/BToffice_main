@@ -73,8 +73,47 @@ body:has(.portal) .scene {
   margin-left: auto;
   padding: 4px;
   border-radius: var(--r-pill);
-  background: var(--p-card);
-  box-shadow: var(--p-shadow);
+  /* frosted glass: a sheen on the top half, a bright top edge and a faint shaded bottom over the card colour */
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0) 60%),
+    var(--p-card);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    inset 0 -2px 4px rgb(40 30 90 / 0.06),
+    var(--p-shadow);
+}
+/* The prism streak (usePrismLight moves it): a slanted band of light with rainbow edges, trailing the cursor along
+   the bar, over the pills and the dark pill alike. */
+.p-prism {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.p-prism > span {
+  position: absolute;
+  top: -20%;
+  left: -45px;
+  width: 90px;
+  height: 140%;
+  background: linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0) 0%,
+    rgb(110 190 255 / 0.22) 24%,
+    rgb(255 255 255 / 0.5) 46%,
+    rgb(190 160 255 / 0.24) 60%,
+    rgb(255 140 200 / 0.2) 72%,
+    rgb(255 205 120 / 0.16) 84%,
+    rgb(255 255 255 / 0) 100%
+  );
+  rotate: 18deg;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+}
+.p-prism > span[data-on] {
+  opacity: 1;
 }
 .p-pills > ul {
   position: relative;
@@ -92,7 +131,14 @@ body:has(.portal) .scene {
   /* above the real labels: it holds their light copy (see TopNav); clicks pass through to the links below */
   z-index: 2;
   border-radius: var(--r-pill);
-  background: var(--ink);
+  /* smoky glass: a lit top edge and a soft sheen over the dark ink. The clip keeps only the active pill, so the
+     edge shows round that pill alone */
+  background:
+    linear-gradient(180deg, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0) 55%),
+    var(--ink);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.28),
+    inset 0 -2px 5px rgb(0 0 0 / 0.35);
   pointer-events: none;
 }
 .p-pill-row {
@@ -102,9 +148,6 @@ body:has(.portal) .scene {
 .p-pill-glide .p-pill {
   color: var(--paper);
   transition: none;
-}
-.p-pill-glide .p-pill[data-open] .p-icon {
-  rotate: -90deg;
 }
 .p-pill-glide[data-ready] {
   transition: clip-path var(--dur-ui) var(--ease-io), opacity var(--dur-hover) var(--ease);
@@ -125,14 +168,6 @@ body:has(.portal) .scene {
   white-space: nowrap;
   color: var(--ink-2);
   transition: color var(--dur-ui) var(--ease-io), background var(--dur-hover) var(--ease), scale var(--dur-press) var(--ease);
-}
-.p-pill .p-icon {
-  rotate: 90deg;
-  opacity: 0.6;
-  transition: rotate var(--dur-ui) var(--ease);
-}
-.p-pill[aria-expanded='true'] .p-icon {
-  rotate: -90deg;
 }
 @media (hover: hover) and (pointer: fine) {
   .p-pill:not(.is-on):hover {
@@ -158,19 +193,44 @@ body:has(.portal) .scene {
     0 12px 24px -12px rgb(30 20 70 / 0.22),
     0 36px 72px -24px rgb(30 20 70 / 0.38);
   transform-origin: top right;
-  animation: p-menu-in 180ms var(--ease);
+  /* Hover menus. Resources (and HR OPS) drops like a curtain: the menu is revealed from its top edge down, and its
+     links fall in one after another. Closing rolls it back up, faster. The clip reaches past the edges so the
+     shadow isn't cut off. */
+  visibility: hidden;
+  clip-path: inset(0 -60px 100% -60px);
+  transition:
+    clip-path 160ms var(--ease),
+    visibility 0s linear 160ms;
+}
+.p-menu[data-open] {
+  visibility: visible;
+  clip-path: inset(-60px -60px -100px -60px);
+  transition:
+    clip-path 300ms var(--ease),
+    visibility 0s;
+}
+.p-menu li,
+.p-menu .p-menu-label {
+  opacity: 0;
+  translate: 0 -8px;
+  transition:
+    opacity 120ms var(--ease),
+    translate 120ms var(--ease);
+}
+.p-menu[data-open] li,
+.p-menu[data-open] .p-menu-label {
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    opacity 220ms var(--ease),
+    translate 260ms var(--ease);
+  transition-delay: calc(60ms + var(--k, 0) * 28ms);
 }
 .p-menu:has(.p-menu-group + .p-menu-group) {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   width: 520px;
-}
-@keyframes p-menu-in {
-  from {
-    opacity: 0;
-    transform: translateY(-4px) scale(0.97);
-  }
 }
 .p-menu ul {
   margin: 0;
@@ -1109,14 +1169,6 @@ body:has(.portal) .scene {
   box-shadow: var(--p-shadow);
   transition: scale var(--dur-press) var(--ease);
 }
-.p-user-btn .p-icon {
-  rotate: 90deg;
-  color: var(--ink-soft);
-  transition: rotate var(--dur-ui) var(--ease);
-}
-.p-user-btn[aria-expanded='true'] .p-icon {
-  rotate: -90deg;
-}
 @media (hover: hover) and (pointer: fine) {
   .p-user-btn:hover {
     background: var(--paper);
@@ -1159,7 +1211,77 @@ body:has(.portal) .scene {
   border-radius: var(--r-sm);
   background: var(--paper);
   box-shadow: 0 0 0 1px var(--line), 0 18px 40px -12px rgb(20 19 15 / 0.22);
-  animation: p-pop 160ms var(--ease);
+  /* The profile menu swings down from a hinge along its top edge, like a card hanging from the avatar, and its
+     items slide in from the right. Closing swings it back up, faster. */
+  transform-origin: top center;
+  transform: perspective(700px) rotateX(-80deg);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    transform 180ms var(--ease),
+    opacity 140ms var(--ease),
+    visibility 0s linear 180ms;
+}
+.p-user-menu[data-open] {
+  transform: perspective(700px) rotateX(0deg);
+  opacity: 1;
+  visibility: visible;
+  transition:
+    transform 340ms var(--ease),
+    opacity 160ms var(--ease),
+    visibility 0s;
+}
+.p-user-menu > * {
+  opacity: 0;
+  translate: 12px 0;
+  transition:
+    opacity 120ms var(--ease),
+    translate 120ms var(--ease);
+}
+.p-user-menu[data-open] > * {
+  opacity: 1;
+  translate: 0 0;
+  transition:
+    opacity 220ms var(--ease),
+    translate 280ms var(--ease);
+}
+.p-user-menu[data-open] > :nth-child(2) {
+  transition-delay: 90ms;
+}
+.p-user-menu[data-open] > :nth-child(3) {
+  transition-delay: 120ms;
+}
+.p-user-menu[data-open] > :nth-child(4) {
+  transition-delay: 150ms;
+}
+.p-user-menu[data-open] > :nth-child(1) {
+  transition-delay: 60ms;
+}
+/* with reduced motion both menus just fade */
+@media (prefers-reduced-motion: reduce) {
+  .p-menu,
+  .p-menu[data-open] {
+    clip-path: none;
+    opacity: 0;
+    transition:
+      opacity 160ms var(--ease),
+      visibility 0s linear 160ms;
+  }
+  .p-menu[data-open] {
+    opacity: 1;
+    transition:
+      opacity 160ms var(--ease),
+      visibility 0s;
+  }
+  .p-user-menu,
+  .p-user-menu[data-open] {
+    transform: none;
+  }
+  .p-menu li,
+  .p-menu .p-menu-label,
+  .p-user-menu > * {
+    translate: none !important;
+  }
 }
 @keyframes p-pop {
   from {
@@ -4306,4 +4428,206 @@ a.p-user-meta {
   font-size: 12.5px;
   font-weight: 600;
   color: var(--violet);
+}
+
+/* ── Sign out: the figure walks out of the door (SignOutButton in PortalLayout.tsx) ─────────────────────────
+   A dark pill with a blue figure beside a blue door. Hover: the figure steps and the door eases ajar. Click: the
+   door swings open on the light behind it, the figure walks in and drops out of the bottom as the pill tips, and the
+   door bangs shut (three yellow strokes). One 1.5s timeline; LEAVE_MS in the TSX matches it. */
+.p-logout {
+  --lo-blue: #4c6bff;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 44px;
+  margin-top: 6px;
+  padding: 0 10px 0 16px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #262a4d, #1a1d38);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.12),
+    0 8px 18px -10px rgb(20 20 60 / 0.6);
+  transform-origin: 12% 50%;
+  transition: scale var(--dur-press) var(--ease);
+}
+.p-logout:active {
+  scale: 0.97;
+}
+.p-logout[data-leaving] {
+  cursor: default;
+  animation: lo-tip 1.5s var(--ease) both;
+}
+.p-logout-scene {
+  position: relative;
+  width: 42px;
+  height: 28px;
+  perspective: 120px;
+}
+/* the light inside the doorway, seen when the door swings open */
+.p-logout-doorway,
+.p-logout-door {
+  position: absolute;
+  right: 2px;
+  top: 2px;
+  width: 16px;
+  height: 24px;
+  border-radius: 2px;
+}
+.p-logout-doorway {
+  background: linear-gradient(90deg, #f3f3fa, #c9cde6);
+}
+.p-logout-door {
+  background: var(--lo-blue);
+  box-shadow: inset -1px 0 0 rgb(255 255 255 / 0.25);
+  transform-origin: 100% 50%;
+  transition: transform 0.35s var(--ease);
+}
+.p-logout-door::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  top: 11px;
+  width: 2.5px;
+  height: 2.5px;
+  border-radius: 50%;
+  background: #fff;
+}
+.p-logout-fig {
+  position: absolute;
+  left: 0;
+  top: 4px;
+  width: 20px;
+  height: 20px;
+  fill: var(--lo-blue);
+}
+.p-logout-bang {
+  position: absolute;
+  left: 13px;
+  top: 6px;
+  width: 8px;
+  height: 16px;
+  opacity: 0;
+}
+.p-logout-bang i {
+  position: absolute;
+  right: 0;
+  width: 7px;
+  height: 2px;
+  border-radius: 1px;
+  background: #ffc23d;
+}
+.p-logout-bang i:nth-child(1) {
+  top: 1px;
+  rotate: 25deg;
+}
+.p-logout-bang i:nth-child(2) {
+  top: 7px;
+}
+.p-logout-bang i:nth-child(3) {
+  top: 13px;
+  rotate: -25deg;
+}
+@media (hover: hover) and (pointer: fine) {
+  .p-logout:not([data-leaving]):hover .p-logout-fig {
+    animation: lo-step 0.45s ease-in-out infinite alternate;
+  }
+  .p-logout:not([data-leaving]):hover .p-logout-door {
+    transform: rotateY(-22deg);
+  }
+}
+.p-logout[data-leaving] .p-logout-door {
+  animation: lo-door 1.5s var(--ease) both;
+}
+.p-logout[data-leaving] .p-logout-fig {
+  animation: lo-walk 1.5s linear both;
+}
+.p-logout[data-leaving] .p-logout-bang {
+  animation: lo-bang 1.5s var(--ease) both;
+}
+@keyframes lo-step {
+  to {
+    transform: translateX(2px) rotate(-5deg);
+  }
+}
+@keyframes lo-door {
+  0% {
+    transform: rotateY(-22deg);
+  }
+  12%,
+  58% {
+    transform: rotateY(-78deg);
+  }
+  70% {
+    transform: rotateY(10deg);
+  }
+  78%,
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+/* walks up to the door in little steps, steps in, then drops out of the bottom of the pill */
+@keyframes lo-walk {
+  0% {
+    transform: translate(0, 0);
+  }
+  12% {
+    transform: translate(4px, -1px) rotate(-4deg);
+  }
+  24% {
+    transform: translate(8px, 0);
+  }
+  36% {
+    transform: translate(12px, -1px) rotate(-4deg);
+  }
+  48% {
+    transform: translate(17px, 0);
+    opacity: 1;
+  }
+  58% {
+    transform: translate(20px, 16px) rotate(60deg);
+    opacity: 1;
+  }
+  64%,
+  100% {
+    transform: translate(22px, 30px) rotate(90deg);
+    opacity: 0;
+  }
+}
+/* the pill tips as the figure falls out, and rocks back */
+@keyframes lo-tip {
+  0%,
+  50% {
+    rotate: 0deg;
+  }
+  58% {
+    rotate: 3deg;
+  }
+  68% {
+    rotate: -1deg;
+  }
+  76%,
+  100% {
+    rotate: 0deg;
+  }
+}
+@keyframes lo-bang {
+  0%,
+  70% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  75% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  92%,
+  100% {
+    opacity: 0;
+    transform: scale(1.1);
+  }
 }

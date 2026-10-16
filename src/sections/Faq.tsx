@@ -1,9 +1,9 @@
-import { useId, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Link } from 'react-router';
-import { Arrow, Headline, Reveal, BtnText } from '../components/ui';
+import { Arrow, Headline, Reveal, BtnText, ThreadMark } from '../components/ui';
 import { useQuiet } from '../gl/Scene';
+import { useGlassTilt } from '../components/useGlassTilt';
 import { EMAIL, EMAIL_HREF, FAQ } from '../content';
-import { ORIGIN_POINT, threadPaths } from '../gl/threads';
 import type { HueName } from '../gl/palette';
 
 /** An accordion whose panels open to their real height. */
@@ -36,39 +36,25 @@ export function Accordion({ items, tone = 'cobalt', tags, initial = 0 }: { items
   );
 }
 
-/** The mark drawn flat: its three threads draw in, meet at the origin, and let go again. */
-export function ThreadMark() {
-  // the mark also sits in the footer, so each copy needs its own clip id
-  const clip = `faq-disc-${useId().replace(/:/g, '')}`;
-  return (
-    <svg className="faq-mark" viewBox="-1.1 -1.1 2.2 2.2" aria-hidden="true">
-      <clipPath id={clip}>
-        <circle r="1" />
-      </clipPath>
-      <circle r="1" className="faq-mark-disc" />
-      <g clipPath={`url(#${clip})`}>
-        {THREADS.map((d, i) => (
-          <path key={i} d={d} pathLength={1} className="faq-mark-thread" style={{ '--k': i } as React.CSSProperties} />
-        ))}
-      </g>
-      <circle cx={ORIGIN_POINT[0]} cy={-ORIGIN_POINT[1]} r="0.07" className="faq-mark-origin" />
-    </svg>
-  );
-}
-
 const TAGS = ['Company', 'Idea', 'Difference', 'Research', 'Access', 'Data'];
-const THREADS = threadPaths();
 
 /** The questions, beside a card that draws the mark's three threads meeting at the origin and points to a person. */
 export function Faq() {
   const ref = useRef<HTMLElement>(null);
   useQuiet(ref);
+  // the "Still curious?" glass card leans to the cursor and its shine follows it
+  useGlassTilt(ref, '.faq-ask');
   return (
     <section id="faq" ref={ref} className="section faq">
       <div className="wrap faq-grid">
         <div className="faq-head">
           <Headline tone="violet" lines={['Asked often,', 'answered plainly.']} />
           <Reveal className="cell cell-ink faq-ask" delay={100}>
+            {/* coloured light drifting inside the glass, for the frost to show */}
+            <span className="faq-ask-glow" aria-hidden="true">
+              <i />
+              <i />
+            </span>
             <ThreadMark />
             <div>
               <p className="cell-label">Still curious?</p>

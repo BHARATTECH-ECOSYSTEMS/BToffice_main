@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { Brand } from '../components/ui';
 import { usePointerBloom } from '../components/usePointerBloom';
@@ -7,6 +7,7 @@ import { didSignOut, endSession, ROLE_NAME, setRole, useSession, type Role } fro
 import { HelpModal } from './Help';
 import { PortalDataProvider } from './store';
 import { initials, PIcon } from './ui';
+import { usePrismLight } from './usePrismLight';
 import '../styles/portal.css';
 
 interface MenuLink {
@@ -64,6 +65,28 @@ const TOP: TopItem[] = [
   },
   { key: 'community', label: 'Community', to: '/portal/community' },
 ];
+
+// hover intent for the top bar's menus: a short wait before opening, and a grace period on leaving so the
+// pointer can travel from the button down into the menu
+const HOVER_OPEN_MS = 60;
+const HOVER_CLOSE_MS = 180;
+
+/**
+ * Opens a menu while a mouse rests on it (`wrap` goes on the element holding both button and menu). Touch and
+ * keyboard still open it with a click; this only adds the hover.
+ */
+function useHoverOpen(setOpen: (open: boolean) => void) {
+  const timer = useRef(0);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const later = (open: boolean, ms: number) => {
+    window.clearTimeout(timer.current);
+    timer.current = window.setTimeout(() => setOpen(open), ms);
+  };
+  return {
+    onPointerEnter: (e: React.PointerEvent) => e.pointerType === 'mouse' && later(true, HOVER_OPEN_MS),
+    onPointerLeave: (e: React.PointerEvent) => e.pointerType === 'mouse' && later(false, HOVER_CLOSE_MS),
+  };
+}
 
 /** Which top pill the current page belongs to; none for pages outside them, like Settings. */
 function activeKey(items: TopItem[], pathname: string) {
@@ -129,12 +152,17 @@ export function PortalLayout() {
  */
 function TopNav({ items, active }: { items: TopItem[]; active?: string }) {
   const listRef = useRef<HTMLUListElement>(null);
+  const barRef = useRef<HTMLElement>(null);
+  const streakRef = useRef<HTMLSpanElement>(null);
+  usePrismLight(barRef, streakRef);
   const [clip, setClip] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const { pathname } = useLocation();
 
   useEffect(() => setOpenMenu(null), [pathname]);
+  // closing one menu never closes another: a late close from the menu the pointer just left must not shut the next
+  const setMenu = useCallback((key: string, open: boolean) => setOpenMenu((cur) => (open ? key : cur === key ? null : cur)), []);
 
   useLayoutEffect(() => {
     const list = listRef.current;
@@ -158,7 +186,12 @@ function TopNav({ items, active }: { items: TopItem[]; active?: string }) {
   }, [clip, ready]);
 
   return (
-    <nav className="p-pills" aria-label="Portal">
+    <nav className="p-pills" ref={barRef} aria-label="Portal">
+      {/* the prism streak that trails the cursor along the glass bar (usePrismLight); its track clips it to the bar,
+          which itself can't clip because its menus hang out of it */}
+      <span className="p-prism" aria-hidden="true">
+        <span ref={streakRef} />
+      </span>
       <ul ref={listRef}>
         {items.map((i) => (
           <li key={i.key} data-key={i.key}>
@@ -167,7 +200,7 @@ function TopNav({ items, active }: { items: TopItem[]; active?: string }) {
                 {i.label}
               </NavLink>
             ) : (
-              <PillMenu item={i} on={active === i.key} open={openMenu === i.key} setOpen={(o) => setOpenMenu(o ? i.key : null)} />
+              <PillMenu item={i} on={active === i.key} open={openMenu === i.key} setOpen={(o) => setMenu(i.key, o)} />
             )}
           </li>
         ))}
@@ -179,7 +212,6 @@ function TopNav({ items, active }: { items: TopItem[]; active?: string }) {
           {items.map((i) => (
             <span key={i.key} className="p-pill" data-open={openMenu === i.key || undefined}>
               {i.label}
-              {'sections' in i && <PIcon name="chevron" size={13} />}
             </span>
           ))}
         </span>
@@ -192,6 +224,7 @@ function PillMenu({ item, on, open, setOpen }: { item: Extract<TopItem, { sectio
   const ref = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
   const id = `menu-${item.key}`;
+  const hover = useHoverOpen(setOpen);
 
   useEffect(() => {
     if (!open) return;
@@ -210,20 +243,20 @@ function PillMenu({ item, on, open, setOpen }: { item: Extract<TopItem, { sectio
   }, [open, setOpen]);
 
   return (
-    <div className="p-pill-wrap" ref={ref}>
+    <div className="p-pill-wrap" ref={ref} {...hover}>
       <button ref={btnRef} type="button" className={`p-pill${on ? ' is-on' : ''}`} aria-expanded={open} aria-controls={id} onClick={() => setOpen(!open)}>
         {item.label}
-        <PIcon name="chevron" size={13} />
       </button>
-      {open && (
-        // data-lenis-prevent: the site's smooth scroll takes every wheel event; a long menu still needs its own
-        <div className="p-menu" id={id} data-lenis-prevent>
-          {item.sections.map((s) => (
-            <div key={s.heading} className="p-menu-group">
-              <p className="p-menu-label">{s.heading}</p>
-              <ul>
-                {s.links.map((l) => (
-                  <li key={l.to}>
+      {/* always mounted, so it can animate closed too; while closed it is hidden from pointer, keyboard and screen
+          readers. data-lenis-prevent: the site's smooth scroll takes every wheel event; a long menu needs its own */}
+      <div className="p-menu" id={id} data-open={open || undefined} data-lenis-prevent>
+        {item.sections.map((s, g) => (
+          <div key={s.heading} className="p-menu-group">
+            <p className="p-menu-label">{s.heading}</p>
+            <ul>
+              {s.links.map((l, k) => (
+                // each link falls in a beat after the one above it, the second group a beat after the first
+                <li key={l.to} style={{ '--k': k + g * 2 } as CSSProperties}>
                     {l.href ? (
                       <a href={l.href} target="_blank" rel="noreferrer" className="p-menu-link">
                         <PIcon name={l.icon} size={16} />
@@ -236,13 +269,12 @@ function PillMenu({ item, on, open, setOpen }: { item: Extract<TopItem, { sectio
                         <span>{l.label}</span>
                       </NavLink>
                     )}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -274,9 +306,53 @@ function useSignOut() {
   };
 }
 
+// how long the sign-out button's walk-out plays before the session actually ends (the CSS timeline is 1.5s)
+const LEAVE_MS = 1500;
+
+/**
+ * Sign out as the "walk out the door" button: a figure walks through a door that swings open, drops out of the
+ * bottom as the button tips, and the door bangs shut; then the session ends. Hovering, the figure takes a step and
+ * the door eases ajar. With reduced motion it signs out at once.
+ */
+function SignOutButton({ onSignOut, onLeaving }: { onSignOut: () => void; onLeaving: () => void }) {
+  const [leaving, setLeaving] = useState(false);
+  const timer = useRef(0);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const go = () => {
+    if (leaving) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return onSignOut();
+    setLeaving(true);
+    onLeaving();
+    timer.current = window.setTimeout(onSignOut, LEAVE_MS);
+  };
+  return (
+    <button type="button" className="p-logout" data-leaving={leaving || undefined} onClick={go} aria-disabled={leaving || undefined}>
+      <span className="p-logout-label">Sign out</span>
+      <span className="p-logout-scene" aria-hidden="true">
+        <span className="p-logout-doorway" />
+        <span className="p-logout-bang">
+          <i />
+          <i />
+          <i />
+        </span>
+        <svg className="p-logout-fig" viewBox="0 0 24 24">
+          <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9 7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7" />
+        </svg>
+        <span className="p-logout-door" />
+      </span>
+      <span className="sr-only" role="status">
+        {leaving ? 'Signing out' : ''}
+      </span>
+    </button>
+  );
+}
+
 function UserMenu({ name, email, role, photo, onHelp, onSignOut }: { name: string; email: string; role: Role; photo?: string; onHelp: () => void; onSignOut: () => void }) {
   const [open, setOpen] = useState(false);
+  // while the sign-out walk plays, the menu stays open even if the pointer leaves it
+  const [leaving, setLeaving] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const hover = useHoverOpen(setOpen);
 
   useEffect(() => {
     if (!open) return;
@@ -291,33 +367,29 @@ function UserMenu({ name, email, role, photo, onHelp, onSignOut }: { name: strin
   }, [open]);
 
   return (
-    <div className="p-user" ref={ref}>
+    <div className="p-user" ref={ref} {...hover}>
       <button type="button" className="p-user-btn" aria-expanded={open} aria-haspopup="true" onClick={() => setOpen((o) => !o)}>
         <span className="p-avatar" aria-hidden="true">
           {photo ? <img src={photo} alt="" /> : initials(name)}
         </span>
         <span className="p-user-name">{name}</span>
-        <PIcon name="chevron" size={14} />
       </button>
-      {open && (
-        <div className="p-user-menu">
-          <Link to="/portal/profile" className="p-user-meta" onClick={() => setOpen(false)}>
-            <strong>{name}</strong>
-            <span>{email}</span>
-            <span className="p-user-role">{ROLE_NAME[role]}</span>
-            <span className="p-user-view">View profile</span>
-          </Link>
-          <Link to="/portal/settings" className="p-user-item" onClick={() => setOpen(false)}>
-            <PIcon name="settings" /> Settings
-          </Link>
-          <button type="button" className="p-user-item" aria-haspopup="dialog" onClick={() => (setOpen(false), onHelp())}>
-            <PIcon name="help" /> Help
-          </button>
-          <button type="button" className="p-user-item" onClick={onSignOut}>
-            <PIcon name="logout" /> Sign out
-          </button>
-        </div>
-      )}
+      {/* always mounted so it can swing closed as well as open; hidden from everyone while closed */}
+      <div className="p-user-menu" data-open={open || leaving || undefined}>
+        <Link to="/portal/profile" className="p-user-meta" onClick={() => setOpen(false)}>
+          <strong>{name}</strong>
+          <span>{email}</span>
+          <span className="p-user-role">{ROLE_NAME[role]}</span>
+          <span className="p-user-view">View profile</span>
+        </Link>
+        <Link to="/portal/settings" className="p-user-item" onClick={() => setOpen(false)}>
+          <PIcon name="settings" /> Settings
+        </Link>
+        <button type="button" className="p-user-item" aria-haspopup="dialog" onClick={() => (setOpen(false), onHelp())}>
+          <PIcon name="help" /> Help
+        </button>
+        <SignOutButton onSignOut={onSignOut} onLeaving={() => setLeaving(true)} />
+      </div>
     </div>
   );
 }

@@ -16,6 +16,7 @@ import { RouteSweep } from './components/RouteSweep';
 import { BackToTop } from './components/BackToTop';
 import { LoginProvider } from './components/Login';
 import { usePointerBloom } from './components/usePointerBloom';
+import { useGlassMotion } from './components/useGlassMotion';
 import { PortalLayout } from './portal/PortalLayout';
 import { Dashboard } from './portal/pages/Dashboard';
 import { People } from './portal/pages/People';
@@ -78,6 +79,8 @@ function Layout() {
   }, [pathname]);
 
   usePointerBloom();
+  // the glass boxes lean towards the mouse on a spring, and a shine follows it
+  useGlassMotion();
 
   return (
     <LoginProvider>

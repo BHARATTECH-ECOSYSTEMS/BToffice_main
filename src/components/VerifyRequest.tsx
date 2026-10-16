@@ -32,6 +32,40 @@ export function VerifyRequestBand() {
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const thisMonth = () => new Date().toISOString().slice(0, 7);
+const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+const YEARS = Array.from({ length: 31 }, (_, i) => new Date().getFullYear() - i);
+
+/**
+ * A month as two dropdowns (month, year), sent as one `YYYY-MM` value under `name`. Used instead of
+ * <input type="month">, which Safari and Firefox show as a plain text box with no picker.
+ */
+function MonthField({ name, label, required }: { name: string; label: string; required?: boolean }) {
+  const [month, setMonth] = useState('');
+  const [year, setYear] = useState('');
+  const id = useId();
+  return (
+    <div className="vr-month" role="group" aria-labelledby={`${id}-label`}>
+      <span id={`${id}-label`}>{label}</span>
+      <div>
+        <select aria-label={`${label}: month`} value={month} onChange={(e) => setMonth(e.target.value)} required={required || !!year}>
+          <option value="">Month</option>
+          {MONTHS.map((m, i) => (
+            <option key={m} value={String(i + 1).padStart(2, '0')}>
+              {m}
+            </option>
+          ))}
+        </select>
+        <select aria-label={`${label}: year`} value={year} onChange={(e) => setYear(e.target.value)} required={required || !!month}>
+          <option value="">Year</option>
+          {YEARS.map((y) => (
+            <option key={y}>{y}</option>
+          ))}
+        </select>
+      </div>
+      <input type="hidden" name={name} value={month && year ? `${year}-${month}` : ''} />
+    </div>
+  );
+}
 
 function VerifyDialog({ onClose }: { onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -79,6 +113,9 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
     <dialog
       ref={dialog}
       className="vr-dialog"
+      // the page's smooth scroll (Lenis) is stopped while this is open and would swallow the wheel; the form is
+      // taller than short screens, so the dialog scrolls itself
+      data-lenis-prevent
       aria-labelledby={`${ids}-title`}
       onCancel={(e) => {
         e.preventDefault();
@@ -131,14 +168,8 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
               <span>Designation they gave you</span>
               <input name="designation" required />
             </label>
-            <label>
-              <span>Joined</span>
-              <input name="from" type="month" required max={thisMonth()} />
-            </label>
-            <label>
-              <span>Left (empty if still here)</span>
-              <input name="to" type="month" max={thisMonth()} />
-            </label>
+            <MonthField name="from" label="Joined" required />
+            <MonthField name="to" label="Left (empty if still here)" />
             <label className="span-2">
               <span>Employee ID (optional)</span>
               <input name="employeeId" />

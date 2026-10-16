@@ -21,6 +21,8 @@ export function Audiences() {
     <Chapter id="who" innerRef={ref} n={AUDIENCE_DETAIL.length} screens={0.4} tone={activeTone} className="svc-section">
       <div className="wrap svc-frame">
         <div className="svc-showcase">
+          {/* the dark sheet's glass: frost, lit edges, a prism rim and a band of light that crosses it now and then */}
+          <span className="svc-glass" aria-hidden="true" />
           {/* Left column: headline and the audience list */}
           <div className="svc-left-col">
             <Headline tone="violet" lines={['Built for the people', 'who build what’s next.']} />

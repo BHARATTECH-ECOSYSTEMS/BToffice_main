@@ -284,6 +284,12 @@ export class Studio {
   private running = false;
   private pointer = new THREE.Vector2();
   private lean = new THREE.Vector2();
+  /** hovering the logo on the hero: the mouse in page pixels, the canvas box and size (cached on resize, never
+   *  read per frame), and how far the hover has eased in (0…1) */
+  private mouse = new THREE.Vector2(-1e4, -1e4);
+  private box = { left: 0, top: 0, w: 1, h: 1 };
+  private hover = 0;
+  private onScreen = new THREE.Vector3();
   private compact: boolean;
   /** how much of the frame's height the form fills */
   private fill: number;
@@ -467,7 +473,11 @@ export class Studio {
     window.addEventListener('pointermove', this.onPointer, { passive: true });
   }
 
-  private onPointer = (e: PointerEvent) => this.pointer.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
+  private onPointer = (e: PointerEvent) => {
+    this.pointer.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
+    // only a mouse hovers; a touch would leave the logo stuck in its hover
+    if (e.pointerType === 'mouse') this.mouse.set(e.clientX, e.clientY);
+  };
 
   resize() {
     const cv = this.renderer.domElement;
@@ -475,6 +485,8 @@ export class Studio {
     const h = cv.clientHeight || window.innerHeight;
     const pr = this.renderer.getPixelRatio();
     this.renderer.setSize(w, h, false);
+    const r = cv.getBoundingClientRect();
+    this.box = { left: r.left, top: r.top, w, h };
     this.composer.setPixelRatio(pr);
     this.composer.setSize(w, h);
     this.bgRT.setSize(Math.floor(w * pr), Math.floor(h * pr));
@@ -614,7 +626,7 @@ export class Studio {
     this.lean.x = damp(this.lean.x, this.pointer.x * moving, 2.5, dt);
     this.lean.y = damp(this.lean.y, this.pointer.y * moving, 2.5, dt);
     const s = this.shot(b);
-    const goal = this.orbit({ yaw: s.yaw + this.lean.x * 4, pitch: s.pitch - this.lean.y * 2.5 }, dist);
+    const goal = this.orbit({ yaw: s.yaw + this.lean.x * (4 + 5 * this.hover * moving), pitch: s.pitch - this.lean.y * 2.5 }, dist);
     this.camPos.lerp(goal, 1 - Math.exp(-8 * dt));
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(CENTER);
@@ -649,7 +661,7 @@ export class Studio {
     this.sculpture.position.copy(this.su.uCenter.value as THREE.Vector3);
     // the camera keeps framing the full-size form (above), so a growing form rises in place instead of the
     // shot zooming in on it; never quite zero, because the ray march divides by it
-    const grown = scale * Math.max(0.02, this.reveal.grow);
+    const grown = scale * Math.max(0.02, this.reveal.grow) * (1 + 0.06 * this.hover * moving);
     this.su.uScale.value = grown;
     const bound = m === 0 ? BOUNDS[a] : Math.max(BOUNDS[a], BOUNDS[n]) + 0.08;
     this.su.uBound.value = bound;
@@ -663,12 +675,20 @@ export class Studio {
     this.su.uDensity.value = L('density');
     const pulse = Math.pow(0.5 + 0.5 * Math.sin(life * 2.4), 3);
     const growing = (a === 7 ? 1 - m : 0) + (n === 7 ? m : 0) + (a === 7 && n === 7 ? m : 0);
-    this.su.uCoreI.value = L('coreI') * (1 + growing * pulse * 0.6);
+    this.su.uCoreI.value = L('coreI') * (1 + growing * pulse * 0.6) * (1 + 0.45 * this.hover);
     this.su.uFrost.value = L('frost');
     this.su.uThreads.value = L('threads');
-    this.su.uIrid.value = L('irid');
+    this.su.uIrid.value = L('irid') + 0.3 * this.hover;
     this.su.uBody.value = L('body');
-    this.su.uGlow.value = L('glow');
+    this.su.uGlow.value = L('glow') + 0.35 * this.hover;
+    // Hovering the logo on the hero (the mouse inside its circle on screen): it swells a little, glows brighter
+    // with more colour in its glass, and leans further towards the cursor; it eases back when the mouse leaves.
+    const c = this.onScreen.copy(this.su.uCenter.value as THREE.Vector3).project(this.camera);
+    const sx = this.box.left + ((c.x + 1) / 2) * this.box.w;
+    const sy = this.box.top + ((1 - c.y) / 2) * this.box.h;
+    const radius = ((bound * grown) / (this.camPos.distanceTo(CENTER) * tanH)) * (this.box.h / 2);
+    const over = onHero > 0.5 && Math.hypot(this.mouse.x - sx, this.mouse.y - sy) < radius * 0.85;
+    this.hover = damp(this.hover, over ? 1 : 0, over ? 7 : 4, dt);
     // Every change passes through the plain sphere instead of averaging two unrelated shapes: into the gem,
     // the orbs gather first and the facets cut in after; out of it, the facets melt away before the orbs move.
     let moved = m; // how far the orb numbers have gone from A's to B's

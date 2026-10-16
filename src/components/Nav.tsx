@@ -1,21 +1,102 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type RefObject } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
-import { Arrow, Brand, toneStyle, BtnText } from './ui';
+import { motion, useReducedMotion, type Variants } from 'motion/react';
+import { Arrow, Brand, toneStyle, BtnText, ThreadMark } from './ui';
 import { CHAPTERS, EMAIL, EMAIL_HREF } from '../content';
 import { useOpenLogin } from './Login';
 import { useScene } from '../gl/Scene';
 import { NavPeek, type PeekId } from './NavPeek';
 import type { HueName } from '../gl/palette';
 import { pageScroll, trackBox } from './trackBox';
+import { useGlassTilt } from './useGlassTilt';
+import { useNavBubble } from './useNavBubble';
 
-const LINKS: { label: string; to: string; section?: string; tone: HueName; peek?: PeekId }[] = [
-  { label: 'Research', to: '/research', tone: 'saffron', peek: 'research' },
-  { label: 'Services', to: '/services', tone: 'violet', peek: 'services' },
-  { label: 'Capabilities', to: '/', section: 'capabilities', tone: 'tangerine', peek: 'capabilities' },
-  { label: 'Careers', to: '/careers', tone: 'saffron', peek: 'careers' },
-  { label: 'About', to: '/about', tone: 'violet', peek: 'about' },
-  { label: 'Contact', to: '/contact', tone: 'tangerine', peek: 'contact' },
+/* Each link has its own hover effect (`fx`, styled by `[data-fx]` in base.css):
+   drop = the liquid glass drop wraps it (useNavBubble), sweep = a band of light crosses the glass,
+   tilt = it leans to the cursor and a shine follows (useGlassTilt), ripple = a ring spreads from where the cursor
+   came in, roll = the label rolls up and a copy rolls in, magnet = the key is drawn towards the cursor. */
+type LinkFx = 'drop' | 'sweep' | 'tilt' | 'ripple' | 'roll' | 'magnet';
+const LINKS: { label: string; to: string; section?: string; tone: HueName; peek?: PeekId; fx: LinkFx }[] = [
+  { label: 'Research', to: '/research', tone: 'saffron', peek: 'research', fx: 'drop' },
+  { label: 'Services', to: '/services', tone: 'violet', peek: 'services', fx: 'sweep' },
+  { label: 'Capabilities', to: '/', section: 'capabilities', tone: 'tangerine', peek: 'capabilities', fx: 'tilt' },
+  { label: 'Careers', to: '/careers', tone: 'saffron', peek: 'careers', fx: 'ripple' },
+  { label: 'About', to: '/about', tone: 'violet', peek: 'about', fx: 'roll' },
+  { label: 'Contact', to: '/contact', tone: 'tangerine', peek: 'contact', fx: 'magnet' },
 ];
+
+/** Per-key pointer effects: where the cursor came in (ripple) and the magnet pull. The key's box is read once on
+ *  entry, never per move, and the values go on that key's own style only. */
+function keyPointer(fx: LinkFx) {
+  if (fx !== 'ripple' && fx !== 'magnet') return {};
+  let box: DOMRect | null = null;
+  const at = (e: React.PointerEvent<HTMLElement>) => {
+    box ??= e.currentTarget.getBoundingClientRect();
+    return [(e.clientX - box.left) / box.width, (e.clientY - box.top) / box.height] as const;
+  };
+  if (fx === 'ripple')
+    return {
+      onPointerOver: (e: React.PointerEvent<HTMLElement>) => {
+        if (e.pointerType !== 'mouse' || e.currentTarget.contains(e.relatedTarget as Node)) return;
+        box = null;
+        const [x, y] = at(e);
+        e.currentTarget.style.setProperty('--px', `${(x * 100).toFixed(1)}%`);
+        e.currentTarget.style.setProperty('--py', `${(y * 100).toFixed(1)}%`);
+      },
+    };
+  return {
+    onPointerMove: (e: React.PointerEvent<HTMLElement>) => {
+      if (e.pointerType !== 'mouse' || !fine()) return;
+      const [x, y] = at(e);
+      // -1..1 from the key's centre
+      e.currentTarget.style.setProperty('--mg-x', ((x - 0.5) * 2).toFixed(3));
+      e.currentTarget.style.setProperty('--mg-y', ((y - 0.5) * 2).toFixed(3));
+    },
+    onPointerOut: (e: React.PointerEvent<HTMLElement>) => {
+      if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+      box = null;
+      e.currentTarget.style.removeProperty('--mg-x');
+      e.currentTarget.style.removeProperty('--mg-y');
+    },
+  };
+}
+
+/** The link's label; the roll key carries the site's button roll markup. */
+function KeyLabel({ label, fx }: { label: string; fx: LinkFx }) {
+  if (fx === 'roll') return <BtnText>{label}</BtnText>;
+  if (fx === 'magnet') return <span className="nav-key-label">{label}</span>;
+  return <>{label}</>;
+}
+
+/* The opening: the bar's glass unfolds out of a narrow capsule at the centre, then the brand and the login button
+   fades in (the links and the login button follow with their own CSS stagger, `navItem` in base.css). Only the glass
+   scales; the brand gets opacity alone, because its `transform` belongs to the glass tilt (useGlassTilt), which
+   Motion would overwrite. */
+// an even ease in and out (the site's --ease-io), so the stretch reads across the whole bar instead of jumping
+// to full width in the first frames
+const EASE_IO = [0.65, 0, 0.35, 1] as const;
+const OPENING: Record<'glass' | 'brand', Variants> = {
+  // one `transform` string rather than scaleX/scaleY: Motion can then hand it to the browser's own animation
+  // engine, which keeps running while the main thread is busy loading the page. As separate values it was
+  // driven frame by frame from JavaScript and skipped straight to the end during the load.
+  glass: {
+    closed: { opacity: 0, transform: 'scale(0.12, 0.75)' },
+    open: {
+      opacity: 1,
+      transform: 'scale(1, 1)',
+      // the short delay lets the page's first paint land before the stretch starts, so its beginning is seen
+      transition: { duration: 0.9, delay: 0.15, ease: EASE_IO, opacity: { duration: 0.2, delay: 0.15 } },
+    },
+  },
+  brand: {
+    closed: { opacity: 0 },
+    open: { opacity: 1, transition: { duration: 0.4, delay: 0.75 } },
+  },
+};
+const MotionLink = motion.create(Link);
+
+// the glass keys that lean towards the cursor (useGlassTilt): among the links only the tilt one
+const GLASS_KEYS = '.nav-brand, .nav-links > [data-fx="tilt"], .nav-cta';
 
 const fine = () => window.matchMedia('(hover: hover) and (pointer: fine)').matches;
 
@@ -107,9 +188,14 @@ export function Nav() {
   const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
   const openLogin = useOpenLogin();
+  const reduceMotion = useReducedMotion();
   const [hover, setHover] = useState(-1);
   const [inCaps, setInCaps] = useState(false);
   const linksRef = useRef<HTMLDivElement>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  useGlassTilt(barRef, GLASS_KEYS);
+  const bubbleRef = useRef<HTMLSpanElement>(null);
+  useNavBubble(linksRef, bubbleRef);
   const [hl, setHl] = useState<{ x: number; w: number; glide: boolean; tone?: HueName }>({ x: 0, w: 0, glide: false });
   const progressRef = useRef<HTMLDivElement>(null);
   const chapter = useChapterProgress(home, progressRef);
@@ -271,11 +357,18 @@ export function Nav() {
 
   return (
     <header className="nav" data-peek={peek || undefined} data-hidden={(hidden && !open && !peek) || undefined} data-compact={compact || open || undefined} data-open={open || undefined}>
-      <div className="nav-bar">
-        <span className="nav-glass" aria-hidden="true" />
-        <Link to="/" className="nav-brand" aria-label="Bharattech Origin, home" onClick={() => home && scrollTo(0)}>
-          <Brand />
-        </Link>
+      {/* with reduced motion the bar is simply there: `initial={false}` starts it at its open state */}
+      <motion.div className="nav-bar" ref={barRef} initial={reduceMotion ? false : 'closed'} animate="open">
+        <motion.span className="nav-glass" aria-hidden="true" variants={OPENING.glass} />
+        <MotionLink to="/" className="nav-brand" aria-label="Bharattech Origin, home" onClick={() => home && scrollTo(0)} variants={OPENING.brand}>
+          <Brand
+            mark={
+              <span className="nav-orb">
+                <ThreadMark />
+              </span>
+            }
+          />
+        </MotionLink>
 
         <nav
           className="nav-links"
@@ -294,16 +387,18 @@ export function Nav() {
             // keeps the last link's tone while it fades out, instead of snapping to the fallback colour
             style={{ transform: `translateX(${hl.x}px)`, width: hl.w, ...(hl.tone ? toneStyle(hl.tone) : {}) }}
           />
+          {/* the liquid glass drop that wraps the drop key (useNavBubble) */}
+          <span className="nav-bubble" ref={bubbleRef} aria-hidden="true" />
           {LINKS.map((l, i) =>
             l.section ? (
-              <button key={l.label} style={toneStyle(l.tone, { '--i': i } as CSSProperties)} {...peekProps(l, i)} onClick={() => go(l)} aria-current={i === active || undefined}>
+              <button key={l.label} style={toneStyle(l.tone, { '--i': i } as CSSProperties)} {...peekProps(l, i)} {...keyPointer(l.fx)} data-fx={l.fx} data-lit={i === lit || undefined} onClick={() => go(l)} aria-current={i === active || undefined}>
                 <i aria-hidden="true" />
-                {l.label}
+                <KeyLabel label={l.label} fx={l.fx} />
               </button>
             ) : (
-              <Link key={l.label} to={l.to} style={toneStyle(l.tone, { '--i': i } as CSSProperties)} {...peekProps(l, i)} aria-current={i === active ? 'page' : undefined}>
+              <Link key={l.label} to={l.to} style={toneStyle(l.tone, { '--i': i } as CSSProperties)} {...peekProps(l, i)} {...keyPointer(l.fx)} data-fx={l.fx} data-lit={i === lit || undefined} aria-current={i === active ? 'page' : undefined}>
                 <i aria-hidden="true" />
-                {l.label}
+                <KeyLabel label={l.label} fx={l.fx} />
               </Link>
             ),
           )}
@@ -321,7 +416,7 @@ export function Nav() {
             <span />
           </button>
         </div>
-      </div>
+      </motion.div>
 
       <NavPeek peek={peek} caret={caret} onEnter={hold} onLeave={() => closePeek()} onGo={fromPeek} />
 

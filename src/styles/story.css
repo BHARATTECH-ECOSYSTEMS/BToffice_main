@@ -2042,6 +2042,75 @@
   margin: 6px 0 8px;
   font-size: 22px;
 }
+/* 3D violet glass: a deep translucent slab with light drifting inside it, a frosted top, a lit top edge and a
+   shaded bottom. Once its entrance has settled it leans towards the cursor and the shine follows the pointer
+   (useGlassTilt in Faq.tsx sets --rx/--ry/--gx/--gy). */
+.faq .faq-ask.cell-ink {
+  background: linear-gradient(150deg, #3a2c9a 0%, #221a5e 45%, #120f2c 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.32),
+    inset 0 0 0 1px rgb(255 255 255 / 0.1),
+    inset 0 -24px 48px -24px rgb(0 0 0 / 0.55),
+    0 2px 4px rgb(20 19 15 / 0.08),
+    0 34px 64px -30px rgb(53 24 154 / 0.6);
+}
+.faq .faq-ask[data-settled] {
+  transform: perspective(1000px) rotateX(calc(var(--rx, 0deg) * 0.45)) rotateY(calc(var(--ry, 0deg) * 0.55));
+  transition:
+    transform 0.3s var(--ease),
+    box-shadow var(--dur-hover) var(--ease),
+    scale var(--dur-press) var(--ease);
+}
+.faq-ask-glow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.faq-ask-glow i {
+  position: absolute;
+  width: 60%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(46px);
+  animation: faq-glow 14s ease-in-out infinite alternate;
+}
+.faq-ask-glow i:first-child {
+  left: -18%;
+  top: -40%;
+  background: rgb(140 121 255 / 0.75);
+}
+.faq-ask-glow i:last-child {
+  right: -16%;
+  bottom: -46%;
+  background: rgb(255 170 60 / 0.35);
+  animation-duration: 18s;
+  animation-delay: -6s;
+}
+@keyframes faq-glow {
+  to {
+    transform: translate3d(22%, 18%, 0) scale(1.15);
+  }
+}
+/* the frost: a pale top half and the cursor's shine, above the drifting light and below the words */
+.faq .faq-ask::after {
+  z-index: -1;
+  padding: 0;
+  background:
+    radial-gradient(260px circle at var(--gx, 30%) var(--gy, 0%), rgb(255 255 255 / 0.2), rgb(255 255 255 / 0) 65%),
+    linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0) 42%);
+  -webkit-mask: none;
+  mask: none;
+  opacity: 1;
+}
+.faq .faq-ask::before {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .faq-ask-glow i {
+    animation: none;
+  }
+}
 .faq-mark {
   width: 112px;
   height: 112px;

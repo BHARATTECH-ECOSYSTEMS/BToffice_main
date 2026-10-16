@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { LogoMark } from './ui';
+import { ThreadMark } from './ui';
 
 /** An endless row that drifts sideways and pauses under the cursor. */
 export function Marquee({ children, speed = 40, reverse = false }: { children: ReactNode; speed?: number; reverse?: boolean }) {
@@ -77,7 +77,8 @@ export function Beams({ nodes, size = 460 }: { nodes: { label: string; icon: Rea
       <div className="beams-core">
         <span className="beams-pulse" />
         <span className="beams-pulse" style={{ animationDelay: '1.4s' }} />
-        <LogoMark size={Math.round(size * 0.17)} />
+        {/* sized in CSS from --size, so the phone layout can shrink it */}
+        <ThreadMark />
       </div>
       {nodes.map((n, i) => (
         <span

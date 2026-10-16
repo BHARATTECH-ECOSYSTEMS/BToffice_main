@@ -16,6 +16,7 @@ export const EMPLOYEE_LOGIN_URL = isLocal
   : 'https://learning-management-frontend-v1nx.onrender.com/login';
 
 export const LINKEDIN_URL = 'https://www.linkedin.com/company/bharattech/posts/';
+export const INSTAGRAM_URL = 'https://www.instagram.com/bharattech_org/';
 
 export const PROBLEMS = [
   {
@@ -469,4 +470,5 @@ export const CONTACT_FAQ = [
   { q: 'How do you partner with institutions and enterprises?', a: 'Through joint research programmes, sponsored fellowships with academic institutions, and early-access deployments for teams building on Origin’s intelligence infrastructure.' },
   { q: 'Are you hiring researchers and systems engineers?', a: 'Yes. We look for researchers, systems engineers and mathematicians who would rather spend a decade on the right problem than a quarter on the easy one. See the Careers page for open roles.' },
   { q: 'How quickly will I hear back?', a: 'Every message is read by a member of the team. Expect a considered reply within two working days.' },
+  { q: 'Can we visit your office?', a: 'Yes. Our research and engineering teams work from Kanpur, Uttar Pradesh, India. Write to us before you visit, so the right people are there to meet you.' },
 ];

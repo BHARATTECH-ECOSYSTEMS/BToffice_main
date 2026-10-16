@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { Arrow, Headline, Reveal, toneStyle, useInView, BtnText } from '../components/ui';
 import { useQuiet } from '../gl/Scene';
+import { useGlassTilt } from '../components/useGlassTilt';
 import { DEPT_TONES, ROLES } from '../content';
 import '../styles/careers-section.css';
 
@@ -17,6 +18,8 @@ export function CareersSection() {
   const [panel, inView] = useInView<HTMLDivElement>('0px 0px -15% 0px');
   const [onScreen, setOnScreen] = useState(false);
   useQuiet(ref);
+  // the panel's glass lights up under the cursor (only the --gx/--gy spot is used; the panel never tilts)
+  useGlassTilt(ref, '.careers-panel');
 
   // the drifting light behind the panel only moves while the panel can be seen
   useEffect(() => {
@@ -47,6 +50,8 @@ export function CareersSection() {
             <i />
             <i />
           </div>
+          {/* the cursor's spotlight on the glass and the rim it lights (careers-section.css) */}
+          <div className="careers-light" aria-hidden="true" />
 
           <div className="careers-intro">
             <p className="careers-count">

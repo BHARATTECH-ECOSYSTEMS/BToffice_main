@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { ThreadMark } from '../sections/Faq';
 import { useScene } from '../gl/Scene';
+import { useGlassTilt } from './useGlassTilt';
+import { ThreadMark } from './ui';
 
 /** How far through the page's scroll the button appears. */
 const SHOW_AT = 0.4;
@@ -13,6 +14,9 @@ const SHOW_AT = 0.4;
 export function BackToTop() {
   // the shared scroll respects reduced motion and the smooth scroller
   const { scrollTo } = useScene();
+  const button = useRef<HTMLButtonElement>(null);
+  // a glass orb, like the nav's keys: it leans towards the cursor and the shine follows it
+  useGlassTilt(button, '.to-top');
   const sentinel = useRef<HTMLSpanElement>(null);
   const [shown, setShown] = useState(false);
 
@@ -44,7 +48,7 @@ export function BackToTop() {
   return (
     <>
       <span ref={sentinel} className="to-top-sentinel" aria-hidden="true" />
-      <button type="button" className="to-top" data-shown={shown || undefined} onClick={() => scrollTo(0)} aria-label="Back to top">
+      <button ref={button} type="button" className="to-top" data-shown={shown || undefined} onClick={() => scrollTo(0)} aria-label="Back to top">
         <ThreadMark />
         {/* the button's aria-label already says this; the tip is for sighted pointer and keyboard users */}
         <span className="to-top-tip" aria-hidden="true">

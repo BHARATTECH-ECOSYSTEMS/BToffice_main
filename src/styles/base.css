@@ -121,11 +121,37 @@ body.dark {
   backdrop-filter: blur(22px) saturate(1.6);
 }
 
+/* dark glass keys: a faint frosted body with a cool top edge */
 [data-theme='dark'] .nav-links > a,
 [data-theme='dark'] .nav-links > button,
+[data-theme='dark'] .nav-brand,
 .dark .nav-links > a,
-.dark .nav-links > button {
+.dark .nav-links > button,
+.dark .nav-brand {
+  --key-edge: inset 0 1px 0 rgb(255 255 255 / 0.16), inset 0 -1px 2px rgb(0 0 0 / 0.3);
   color: var(--ink-soft);
+  background-color: rgb(255 255 255 / 0.04);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.12), rgb(255 255 255 / 0) 62%);
+  box-shadow:
+    var(--key-edge),
+    inset 0 0 0 1px rgb(255 255 255 / 0.08),
+    0 6px 14px -8px rgb(0 0 0 / 0.6);
+}
+[data-theme='dark'] .nav-links > [data-lit],
+.dark .nav-links > [data-lit] {
+  background-color: color-mix(in srgb, var(--tone, var(--violet)) 26%, rgb(255 255 255 / 0.06));
+  box-shadow:
+    var(--key-edge),
+    inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--violet)) 40%, transparent),
+    0 8px 18px -8px color-mix(in srgb, var(--tone, var(--violet)) 55%, transparent);
+}
+[data-theme='dark'] .nav-links > a::after,
+[data-theme='dark'] .nav-links > button::after,
+[data-theme='dark'] .nav-brand::after,
+.dark .nav-links > a::after,
+.dark .nav-links > button::after,
+.dark .nav-brand::after {
+  background: radial-gradient(60px circle at var(--gx, 50%) var(--gy, 0%), rgb(255 255 255 / 0.22), rgb(255 255 255 / 0) 70%);
 }
 
 [data-theme='dark'] .nav-links > *:hover,
@@ -135,40 +161,20 @@ body.dark {
   color: var(--ink);
 }
 
-/* the light pill is near-white, which would hide the dark theme's light link text */
+/* the colour pool glows brighter under dark glass; the violet glass login button is the same in both themes */
 [data-theme='dark'] .nav-hl,
 .dark .nav-hl {
-  background: color-mix(in srgb, var(--tone, var(--violet)) 26%, rgb(255 255 255 / 0.07));
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.12),
-    inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--violet)) 34%, transparent);
+  background: color-mix(in srgb, var(--tone, var(--violet)) 60%, transparent);
 }
 
 [data-theme='dark'] .nav-brand,
 .dark .nav-brand {
   color: var(--ink);
 }
-
-[data-theme='dark'] .nav-cta,
-.dark .nav-cta {
-  background: #FAF9F6;
+/* --ink turns light in the dark theme, which would hide the arrow on the login button's white disc */
+[data-theme='dark'] .nav-cta-icon,
+.dark .nav-cta-icon {
   color: #0A0910;
-}
-[data-theme='dark'] .nav-cta:hover,
-.dark .nav-cta:hover {
-  color: #fff;
-}
-[data-theme='dark'] .nav-cta .nav-cta-icon,
-.dark .nav-cta .nav-cta-icon {
-  background: rgba(10, 9, 16, 0.08);
-  color: #0A0910;
-}
-@media (hover: hover) and (pointer: fine) {
-  [data-theme='dark'] .nav-cta:hover .nav-cta-icon,
-  .dark .nav-cta:hover .nav-cta-icon {
-    background: #fff;
-    color: #6E58F5;
-  }
 }
 
 [data-theme='dark'] .footer,
@@ -796,17 +802,53 @@ h3 {
   opacity: 0;
   visibility: hidden;
   translate: 0 12px;
-  transition: opacity var(--dur-ui) var(--ease), translate var(--dur-ui) var(--ease), visibility 0s linear var(--dur-ui), box-shadow var(--dur-hover) var(--ease);
+  transition: opacity var(--dur-ui) var(--ease), translate var(--dur-ui) var(--ease), visibility 0s linear var(--dur-ui), box-shadow var(--dur-hover) var(--ease), transform 0.2s var(--ease);
 }
 .to-top[data-shown] {
   opacity: 1;
   visibility: visible;
   translate: 0 0;
-  transition: opacity var(--dur-ui) var(--ease), translate var(--dur-ui) var(--ease), visibility 0s, box-shadow var(--dur-hover) var(--ease);
+  transition: opacity var(--dur-ui) var(--ease), translate var(--dur-ui) var(--ease), visibility 0s, box-shadow var(--dur-hover) var(--ease), transform 0.2s var(--ease);
 }
 .to-top .faq-mark {
   width: 48px;
   height: 48px;
+}
+/* 3D glass over the live mark: a fixed highlight, a bright rim and a shaded lower edge (as on the nav's logo orb),
+   plus a shine that follows the cursor. The orb leans towards the cursor on `transform` (useGlassTilt); showing and
+   pressing use `translate` and `scale`, so the three never fight. */
+.to-top {
+  transform: perspective(300px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+}
+.to-top::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(42% 30% at 34% 24%, rgb(255 255 255 / 0.8), rgb(255 255 255 / 0) 100%),
+    radial-gradient(80% 80% at 50% 50%, rgb(255 255 255 / 0) 62%, rgb(255 255 255 / 0.35) 100%);
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.55),
+    inset -3px -5px 10px rgb(20 8 80 / 0.45),
+    inset 2px 2px 5px rgb(255 255 255 / 0.25);
+  pointer-events: none;
+}
+.to-top::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: 50%;
+  background: radial-gradient(30px circle at var(--gx, 50%) var(--gy, 0%), rgb(255 255 255 / 0.55), rgb(255 255 255 / 0) 70%);
+  opacity: 0;
+  transition: opacity var(--dur-hover) var(--ease);
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .to-top:hover::before {
+    opacity: 1;
+  }
 }
 .to-top:focus-visible {
   outline: 2px solid var(--violet);
@@ -881,9 +923,10 @@ h3 {
 .nav[data-hidden] {
   transform: translate3d(0, calc(-100% - 24px), 0);
 }
+/* a drop only, no fade: the bar's own opening (the glass unfolding, Motion in Nav.tsx) has to be visible from its
+   first frame */
 @keyframes navIn {
   from {
-    opacity: 0;
     transform: translate3d(0, -24px, 0);
   }
 }
@@ -893,11 +936,12 @@ h3 {
   display: flex;
   align-items: center;
   gap: 6px;
-  /* its 16px inner padding puts the logo on the shared text column */
+  /* the 9px inset matches the brand box's room above and below; with the box's own 7px it puts the logo on the
+     shared text column (16px in from the bar) */
   max-width: calc(var(--content) + 32px);
   height: var(--nav-h);
   margin: 0 auto;
-  padding: 0 8px 0 16px;
+  padding: 0 8px 0 9px;
   border-radius: var(--r-pill);
   isolation: isolate;
   will-change: transform;
@@ -933,9 +977,61 @@ h3 {
   background: rgb(255 253 249 / 0.96);
 }
 .nav-brand {
+  --key-edge: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 -1px 2px rgb(40 30 90 / 0.08);
+  position: relative;
+  isolation: isolate;
   flex: none;
-  padding: 6px 4px;
+  /* 34px logo + 4px above and below = a 42px box: even room inside the 60px bar (56px compact). Flex, because as
+     an inline link its height came from the text line (50px), not from what it holds */
+  display: flex;
+  align-items: center;
+  padding: 4px 16px 4px 7px;
   border-radius: var(--r-pill);
+  /* the same glass as the link keys; it leans and catches the light the same way (useGlassTilt) */
+  background-color: rgb(255 255 255 / 0.36);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0) 62%);
+  box-shadow:
+    var(--key-edge),
+    inset 0 0 0 1px rgb(255 255 255 / 0.6),
+    0 1px 1px rgb(20 19 15 / 0.05),
+    0 4px 10px -6px rgb(30 20 60 / 0.22);
+  transform: perspective(300px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+  transition: transform 0.2s var(--ease);
+}
+/* The logo as a glass orb, like the one on the sign-in button: a fixed highlight and rim over the mark. Hovering
+   the brand rolls the logo one turn under that highlight, so it reads as a ball turning in the light. */
+.nav-orb {
+  position: relative;
+  display: block;
+  flex: none;
+  border-radius: 50%;
+  box-shadow:
+    0 0 0 1px rgb(255 255 255 / 0.6),
+    0 4px 10px -3px rgb(53 24 154 / 0.55);
+}
+.nav-orb .faq-mark {
+  display: block;
+  width: 34px;
+  height: 34px;
+  transition: transform 0.7s var(--ease-io);
+}
+.nav-orb::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    radial-gradient(42% 30% at 34% 24%, rgb(255 255 255 / 0.85), rgb(255 255 255 / 0) 100%),
+    radial-gradient(80% 80% at 50% 50%, rgb(255 255 255 / 0) 62%, rgb(255 255 255 / 0.35) 100%);
+  box-shadow:
+    inset -2px -3px 6px rgb(20 8 80 / 0.45),
+    inset 1px 1px 3px rgb(255 255 255 / 0.25);
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .nav-brand:hover .nav-orb .faq-mark {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes roll {
@@ -951,31 +1047,159 @@ h3 {
   transform: translateX(-50%);
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 6px;
 }
+/* Every link is a small 3D glass key: a frosted body, a sheen on its top half, a lit top edge and a faint shaded
+   bottom. The key under the cursor (or the open glance, or the current page) is lit: it takes its link's tone and
+   lifts. As the cursor moves across a key it leans that way and a shine follows the pointer (--rx/--ry and
+   --gx/--gy from useGlassTilt). */
 .nav-links > a,
 .nav-links > button {
+  --key-edge: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 -1px 2px rgb(40 30 90 / 0.08);
   position: relative;
   z-index: 1;
+  isolation: isolate;
   display: inline-flex;
   align-items: center;
   gap: 8px;
   height: 38px;
-  /* extra room on the right for the dot that marks the current (and hovered) link */
+  /* extra room on the right for the dot that marks the lit link */
   padding: 0 24px 0 14px;
   border-radius: var(--r-pill);
+  background-color: rgb(255 255 255 / 0.36);
+  background-image: linear-gradient(180deg, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0) 62%);
+  box-shadow:
+    var(--key-edge),
+    inset 0 0 0 1px rgb(255 255 255 / 0.6),
+    0 1px 1px rgb(20 19 15 / 0.05),
+    0 4px 10px -6px rgb(30 20 60 / 0.22);
   font-size: 14px;
   font-weight: 550;
   color: var(--ink-2);
   white-space: nowrap;
-  transition: color 0.25s var(--ease);
+  transform: perspective(300px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift, 0px));
+  transition:
+    color 0.25s var(--ease),
+    background-color 0.22s var(--ease),
+    box-shadow 0.22s var(--ease),
+    transform 0.2s var(--ease);
   animation: navItem 0.8s var(--ease) both;
-  animation-delay: calc(240ms + var(--i) * 55ms);
+  /* after the bar's glass has unfolded (the Motion opening in Nav.tsx) */
+  animation-delay: calc(850ms + var(--i) * 55ms);
 }
+.nav-links > [data-lit] {
+  --lift: -1px;
+  background-color: color-mix(in srgb, var(--tone, var(--violet)) 14%, rgb(255 255 255 / 0.6));
+  box-shadow:
+    var(--key-edge),
+    inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--violet)) 30%, rgb(255 255 255 / 0.5)),
+    0 1px 1px rgb(20 19 15 / 0.05),
+    0 8px 18px -8px color-mix(in srgb, var(--tone, var(--violet)) 60%, transparent);
+}
+/* the shine under the cursor; it sits behind the label so the text stays crisp */
+.nav-links > a::after,
+.nav-links > button::after,
+.nav-brand::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: radial-gradient(60px circle at var(--gx, 50%) var(--gy, 0%), rgb(255 255 255 / 0.9), rgb(255 255 255 / 0) 70%);
+  opacity: 0;
+  transition: opacity 0.2s var(--ease);
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav-links > [data-fx='tilt']:hover::after,
+  .nav-brand:hover::after {
+    opacity: 1;
+  }
+}
+
+/* ── Each link's own hover (data-fx, set from LINKS in Nav.tsx). drop = the liquid drop (.nav-bubble below) and
+   tilt = the lean and shine above; the other four are here. Their light sits at z-index -1 inside the key, above
+   its glass and below the label. */
+
+/* sweep: a band of light crosses the glass once */
+.nav-links > [data-fx='sweep'],
+.nav-links > [data-fx='ripple'] {
+  overflow: hidden;
+}
+.nav-links > [data-fx='sweep']::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: 0;
+  z-index: -1;
+  width: 45%;
+  background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.95) 45%, color-mix(in srgb, var(--tone) 30%, rgb(255 255 255 / 0.6)) 60%, transparent);
+  transform: translateX(-130%) skewX(-18deg);
+  pointer-events: none;
+}
+/* ripple: a ring of the key's colour spreads from where the cursor came in (--px/--py) */
+.nav-links > [data-fx='ripple']::before {
+  content: '';
+  position: absolute;
+  left: var(--px, 50%);
+  top: var(--py, 50%);
+  z-index: -1;
+  width: 16px;
+  height: 16px;
+  margin: -8px 0 0 -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, transparent 35%, color-mix(in srgb, var(--tone) 45%, transparent) 70%, transparent 72%);
+  opacity: 0;
+  pointer-events: none;
+}
+/* magnet: the key is drawn a few px towards the cursor, its label a little further (--mg-x/--mg-y, -1..1) */
+.nav-links > [data-fx='magnet'] {
+  transform: translate(calc(var(--mg-x, 0) * 4px), calc(var(--mg-y, 0) * 3px + var(--lift, 0px)));
+}
+.nav-key-label {
+  display: inline-block;
+  transform: translate(calc(var(--mg-x, 0) * 3px), calc(var(--mg-y, 0) * 2px));
+  transition: transform 0.25s var(--ease);
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .nav-links > [data-fx='sweep']:hover::before {
+    animation: navSweep 0.75s var(--ease-io);
+  }
+  .nav-links > [data-fx='ripple']:hover::before {
+    animation: navRipple 0.7s var(--ease);
+  }
+  /* roll: the site's button roll (.btn-text) */
+  .nav-links > [data-fx='roll']:hover .btn-text > span {
+    transform: translateY(-1.3em);
+  }
+}
+@keyframes navSweep {
+  to {
+    transform: translateX(330%) skewX(-18deg);
+  }
+}
+@keyframes navRipple {
+  from {
+    opacity: 1;
+    transform: scale(0.4);
+  }
+  to {
+    opacity: 0;
+    transform: scale(13);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-links > [data-fx='magnet'],
+  .nav-key-label {
+    transform: none;
+  }
+}
+/* the entrance uses `translate`, so it never fights the keys' tilt on `transform` */
 @keyframes navItem {
   from {
     opacity: 0;
-    transform: translateY(-6px);
+    translate: 0 -6px;
   }
 }
 .nav-links i {
@@ -996,52 +1220,72 @@ h3 {
 .nav-links > [aria-current] {
   color: var(--ink);
 }
-/* the link's own dot marks the current page; the hover dot rides inside .nav-hl */
+/* the lit key's own dot, in its tone */
+.nav-links > [data-lit] i,
 .nav-links > [aria-current] i {
   opacity: 1;
   transform: translateY(-50%) scale(1);
 }
+/* a pool of the lit link's colour that glides beneath the glass keys, so it shows through them from below */
 .nav-hl {
   position: absolute;
   left: 0;
   top: 50%;
-  height: 38px;
-  margin-top: -19px;
+  height: 26px;
+  margin-top: -6px;
   border-radius: var(--r-pill);
-  background: color-mix(in srgb, var(--tone, var(--violet)) 7%, #fff);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.9),
-    inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--violet)) 14%, transparent),
-    0 4px 12px -4px color-mix(in srgb, var(--tone, var(--violet)) 35%, rgb(30 20 60 / 0.25));
+  background: color-mix(in srgb, var(--tone, var(--violet)) 45%, transparent);
+  filter: blur(10px);
   opacity: 0;
   will-change: transform, width, opacity;
   transition:
     opacity 0.2s var(--ease),
-    background-color 0.22s var(--ease),
-    box-shadow 0.22s var(--ease);
+    background-color 0.22s var(--ease);
 }
-.nav-hl::after {
-  content: '';
+/* The liquid glass drop over the keys (useNavBubble sets its size and position every frame). It is clear glass: a
+   bright rim, a highlight up-left, a faint tint of the key it wraps, and a lens that lifts the colours under it.
+   Its size is set as width/height because a scaled pill would squash its round ends into an oval; `contain`
+   keeps that resize to this one element. */
+.nav-bubble {
   position: absolute;
-  right: 11px;
+  left: 0;
   top: 50%;
-  width: 6px;
-  height: 6px;
-  margin-top: -3px;
-  border-radius: 50%;
-  background: var(--tone, var(--violet));
-  transition: background-color 0.22s var(--ease);
+  z-index: 2;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--r-pill);
+  contain: strict;
+  background:
+    radial-gradient(120% 90% at 30% 18%, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0.06) 45%, rgb(255 255 255 / 0) 70%),
+    color-mix(in srgb, var(--tone, var(--violet)) 6%, transparent);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.75),
+    inset 0 4px 6px rgb(255 255 255 / 0.45),
+    inset 0 -5px 10px color-mix(in srgb, var(--tone, var(--violet)) 18%, transparent),
+    0 8px 18px -8px rgb(60 40 160 / 0.35);
+  -webkit-backdrop-filter: saturate(1.5) brightness(1.04);
+  backdrop-filter: saturate(1.5) brightness(1.04);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s var(--ease);
+}
+.nav-bubble[data-on] {
+  opacity: 1;
+}
+.nav-bubble[data-wrap] {
+  background:
+    radial-gradient(120% 90% at 30% 18%, rgb(255 255 255 / 0.45), rgb(255 255 255 / 0.04) 45%, rgb(255 255 255 / 0) 70%),
+    color-mix(in srgb, var(--tone, var(--violet)) 9%, transparent);
 }
 .nav-hl[data-glide] {
   transition:
     transform 0.22s var(--ease-expo),
     width 0.22s var(--ease-expo),
     opacity 0.2s var(--ease),
-    background-color 0.22s var(--ease),
-    box-shadow 0.22s var(--ease);
+    background-color 0.22s var(--ease);
 }
 .nav-hl[data-show] {
-  opacity: 1;
+  opacity: 0.9;
 }
 .nav-end {
   display: flex;
@@ -1059,27 +1303,46 @@ h3 {
   border-radius: var(--r-pill);
   overflow: hidden;
   isolation: isolate;
-  background: var(--ink);
+  /* violet glass, the same as the login pop-up's sign-in button; it leans and lights like the link keys */
+  background: linear-gradient(180deg, #8C79FF 0%, #6E58F5 52%, #5A41E2 100%);
   color: #fff;
-  border: 1px solid rgb(110 88 245 / 0.35);
-  box-shadow: 0 10px 25px -8px rgb(110 88 245 / 0.45);
+  border: 1px solid rgb(255 255 255 / 0.28);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.6),
+    inset 0 -3px 8px rgb(35 16 120 / 0.38),
+    0 10px 24px -10px rgb(110 88 245 / 0.65);
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
+  transform: perspective(300px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
   transition:
     height 0.4s var(--ease),
-    transform 0.25s var(--ease),
+    transform 0.2s var(--ease),
+    scale var(--dur-press) var(--ease),
     color 0.3s var(--ease),
     box-shadow 0.3s var(--ease);
-  animation: navItem 0.8s var(--ease) 520ms both;
+  animation: navItem 0.8s var(--ease) 1150ms both;
 }
 @media (hover: hover) and (pointer: fine) {
   .nav-cta:hover {
-    box-shadow: 0 14px 30px -10px rgb(110 88 245 / 0.55);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.7),
+      inset 0 -3px 8px rgb(35 16 120 / 0.38),
+      0 14px 30px -10px rgb(110 88 245 / 0.75);
   }
 }
 .nav-cta:active {
-  transform: scale(0.97);
+  scale: 0.97;
+}
+/* the gloss over its top half, above the bloom and below the label */
+.nav-cta::after {
+  content: '';
+  position: absolute;
+  inset: 1px 12px 50% 12px;
+  z-index: -1;
+  border-radius: 999px 999px 40% 40% / 999px 999px 100% 100%;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.42), rgb(255 255 255 / 0.04));
+  pointer-events: none;
 }
 .nav[data-compact] .nav-cta {
   height: 42px;
@@ -1094,7 +1357,8 @@ h3 {
   margin: -5px 0 0 -5px;
   z-index: -1;
   border-radius: 50%;
-  background: linear-gradient(135deg, #7B68EE, #6E58F5);
+  /* on violet glass the bloom is light rather than purple: the glass brightens from where the cursor came in */
+  background: rgb(255 255 255 / 0.16);
   /* from half size and invisible: growing out of nothing reads as a pop, not a fill */
   opacity: 0;
   transform: scale(0.5);
@@ -1322,22 +1586,195 @@ h3 {
   font-size: 16px;
   line-height: 1.5;
 }
-.footer-social {
+.footer-connect {
+  --trace: 0deg;
+  position: relative;
+  isolation: isolate;
   display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 18px;
+  gap: 4px;
+  /* room above for the name that pops up over a hovered icon, so it clears the line of text */
+  margin-top: 30px;
+  padding: 4px;
+  border-radius: var(--r-pill);
+  /* the footer's own colour, so the pill melts into it: only a hairline edge shows where it is */
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+/* While the pointer is on the pill, a line of light runs round its edge: a bright arc of a conic gradient,
+   masked to a 1.5px rim, turned by --trace. */
+@property --trace {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+.footer-connect::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.5px;
+  background: conic-gradient(from var(--trace), transparent 0deg 250deg, color-mix(in srgb, var(--violet) 15%, transparent) 300deg, var(--violet) 352deg, transparent 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s var(--ease);
+  pointer-events: none;
+}
+.footer-connect-slot {
+  --net: #fff;
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--ink-2);
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line);
+  transition:
+    color 0.25s var(--ease),
+    box-shadow 0.3s var(--ease),
+    background-color 0.3s var(--ease),
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+/* each network's own colour for its glow */
+.footer-connect-slot[data-net='github'],
+.footer-connect-slot[data-net='x'] {
+  --net: var(--ink);
+}
+.footer-connect-slot[data-net='youtube'] {
+  --net: #ff0000;
+}
+.footer-connect-slot[data-net='discord'] {
+  --net: #5865f2;
+}
+.footer-connect-slot[data-net='linkedin'] {
+  --net: #0a66c2;
+}
+.footer-connect-slot[data-net='instagram'] {
+  --net: #e1306c;
+}
+.footer-connect-slot[data-net='email'] {
+  --net: #d98a00;
+}
+/* each slot turns over on X like a split-flap: the letter on the front, the icon on the back */
+.footer-connect-flip {
+  position: absolute;
+  inset: 0;
+  transform-style: preserve-3d;
+  transform: perspective(200px) rotateX(180deg);
+  transition: transform 0.5s cubic-bezier(0.34, 1.4, 0.64, 1) calc(var(--k) * 45ms);
+}
+.footer-connect-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  backface-visibility: hidden;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
   color: var(--ink-soft);
-  font-size: 15px;
-  transition: color 0.2s var(--ease);
 }
-.footer-social:hover {
-  color: var(--cobalt);
+.footer-connect-face.is-icon {
+  transform: rotateX(180deg);
+  color: inherit;
 }
-.footer-social svg {
-  width: 18px;
-  height: 18px;
+.footer-connect-face svg {
+  width: 15px;
+  height: 15px;
   fill: currentColor;
+}
+/* GitHub, X, YouTube and Discord are icons only for now (no account yet), so they don't show a link cursor */
+.footer-connect-slot.is-icon-only {
+  cursor: default;
+}
+/* Mouse and trackpad: at rest the pill spells CONNECT; on hover (or keyboard focus inside) it opens. */
+@media (hover: hover) and (pointer: fine) {
+  .footer-connect:not(:hover, :focus-within) .footer-connect-flip {
+    transform: perspective(200px) rotateX(0deg);
+    transition-delay: calc((6 - var(--k)) * 35ms);
+  }
+}
+.footer-connect-tip {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  padding: 3px 8px;
+  border-radius: 7px;
+  background: var(--paper);
+  box-shadow:
+    inset 0 0 0 1px var(--net),
+    0 6px 16px -6px color-mix(in srgb, var(--net) 50%, transparent);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-50%, 6px) scale(0.9);
+  transition:
+    opacity 0.2s var(--ease),
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  pointer-events: none;
+}
+.footer-connect-slot:is(:hover, :focus-visible) {
+  color: var(--net);
+  background-color: color-mix(in srgb, var(--net) 8%, transparent);
+  box-shadow:
+    inset 0 0 0 1.5px var(--net),
+    inset 0 0 10px color-mix(in srgb, var(--net) 22%, transparent),
+    0 0 16px 1px color-mix(in srgb, var(--net) 35%, transparent);
+}
+.footer-connect-slot:is(:hover, :focus-visible) .footer-connect-tip {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+.footer-connect-slot:focus-visible {
+  outline: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .footer-connect:hover::after {
+    opacity: 1;
+    animation: footer-trace 2.4s linear infinite;
+  }
+  .footer-connect-slot:hover {
+    transform: scale(1.08);
+  }
+}
+@keyframes footer-trace {
+  to {
+    --trace: 360deg;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .footer-connect:hover::after {
+    animation: none;
+  }
+  .footer-connect-slot,
+  .footer-connect-tip,
+  .footer-connect-flip {
+    transition-property: opacity, color, box-shadow, background-color;
+  }
+  /* no turning over: the letter and the icon simply swap */
+  .footer-connect-face {
+    backface-visibility: visible;
+  }
+  .footer-connect-flip .footer-connect-face:not(.is-icon) {
+    opacity: 0;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .footer-connect:not(:hover, :focus-within) .footer-connect-face:not(.is-icon) {
+      opacity: 1;
+    }
+    .footer-connect:not(:hover, :focus-within) .footer-connect-face.is-icon {
+      opacity: 0;
+    }
+  }
+  .footer-connect-slot:hover {
+    transform: none;
+  }
 }
 .footer-col h4 {
   margin-bottom: 20px;

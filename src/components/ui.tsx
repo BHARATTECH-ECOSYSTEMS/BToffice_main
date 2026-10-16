@@ -1,5 +1,5 @@
 import { useEffect, useId, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
-import { threadPaths } from '../gl/threads';
+import { ORIGIN_POINT, threadPaths } from '../gl/threads';
 import type { HueName } from '../gl/palette';
 
 const PATHS = threadPaths();
@@ -32,11 +32,34 @@ export function LogoMark({ size = 28 }: { size?: number }) {
   );
 }
 
-/** `mark` swaps the still logo for another, such as the live ThreadMark. */
+/** The logo and the wordmark. The logo is the live ThreadMark; `mark` swaps in another, such as the nav's glass orb. */
+/**
+ * The live logo, used wherever the brand shows: the mark drawn flat, its three threads drawing in, meeting at the
+ * origin and letting go again (the loop is in story.css, .faq-mark-*). `size` in px; without it the CSS sizes it.
+ */
+export function ThreadMark({ size }: { size?: number }) {
+  // the mark appears many times on a page, so each copy needs its own clip id
+  const clip = `mark-disc-${useId().replace(/:/g, '')}`;
+  return (
+    <svg className="faq-mark" viewBox="-1.1 -1.1 2.2 2.2" aria-hidden="true" style={size ? { width: size, height: size } : undefined}>
+      <clipPath id={clip}>
+        <circle r="1" />
+      </clipPath>
+      <circle r="1" className="faq-mark-disc" />
+      <g clipPath={`url(#${clip})`}>
+        {PATHS.map((d, i) => (
+          <path key={i} d={d} pathLength={1} className="faq-mark-thread" style={{ '--k': i } as CSSProperties} />
+        ))}
+      </g>
+      <circle cx={ORIGIN_POINT[0]} cy={-ORIGIN_POINT[1]} r="0.07" className="faq-mark-origin" />
+    </svg>
+  );
+}
+
 export function Brand({ size = 28, mark }: { size?: number; mark?: ReactNode }) {
   return (
     <span className="brand">
-      {mark ?? <LogoMark size={size} />}
+      {mark ?? <ThreadMark size={size} />}
       <span className="brand-word">
         Bharattech<span>Origin</span>
       </span>

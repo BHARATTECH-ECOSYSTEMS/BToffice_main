@@ -2,9 +2,8 @@ import { createContext, useCallback, useContext, useEffect, useId, useRef, useSt
 import { useLocation, useNavigate } from 'react-router';
 import { useScene } from '../gl/Scene';
 import { getSession, startSession } from '../portal/session';
-import { ThreadMark } from '../sections/Faq';
 import { LogoGlass } from './LogoGlass';
-import { Arrow, Brand, BtnText } from './ui';
+import { Arrow, Brand, BtnText, ThreadMark } from './ui';
 import '../styles/login.css';
 
 /**
@@ -55,20 +54,12 @@ const COPY: Record<View, { title: string; sub: string; submit: string; busy: str
 };
 // matches the closing animation in login.css
 const CLOSE_MS = 220;
-// The sign-in walk (after the "Lunara" reel): the door opens, the figure walks through, the door shuts, then the
-// button floods teal from the doorway. These match the keyframes in login.css.
-const WALK_MS = 1450;
-// long enough for the teal, the check and then the sparks (they start SPARK_MS into the welcome; login.css)
-const WELCOME_MS = 1150;
-const SPARK_MS = 380;
-// where each spark lands, from the check in the middle of the button: a loose fan, mostly upwards
-const SPARKS: { x: number; y: number; size: number }[] = [
-  { x: -78, y: -26, size: 6 },
-  { x: -38, y: -50, size: 8 },
-  { x: 6, y: -58, size: 5 },
-  { x: 46, y: -46, size: 7 },
-  { x: 82, y: -18, size: 6 },
-];
+// The sign-in moment: the glass logo orb pops in and rolls one full turn while a ring traces a circle round it
+// (ROLL_MS, matching the keyframes in login.css), then the logo breaks into dots (BURST_MS, src/gl/logoBurst.ts).
+const ROLL_MS = 1300;
+const BURST_MS = 1000;
+// the orb's radius in px (.login-orb-ball in login.css): the dots start exactly where the logo was
+const ORB_RADIUS = 17;
 
 /**
  * A soft two-note "ting" for the welcome, made in the browser so there's no audio file to load. Browsers only let
@@ -110,6 +101,8 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
   const form = useRef<HTMLFormElement>(null);
   const timer = useRef(0);
   const walk = useRef<number[]>([]);
+  const burstCanvas = useRef<HTMLCanvasElement>(null);
+  const stopBurst = useRef<() => void>(() => {});
   const [closing, setClosing] = useState(false);
   const [view, setView] = useState<View>('signin');
   // which way the new view slides in; unset until the first switch, so the opening stagger plays only once
@@ -145,6 +138,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
     return () => {
       window.clearTimeout(timer.current);
       walk.current.forEach((t) => window.clearTimeout(t));
+      stopBurst.current();
       root.style.overflow = overflow;
       lenis?.start();
       if (d.open) d.close();
@@ -196,17 +190,24 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
         navigate('/portal');
       };
       if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        // no walk and no sparks, but the sound isn't motion, so the ting still marks the welcome
+        // no roll and no dots, but the sound isn't motion, so the ting still marks the welcome
         setStatus({ kind: 'welcome' });
         scheduleChime(0.05);
         walk.current.push(window.setTimeout(enter, 400));
         return;
       }
-      scheduleChime((WALK_MS + SPARK_MS) / 1000);
+      // load the dot burst now, so it's ready by the time the roll ends
+      const burst = import('../gl/logoBurst');
+      scheduleChime(ROLL_MS / 1000);
       setStatus({ kind: 'entering' });
       walk.current.push(
-        window.setTimeout(() => setStatus({ kind: 'welcome' }), WALK_MS),
-        window.setTimeout(enter, WALK_MS + WELCOME_MS),
+        window.setTimeout(() => {
+          setStatus({ kind: 'welcome' });
+          void burst.then(({ playLogoBurst }) => {
+            if (burstCanvas.current) stopBurst.current = playLogoBurst(burstCanvas.current, { radius: ORB_RADIUS, duration: BURST_MS });
+          });
+        }, ROLL_MS),
+        window.setTimeout(enter, ROLL_MS + BURST_MS),
       );
       return;
     }
@@ -334,42 +335,33 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
                 </div>
               )}
               {view === 'signin' ? (
-                // the wrapper holds the sparks, which fly outside the button (the button clips what's inside it)
-                <div className="login-submit-wrap" data-phase={status.kind === 'welcome' ? 'welcome' : undefined}>
-                <button
-                  type="submit"
-                  className="btn btn-primary login-submit is-door"
-                  data-phase={status.kind === 'entering' || status.kind === 'welcome' ? status.kind : undefined}
-                  aria-disabled={status.kind === 'entering' || status.kind === 'welcome' || undefined}
-                >
-                  <span className="login-submit-label">
-                    <BtnText>{copy.submit}</BtnText>
-                  </span>
-                  {/* a little figure by a glass door: on sign-in it walks through, the door shuts and the button
-                      turns teal from the doorway. Decoration only; the status line below says what is happening */}
-                  <span className="login-door" aria-hidden="true">
-                    <span className="login-door-light" />
-                    <span className="login-door-panel" />
-                  </span>
-                  <svg className="login-walker" viewBox="0 0 12 24" aria-hidden="true">
-                    <circle cx="6" cy="3.2" r="2.3" />
-                    <path className="login-walker-body" d="M6 5.8v8" />
-                    <path className="login-walker-arm is-a" d="M6 7.4l-2.6 4.4" />
-                    <path className="login-walker-arm is-b" d="M6 7.4l2.6 4.4" />
-                    <path className="login-walker-leg is-a" d="M6 13.8l-2.4 8.4" />
-                    <path className="login-walker-leg is-b" d="M6 13.8l2.4 8.4" />
-                  </svg>
-                  <span className="login-flood" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" width="20" height="20">
-                      <path d="M5 12.5l4.5 4.5L19 7.5" />
-                    </svg>
-                  </span>
-                </button>
-                <span className="login-sparks" aria-hidden="true">
-                  {SPARKS.map((s, i) => (
-                    <i key={i} style={{ '--x': `${s.x}px`, '--y': `${s.y}px`, '--s': `${s.size}px`, '--k': i } as React.CSSProperties} />
-                  ))}
-                </span>
+                // the wrapper holds the dot canvas, which reaches outside the button (the button clips what's inside it)
+                <div className="login-submit-wrap">
+                  <button
+                    type="submit"
+                    className="btn btn-primary login-submit is-glass"
+                    data-phase={status.kind === 'entering' || status.kind === 'welcome' ? status.kind : undefined}
+                    aria-disabled={status.kind === 'entering' || status.kind === 'welcome' || undefined}
+                  >
+                    <span className="login-submit-label">
+                      <BtnText>{copy.submit}</BtnText>
+                    </span>
+                    {/* the logo as a glass orb: it rolls a full turn inside a ring, then breaks into dots (the canvas
+                        below). Decoration only; the status line under the form says what is happening */}
+                    <span className="login-orb" aria-hidden="true">
+                      <svg className="login-orb-ring" viewBox="0 0 46 46">
+                        <circle cx="23" cy="23" r="21" pathLength={1} />
+                      </svg>
+                      <span className="login-orb-comet" />
+                      <span className="login-orb-ball">
+                        <ThreadMark size={ORB_RADIUS * 2} />
+                      </span>
+                    </span>
+                    <span className="login-submit-done" aria-hidden="true">
+                      Welcome back
+                    </span>
+                  </button>
+                  <canvas ref={burstCanvas} className="login-burst" aria-hidden="true" />
                 </div>
               ) : (
                 <button type="submit" className="btn btn-primary login-submit" disabled={status.kind === 'loading'}>

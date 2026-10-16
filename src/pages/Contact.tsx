@@ -3,8 +3,8 @@ import { PageHero, Quiet } from '../components/PageHero';
 import { OfficeMap } from '../components/OfficeMap';
 import { useScene } from '../gl/Scene';
 import '../styles/contact.css';
-import { Accordion, ThreadMark } from '../sections/Faq';
-import { Arrow, Headline, Reveal, toneStyle, BtnText } from '../components/ui';
+import { Accordion } from '../sections/Faq';
+import { Arrow, Headline, Reveal, toneStyle, BtnText, ThreadMark } from '../components/ui';
 import { CONTACT_FAQ, CONTACT_NEEDS, EMAIL, EMAIL_HREF, HQ, HQ_MAP } from '../content';
 import type { HueName } from '../gl/palette';
 
@@ -172,7 +172,7 @@ export function Contact() {
             </Reveal>
           </div>
           <Reveal delay={100}>
-            <Accordion items={CONTACT_FAQ} tone="violet" tags={['Partners', 'Hiring', 'Replies']} />
+            <Accordion items={CONTACT_FAQ} tone="violet" tags={['Partners', 'Hiring', 'Replies', 'Visits']} initial={null} />
           </Reveal>
         </div>
       </Quiet>
