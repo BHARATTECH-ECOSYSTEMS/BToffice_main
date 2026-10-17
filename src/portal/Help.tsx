@@ -34,7 +34,7 @@ const GROUPS: { title: string; icon: PortalIconName; topics: Topic[] }[] = [
     topics: [
       { q: 'How do I change my name or photo?', a: 'Open Settings, then Profile. Upload a PNG, JPG or WebP photo up to 5 MB; it’s cropped to a square. Save changes to update your name everywhere.', link: { to: '/portal/settings?tab=profile', label: 'Open Profile settings' } },
       { q: 'How do I change my password?', a: 'Open Settings, then Password. The checklist shows what the new password still needs. Password changes aren’t connected to the sign-in system yet, so for now your password stays the same.', link: { to: '/portal/settings?tab=password', label: 'Open Password settings' } },
-      { q: 'Can I choose which emails I get?', a: 'Yes, under Settings, then Notifications. Your choices are saved in this browser. Emails aren’t being sent yet, so the switches take effect once email is connected.', link: { to: '/portal/settings?tab=notifications', label: 'Open Notification settings' } },
+      { q: 'Can I choose which emails I get?', a: 'Yes, from the bell next to your name at the top. Your choices are saved in this browser. Emails aren’t being sent yet, so the switches take effect once email is connected.' },
       { q: 'Why can’t I change my email or role?', a: 'Both come from your company account. Ask an admin if your role is wrong.' },
     ],
   },

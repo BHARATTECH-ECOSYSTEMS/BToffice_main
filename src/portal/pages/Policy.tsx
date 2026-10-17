@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { PolicyCategory, PolicyDoc } from '../data';
 import { managesPortal, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
-import { Badge, btnClass, BtnLabel, ConfirmDelete, Empty, Modal, PageHead, PIcon, Stat, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, DeleteButton, Empty, Modal, PageHead, PIcon, Stat, useNotice } from '../ui';
 
 const CATEGORY: Record<PolicyCategory, string> = { policy: 'Policy', compliance: 'Compliance' };
 const MAX_MB = 20;
@@ -13,7 +13,6 @@ export function Policy() {
   const { policies, acceptances, me, acceptPolicy, addPolicy, removePolicy } = usePortal();
   const byId = usePeopleById();
   const [uploading, setUploading] = useState(false);
-  const [deleting, setDeleting] = useState<PolicyDoc | null>(null);
   const [notice, notify] = useNotice();
   const accepted = (docId: string) => acceptances.some((a) => a.docId === docId && a.personId === me.id);
   const docName = (id: string) => policies.find((d) => d.id === id)?.name ?? 'Removed document';
@@ -89,11 +88,7 @@ export function Policy() {
                       <td className="is-end">
                         {isManager ? (
                           role === 'admin' && (
-                            <button type="button" className={btnClass('danger', { small: true })} onClick={() => setDeleting(d)}>
-                              <BtnLabel icon="trash">
-                                Delete<span className="sr-only"> {d.name}</span>
-                              </BtnLabel>
-                            </button>
+                            <DeleteButton small srText={d.name} onDone={() => (removePolicy(d.id), notify(`${d.name} was deleted.`))} />
                           )
                         ) : (
                           !accepted(d.id) &&
@@ -171,7 +166,6 @@ export function Policy() {
           }}
         />
       )}
-      {deleting && <ConfirmDelete what={deleting.name} onClose={() => setDeleting(null)} onConfirm={() => (removePolicy(deleting.id), notify(`${deleting.name} was deleted.`))} />}
     </>
   );
 }

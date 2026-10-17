@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { formatMinutes, plural, totalMinutes, youtubeId, type Lecture } from '../../lmsData';
 import { usePortal } from '../../store';
-import { btnClass, BtnLabel, Modal, PIcon } from '../../ui';
+import { btnClass, BtnLabel, DeleteButton, Modal, PIcon } from '../../ui';
 
 const MAX_THUMB_MB = 2;
 const THUMB_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -165,14 +165,11 @@ export function AddCourse() {
                           </span>
                           {l.preview && <span className="p-badge is-soft">Free preview</span>}
                           <span className="p-dim">{formatMinutes(l.minutes)}</span>
-                          <button
-                            type="button"
-                            className="p-icon-btn is-danger"
-                            aria-label={`Remove lecture ${l.title}`}
-                            onClick={() => updateChapter(c.id, (x) => ({ ...x, lectures: x.lectures.filter((y) => y.id !== l.id) }))}
-                          >
-                            <PIcon name="trash" size={15} />
-                          </button>
+                          <DeleteButton
+                            small
+                            srText={`lecture ${l.title}`}
+                            onDone={() => updateChapter(c.id, (x) => ({ ...x, lectures: x.lectures.filter((y) => y.id !== l.id) }))}
+                          />
                         </li>
                       ))}
                     </ul>

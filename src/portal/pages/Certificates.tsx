@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { CERTIFICATE_TYPES, type Certificate, type CertificateType } from '../data';
 import { managesPortal, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
-import { btnClass, BtnLabel, ConfirmDelete, Empty, Modal, PageHead, PIcon, SearchField, Stat, useNotice } from '../ui';
+import { btnClass, BtnLabel, DeleteButton, Empty, Modal, PageHead, PIcon, SearchField, Stat, useNotice } from '../ui';
 import type { PortalIconName } from '../data';
 
 const TYPE_ICON: Record<CertificateType, PortalIconName> = { bonafide: 'file', character: 'shield', transfer: 'cap', completion: 'book' };
@@ -170,7 +170,6 @@ function History({ isManager, notify }: { isManager: boolean; notify: (t: string
   const byId = usePeopleById();
   const [q, setQ] = useState('');
   const [viewing, setViewing] = useState<Certificate | null>(null);
-  const [deleting, setDeleting] = useState<Certificate | null>(null);
   const mine = isManager ? certificates : certificates.filter((c) => c.recipientId === me.id);
   const query = q.trim().toLowerCase();
   const rows = mine.filter((c) => !query || [typeOf(c.type).name, byId.get(c.recipientId)?.name ?? '', c.issuedBy].some((v) => v.toLowerCase().includes(query)));
@@ -224,11 +223,7 @@ function History({ isManager, notify }: { isManager: boolean; notify: (t: string
                           </BtnLabel>
                         </button>
                         {canDelete && (
-                          <button type="button" className={btnClass('danger', { small: true })} onClick={() => setDeleting(c)}>
-                            <BtnLabel icon="trash">
-                              Delete<span className="sr-only"> {typeOf(c.type).name}</span>
-                            </BtnLabel>
-                          </button>
+                          <DeleteButton small srText={typeOf(c.type).name} onDone={() => (removeCertificate(c.id), notify('Certificate deleted.'))} />
                         )}
                       </div>
                     </td>
@@ -268,13 +263,6 @@ function History({ isManager, notify }: { isManager: boolean; notify: (t: string
           </div>
           <p className="p-hint">Preview only. PDF download arrives with the backend.</p>
         </Modal>
-      )}
-      {deleting && (
-        <ConfirmDelete
-          what={`this ${typeOf(deleting.type).name.toLowerCase()}`}
-          onClose={() => setDeleting(null)}
-          onConfirm={() => (removeCertificate(deleting.id), notify('Certificate deleted.'))}
-        />
       )}
     </>
   );

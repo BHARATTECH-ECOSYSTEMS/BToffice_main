@@ -1,19 +1,19 @@
 import { useRef, useState, type ChangeEvent, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { PortalIconName } from '../data';
-import { NOTIFICATION_KINDS, ROLE_NAME, setDisplayName, setMutedNotifications, setPhoto, useSession, type NotificationKind } from '../session';
+import { ROLE_NAME, setDisplayName, setPhoto, useSession } from '../session';
 import { Badge, btnClass, BtnLabel, initials, PageHead, PIcon, useNotice } from '../ui';
 
 const MIN_PASSWORD = 8;
 const PHOTO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
 const PHOTO_MAX_MB = 5;
-// stored as a small square so it fits in browser storage and loads instantly
-const PHOTO_SIZE = 160;
+// stored as a square big enough to stay sharp on the dashboard's profile card (~380px wide) and the ID card on
+// high-density screens, yet small enough for browser storage (a JPEG of roughly 60-100 KB)
+const PHOTO_SIZE = 640;
 
 const SECTIONS: { id: string; label: string; icon: PortalIconName; Panel: () => React.JSX.Element }[] = [
   { id: 'profile', label: 'Profile', icon: 'users', Panel: ProfilePanel },
   { id: 'password', label: 'Password', icon: 'lock', Panel: PasswordPanel },
-  { id: 'notifications', label: 'Notifications', icon: 'bell', Panel: NotificationsPanel },
 ];
 
 /**
@@ -26,7 +26,7 @@ export function Settings() {
   const current = SECTIONS[index];
   return (
     <>
-      <PageHead title="Settings" sub="Your photo, name, password and notifications." />
+      <PageHead title="Settings" sub="Your photo, name and password." />
       <div className="p-settings">
         {/* one dark pill slides to the open section, so the change reads as a move rather than two blinks */}
         <nav className="p-set-nav" aria-label="Settings sections" style={{ '--i': index } as CSSProperties}>
@@ -275,30 +275,6 @@ function PasswordPanel() {
       <Row label="Confirm new password" htmlFor="pw-confirm">
         {field('pw-confirm', confirm, setConfirm, 'new-password')}
       </Row>
-    </SettingsCard>
-  );
-}
-
-function NotificationsPanel() {
-  const muted = useSession()!.mutedNotifications ?? [];
-  const toggle = (kind: NotificationKind, on: boolean) => setMutedNotifications(on ? muted.filter((k) => k !== kind) : [...muted, kind]);
-
-  return (
-    <SettingsCard
-      id="settings-notify"
-      title="Email notifications"
-      sub="Choose what you want to hear about."
-      footer={<p className="p-set-foot-note">Saved in this browser. Emails aren't connected yet, so none are sent for now.</p>}
-    >
-      {NOTIFICATION_KINDS.map((k) => (
-        <label key={k.id} className="p-set-row is-switch">
-          <span className="p-set-label">
-            <span>{k.label}</span>
-            <p>{k.hint}</p>
-          </span>
-          <input type="checkbox" role="switch" className="p-switch" checked={!muted.includes(k.id)} onChange={(e) => toggle(k.id, e.target.checked)} />
-        </label>
-      ))}
     </SettingsCard>
   );
 }

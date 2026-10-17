@@ -17,6 +17,9 @@
 
   /* Brand Color System (Violet, Tango Orange, Pitch Yellow) */
   --violet: #6E58F5;     /* Electric Violet */
+  --violet-text: var(--violet);
+  /* the violet glass of the site's main buttons (login, profile, the portal's delete) */
+  --violet-glass: linear-gradient(180deg, #8C79FF 0%, #6E58F5 52%, #5A41E2 100%);
   --tango-orange: #FF8643;
   --tangerine: #FF8643;  /* Tango Orange */
   --pitch-yellow: #F59E00;
@@ -98,7 +101,10 @@ body.dark {
   --ink: #FAF9F6;
   --ink-2: #E5E3DC;
   --ink-soft: #A39E92;
-  --muted: #736E65;
+  /* light enough for small print on the dark cards (about 4.5:1); #736E65 was 3.5:1 */
+  --muted: #948E83;
+  /* the brand violet is 3.7:1 on the dark cards; text takes a light tint of it */
+  --violet-text: #A597FF;
   --line: rgba(255, 255, 255, 0.09);
   --line-strong: rgba(255, 255, 255, 0.18);
   --cultured: #0A0910;
@@ -137,13 +143,13 @@ body.dark {
     inset 0 0 0 1px rgb(255 255 255 / 0.08),
     0 6px 14px -8px rgb(0 0 0 / 0.6);
 }
-[data-theme='dark'] .nav-links > [data-lit],
-.dark .nav-links > [data-lit] {
+[data-theme='dark'] :where(:not([data-drop])) > .nav-links > [data-lit],
+.dark :where(:not([data-drop])) > .nav-links > [data-lit] {
   background-color: color-mix(in srgb, var(--tone, var(--violet)) 26%, rgb(255 255 255 / 0.06));
   box-shadow:
     var(--key-edge),
     inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--violet)) 40%, transparent),
-    0 8px 18px -8px color-mix(in srgb, var(--tone, var(--violet)) 55%, transparent);
+    0 6px 14px -8px rgb(0 0 0 / 0.6);
 }
 [data-theme='dark'] .nav-links > a::after,
 [data-theme='dark'] .nav-links > button::after,
@@ -164,7 +170,7 @@ body.dark {
 /* the colour pool glows brighter under dark glass; the violet glass login button is the same in both themes */
 [data-theme='dark'] .nav-hl,
 .dark .nav-hl {
-  background: color-mix(in srgb, var(--tone, var(--violet)) 60%, transparent);
+  background: color-mix(in srgb, var(--tone, var(--violet)) 36%, transparent);
 }
 
 [data-theme='dark'] .nav-brand,
@@ -802,17 +808,51 @@ h3 {
   opacity: 0;
   visibility: hidden;
   translate: 0 12px;
-  transition: opacity var(--dur-ui) var(--ease), translate var(--dur-ui) var(--ease), visibility 0s linear var(--dur-ui), box-shadow var(--dur-hover) var(--ease), transform 0.2s var(--ease);
+  scale: 0.94;
+  transition: opacity var(--dur-ui) var(--ease), translate var(--dur-ui) var(--ease), scale var(--dur-ui) var(--ease), visibility 0s linear var(--dur-ui), box-shadow var(--dur-hover) var(--ease), transform 0.2s var(--ease);
 }
 .to-top[data-shown] {
   opacity: 1;
   visibility: visible;
   translate: 0 0;
-  transition: opacity var(--dur-ui) var(--ease), translate var(--dur-ui) var(--ease), visibility 0s, box-shadow var(--dur-hover) var(--ease), transform 0.2s var(--ease);
+  scale: 1;
+  transition: opacity var(--dur-ui) var(--ease), translate var(--dur-ui) var(--ease), scale var(--dur-press) var(--ease), visibility 0s, box-shadow var(--dur-hover) var(--ease), transform 0.2s var(--ease);
 }
 .to-top .faq-mark {
   width: 48px;
   height: 48px;
+}
+/* the well clips the logo to the orb, so it can leave through the floor and come back in from the top; the glass
+   (::after) stays over it */
+.to-top-well {
+  display: block;
+  overflow: hidden;
+  border-radius: 50%;
+}
+.to-top-well .faq-mark {
+  display: block;
+}
+/* On click the logo sinks down through the orb and out of its floor, as if going underground, then loops back in
+   from the top and settles, while the orb lifts; the page starts gliding as it settles (LOOP_MS / LAUNCH_MS in
+   BackToTop.tsx). `translate`, so it never fights the mark's own transforms. */
+.to-top[data-looping] .faq-mark {
+  animation: to-top-loop 620ms both;
+}
+@keyframes to-top-loop {
+  0% {
+    translate: 0 0;
+    animation-timing-function: var(--ease-io);
+  }
+  42% {
+    translate: 0 115%;
+  }
+  42.1% {
+    translate: 0 -115%;
+    animation-timing-function: var(--ease);
+  }
+  100% {
+    translate: 0 0;
+  }
 }
 /* 3D glass over the live mark: a fixed highlight, a bright rim and a shaded lower edge (as on the nav's logo orb),
    plus a shine that follows the cursor. The orb leans towards the cursor on `transform` (useGlassTilt); showing and
@@ -864,6 +904,11 @@ h3 {
 .to-top:active {
   scale: 0.94;
 }
+/* while it spins the orb lifts and its glow brightens: it is the thing going up */
+.to-top[data-shown][data-looping] {
+  translate: 0 -6px;
+  box-shadow: 0 20px 34px -10px color-mix(in srgb, var(--violet) 85%, transparent);
+}
 /* anchored to the right edge: the button sits in the screen's right corner, so a centred tip would leave it */
 .to-top-tip {
   position: absolute;
@@ -894,11 +939,21 @@ h3 {
     translate: 0 0;
   }
 }
+/* reduced motion: the orb and its tip still fade, but nothing moves, grows or lifts */
 @media (prefers-reduced-motion: reduce) {
   .to-top,
   .to-top[data-shown],
+  .to-top[data-shown][data-looping] {
+    translate: 0 0;
+    scale: 1;
+    transition: opacity var(--dur-ui) var(--ease), visibility 0s linear var(--dur-ui);
+  }
+  .to-top[data-shown] {
+    transition: opacity var(--dur-ui) var(--ease), visibility 0s;
+  }
   .to-top-tip {
-    transition: none;
+    translate: 0 0;
+    transition: opacity var(--dur-ui) var(--ease);
   }
 }
 
@@ -1087,14 +1142,15 @@ h3 {
   /* after the bar's glass has unfolded (the Motion opening in Nav.tsx) */
   animation-delay: calc(850ms + var(--i) * 55ms);
 }
-.nav-links > [data-lit] {
+/* while the liquid drop wraps a key (data-drop on the bar) the drop is the only hover light, so this steps back */
+:where(:not([data-drop])) > .nav-links > [data-lit] {
   --lift: -1px;
-  background-color: color-mix(in srgb, var(--tone, var(--violet)) 14%, rgb(255 255 255 / 0.6));
+  background-color: color-mix(in srgb, var(--tone, var(--violet)) 9%, rgb(255 255 255 / 0.62));
   box-shadow:
     var(--key-edge),
-    inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--violet)) 30%, rgb(255 255 255 / 0.5)),
+    inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--violet)) 24%, rgb(255 255 255 / 0.5)),
     0 1px 1px rgb(20 19 15 / 0.05),
-    0 8px 18px -8px color-mix(in srgb, var(--tone, var(--violet)) 60%, transparent);
+    0 4px 10px -6px rgb(30 20 60 / 0.22);
 }
 /* the shine under the cursor; it sits behind the label so the text stays crisp */
 .nav-links > a::after,
@@ -1105,7 +1161,7 @@ h3 {
   inset: 0;
   z-index: -1;
   border-radius: inherit;
-  background: radial-gradient(60px circle at var(--gx, 50%) var(--gy, 0%), rgb(255 255 255 / 0.9), rgb(255 255 255 / 0) 70%);
+  background: radial-gradient(54px circle at var(--gx, 50%) var(--gy, 0%), rgb(255 255 255 / 0.6), rgb(255 255 255 / 0) 70%);
   opacity: 0;
   transition: opacity 0.2s var(--ease);
   pointer-events: none;
@@ -1226,16 +1282,17 @@ h3 {
   opacity: 1;
   transform: translateY(-50%) scale(1);
 }
-/* a pool of the lit link's colour that glides beneath the glass keys, so it shows through them from below */
+/* A tint of the lit link's colour that glides beneath the glass keys. It is exactly the key's size, with no blur,
+   so the colour shows through that key alone and never spreads onto its neighbours. (Its width and position are the
+   key's, set inline; a `scale` here would also scale that position and push it onto the next key.) */
 .nav-hl {
   position: absolute;
   left: 0;
   top: 50%;
-  height: 26px;
-  margin-top: -6px;
+  height: 38px;
+  margin-top: -19px;
   border-radius: var(--r-pill);
-  background: color-mix(in srgb, var(--tone, var(--violet)) 45%, transparent);
-  filter: blur(10px);
+  background: color-mix(in srgb, var(--tone, var(--violet)) 24%, transparent);
   opacity: 0;
   will-change: transform, width, opacity;
   transition:
@@ -1249,7 +1306,7 @@ h3 {
 .nav-bubble {
   position: absolute;
   left: 0;
-  top: 50%;
+  top: 0;
   z-index: 2;
   width: 30px;
   height: 30px;
@@ -1285,7 +1342,16 @@ h3 {
     background-color 0.22s var(--ease);
 }
 .nav-hl[data-show] {
-  opacity: 0.9;
+  opacity: 1;
+}
+/* One light at a time: while the liquid drop wraps a button it is the hover light, so the colour pool and the
+   cursor shine step back instead of stacking under and over it. The pool comes back to the current page when the
+   pointer leaves the bar. */
+[data-drop] .nav-hl {
+  opacity: 0;
+}
+[data-drop] :is(.nav-brand, .nav-links > [data-fx='tilt'])::after {
+  opacity: 0;
 }
 .nav-end {
   display: flex;
@@ -1304,7 +1370,7 @@ h3 {
   overflow: hidden;
   isolation: isolate;
   /* violet glass, the same as the login pop-up's sign-in button; it leans and lights like the link keys */
-  background: linear-gradient(180deg, #8C79FF 0%, #6E58F5 52%, #5A41E2 100%);
+  background: var(--violet-glass);
   color: #fff;
   border: 1px solid rgb(255 255 255 / 0.28);
   box-shadow:

@@ -3,7 +3,9 @@ import { Link } from 'react-router';
 import { CERTIFICATE_TYPES, toolById, type Person, type PersonRole, type PersonStatus, type PortalIconName, type SecurityEvent, type Task, type TaskStatus } from '../data';
 import { hasArrived, managesPortal, markArrived, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
-import { Badge, btnClass, BtnLabel, ConfirmDelete, Empty, initials, Modal, PIcon, SearchField, Stat, useListFlip, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PIcon, SearchField, Stat, useListFlip, useNotice } from '../ui';
+import { useOfficeDay } from '../eoffice';
+import { IdCardDialog } from '../IdCard';
 import { InviteModal } from './People';
 
 const STATUS_LABEL: Record<TaskStatus, string> = { todo: 'To do', doing: 'In progress', done: 'Done' };
@@ -154,7 +156,11 @@ function EmployeeDashboard({ arrive }: { arrive: boolean }) {
         </ProfileCard>
         <ProgressCard title="Progress" done={done} total={mine.length} empty="No tasks assigned yet." delay={arrive ? ARRIVAL_LEAD : 0} />
         <NextDueCard list={mine} />
-        <TaskBoard title="My tasks" list={mine} editable />
+        {/* the task board's column, with the e-Office check-in above the board */}
+        <div className="p-board-col">
+          <EOfficeCard notify={notify} />
+          <TaskBoard title="My tasks" list={mine} editable />
+        </div>
         <WorkspaceCard notify={notify} />
         <CalendarCard tasks={mine.filter((t) => t.status !== 'done')} />
       </div>
@@ -251,12 +257,24 @@ function Meter({ label, segments }: { label: string; segments: Segment[] }) {
   );
 }
 
-/** The signed-in person: their photo (or initials) filling the card, with name and role over it. */
+/**
+ * The signed-in person: their photo (or initials) filling the card, with name and role over it. Clicking anywhere
+ * on it except the status switch brings out their company ID card.
+ */
 function ProfileCard({ children }: { children?: ReactNode }) {
   const { me } = usePortal();
   const photo = useSession()!.photo;
+  const [showId, setShowId] = useState(false);
   return (
     <section className="p-card p-profile" aria-label="Your profile">
+      {/* the card's click target, under the name and the switch; the foot lets clicks through to it */}
+      <button type="button" className="p-profile-open" aria-haspopup="dialog" onClick={() => setShowId(true)}>
+        <span className="sr-only">Show my company ID card</span>
+      </button>
+      <span className="p-profile-hint" aria-hidden="true">
+        <PIcon name="eye" size={14} />
+        ID card
+      </span>
       {photo ? (
         <img className="p-profile-photo" src={photo} alt="" />
       ) : (
@@ -273,6 +291,7 @@ function ProfileCard({ children }: { children?: ReactNode }) {
         </div>
         {children ?? <span className="p-profile-tag">{PERSON_STATUS_LABEL[me.status]}</span>}
       </div>
+      {showId && <IdCardDialog person={me} photo={photo} onClose={() => setShowId(false)} />}
     </section>
   );
 }
@@ -444,6 +463,87 @@ function NextDueCard({ list }: { list: Task[] }) {
 }
 
 /** The dark task list. People change their own tasks' status here; the team view only reads. */
+const clockTime = (t: number) => new Date(t).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
+const duration = (ms: number) => {
+  const mins = Math.max(0, Math.floor(ms / 60000));
+  return mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
+};
+
+/**
+ * The employee's day in the e-Office: join checks them in and opens the virtual office in a new tab, then the card
+ * shows since when they've been in, with a running time, and a way to leave. The check-in is kept per day in this
+ * browser (eoffice.ts) until attendance has a backend; the office's address comes from TOOLS like the other tools.
+ */
+function EOfficeCard({ notify }: { notify: (t: string) => void }) {
+  const { me } = usePortal();
+  const { day, join, leave } = useOfficeDay(me.email);
+  const office = toolById('eoffice')!;
+  const inside = !!day && !day.left;
+  // the running time only needs the minute, so the card re-renders twice a minute while someone is in
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    if (!inside) return;
+    setNow(Date.now());
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, [inside]);
+
+  const open = () => office.url && window.open(office.url, '_blank', 'noopener,noreferrer');
+  const enter = () => {
+    join();
+    if (office.url) {
+      open();
+      notify('You checked in to the e-Office.');
+    } else notify("You checked in. The e-Office link isn't connected yet, so nothing opened.");
+  };
+
+  return (
+    <section className="p-card p-eoffice" data-state={inside ? 'in' : day ? 'left' : 'out'} aria-labelledby="eoffice-title">
+      <div className="p-eoffice-head">
+        <span className="p-tile-icon">
+          <PIcon name="home" />
+        </span>
+        <div>
+          <h2 id="eoffice-title" className="p-card-title">
+            e-Office
+          </h2>
+          <p className="p-eoffice-sub" role="status">
+            {inside ? (
+              <>
+                <span className="p-eoffice-dot" aria-hidden="true" /> In since {clockTime(day.since)}
+              </>
+            ) : day?.left ? (
+              `Left at ${clockTime(day.left)}`
+            ) : (
+              'Check in to start your day.'
+            )}
+          </p>
+        </div>
+        {day && <p className="p-eoffice-time">{duration((day.left ?? now) - day.since)}</p>}
+      </div>
+      <div className="p-eoffice-actions">
+        {inside ? (
+          <>
+            {office.url && (
+              <button type="button" className={btnClass('primary', { small: true })} onClick={open}>
+                <BtnLabel arrow="up-right">Open e-Office</BtnLabel>
+                <span className="sr-only">(opens in a new tab)</span>
+              </button>
+            )}
+            <button type="button" className={btnClass('ghost', { small: true })} onClick={() => (leave(), notify('You left the e-Office.'))}>
+              <BtnLabel icon="logout">Leave</BtnLabel>
+            </button>
+          </>
+        ) : (
+          <button type="button" className={btnClass('primary', { small: true, wide: true })} onClick={enter}>
+            <BtnLabel icon="home">{day ? 'Join again' : 'Join e-Office'}</BtnLabel>
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
 function TaskBoard({ title, list, editable = false }: { title: string; list: Task[]; editable?: boolean }) {
   const { setTaskStatus } = usePortal();
   const byId = usePeopleById();
@@ -974,20 +1074,6 @@ function TeamPanel() {
 function ManagePerson({ person, onClose, notify }: { person: Person; onClose: () => void; notify: (t: string) => void }) {
   const { setPersonRole, removePerson } = usePortal();
   const [role, setRole] = useState<PersonRole>(person.role);
-  const [deleting, setDeleting] = useState(false);
-
-  if (deleting) {
-    return (
-      <ConfirmDelete
-        what={person.name}
-        onClose={onClose}
-        onConfirm={() => {
-          removePerson(person.id);
-          notify(`${person.name} was deleted.`);
-        }}
-      />
-    );
-  }
   return (
     <Modal
       title={`Manage ${person.name}`}
@@ -1002,11 +1088,14 @@ function ManagePerson({ person, onClose, notify }: { person: Person; onClose: ()
       }}
       footer={
         <>
-          <button type="button" className={btnClass('danger')} onClick={() => setDeleting(true)}>
-            <BtnLabel icon="trash">
-              Delete<span className="sr-only"> account</span>
-            </BtnLabel>
-          </button>
+          <DeleteButton
+            srText="account"
+            onDone={() => {
+              removePerson(person.id);
+              notify(`${person.name} was deleted.`);
+              onClose();
+            }}
+          />
           <button type="button" className={btnClass('ghost')} onClick={onClose}>
             <BtnLabel>Cancel</BtnLabel>
           </button>
@@ -1081,9 +1170,7 @@ function TasksPanel() {
                   </td>
                   <td className="is-end">
                     {canDelete && (
-                      <button type="button" className="p-icon-btn is-danger" onClick={() => (removeTask(t.id), notify('Task removed.'))} aria-label={`Remove task: ${t.title}`}>
-                        <PIcon name="trash" size={16} />
-                      </button>
+                      <DeleteButton small srText={`task: ${t.title}`} onDone={() => (removeTask(t.id), notify('Task removed.'))} />
                     )}
                   </td>
                 </tr>

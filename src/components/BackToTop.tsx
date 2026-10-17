@@ -5,10 +5,15 @@ import { ThreadMark } from './ui';
 
 /** How far through the page's scroll the button appears. */
 const SHOW_AT = 0.4;
+/** The logo's loop on click (the CSS animation in base.css is this long)… */
+const LOOP_MS = 620;
+/** …and when the page starts gliding up: as the logo comes back in from the top and settles. */
+const LAUNCH_MS = 480;
 
 /**
- * The live mark, floating in the bottom-right corner once the visitor is 40% of the way down the page; a click
- * glides back to the top. A sentinel that reaches that point marks "not far enough yet", so nothing reads the
+ * The live mark, floating in the bottom-right corner once the visitor is 40% of the way down the page. A click sends
+ * the logo down through the orb and out of its floor, as if underground; it loops back in from the top and settles
+ * while the orb lifts, then the page glides back to the top. A sentinel that reaches that point marks "not far enough yet", so nothing reads the
  * scroll position while scrolling.
  */
 export function BackToTop() {
@@ -19,6 +24,19 @@ export function BackToTop() {
   useGlassTilt(button, '.to-top');
   const sentinel = useRef<HTMLSpanElement>(null);
   const [shown, setShown] = useState(false);
+  const [looping, setLooping] = useState(false);
+  const timer = useRef(0);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+
+  const goTop = () => {
+    if (looping) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return scrollTo(0);
+    setLooping(true);
+    timer.current = window.setTimeout(() => {
+      scrollTo(0);
+      timer.current = window.setTimeout(() => setLooping(false), LOOP_MS - LAUNCH_MS);
+    }, LAUNCH_MS);
+  };
 
   useEffect(() => {
     const el = sentinel.current;
@@ -48,8 +66,11 @@ export function BackToTop() {
   return (
     <>
       <span ref={sentinel} className="to-top-sentinel" aria-hidden="true" />
-      <button ref={button} type="button" className="to-top" data-shown={shown || undefined} onClick={() => scrollTo(0)} aria-label="Back to top">
-        <ThreadMark />
+      <button ref={button} type="button" className="to-top" data-shown={shown || undefined} data-looping={looping || undefined} onClick={goTop} aria-label="Back to top">
+        {/* the orb's round well: the logo leaves through its floor and comes back in from its top, clipped to the circle */}
+        <span className="to-top-well">
+          <ThreadMark />
+        </span>
         {/* the button's aria-label already says this; the tip is for sighted pointer and keyboard users */}
         <span className="to-top-tip" aria-hidden="true">
           Back to top

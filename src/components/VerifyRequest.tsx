@@ -1,4 +1,5 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
+import { createPortal } from 'react-dom';
 import { useScene } from '../gl/Scene';
 import { submitEmploymentRequest } from '../portal/inbox';
 import { Arrow, BtnText } from './ui';
@@ -10,23 +11,19 @@ import '../styles/verify-request.css';
  * reaches HR OPS → Verification Requests in one place. There is no backend yet: the request is kept in this tab
  * only, and the answer is not emailed back. The form says so.
  */
-export function VerifyRequestBand() {
+/** The footer's request button, under the CONNECT pill, with one line saying who it is for. */
+export function VerifyRequestButton() {
   const [open, setOpen] = useState(false);
   const ids = useId();
   return (
-    <>
-      <section className="footer-verify" aria-labelledby={`${ids}-title`}>
-        <div>
-          <h3 id={`${ids}-title`}>Verifying someone who worked here?</h3>
-          <p>Companies and background-check agencies can send an employment verification request here instead of emailing us.</p>
-        </div>
-        <button type="button" className="btn btn-primary" onClick={() => setOpen(true)} aria-haspopup="dialog">
-          <BtnText>Request a verification</BtnText> <Arrow />
-        </button>
-      </section>
-      {/* beside the strip, not inside it, so the strip's text styles don't reach the form */}
-      {open && <VerifyDialog onClose={() => setOpen(false)} />}
-    </>
+    <div className="footer-request">
+      <p id={`${ids}-hint`}>Verifying someone who worked here?</p>
+      <button type="button" className="btn btn-primary" onClick={() => setOpen(true)} aria-haspopup="dialog" aria-describedby={`${ids}-hint`}>
+        <BtnText>Request a verification</BtnText> <Arrow />
+      </button>
+      {/* in the body, not the footer, so the footer's text styles (.footer-lead p) don't reach the form */}
+      {open && createPortal(<VerifyDialog onClose={() => setOpen(false)} />, document.body)}
+    </div>
   );
 }
 
@@ -39,12 +36,12 @@ const YEARS = Array.from({ length: 31 }, (_, i) => new Date().getFullYear() - i)
  * A month as two dropdowns (month, year), sent as one `YYYY-MM` value under `name`. Used instead of
  * <input type="month">, which Safari and Firefox show as a plain text box with no picker.
  */
-function MonthField({ name, label, required }: { name: string; label: string; required?: boolean }) {
+function MonthField({ name, label, hint, required }: { name: string; label: string; hint?: string; required?: boolean }) {
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
   const id = useId();
   return (
-    <div className="vr-month" role="group" aria-labelledby={`${id}-label`}>
+    <div className="vr-month" role="group" aria-labelledby={`${id}-label`} aria-describedby={hint ? `${id}-hint` : undefined}>
       <span id={`${id}-label`}>{label}</span>
       <div>
         <select aria-label={`${label}: month`} value={month} onChange={(e) => setMonth(e.target.value)} required={required || !!year}>
@@ -62,6 +59,11 @@ function MonthField({ name, label, required }: { name: string; label: string; re
           ))}
         </select>
       </div>
+      {hint && (
+        <small className="vr-hint" id={`${id}-hint`}>
+          {hint}
+        </small>
+      )}
       <input type="hidden" name={name} value={month && year ? `${year}-${month}` : ''} />
     </div>
   );
@@ -78,6 +80,12 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     const d = dialog.current!;
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    // the form grows out of the button that opened it (as the login does): its offset from the screen centre
+    if (opener && opener !== document.body) {
+      const r = opener.getBoundingClientRect();
+      d.style.setProperty('--from-x', `${r.left + r.width / 2 - window.innerWidth / 2}px`);
+      d.style.setProperty('--from-y', `${r.top + r.height / 2 - window.innerHeight / 2}px`);
+    }
     d.showModal();
     lenis?.stop();
     return () => {
@@ -124,14 +132,18 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
       // a click on the dimmed backdrop lands on the dialog element itself
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <button type="button" className="vr-close" onClick={onClose} aria-label="Close">
-        <svg viewBox="0 0 16 16" aria-hidden="true">
-          <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
-        </svg>
-      </button>
+      {/* the title and the close button stay put while the fields scroll under them */}
+      <header className="vr-head">
+        <h2 id={`${ids}-title`}>{reference ? 'Request received' : 'Request an employment verification'}</h2>
+        {!reference && <p className="vr-sub">Tell us who you’re checking. We confirm whether they worked here, for how long, and in which role.</p>}
+        <button type="button" className="vr-close" onClick={onClose} aria-label="Close">
+          <svg viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+          </svg>
+        </button>
+      </header>
       {reference ? (
-        <div className="vr-done" role="status">
-          <h2 id={`${ids}-title`}>Request received</h2>
+        <div className="vr-body vr-done" role="status">
           <p>
             Your reference is <strong className="vr-ref">{reference}</strong>. Our HR team checks it against our records.
           </p>
@@ -144,47 +156,62 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
           </button>
         </div>
       ) : (
-        <form onSubmit={submit}>
-          <h2 id={`${ids}-title`}>Request an employment verification</h2>
-          <p className="vr-sub">Tell us who you’re checking. We confirm whether they worked here, for how long, and in which role.</p>
-          <div className="fields">
-            <label>
-              <span>Your company</span>
-              <input name="company" required autoComplete="organization" autoFocus />
-            </label>
-            <label>
-              <span>Your name</span>
-              <input name="name" required autoComplete="name" />
-            </label>
-            <label className="span-2">
-              <span>Work email (we reply here)</span>
-              <input name="email" type="email" required autoComplete="email" />
-            </label>
-            <label>
-              <span>Candidate’s full name</span>
-              <input name="candidate" required />
-            </label>
-            <label>
-              <span>Designation they gave you</span>
-              <input name="designation" required />
-            </label>
-            <MonthField name="from" label="Joined" required />
-            <MonthField name="to" label="Left (empty if still here)" />
-            <label className="span-2">
-              <span>Employee ID (optional)</span>
-              <input name="employeeId" />
-            </label>
-            <label className="span-2 vr-consent">
+        <form className="vr-form" onSubmit={submit}>
+          <div className="vr-body">
+            <fieldset className="vr-group">
+              <legend>About you</legend>
+              <div className="fields">
+                <label>
+                  <span>Your company</span>
+                  <input name="company" required autoComplete="organization" placeholder="Company name" autoFocus />
+                </label>
+                <label>
+                  <span>Your name</span>
+                  <input name="name" required autoComplete="name" placeholder="Full name" />
+                </label>
+                <label className="span-2">
+                  <span>Work email</span>
+                  <input name="email" type="email" required autoComplete="email" placeholder="you@company.com" aria-describedby={`${ids}-email`} />
+                  <small className="vr-hint" id={`${ids}-email`}>
+                    We reply to this address, so use your company email.
+                  </small>
+                </label>
+              </div>
+            </fieldset>
+            <fieldset className="vr-group">
+              <legend>The person you’re checking</legend>
+              <div className="fields">
+                <label>
+                  <span>Full name</span>
+                  <input name="candidate" required placeholder="As on their documents" />
+                </label>
+                <label>
+                  <span>Designation they gave you</span>
+                  <input name="designation" required placeholder="e.g. Software Engineer" />
+                </label>
+                <MonthField name="from" label="Joined" required />
+                <MonthField name="to" label="Left" hint="Leave empty if they still work here." />
+                <label className="span-2">
+                  <span>Employee ID</span>
+                  <input name="employeeId" placeholder="Optional" aria-describedby={`${ids}-id`} />
+                  <small className="vr-hint" id={`${ids}-id`}>
+                    Only if they shared it with you.
+                  </small>
+                </label>
+              </div>
+            </fieldset>
+            <label className="vr-consent">
               <input name="consent" type="checkbox" required />
               <span>The candidate has given written consent for this check.</span>
             </label>
+            {error && (
+              <p className="vr-error" role="alert">
+                {error}
+              </p>
+            )}
           </div>
-          {error && (
-            <p className="vr-error" role="alert">
-              {error}
-            </p>
-          )}
-          <div className="form-foot">
+          {/* the send button stays in reach however far the fields are scrolled */}
+          <div className="vr-foot form-foot">
             <button className="btn btn-primary" type="submit">
               <BtnText>Send request</BtnText> <Arrow />
             </button>

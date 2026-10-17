@@ -1,6 +1,7 @@
 import { useRef, type CSSProperties } from 'react';
 import { useQuiet } from '../gl/Scene';
 import { Headline } from '../components/ui';
+import { useGlassTilt } from '../components/useGlassTilt';
 import { Chapter, Steps, usePinned } from '../components/Chapter';
 import { LayerStack } from '../components/art';
 import { LAYERS, LAYER_FAMILIES } from '../content';
@@ -12,6 +13,8 @@ const TONES = LAYERS.map((_, i) => FAMILY_TONES[LAYER_FAMILIES.findIndex((f) => 
 export function Architecture() {
   const ref = useRef<HTMLElement>(null);
   useQuiet(ref);
+  // the frost's shine follows the cursor across the sheet (only --gx/--gy are used: the sheet doesn't lean)
+  useGlassTilt(ref, '.chapter-pin');
   const { step, goTo } = usePinned(ref, LAYERS.length);
   const l = LAYERS[step];
 

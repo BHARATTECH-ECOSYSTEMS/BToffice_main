@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { Brand } from './ui';
 import { useOpenLogin } from './Login';
 import { EMAIL_HREF, INSTAGRAM_URL, LINKEDIN_URL } from '../content';
-import { VerifyRequestBand } from './VerifyRequest';
+import { VerifyRequestButton } from './VerifyRequest';
 
 const COLS: { title: string; links: { label: string; to?: string; login?: boolean }[] }[] = [
   {
@@ -97,7 +97,6 @@ export function Footer() {
   return (
     <footer className="footer">
       <div className="wrap">
-        <VerifyRequestBand />
         <div className="footer-top">
           <div className="footer-lead">
             <Link to="/" aria-label="Bharattech Origin, home">
@@ -137,6 +136,7 @@ export function Footer() {
                 );
               })}
             </nav>
+            <VerifyRequestButton />
           </div>
           {COLS.map((c) => (
             <div className="footer-col" key={c.title}>

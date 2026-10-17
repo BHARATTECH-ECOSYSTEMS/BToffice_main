@@ -301,7 +301,7 @@
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--violet);
+  color: var(--violet-text);
 }
 
 .how-paper-step h3 {

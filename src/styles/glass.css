@@ -34,8 +34,7 @@
     .swing-face,
     .wheel-card,
     .accordion,
-    .nav-peek-body,
-    .footer-verify
+    .nav-peek-body
   ) {
   background-image: var(--glass-sheen);
   box-shadow: var(--glass-edge), var(--glass-drop);
@@ -55,7 +54,6 @@
   --glass-drop: 0 2px 6px -2px rgb(20 19 15 / 0.08), 0 34px 70px -30px rgb(20 19 15 / 0.38);
 }
 /* flat strips inside the page flow: glass, but resting low */
-.footer-verify,
 .contact-sheet,
 .accordion {
   --glass-drop: 0 14px 30px -24px rgb(40 24 110 / 0.28);
@@ -71,10 +69,10 @@
 /* ── Glass in motion (useGlassMotion.ts): the box under the mouse leans towards it on a spring and a shine follows
    the pointer. The lean is the `rotate` property (an axis and an angle), so it adds to each box's own transform; it
    is only set while a box leans or springs back, because any rotate makes a new stacking context. */
-:root:not([data-theme='dark']) :is(.cell:not(.cell-ink), .fan-card, .role-card, .stack-card__inner, .about-callout-card, .how-paper, .about-contact-details, .contact-sheet, .accordion, .footer-verify):is([data-gm], [style*='--gm-a']) {
+:root:not([data-theme='dark']) :is(.cell:not(.cell-ink), .fan-card, .role-card, .stack-card__inner, .about-callout-card, .how-paper, .about-contact-details, .contact-sheet, .accordion):is([data-gm], [style*='--gm-a']) {
   rotate: var(--gm-ax, 0) var(--gm-ay, 1) 0 var(--gm-a, 0deg);
 }
-:root:not([data-theme='dark']) :is(.cell:not(.cell-ink), .fan-card, .role-card, .stack-card__inner, .about-callout-card, .how-paper, .about-contact-details, .contact-sheet, .accordion, .footer-verify)[data-gm] {
+:root:not([data-theme='dark']) :is(.cell:not(.cell-ink), .fan-card, .role-card, .stack-card__inner, .about-callout-card, .how-paper, .about-contact-details, .contact-sheet, .accordion)[data-gm] {
   background-image:
     radial-gradient(420px circle at var(--gm-x, 50%) var(--gm-y, 0%), rgb(255 255 255 / 0.55), rgb(255 255 255 / 0) 45%),
     var(--glass-sheen);

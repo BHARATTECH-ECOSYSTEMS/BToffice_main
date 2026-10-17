@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router';
 import { TOOLS, toolById, type LinkResource, type Tool } from '../data';
 import { managesPortal, useSession } from '../session';
 import { usePeopleById, usePortal } from '../store';
-import { btnClass, BtnLabel, ConfirmDelete, Empty, Modal, PageHead, PIcon, useNotice } from '../ui';
+import { btnClass, BtnLabel, DeleteButton, Empty, Modal, PageHead, PIcon, useNotice } from '../ui';
 import { NotConnected, ToolButton } from './Dashboard';
 
 // The cards keep the old portal's order, which differs from the sidebar's.
@@ -80,7 +80,6 @@ function LinkCard({ link, isManager, canDelete, notify }: { link: LinkResource; 
   const { people, removeLink, assignLink } = usePortal();
   const byId = usePeopleById();
   const [who, setWho] = useState('');
-  const [deleting, setDeleting] = useState(false);
   return (
     <article className="p-card p-resource">
       <span className="p-tile-icon">
@@ -95,11 +94,7 @@ function LinkCard({ link, isManager, canDelete, notify }: { link: LinkResource; 
             <span className="sr-only">{link.name} (opens in a new tab)</span>
           </a>
           {canDelete && (
-            <button type="button" className={btnClass('danger')} onClick={() => setDeleting(true)}>
-              <BtnLabel icon="trash">
-                Delete<span className="sr-only"> {link.name}</span>
-              </BtnLabel>
-            </button>
+            <DeleteButton srText={link.name} onDone={() => (removeLink(link.id), notify(`${link.name} was deleted.`))} />
           )}
         </div>
         {isManager && (
@@ -133,7 +128,6 @@ function LinkCard({ link, isManager, canDelete, notify }: { link: LinkResource; 
         )}
         {isManager && link.assignedTo.length > 0 && <p className="p-dim">Assigned to {link.assignedTo.map((id) => byId.get(id)?.name ?? 'removed user').join(', ')}</p>}
       </div>
-      {deleting && <ConfirmDelete what={link.name} onClose={() => setDeleting(false)} onConfirm={() => (removeLink(link.id), notify(`${link.name} was deleted.`))} />}
     </article>
   );
 }

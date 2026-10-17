@@ -1,35 +1,19 @@
-/* Employment verification request (components/VerifyRequest.tsx): a strip at the top of the site footer and the
+/* Employment verification request (components/VerifyRequest.tsx): a button under the footer's CONNECT pill and the
    form it opens. The fields reuse the contact form's .fields / .form-foot / .form-note. */
 
-.footer-verify {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px 32px;
-  flex-wrap: wrap;
-  /* a little higher than the footer's top padding would put it (about 48px under the footer's edge at 1440px) */
-  margin-top: clamp(-32px, -2.2vw, -16px);
-  margin-bottom: clamp(36px, 4vw, 52px);
-  padding: 22px 26px;
-  border-radius: var(--r-lg);
-  background: var(--bg);
-  box-shadow: inset 0 0 0 1px var(--line);
+/* under the CONNECT pill in the footer's first column: one line saying who it is for, then the button */
+.footer-request {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  margin-top: 22px;
 }
-.footer-verify h3 {
-  margin: 0 0 4px;
-  font-family: var(--display);
-  font-size: 20px;
-  font-weight: var(--fw-head);
-  letter-spacing: -0.02em;
-}
-.footer-verify p {
-  max-width: 560px;
+.footer-lead .footer-request p {
+  max-width: none;
   margin: 0;
-  font-size: 15px;
-  line-height: 1.5;
-  color: var(--ink-2);
+  font-size: 14px;
+  color: var(--ink-soft);
 }
-
 .vr-dialog {
   position: fixed;
   inset: 0;
@@ -38,14 +22,89 @@
   height: fit-content;
   max-height: calc(100svh - 32px);
   margin: auto;
-  padding: clamp(22px, 3vw, 32px);
+  padding: 0;
   border: 0;
   border-radius: var(--r-lg);
   background: var(--paper);
   color: var(--ink);
   box-shadow: 0 0 0 1px var(--line), 0 50px 100px -40px rgb(40 24 110 / 0.45);
+  /* the card itself never scrolls: its fields do (.vr-body), between a fixed header and footer */
+  overflow: hidden;
+  animation: vr-grow 460ms var(--ease-expo) both;
+}
+/* only while open: a closed <dialog> must stay display: none */
+.vr-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.vr-head {
+  position: relative;
+  flex: none;
+  padding: clamp(22px, 3vw, 30px) clamp(22px, 3vw, 32px) 18px;
+  border-bottom: 1px solid var(--line);
+}
+.vr-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* The scrolling part: a thin rounded thumb in the brand violet on a clear track, kept inside the card's corners by
+   the fixed header and footer. scrollbar-color covers Chrome, Edge and Firefox; the -webkit rules cover Safari. */
+.vr-body {
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-  animation: vr-in var(--dur-ui) var(--ease) both;
+  overscroll-behavior: contain;
+  padding: 22px clamp(22px, 3vw, 32px) 6px;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--violet-text) 45%, transparent) transparent;
+  scrollbar-gutter: stable;
+}
+.vr-body::-webkit-scrollbar {
+  width: 12px;
+}
+.vr-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.vr-body::-webkit-scrollbar-thumb {
+  border: 4px solid transparent;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--violet-text) 45%, transparent) padding-box;
+}
+.vr-foot {
+  flex: none;
+  padding: 16px clamp(22px, 3vw, 32px) clamp(18px, 2.4vw, 24px);
+  border-top: 1px solid var(--line);
+}
+/* the two groups: who is asking, and who they are asking about */
+.vr-group {
+  min-width: 0;
+  margin: 0 0 24px;
+  padding: 0;
+  border: 0;
+}
+.vr-group legend {
+  margin-bottom: 12px;
+  padding: 0;
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+/* labels a step stronger than the site's default form, so a long form scans easily */
+.vr-dialog .fields span {
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.vr-dialog .fields input::placeholder {
+  color: var(--muted);
+}
+.vr-hint {
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
 }
 .vr-dialog::backdrop {
   background: rgb(20 19 15 / 0.34);
@@ -53,10 +112,33 @@
   -webkit-backdrop-filter: blur(6px);
   animation: vr-fade var(--dur-ui) var(--ease) both;
 }
-@keyframes vr-in {
+/* The form grows out of the button that opened it (--from-x/--from-y, set in VerifyRequest.tsx) and settles in the
+   centre, like the login; its parts then rise in one after another just behind it. */
+@keyframes vr-grow {
   from {
     opacity: 0;
-    transform: translateY(10px) scale(0.98);
+    transform: translate(var(--from-x, 0px), var(--from-y, 0px)) scale(0.1);
+  }
+  25% {
+    opacity: 1;
+  }
+}
+.vr-dialog[open] :is(.vr-head > *, .vr-group, .vr-consent, .vr-foot, .vr-done > *) {
+  animation: vr-rise 360ms var(--ease-expo) both;
+}
+.vr-dialog[open] .vr-head > :nth-child(1) { animation-delay: 120ms; }
+.vr-dialog[open] .vr-head > :nth-child(2) { animation-delay: 150ms; }
+.vr-dialog[open] .vr-head > :nth-child(3) { animation-delay: 180ms; }
+.vr-dialog[open] .vr-group:nth-child(1) { animation-delay: 200ms; }
+.vr-dialog[open] .vr-group:nth-child(2) { animation-delay: 240ms; }
+.vr-dialog[open] .vr-consent { animation-delay: 280ms; }
+.vr-dialog[open] .vr-foot { animation-delay: 300ms; }
+.vr-dialog[open] .vr-done > :nth-child(2) { animation-delay: 60ms; }
+.vr-dialog[open] .vr-done > :nth-child(3) { animation-delay: 120ms; }
+@keyframes vr-rise {
+  from {
+    opacity: 0;
+    translate: 0 10px;
   }
 }
 @keyframes vr-fade {
@@ -65,7 +147,7 @@
   }
 }
 .vr-dialog h2 {
-  margin: 0 40px 6px 0;
+  margin: 0 44px 6px 0;
   font-family: var(--display);
   font-size: clamp(24px, 2.4vw, 30px);
   font-weight: var(--fw-head);
@@ -73,11 +155,11 @@
   letter-spacing: -0.03em;
 }
 .vr-sub {
-  margin: 0 0 18px;
+  max-width: 48ch;
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
   color: var(--ink-soft);
-}
-.vr-dialog .form-foot {
-  margin-top: 18px;
 }
 .vr-close {
   position: absolute;
@@ -109,14 +191,21 @@
 .vr-close:active {
   scale: 0.97;
 }
-/* the consent line: box and sentence side by side, not stacked like the other fields */
-.fields .vr-consent {
+/* the consent line: box and sentence side by side in a framed row, so it reads as a promise, not another field */
+.vr-consent {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--line);
   cursor: pointer;
 }
-.fields .vr-consent input {
+.vr-consent:has(input:checked) {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--violet) 55%, transparent);
+}
+.vr-consent input {
   flex: none;
   width: 18px;
   height: 18px;
@@ -125,7 +214,7 @@
   box-shadow: none;
   accent-color: var(--violet);
 }
-.fields .vr-consent span {
+.vr-consent span {
   font-size: 14px;
   font-weight: 500;
   color: var(--ink-2);
@@ -134,6 +223,13 @@
   margin: 14px 0 0;
   font-size: 14px;
   color: #c23a30;
+}
+/* the light theme's red is too dark to read on the dark card */
+[data-theme='dark'] .vr-error {
+  color: #fca5a5;
+}
+.vr-done {
+  padding-bottom: clamp(22px, 3vw, 30px);
 }
 .vr-done p {
   margin: 0 0 12px;
@@ -156,14 +252,18 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .vr-dialog,
-  .vr-dialog::backdrop {
+  .vr-dialog::backdrop,
+  .vr-dialog[open] :is(.vr-head > *, .vr-group, .vr-consent, .vr-foot, .vr-done > *) {
     animation-duration: 1ms;
+    animation-delay: 0ms;
   }
 }
 
 /* Joined / Left: month and year dropdowns, styled like the other fields */
 .vr-month {
   display: grid;
+  /* pinned to the top: when the row's other cell has a hint below it, this one must not stretch its rows apart */
+  align-content: start;
   gap: 6px;
 }
 .vr-month > div {

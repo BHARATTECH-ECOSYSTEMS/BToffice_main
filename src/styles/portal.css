@@ -18,6 +18,29 @@ body:has(.portal) .scene {
   padding: 14px;
   background: var(--bg);
 }
+/* Text colours with a meaning (links, warnings, statuses). Each has a light value and a dark one: the light values
+   are deep shades that fall to about 2:1 on the dark theme's cards, so the dark theme swaps in light tints. */
+.portal {
+  --p-accent-text: var(--violet-text);
+  --p-danger-text: #c2410c;
+  --p-success-text: #166534;
+  --p-error-text: #b91c1c;
+  --p-orange-text: #9a3412;
+  --p-amber-text: #92400e;
+  --p-indigo-text: #3730a3;
+  --p-purple-text: #6d28d9;
+  --p-cyan-text: #0e7490;
+}
+[data-theme='dark'] .portal {
+  --p-danger-text: #ff9b6b;
+  --p-success-text: #86efac;
+  --p-error-text: #fca5a5;
+  --p-orange-text: #fdba74;
+  --p-amber-text: #fcd34d;
+  --p-indigo-text: #a5b4fc;
+  --p-purple-text: #c4b5fd;
+  --p-cyan-text: #67e8f9;
+}
 :root:not([data-theme='dark']) .portal {
   --bg: #f6f4ee;
   --paper: #fdfcf9;
@@ -45,7 +68,7 @@ body:has(.portal) .scene {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--paper) 80%, transparent), 0 40px 90px -50px rgb(40 30 90 / 0.35);
 }
 
-/* ── Top bar: brand pill, page pills, then Settings and the user ── */
+/* ── Top bar: the site's nav in the frame. Brand, glass page keys, then the user ── */
 
 .p-top {
   /* its own layer above the page, so its menus open over page buttons that make their own layer (.btn isolates) */
@@ -56,130 +79,30 @@ body:has(.portal) .scene {
   gap: 8px;
   max-width: var(--p-col);
   margin-inline: auto;
-  padding-top: 18px;
+  /* 18px of frame above the bar, then the site bar's room: 60px tall with the 46px user button, the brand 9px in */
+  padding: 25px 8px 7px 9px;
+  border-radius: 30px;
 }
+/* the site's bar glass (.nav-glass in base.css), starting below the frame's room */
+.p-glass {
+  top: 18px;
+}
+/* the glass pill and logo orb come from .nav-brand (base.css), the same brand as the site's nav */
 .p-brand {
-  display: inline-flex;
-  align-items: center;
-  height: 46px;
-  padding: 0 18px 0 12px;
-  border-radius: var(--r-pill);
   color: var(--ink);
-  background: var(--p-card);
-  box-shadow: var(--p-shadow);
 }
-.p-pills {
+.p-top .nav-links {
+  /* on the site the keys sit centred in a fixed bar and give way to a burger at 1024px; here they follow the brand */
   position: relative;
+  left: auto;
+  transform: none;
+  display: flex;
   margin-left: auto;
-  padding: 4px;
-  border-radius: var(--r-pill);
-  /* frosted glass: a sheen on the top half, a bright top edge and a faint shaded bottom over the card colour */
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0) 60%),
-    var(--p-card);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.95),
-    inset 0 -2px 4px rgb(40 30 90 / 0.06),
-    var(--p-shadow);
 }
-/* The prism streak (usePrismLight moves it): a slanted band of light with rainbow edges, trailing the cursor along
-   the bar, over the pills and the dark pill alike. */
-.p-prism {
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  border-radius: inherit;
-  overflow: hidden;
-  pointer-events: none;
-}
-.p-prism > span {
-  position: absolute;
-  top: -20%;
-  left: -45px;
-  width: 90px;
-  height: 140%;
-  background: linear-gradient(
-    90deg,
-    rgb(255 255 255 / 0) 0%,
-    rgb(110 190 255 / 0.22) 24%,
-    rgb(255 255 255 / 0.5) 46%,
-    rgb(190 160 255 / 0.24) 60%,
-    rgb(255 140 200 / 0.2) 72%,
-    rgb(255 205 120 / 0.16) 84%,
-    rgb(255 255 255 / 0) 100%
-  );
-  rotate: 18deg;
-  opacity: 0;
-  transition: opacity 0.3s var(--ease);
-}
-.p-prism > span[data-on] {
-  opacity: 1;
-}
-.p-pills > ul {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  gap: 2px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-/* one dark pill clipped to the active item; moving the clip is the slide */
-.p-pill-glide {
-  position: absolute;
-  inset: 4px;
-  /* above the real labels: it holds their light copy (see TopNav); clicks pass through to the links below */
-  z-index: 2;
-  border-radius: var(--r-pill);
-  /* smoky glass: a lit top edge and a soft sheen over the dark ink. The clip keeps only the active pill, so the
-     edge shows round that pill alone */
-  background:
-    linear-gradient(180deg, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0) 55%),
-    var(--ink);
-  box-shadow:
-    inset 0 1px 0 rgb(255 255 255 / 0.28),
-    inset 0 -2px 5px rgb(0 0 0 / 0.35);
-  pointer-events: none;
-}
-.p-pill-row {
-  display: flex;
-  gap: 2px;
-}
-.p-pill-glide .p-pill {
-  color: var(--paper);
-  transition: none;
-}
-.p-pill-glide[data-ready] {
-  transition: clip-path var(--dur-ui) var(--ease-io), opacity var(--dur-hover) var(--ease);
-}
-.p-pill-wrap {
-  position: relative;
-}
-.p-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  height: 38px;
-  padding: 0 16px;
-  border-radius: var(--r-pill);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-  color: var(--ink-2);
-  transition: color var(--dur-ui) var(--ease-io), background var(--dur-hover) var(--ease), scale var(--dur-press) var(--ease);
-}
-@media (hover: hover) and (pointer: fine) {
-  .p-pill:not(.is-on):hover {
-    background: rgb(20 19 15 / 0.05);
-    color: var(--ink);
-  }
-}
-
 .p-menu {
   position: absolute;
   top: calc(100% + 10px);
-  right: -4px;
+  right: calc(var(--key-r, 0px) - 4px);
   z-index: 40;
   min-width: 250px;
   max-height: min(72vh, 540px);
@@ -268,7 +191,7 @@ body:has(.portal) .scene {
   background: color-mix(in srgb, var(--violet) 10%, transparent);
 }
 .p-menu-link.active .p-icon {
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 @media (hover: hover) and (pointer: fine) {
   .p-menu-link:hover {
@@ -282,10 +205,11 @@ body:has(.portal) .scene {
   align-items: center;
   gap: 8px;
 }
-/* a long name ends in "…" instead of stretching the bar; the full name is in the menu */
-.p-user-name {
+/* a long name ends in "…" instead of stretching the bar; the full name is in the menu. Clipped sideways only, so
+   the roll's copy of the name (its text-shadow, one line down) isn't cut off */
+.p-user-name .btn-text > span {
   max-width: 18ch;
-  overflow: hidden;
+  overflow-x: clip;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -503,7 +427,7 @@ body:has(.portal) .scene {
   transition: background var(--dur-ui) var(--ease), color var(--dur-ui) var(--ease), box-shadow var(--dur-ui) var(--ease);
 }
 .p-set-checks li[data-ok] {
-  color: #166534;
+  color: var(--p-success-text);
 }
 .p-set-checks li[data-ok] .p-set-check {
   color: #fff;
@@ -716,7 +640,7 @@ body:has(.portal) .scene {
 }
 .p-desk-item-meta [data-stale] {
   font-weight: 600;
-  color: #c2410c;
+  color: var(--p-danger-text);
 }
 /* one segment per document, so "which" is visible, not just "how many" */
 .p-meter {
@@ -788,10 +712,10 @@ body:has(.portal) .scene {
   letter-spacing: 0.08em;
 }
 .p-file[data-status='verified'] .p-stamp {
-  color: #15803d;
+  color: var(--p-success-text);
 }
 .p-file[data-status='rejected'] .p-stamp {
-  color: #b91c1c;
+  color: var(--p-error-text);
 }
 .p-stamp[data-fresh] {
   animation: p-stamp-in 420ms var(--ease-expo) both;
@@ -841,7 +765,7 @@ body:has(.portal) .scene {
   white-space: nowrap;
 }
 .p-file-facts a {
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-file-body {
   display: grid;
@@ -1066,7 +990,7 @@ body:has(.portal) .scene {
 }
 @media (hover: hover) and (pointer: fine) {
   .p-help-item summary:hover {
-    color: var(--violet);
+    color: var(--p-accent-text);
   }
 }
 .p-help-item p {
@@ -1082,7 +1006,7 @@ body:has(.portal) .scene {
   margin-bottom: 14px;
   font-size: 13.5px;
   font-weight: 600;
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-help-link .p-icon {
   transition: translate var(--dur-hover) var(--ease);
@@ -1106,7 +1030,7 @@ body:has(.portal) .scene {
 .p-help-contact .p-icon {
   flex: none;
   margin-top: 1px;
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 
 /* Demo only: the "View as" switch floats bottom-left, out of the way of the pages being built */
@@ -1155,23 +1079,323 @@ body:has(.portal) .scene {
 .p-user {
   position: relative;
 }
+/* The profile button is the site's violet glass button (.nav-cta in base.css: glass, gloss, name roll and its
+   entrance after the keys). Here it holds the avatar and the name, leans to the cursor (useGlassTilt) and stays
+   pressed in while its menu is open. No light follows the cursor across it, so the avatar and name stay calm. */
 .p-user-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+  height: auto;
   min-height: 46px;
-  padding: 5px 14px 5px 5px;
+  padding: 5px 16px 5px 6px;
+}
+/* the site button's cursor bloom (::before, grown from --mx/--my) is switched off here */
+.p-user-btn::before {
+  content: none;
+}
+/* pressed in while the menu is open: the light goes inside, the gloss dims and the lift drops */
+.p-user-btn[aria-expanded='true'],
+.p-bell-btn[aria-expanded='true'] {
+  scale: 0.97;
+  box-shadow:
+    inset 0 2px 7px rgb(35 16 120 / 0.55),
+    inset 0 -1px 0 rgb(255 255 255 / 0.3),
+    0 4px 12px -8px rgb(110 88 245 / 0.6);
+}
+.p-user-btn[aria-expanded='true']::after,
+.p-bell-btn[aria-expanded='true']::after {
+  opacity: 0.45;
+}
+/* ── The notifications bell: a round button of the same violet glass, just after the profile button. It rings
+   once as its menu opens; the clapper swings a beat behind the bell. ── */
+.p-notify {
+  position: relative;
+}
+.p-bell-btn {
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+}
+.p-bell-btn::before {
+  content: none;
+}
+.p-bell {
+  width: 20px;
+  height: 20px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.p-bell-body,
+.p-bell-clapper {
+  transform-box: view-box;
+  /* it hangs from its top */
+  transform-origin: 12px 2px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .p-bell-btn:is([aria-expanded='true'], [data-ring]) .p-bell-body {
+    animation: p-bell-ring 620ms var(--ease-io);
+  }
+  .p-bell-btn:is([aria-expanded='true'], [data-ring]) .p-bell-clapper {
+    animation: p-bell-clap 620ms var(--ease-io);
+  }
+}
+/* the unread count, on the bell's top right corner; it arrives with the bell, and pops when something new comes in */
+.p-bell-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
   border-radius: var(--r-pill);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink);
-  background: var(--p-card);
-  box-shadow: var(--p-shadow);
-  transition: scale var(--dur-press) var(--ease);
+  background: #e5484d;
+  box-shadow: 0 0 0 2px var(--paper);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: #fff;
+  pointer-events: none;
+  animation: p-badge-in 300ms var(--ease) 1500ms both;
+}
+.p-bell-badge.is-new {
+  animation: p-badge-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+@keyframes p-badge-in {
+  from {
+    opacity: 0;
+    scale: 0.6;
+  }
+}
+@keyframes p-badge-pop {
+  from {
+    scale: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .p-bell-badge,
+  .p-bell-badge.is-new {
+    animation-name: p-set-fade;
+  }
+}
+@keyframes p-bell-ring {
+  15% {
+    rotate: 16deg;
+  }
+  35% {
+    rotate: -12deg;
+  }
+  55% {
+    rotate: 7deg;
+  }
+  75% {
+    rotate: -3deg;
+  }
+}
+@keyframes p-bell-clap {
+  20% {
+    translate: -1.5px 0;
+  }
+  40% {
+    translate: 1.5px 0;
+  }
+  60% {
+    translate: -0.8px 0;
+  }
+}
+.p-notify-menu {
+  width: 340px;
+  max-height: min(70vh, 540px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* scales out of the bell, which sits over the menu's top right corner */
+  --drop-from: calc(100% - 23px) 0;
+}
+/* switching between the list and the email switches mounts new rows; they rise in with the same stagger as an
+   opening (data-swapped is only set after a switch, so a plain opening keeps its transitions) */
+.p-top-menu[data-open][data-swapped] > * {
+  animation: p-menu-row 240ms var(--ease) calc(var(--i) * 35ms) both;
+}
+@keyframes p-menu-row {
+  from {
+    opacity: 0;
+    translate: 0 6px;
+  }
+}
+.p-notify-head.is-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.p-notify-head.is-row > span:first-child {
+  display: grid;
+  gap: 2px;
+}
+.p-notify-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+}
+.p-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px;
+  border-radius: var(--r-xs);
+  transition: background var(--dur-hover) var(--ease);
+}
+.p-note[data-unread] {
+  background: color-mix(in srgb, var(--violet) 5%, transparent);
 }
 @media (hover: hover) and (pointer: fine) {
-  .p-user-btn:hover {
-    background: var(--paper);
+  .p-note:hover {
+    background: color-mix(in srgb, var(--violet) 10%, transparent);
+  }
+}
+.p-note-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--violet) 10%, var(--paper));
+  color: var(--p-accent-text);
+}
+.p-note-text {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+.p-note-text strong {
+  font-size: 13.5px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--ink-2);
+}
+.p-note[data-unread] .p-note-text strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+.p-note-text small {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.p-note-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  margin-top: 6px;
+  border-radius: 50%;
+  background: var(--violet);
+}
+.p-notify-empty {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 18px 10px 14px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+  text-align: center;
+}
+.p-notify-empty strong {
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.p-notify-head {
+  display: grid;
+  gap: 2px;
+  margin: 0 0 4px;
+  padding: 8px 10px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.p-notify-head strong {
+  font-size: 14.5px;
+  color: var(--ink);
+}
+.p-notify-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 10px;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease);
+}
+.p-notify-row > span {
+  display: grid;
+  gap: 2px;
+}
+.p-notify-row strong {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.p-notify-row small {
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--ink-soft);
+}
+@media (hover: hover) and (pointer: fine) {
+  .p-notify-row:hover {
+    background: color-mix(in srgb, var(--violet) 7%, transparent);
+  }
+}
+.p-notify-foot {
+  margin: 6px 0 0;
+  padding: 10px 10px 4px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--ink-soft);
+}
+/* the avatar as a glass orb (.nav-orb), its initials violet on white so they read on the violet glass. The orb is
+   held to the avatar's exact circle, and the avatar is a block, not a line of text: as text it sat on a line box
+   ~6px taller than itself, which stretched the orb into an oval and pushed its gloss and ring off the photo. */
+.p-user-orb {
+  width: 34px;
+  height: 34px;
+}
+.p-user-orb .p-avatar {
+  display: grid;
+  color: var(--violet);
+  background: linear-gradient(180deg, #fff, #e6e0ff);
+}
+/* a light ring that draws once round the orb on hover, and is put away quickly when the pointer leaves */
+.p-user-ring {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  overflow: visible;
+  rotate: -90deg;
+  pointer-events: none;
+}
+.p-user-ring circle {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.9);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  transition: stroke-dashoffset 0.2s var(--ease);
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .p-user-btn:hover .p-user-ring circle {
+    stroke-dashoffset: 0;
+    transition-duration: 0.6s;
   }
 }
 .p-avatar {
@@ -1198,64 +1422,77 @@ body:has(.portal) .scene {
   font-size: 24px;
 }
 .p-avatar.is-soft {
-  color: var(--violet);
+  color: var(--p-accent-text);
   background: color-mix(in srgb, var(--violet) 12%, var(--paper));
 }
 .p-user-menu {
+  width: 260px;
+}
+/* ── The top bar's dropdowns (profile menu, notifications): each grows out of its own button, scaling from the
+   corner it hangs under and dropping a few pixels, then its rows rise in one after another. Closing is quicker, in
+   one piece and with no stagger, so it never holds up the next click. */
+.p-top-menu {
   position: absolute;
   right: 0;
   top: calc(100% + 8px);
   z-index: 40;
-  width: 260px;
   padding: 8px;
   border-radius: var(--r-sm);
   background: var(--paper);
   box-shadow: 0 0 0 1px var(--line), 0 18px 40px -12px rgb(20 19 15 / 0.22);
-  /* The profile menu swings down from a hinge along its top edge, like a card hanging from the avatar, and its
-     items slide in from the right. Closing swings it back up, faster. */
-  transform-origin: top center;
-  transform: perspective(700px) rotateX(-80deg);
+  transform-origin: var(--drop-from, 100% 0);
   opacity: 0;
+  translate: 0 -6px;
+  scale: 0.96;
   visibility: hidden;
   transition:
-    transform 180ms var(--ease),
-    opacity 140ms var(--ease),
-    visibility 0s linear 180ms;
+    opacity 120ms var(--ease),
+    translate 140ms var(--ease),
+    scale 140ms var(--ease),
+    visibility 0s linear 140ms;
 }
-.p-user-menu[data-open] {
-  transform: perspective(700px) rotateX(0deg);
+.p-top-menu[data-open] {
   opacity: 1;
+  translate: 0 0;
+  scale: 1;
   visibility: visible;
   transition:
-    transform 340ms var(--ease),
     opacity 160ms var(--ease),
+    translate 220ms var(--ease),
+    scale 220ms var(--ease),
     visibility 0s;
 }
-.p-user-menu > * {
+.p-top-menu > * {
   opacity: 0;
-  translate: 12px 0;
+  translate: 0 6px;
   transition:
-    opacity 120ms var(--ease),
-    translate 120ms var(--ease);
+    opacity 100ms var(--ease),
+    translate 0s linear 100ms;
 }
-.p-user-menu[data-open] > * {
+.p-top-menu[data-open] > * {
   opacity: 1;
   translate: 0 0;
   transition:
-    opacity 220ms var(--ease),
-    translate 280ms var(--ease);
+    opacity 200ms var(--ease) calc(40ms + var(--i) * 35ms),
+    translate 240ms var(--ease) calc(40ms + var(--i) * 35ms);
 }
-.p-user-menu[data-open] > :nth-child(2) {
-  transition-delay: 90ms;
+.p-top-menu > * {
+  --i: 0;
 }
-.p-user-menu[data-open] > :nth-child(3) {
-  transition-delay: 120ms;
+.p-top-menu > :nth-child(2) {
+  --i: 1;
 }
-.p-user-menu[data-open] > :nth-child(4) {
-  transition-delay: 150ms;
+.p-top-menu > :nth-child(3) {
+  --i: 2;
 }
-.p-user-menu[data-open] > :nth-child(1) {
-  transition-delay: 60ms;
+.p-top-menu > :nth-child(4) {
+  --i: 3;
+}
+.p-top-menu > :nth-child(5) {
+  --i: 4;
+}
+.p-top-menu > :nth-child(n + 6) {
+  --i: 5;
 }
 /* with reduced motion both menus just fade */
 @media (prefers-reduced-motion: reduce) {
@@ -1273,13 +1510,14 @@ body:has(.portal) .scene {
       opacity 160ms var(--ease),
       visibility 0s;
   }
-  .p-user-menu,
-  .p-user-menu[data-open] {
-    transform: none;
+  .p-top-menu,
+  .p-top-menu[data-open] {
+    translate: none;
+    scale: none;
   }
   .p-menu li,
   .p-menu .p-menu-label,
-  .p-user-menu > * {
+  .p-top-menu > * {
     translate: none !important;
   }
 }
@@ -1308,7 +1546,7 @@ body:has(.portal) .scene {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-user-item {
   display: flex;
@@ -1451,7 +1689,7 @@ body:has(.portal) .scene {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--violet) 18%, transparent);
 }
 .p-link {
-  color: var(--violet);
+  color: var(--p-accent-text);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -1538,7 +1776,7 @@ body:has(.portal) .scene {
   width: 40px;
   height: 40px;
   border-radius: var(--r-sm);
-  color: var(--violet);
+  color: var(--p-accent-text);
   background: color-mix(in srgb, var(--violet) 10%, var(--paper));
 }
 .p-tile-icon.is-large {
@@ -1562,7 +1800,7 @@ body:has(.portal) .scene {
   gap: 8px;
 }
 .p-checks .p-icon {
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-hrms :is(.btn, .p-btn) {
   margin-top: auto;
@@ -1651,7 +1889,7 @@ body:has(.portal) .scene {
   backdrop-filter: none;
 }
 .portal .btn-ghost.is-danger {
-  color: #c2410c;
+  color: var(--p-danger-text);
   box-shadow: inset 0 0 0 1px rgb(194 65 12 / 0.3);
 }
 .portal .btn-ghost.is-danger::before {
@@ -1730,7 +1968,7 @@ body:has(.portal) .scene {
   }
   .p-icon-btn.is-danger:hover {
     background: rgb(194 65 12 / 0.1);
-    color: #c2410c;
+    color: var(--p-danger-text);
   }
 }
 .portal :is(a, button, input, select, [tabindex]):focus-visible {
@@ -1793,7 +2031,7 @@ body:has(.portal) .scene {
   padding: 10px 14px;
   border-radius: var(--r-sm);
   font-size: 13.5px;
-  color: #9a3412;
+  color: var(--p-orange-text);
   background: rgb(255 134 67 / 0.12);
 }
 .p-notice {
@@ -1827,17 +2065,17 @@ body:has(.portal) .scene {
   color: var(--ink-2);
   background: color-mix(in srgb, var(--ink) 6%, var(--paper));
 }
-.p-badge.is-admin { color: #6d28d9; background: color-mix(in srgb, var(--violet) 13%, var(--paper)); }
-.p-badge.is-subadmin { color: #0e7490; background: rgb(6 182 212 / 0.12); }
+.p-badge.is-admin { color: var(--p-purple-text); background: color-mix(in srgb, var(--violet) 13%, var(--paper)); }
+.p-badge.is-subadmin { color: var(--p-cyan-text); background: rgb(6 182 212 / 0.12); }
 .p-badge.is-employee,
-.p-badge.is-policy { color: #3730a3; background: rgb(99 102 241 / 0.1); }
+.p-badge.is-policy { color: var(--p-indigo-text); background: rgb(99 102 241 / 0.1); }
 .p-badge.is-intern,
-.p-badge.is-doing { color: #9a3412; background: rgb(255 134 67 / 0.14); }
+.p-badge.is-doing { color: var(--p-orange-text); background: rgb(255 134 67 / 0.14); }
 .p-badge.is-active,
 .p-badge.is-done,
-.p-badge.is-compliance { color: #166534; background: rgb(34 197 94 / 0.13); }
+.p-badge.is-compliance { color: var(--p-success-text); background: rgb(34 197 94 / 0.13); }
 .p-badge.is-inactive,
-.p-badge.is-rejected { color: #b91c1c; background: rgb(239 68 68 / 0.12); }
+.p-badge.is-rejected { color: var(--p-error-text); background: rgb(239 68 68 / 0.12); }
 /* the dot keeps account status readable at a glance next to the role badge */
 .p-badge.is-active::before,
 .p-badge.is-inactive::before {
@@ -1849,10 +2087,10 @@ body:has(.portal) .scene {
   background: currentColor;
 }
 .p-badge.is-invited,
-.p-badge.is-todo { color: #92400e; background: rgb(245 158 0 / 0.16); }
-.p-badge.is-soft { color: var(--violet); background: color-mix(in srgb, var(--violet) 9%, var(--paper)); }
+.p-badge.is-todo { color: var(--p-amber-text); background: rgb(245 158 0 / 0.16); }
+.p-badge.is-soft { color: var(--p-accent-text); background: color-mix(in srgb, var(--violet) 9%, var(--paper)); }
 /* for names and counts ("Git and GitHub for teams", "2 students") that must keep their own capitals */
-.p-badge.is-text { color: var(--violet); background: color-mix(in srgb, var(--violet) 9%, var(--paper)); text-transform: none; }
+.p-badge.is-text { color: var(--p-accent-text); background: color-mix(in srgb, var(--violet) 9%, var(--paper)); text-transform: none; }
 .p-you {
   margin-left: 8px;
   padding: 2px 8px;
@@ -1948,7 +2186,7 @@ body:has(.portal) .scene {
   color: var(--ink-soft);
 }
 .p-empty-body a {
-  color: var(--violet);
+  color: var(--p-accent-text);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -2072,7 +2310,7 @@ body:has(.portal) .scene {
   padding: 1px 7px;
   border-radius: var(--r-pill);
   font-size: 11.5px;
-  color: var(--violet);
+  color: var(--p-accent-text);
   background: color-mix(in srgb, var(--violet) 14%, var(--paper));
 }
 .p-progress p {
@@ -2216,7 +2454,7 @@ body:has(.portal) .scene {
   font-size: 28px;
   font-weight: 650;
   letter-spacing: -0.03em;
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-cert-meta {
   display: flex;
@@ -2274,7 +2512,7 @@ body:has(.portal) .scene {
 }
 .p-modal-head .cell-label {
   margin: 0 0 2px;
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-modal-icon {
   display: grid;
@@ -2282,7 +2520,7 @@ body:has(.portal) .scene {
   width: 44px;
   height: 44px;
   border-radius: var(--r-sm);
-  color: var(--violet);
+  color: var(--p-accent-text);
   background: color-mix(in srgb, var(--violet) 10%, var(--paper));
 }
 .p-modal-title {
@@ -2308,11 +2546,377 @@ body:has(.portal) .scene {
   padding: 16px 22px 22px;
   border-top: 1px solid var(--line);
 }
+/* ── The delete button (DeleteButton in portal/ui.tsx), on a 2.1s timeline once pressed:
+   0–0.8s the letters fall into the bin, whose lid lifts · 0.85–1.2s the pill shrinks to a circle · 1.2–1.7s a ring
+   draws round it · 1.7s the bin turns into the logo, which glows. */
+.p-del {
+  /* the button's height, which is also the circle it ends as */
+  --size: 44px;
+  --gap: 8px;
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--gap);
+  min-height: var(--size);
+  padding: 0 18px;
+  border: 1px solid rgb(255 255 255 / 0.28);
+  border-radius: var(--r-pill);
+  background: var(--violet-glass);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.6),
+    inset 0 -3px 8px rgb(35 16 120 / 0.38),
+    0 10px 24px -10px rgb(110 88 245 / 0.65);
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  transition: scale var(--dur-press) var(--ease), box-shadow 0.3s var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .p-del:not([data-going]):hover {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.7),
+      inset 0 -3px 8px rgb(35 16 120 / 0.38),
+      0 14px 30px -10px rgb(110 88 245 / 0.75);
+  }
+}
+.p-del:not([data-going]):active {
+  scale: 0.97;
+}
+/* in table rows and card toolbars, beside the small site buttons */
+.p-del.is-small {
+  --size: 32px;
+  --gap: 6px;
+  padding: 0 12px;
+  font-size: 13px;
+}
+.p-del.is-small .p-del-bin {
+  width: 15px;
+  height: 15px;
+}
+.p-del:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.p-del-bin {
+  position: relative;
+  display: grid;
+  flex: none;
+  width: 18px;
+  height: 18px;
+}
+.p-del-bin svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* the lid hinges at its left end */
+.p-del-lid {
+  transform-box: fill-box;
+  transform-origin: 0% 100%;
+}
+.p-del-word {
+  display: inline-flex;
+  /* allowed to collapse to nothing once its letters are in the bin (a flex item won't go below its text otherwise) */
+  min-width: 0;
+  overflow: visible;
+  white-space: nowrap;
+}
+.p-del-word > span {
+  display: inline-block;
+}
+.p-del-ring,
+.p-del-logo {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  pointer-events: none;
+}
+.p-del-ring {
+  width: calc(var(--size) + 10px);
+  height: calc(var(--size) + 10px);
+  margin: calc(var(--size) / -2 - 5px) 0 0 calc(var(--size) / -2 - 5px);
+  overflow: visible;
+  rotate: -90deg;
+  fill: none;
+  stroke: rgb(255 255 255 / 0.9);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.p-del-logo {
+  display: grid;
+  width: calc(var(--size) * 0.6);
+  height: calc(var(--size) * 0.6);
+  margin: calc(var(--size) * -0.3) 0 0 calc(var(--size) * -0.3);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px rgb(255 255 255 / 0.75);
+  opacity: 0;
+  scale: 0;
+}
+.p-del-logo svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* pressed: the button keeps its box (centred, when it sits in a grid) and plays the timeline */
+.p-del[data-going] {
+  justify-self: center;
+  width: var(--w);
+  cursor: default;
+  animation:
+    p-del-shrink 340ms var(--ease-io) 850ms both,
+    p-del-glow 1.3s var(--ease) 1750ms infinite;
+}
+.p-del[data-going] .p-del-word > span {
+  animation: p-del-letter 520ms var(--ease) calc(var(--i) * var(--stagger, 55ms)) both;
+}
+.p-del[data-going] .p-del-word {
+  animation: p-del-word 1ms linear 800ms both;
+}
+.p-del[data-going] .p-del-lid {
+  animation: p-del-lid 820ms var(--ease) both;
+}
+.p-del[data-going] .p-del-ring {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 500ms var(--ease-io) 1200ms;
+}
+.p-del[data-going] .p-del-bin {
+  animation: p-del-out 260ms var(--ease) 1700ms both;
+}
+.p-del[data-going] .p-del-logo {
+  animation: p-del-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1) 1750ms both;
+}
+/* each letter hops up and drops into the bin, shrinking to a spark on the way (--to, its distance to the bin, is
+   measured on click) */
+@keyframes p-del-letter {
+  45% {
+    translate: calc(var(--to, 0px) * 0.25) -15px;
+    scale: 0.8;
+    opacity: 1;
+  }
+  to {
+    translate: var(--to, 0px) 2px;
+    scale: 0.15;
+    opacity: 0;
+  }
+}
+/* once the letters are in, the word takes no room, so the bin sits at the centre */
+@keyframes p-del-word {
+  to {
+    width: 0;
+    margin-left: calc(var(--gap) * -1);
+  }
+}
+@keyframes p-del-lid {
+  12%,
+  80% {
+    rotate: -32deg;
+    translate: -1px -1px;
+  }
+  to {
+    rotate: 0deg;
+  }
+}
+@keyframes p-del-shrink {
+  from {
+    width: var(--w);
+  }
+  to {
+    width: var(--size);
+    padding: 0;
+  }
+}
+@keyframes p-del-out {
+  to {
+    opacity: 0;
+    scale: 0.4;
+    rotate: 20deg;
+  }
+}
+@keyframes p-del-pop {
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes p-del-glow {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.6),
+      0 0 0 0 rgb(110 88 245 / 0.5),
+      0 10px 24px -10px rgb(110 88 245 / 0.65);
+  }
+  50% {
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 0.6),
+      0 0 22px 6px rgb(110 88 245 / 0.45),
+      0 10px 24px -10px rgb(110 88 245 / 0.65);
+  }
+}
+
 .p-modal-foot > :only-child {
   grid-column: 1 / -1;
 }
 .p-modal-foot:has(> :nth-child(3)) {
   grid-template-columns: repeat(3, 1fr);
+}
+
+/* ── "Mark as left" in the People rows waves goodbye (WaveButton in portal/pages/People.tsx), 1.7s once pressed:
+   0–0.6s the letters drift off one by one · 0.42–1.42s a hand pops in once most have gone, waves twice and goes ·
+   1.25–1.7s the button settles into a quiet "Left" chip and its tick draws. */
+.p-wave-hand,
+.p-wave-chip {
+  position: absolute;
+  pointer-events: none;
+}
+.p-wave-hand {
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  /* it waves from the wrist */
+  transform-origin: 60% 95%;
+  opacity: 0;
+}
+.p-wave-chip {
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--paper) 90%, var(--ink));
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  color: var(--ink-soft);
+  opacity: 0;
+}
+.p-wave-chip svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: var(--p-success-text);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.p-wave-ch {
+  display: inline-block;
+}
+.is-small .p-wave-hand {
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
+}
+.p-wave[data-going] {
+  cursor: default;
+}
+/* no hover bloom or label roll while it plays: the letters are leaving on their own. The hover's white text would
+   hide the hand once the bloom is gone, so the ink colour comes back. */
+.p-wave[data-going]::before {
+  opacity: 0;
+}
+.portal .btn-ghost.p-wave[data-going] {
+  color: var(--ink);
+}
+.p-wave[data-going] > .p-icon {
+  animation: p-wave-ch 340ms var(--ease) both;
+}
+.btn.p-wave[data-going] .btn-text {
+  overflow: visible;
+}
+.btn.p-wave[data-going] .btn-text > span {
+  transform: none;
+  text-shadow: none;
+}
+.p-wave[data-going] .p-wave-ch {
+  animation: p-wave-ch 340ms var(--ease) calc(var(--i) * 22ms) both;
+}
+.p-wave[data-going] .p-wave-hand {
+  animation: p-wave-hand 1000ms linear 420ms both;
+}
+.p-wave[data-going] .p-wave-chip {
+  animation: p-wave-chip 300ms var(--ease) 1250ms both;
+}
+.p-wave[data-going] .p-wave-chip svg {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 300ms var(--ease-io) 1400ms;
+}
+/* each letter lifts away to the right, like someone stepping off */
+@keyframes p-wave-ch {
+  to {
+    translate: 6px -7px;
+    rotate: 8deg;
+    opacity: 0;
+  }
+}
+@keyframes p-wave-hand {
+  0% {
+    opacity: 0;
+    scale: 0.3;
+    rotate: -30deg;
+    animation-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  22% {
+    opacity: 1;
+    scale: 1.08;
+    rotate: 0deg;
+  }
+  28% {
+    scale: 1;
+  }
+  28%,
+  40%,
+  52%,
+  64% {
+    animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
+  }
+  40%,
+  64% {
+    rotate: 24deg;
+  }
+  52% {
+    rotate: -10deg;
+  }
+  76% {
+    opacity: 1;
+    scale: 1;
+    rotate: 0deg;
+    translate: 0 0;
+    animation-timing-function: var(--ease);
+  }
+  100% {
+    opacity: 0;
+    scale: 0.5;
+    rotate: 0deg;
+    translate: 0 4px;
+  }
+}
+@keyframes p-wave-chip {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
 }
 
 /* ── Matching the old portal's screens: captions, segmented view switch, toolbars, breakdown bars ── */
@@ -2345,7 +2949,7 @@ body:has(.portal) .scene {
 .p-progress-pct {
   font-family: var(--mono);
   font-size: 13px;
-  color: var(--violet);
+  color: var(--p-accent-text);
   font-variant-numeric: tabular-nums;
 }
 /* Management / Analytics: the top bar's role switch, restyled for the dark page header */
@@ -2566,7 +3170,7 @@ body:has(.portal) .scene {
 }
 .p-lms-hero .cell-label {
   margin: 0;
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-lms-hero-title {
   max-width: 22ch;
@@ -2579,7 +3183,7 @@ body:has(.portal) .scene {
 }
 .p-lms-hero-title em {
   font-style: normal;
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-lms-hero-sub {
   max-width: 60ch;
@@ -2607,7 +3211,7 @@ body:has(.portal) .scene {
   color: var(--ink-soft);
 }
 .p-lms-crumbs a {
-  color: var(--violet);
+  color: var(--p-accent-text);
   text-decoration: underline;
   text-underline-offset: 3px;
 }
@@ -2617,7 +3221,7 @@ body:has(.portal) .scene {
   color: var(--ink-2);
 }
 .p-lms-result a {
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-lms-h1 {
   font-size: 24px;
@@ -2698,7 +3302,7 @@ body:has(.portal) .scene {
   border-radius: var(--r-pill);
   font-size: 12px;
   font-weight: 700;
-  color: #166534;
+  color: var(--p-success-text);
   background: rgb(34 197 94 / 0.13);
 }
 
@@ -2769,7 +3373,7 @@ body:has(.portal) .scene {
   background: color-mix(in srgb, var(--violet) 7%, transparent);
 }
 .p-lectures li.is-current > .p-icon {
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-lecture-title {
   flex: 1;
@@ -2784,7 +3388,7 @@ body:has(.portal) .scene {
   border-radius: var(--r-pill);
   font-size: 13px;
   font-weight: 600;
-  color: var(--violet);
+  color: var(--p-accent-text);
   background: color-mix(in srgb, var(--violet) 9%, transparent);
 }
 .p-watch[aria-pressed='true'] {
@@ -2801,7 +3405,7 @@ body:has(.portal) .scene {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  color: #166534;
+  color: var(--p-success-text);
   background: rgb(34 197 94 / 0.15);
 }
 
@@ -2853,7 +3457,7 @@ body:has(.portal) .scene {
   justify-self: start;
   font-size: 14.5px;
   font-weight: 650;
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-detail-meta {
   display: flex;
@@ -2865,7 +3469,7 @@ body:has(.portal) .scene {
   color: var(--ink-soft);
 }
 .p-detail-meta strong {
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-buy {
   position: sticky;
@@ -2936,7 +3540,7 @@ body:has(.portal) .scene {
 }
 @media (hover: hover) and (pointer: fine) {
   .p-enrolled:hover .is-strong {
-    color: var(--violet);
+    color: var(--p-accent-text);
   }
 }
 
@@ -3111,7 +3715,7 @@ body:has(.portal) .scene {
   color: var(--ink-soft);
 }
 .p-field-hint.is-bad {
-  color: #9a3412;
+  color: var(--p-orange-text);
 }
 .p-drop {
   position: relative;
@@ -3183,7 +3787,7 @@ body:has(.portal) .scene {
   rotate: 90deg;
 }
 .p-text-btn.is-danger {
-  color: #c2410c;
+  color: var(--p-danger-text);
 }
 .p-draft-body {
   display: grid;
@@ -3233,7 +3837,7 @@ body:has(.portal) .scene {
   cursor: pointer;
 }
 .p-source-option:has(input:checked) {
-  color: var(--violet);
+  color: var(--p-accent-text);
   background: color-mix(in srgb, var(--violet) 8%, var(--paper));
   box-shadow: inset 0 0 0 1.5px var(--violet);
 }
@@ -3400,12 +4004,73 @@ body:has(.portal) .scene {
   grid-template-rows: minmax(300px, auto) auto;
   gap: var(--p-gap);
 }
-.p-bento > .p-board {
+.p-bento > .p-board,
+.p-bento > .p-board-col {
   grid-column: 4;
   grid-row: 1 / span 2;
 }
 .p-bento > .p-cal {
   grid-column: 2 / span 2;
+}
+/* the employee's task column: the e-Office check-in on top, the board taking the rest of the height */
+.p-board-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--p-gap);
+  min-width: 0;
+}
+.p-board-col > .p-board {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* ── e-Office (EOfficeCard in Dashboard.tsx): out → join; in → since when, the running time, open and leave ── */
+.p-eoffice {
+  gap: 14px;
+}
+.p-eoffice-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+.p-eoffice-head > div {
+  flex: 1;
+  min-width: 0;
+}
+.p-eoffice-sub {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.p-eoffice-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #16a34a;
+  box-shadow: 0 0 0 3px rgb(22 163 74 / 0.18);
+}
+.p-eoffice-time {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 26px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.p-eoffice[data-state='left'] .p-eoffice-time {
+  color: var(--ink-soft);
+}
+.p-eoffice-actions {
+  display: flex;
+  gap: 8px;
+}
+.p-eoffice-actions > * {
+  flex: 1;
 }
 
 .p-profile {
@@ -3467,6 +4132,60 @@ body:has(.portal) .scene {
   font-size: 13px;
   font-weight: 600;
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.45);
+}
+/* the whole card opens the ID card (IdCardDialog). Stacked photo < this button < foot < hint; the foot passes
+   clicks through to it, except on the status switch */
+.p-profile-open {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  cursor: pointer;
+}
+.p-profile-open:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: -5px;
+}
+.p-profile-foot {
+  z-index: 2;
+  pointer-events: none;
+}
+.p-profile-foot .p-seg {
+  pointer-events: auto;
+}
+.p-profile-hint {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border-radius: var(--r-pill);
+  background: rgb(255 255 255 / 0.16);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.35);
+  backdrop-filter: blur(10px);
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  pointer-events: none;
+  transition:
+    background var(--dur-hover) var(--ease),
+    translate var(--dur-ui) var(--ease);
+}
+.p-profile-photo,
+.p-profile-initials {
+  transition: scale 0.6s var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .p-profile:has(.p-profile-open:hover) .p-profile-hint {
+    background: rgb(255 255 255 / 0.28);
+    translate: 0 -1px;
+  }
+  .p-profile:has(.p-profile-open:hover) :is(.p-profile-photo, .p-profile-initials) {
+    scale: 1.03;
+  }
 }
 
 .p-round-link {
@@ -3570,7 +4289,7 @@ body:has(.portal) .scene {
 .p-today-date span {
   font-size: 24px;
   letter-spacing: -0.02em;
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-today-day {
   margin: 0;
@@ -3603,7 +4322,7 @@ body:has(.portal) .scene {
   color: var(--ink-soft);
 }
 .p-today-when.is-late {
-  color: #c2410c;
+  color: var(--p-danger-text);
 }
 
 /* the dark task board */
@@ -3779,7 +4498,8 @@ body:has(.portal) .scene {
   .p-bento {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
-  .p-bento > .p-board {
+  .p-bento > .p-board,
+  .p-bento > .p-board-col {
     grid-column: 3;
   }
   .p-bento > .p-cal {
@@ -3818,7 +4538,7 @@ body:has(.portal) .scene {
   display: inline-block;
 }
 .p-title-name {
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 .p-hello[data-arrive] .p-title-line {
   animation: p-line-up 620ms var(--ease-expo) 60ms backwards;
@@ -3925,6 +4645,11 @@ body:has(.portal) .scene {
   overflow: hidden;
   animation: none;
   pointer-events: none;
+}
+/* a button that had played its animation (delete, mark as left) stays at its end in the copy instead of replaying it */
+.p-modal-ghost [data-going],
+.p-modal-ghost [data-going] * {
+  animation-delay: -10s !important;
 }
 
 /* ── Course progress in the player; the finish is the one celebrated moment ── */
@@ -4104,6 +4829,11 @@ body:has(.portal) .scene {
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.9), 0 0 0 1.5px color-mix(in srgb, var(--violet) 45%, transparent), 0 16px 34px -14px rgb(40 30 90 / 0.45);
   }
 }
+/* in the dark theme the labels are smoked glass, so their light text reads */
+[data-theme='dark'] .p-cal-node {
+  background: rgb(30 28 48 / 0.78);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 0 0 1px rgb(255 255 255 / 0.1), 0 14px 30px -16px rgb(0 0 0 / 0.7);
+}
 .p-cal-node-dot {
   flex: none;
   width: 8px;
@@ -4148,8 +4878,57 @@ body:has(.portal) .scene {
 
 /* ── Finish: press feedback, browser surfaces, type details ── */
 
+/* Every icon is a small glass bead (PIcon in portal/ui.tsx): a crisp line, a glass body tinted with the icon's own
+   colour (--icon-hue) under a white sheen, and a fine ledge of shadow rather than a blur, which smudged 16px icons. */
+.p-icon {
+  overflow: visible;
+  filter: drop-shadow(0 0.6px 0.4px color-mix(in srgb, var(--icon-hue, var(--violet)) 30%, transparent));
+}
+.p-icon-body-top {
+  stop-color: color-mix(in srgb, var(--icon-hue, var(--violet)) 34%, transparent);
+}
+.p-icon-body-end {
+  stop-color: color-mix(in srgb, var(--icon-hue, var(--violet)) 10%, transparent);
+}
+.p-icon-sheen-top {
+  stop-color: rgb(255 255 255 / 0.85);
+}
+.p-icon-sheen-end {
+  stop-color: rgb(255 255 255 / 0);
+}
+/* In the dark theme the glass is lit: a deeper body, a dimmer sheen and a soft glow in the icon's colour. */
+[data-theme='dark'] .p-icon {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--icon-hue, var(--violet)) 55%, transparent));
+}
+[data-theme='dark'] .p-icon-body-top {
+  stop-color: color-mix(in srgb, var(--icon-hue, var(--violet)) 62%, transparent);
+}
+[data-theme='dark'] .p-icon-body-end {
+  stop-color: color-mix(in srgb, var(--icon-hue, var(--violet)) 20%, transparent);
+}
+[data-theme='dark'] .p-icon-sheen-top {
+  stop-color: rgb(255 255 255 / 0.35);
+}
+/* where an icon only labels a row (menus, tabs, help, course outlines) its line takes its colour too; the current
+   item and icons on filled buttons keep their own colour so they stay readable */
+[data-theme='dark']
+  :is(
+    .p-menu-link:not(.active),
+    .p-set-tab:not([aria-current='page']),
+    .p-help-item summary,
+    .p-help-link,
+    .p-chapter-title,
+    .p-fold summary,
+    .p-stat-icon,
+    .p-set-value
+  )
+  .p-icon,
+[data-theme='dark'] .p-lectures li:not(.is-current) > .p-icon {
+  color: color-mix(in srgb, var(--icon-hue, var(--violet)) 70%, #fff);
+}
+
 /* everything pressable gives a little under the finger; the site's own .btn already does this */
-.portal :is(.p-pill, .p-chip, .p-chips button, .p-seg button, .p-round-link, .p-icon-btn, .p-menu-link, .p-user-btn):active {
+.portal :is(.p-chip, .p-chips button, .p-seg button, .p-round-link, .p-icon-btn, .p-menu-link, .p-user-btn):active {
   scale: 0.97;
 }
 .portal ::selection {
@@ -4194,7 +4973,7 @@ html:has(.portal),
   }
 }
 @media (max-width: 1180px) {
-  /* the pills take their own row under the brand and the user */
+  /* the keys take their own row under the brand and the user */
   .p-top {
     flex-wrap: wrap;
   }
@@ -4205,14 +4984,14 @@ html:has(.portal),
     order: 2;
     flex-basis: 100%;
   }
-  .p-pills {
+  .p-top .nav-links {
     order: 3;
     margin-left: 0;
   }
-  /* the pills now start at the left edge, so their menus open rightwards; right-aligned, a wide menu ran off screen */
+  /* the keys now start at the left edge, so their menus open rightwards; right-aligned, a wide menu ran off screen */
   .p-menu {
     right: auto;
-    left: -4px;
+    left: calc(var(--key-l, 0px) - 4px);
     transform-origin: top left;
   }
   .p-top-end {
@@ -4243,27 +5022,6 @@ html:has(.portal),
 .p-comm-streams {
   margin-bottom: var(--p-gap);
 }
-.p-comm-list {
-  display: grid;
-  gap: 8px;
-  margin: 18px 0 0;
-  padding: 0;
-  list-style: none;
-}
-.p-comm-member,
-.p-comm-referral {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-  border-radius: var(--r-sm);
-  background: var(--bg);
-}
-.p-comm-referral {
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 14px 16px;
-}
 .p-comm-main {
   display: grid;
   gap: 2px;
@@ -4283,12 +5041,434 @@ html:has(.portal),
   font-size: 14px;
   color: var(--ink-2);
 }
-.p-comm-side {
+/* a member's personal email, under their name, added or changed in place by an admin */
+.p-comm-email {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  overflow-wrap: anywhere;
+}
+.p-comm-email .p-text-btn,
+.p-comm-email-add {
+  font-size: 12.5px;
+}
+.p-comm-email-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  justify-self: start;
+  margin-top: 2px;
+}
+.p-comm-person:has(.p-comm-email-form) {
+  align-items: flex-start;
+}
+.p-comm-email-form {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.p-comm-email-form input {
+  flex: 1 1 180px;
+  min-width: 0;
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  background: var(--paper);
+  font: inherit;
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.p-comm-email-form input:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 1px;
+}
+.p-comm-email-form input[aria-invalid] {
+  border-color: var(--p-error-text);
+}
+.p-comm-email-form .p-error {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+/* ── Internal job postings (pages/CommunityJobs.tsx): one card per opening, its criteria, then its applicants ── */
+.p-ijp-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+.p-card.p-ijp {
+  display: grid;
+  gap: 16px;
+}
+.p-ijp[data-closed] .p-ijp-title {
+  color: var(--ink-soft);
+}
+.p-ijp-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.p-ijp-title {
+  margin: 0 0 2px;
+  font-family: var(--display);
+  font-size: 21px;
+  font-weight: 500;
+  letter-spacing: -0.015em;
+}
+.p-ijp-about {
+  margin: 0;
+  max-width: 72ch;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--ink-2);
+}
+/* the practical facts in one row of label-over-value pairs; they wrap on narrow cards */
+.p-ijp-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px 16px;
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: var(--r-xs);
+  background: var(--bg);
+}
+.p-ijp-facts dt {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.p-ijp-facts dd {
+  margin: 2px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.p-ijp-block {
+  display: grid;
+  gap: 8px;
+}
+.p-ijp-block h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+/* what replaces the interview, set apart because it's the point of an IJP */
+.p-ijp-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, var(--violet) 7%, var(--paper));
+  color: var(--p-accent-text);
+}
+.p-ijp-check .p-icon {
+  flex: none;
+  margin-top: 1px;
+}
+.p-ijp-check p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.p-ijp-check strong {
+  font-weight: 600;
+  color: var(--ink);
+}
+/* how a former colleague applies: by email, while they can't sign in */
+.p-ijp-apply {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 16px;
+}
+.p-ijp-apply p {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-2);
+}
+.p-ijp-apply strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.p-ijp-apply a:not(.btn) {
+  color: var(--p-accent-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.p-ijp-criteria {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+.p-ijp-criteria li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.p-ijp-criteria .p-icon {
+  flex: none;
+  color: var(--p-success-text);
+}
+.p-ijp-note {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+.p-ijp-applicants {
+  display: grid;
+  gap: 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.p-ijp-applicants h4 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.p-ijp-applicants ul {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.p-ijp-applicant {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-xs);
+  background: var(--bg);
+}
+.p-ijp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+.p-ijp-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.p-ijp-foot .p-assign {
+  display: flex;
   align-items: flex-end;
   gap: 8px;
+  flex: 1 1 280px;
+  min-width: 0;
+}
+.p-ijp-foot .p-assign .p-field {
+  flex: 1;
+  min-width: 0;
+}
+.p-ijp-foot-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* ── Community layout: how it works, then the roles beside the people ── */
+/* the three things that happen, in order, as one quiet strip rather than three cards */
+.p-comm-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-radius: var(--p-radius);
+  background: var(--p-card);
+  box-shadow: var(--p-shadow);
+}
+.p-comm-steps li {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 20px;
+}
+.p-comm-steps li + li {
+  border-left: 1px solid var(--line);
+}
+.p-comm-step-no {
+  display: grid;
+  place-items: center;
   flex: none;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--violet) 12%, var(--paper));
+  font-family: var(--display);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--p-accent-text);
+}
+.p-comm-steps li > span:last-child {
+  display: grid;
+  gap: 3px;
+}
+.p-comm-steps strong {
+  font-family: var(--display);
+  font-size: 15.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.p-comm-steps li > span:last-child > span {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+.p-comm-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 8fr) minmax(300px, 4fr);
+  align-items: start;
+  gap: var(--p-gap);
+}
+.p-comm-jobs {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.p-comm-jobs-head {
+  display: grid;
+  gap: 2px;
+  padding: 0 4px;
+}
+.p-comm-jobs-title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.p-comm-jobs .p-ijp-list {
+  margin-top: 0;
+}
+.p-comm-aside {
+  display: grid;
+  gap: var(--p-gap);
+  min-width: 0;
+}
+.p-comm-panel {
+  gap: 4px;
+}
+.p-comm-panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.p-comm-count {
+  font-family: var(--display);
+  font-size: 22px;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+/* the people and the referrals as a directory: rows split by hairlines, not a stack of tinted boxes */
+.p-comm-people {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.p-comm-person,
+.p-comm-ref {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+}
+.p-comm-people > li + li {
+  border-top: 1px solid var(--line);
+}
+.p-comm-person .p-badge {
+  margin-top: 2px;
+}
+.p-comm-ref {
+  flex-wrap: wrap;
+}
+.p-comm-ref .p-comm-main {
+  flex: 1 1 200px;
+}
+.p-comm-ref-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+/* an application's road, with how many are at each step */
+.p-ijp-pipeline {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.p-ijp-pipeline li {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  background: var(--bg);
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+.p-ijp-pipeline li strong {
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+.p-ijp-pipeline li[data-on] {
+  background: color-mix(in srgb, var(--violet) 10%, var(--paper));
+  color: var(--ink);
+}
+.p-ijp-pipeline li[data-on] strong {
+  color: var(--p-accent-text);
+}
+.p-ijp-pipeline li.is-out {
+  background: none;
+  padding-left: 4px;
+}
+@media (max-width: 1100px) {
+  .p-comm-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 900px) {
+  .p-comm-steps {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .p-comm-steps li + li {
+    border-left: 0;
+    border-top: 1px solid var(--line);
+  }
 }
 /* People: "Mark as left" and "Delete" side by side in one column */
 .p-row-actions {
@@ -4344,7 +5524,7 @@ img.p-avatar {
   box-shadow: inset 0 0 0 1px var(--line);
 }
 .p-doc-row[data-done] .p-doc-mark {
-  color: #166534;
+  color: var(--p-success-text);
   background: rgb(34 197 94 / 0.13);
   box-shadow: none;
 }
@@ -4363,7 +5543,7 @@ img.p-avatar {
 }
 .p-doc-main a,
 .p-file-ids a {
-  color: var(--violet);
+  color: var(--p-accent-text);
   font-weight: 600;
 }
 .p-file-ids {
@@ -4393,10 +5573,10 @@ img.p-avatar {
   color: var(--ink-soft);
 }
 .p-file-ids li > .p-icon {
-  color: #92400e;
+  color: var(--p-amber-text);
 }
 .p-file-ids li[data-done] > .p-icon {
-  color: #166534;
+  color: var(--p-success-text);
 }
 .p-file-ids li strong {
   color: var(--ink);
@@ -4427,7 +5607,7 @@ a.p-user-meta {
   margin-top: 4px;
   font-size: 12.5px;
   font-weight: 600;
-  color: var(--violet);
+  color: var(--p-accent-text);
 }
 
 /* ── Sign out: the figure walks out of the door (SignOutButton in PortalLayout.tsx) ─────────────────────────

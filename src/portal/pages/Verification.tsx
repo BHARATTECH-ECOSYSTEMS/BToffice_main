@@ -4,7 +4,7 @@ import { COMPANY_CHECKS, EMPLOYEE_CHECKS, EMPLOYMENT_CHECKS, ID_DOCS, ID_RETENTI
 import { useSession } from '../session';
 import { documentsDeleteOn, formatDate, usePeopleById, usePortal } from '../store';
 import { formatSize } from './Profile';
-import { Badge, btnClass, BtnLabel, ConfirmDelete, Empty, initials, Modal, PageHead, PIcon, SearchField, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PageHead, PIcon, SearchField, useNotice } from '../ui';
 import { PortalNotFound } from './Resources';
 
 const STATUS_LABEL: Record<VerificationStatus, string> = { pending: 'Pending', verified: 'Verified', rejected: 'Rejected' };
@@ -187,7 +187,6 @@ function CaseFile({
   const byId = usePeopleById();
   const [note, setNote] = useState(request.note);
   const [error, setError] = useState('');
-  const [deleting, setDeleting] = useState(false);
   const checks = CHECKS[request.kind];
   const allDone = checks.every((c) => request.done.includes(c.id));
   const pending = request.status === 'pending';
@@ -394,9 +393,15 @@ function CaseFile({
       {request.kind === 'employment' && !pending && <p className="p-field-hint">Email isn’t connected yet, so {request.requesterEmail} hasn’t been sent this answer.</p>}
 
       <footer className="p-file-foot">
-        <button type="button" className="p-text-btn is-danger" onClick={() => setDeleting(true)}>
-          Delete request
-        </button>
+        <DeleteButton
+          small
+          label="Delete request"
+          onDone={() => {
+            removeVerification(request.id);
+            onDeleted();
+            notify('The request was deleted.');
+          }}
+        />
         <span className="p-file-actions">
           {pending ? (
             <>
@@ -415,17 +420,6 @@ function CaseFile({
           )}
         </span>
       </footer>
-      {deleting && (
-        <ConfirmDelete
-          what={`the request for ${subject}`}
-          onClose={() => setDeleting(false)}
-          onConfirm={() => {
-            removeVerification(request.id);
-            onDeleted();
-            notify('The request was deleted.');
-          }}
-        />
-      )}
     </article>
   );
 }

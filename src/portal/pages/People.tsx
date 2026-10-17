@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { ID_RETENTION_DAYS, STREAM_LABEL, STREAMS, type Person, type PersonRole, type Stream } from '../data';
 import { managesPortal, useSession } from '../session';
 import { usePortal } from '../store';
-import { Badge, btnClass, BtnLabel, ConfirmDelete, Empty, Modal, PageHead, SearchField, useListFlip, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, DeleteButton, Empty, Modal, PageHead, PIcon, SearchField, useListFlip, useNotice, usePlayThen } from '../ui';
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ROLE_LABEL: Record<PersonRole, string> = { admin: 'Admin', subadmin: 'Sub Admin', employee: 'Employee', intern: 'Intern' };
@@ -15,8 +15,6 @@ export function People() {
   const [q, setQ] = useState('');
   const [roleFilter, setRoleFilter] = useState<PersonRole | 'all'>('all');
   const [inviting, setInviting] = useState(false);
-  const [deleting, setDeleting] = useState<Person | null>(null);
-  const [leaving, setLeaving] = useState<Person | null>(null);
   const [notice, notify] = useNotice();
   const query = q.trim().toLowerCase();
   const rows = people.filter((p) => (roleFilter === 'all' || p.role === roleFilter) && (!query || [p.id, p.name, p.email, p.role].some((v) => v.toLowerCase().includes(query))));
@@ -112,28 +110,30 @@ export function People() {
                     {isManager && (
                       <td className="is-end p-row-actions">
                         {/* shown but disabled for admins and yourself, so it's clear the row can't be changed rather than missing */}
-                        <button
-                          type="button"
-                          className={btnClass('ghost', { small: true })}
-                          onClick={() => setLeaving(p)}
+                        <WaveButton
+                          srText={p.name}
                           disabled={!manageable(p)}
-                          title={manageable(p) ? undefined : !isAdmin ? 'Only admins can mark someone as left' : p.id === me.id ? "You can't mark yourself as left" : "Admin accounts can't be marked as left"}
-                        >
-                          <BtnLabel icon="logout">
-                            Mark as left<span className="sr-only"> {p.name}</span>
-                          </BtnLabel>
-                        </button>
-                        <button
-                          type="button"
-                          className={btnClass('danger', { small: true })}
-                          onClick={() => setDeleting(p)}
+                          title={
+                            manageable(p)
+                              ? `Moves them to the ${STREAM_LABEL[p.stream]} community today. Their ID documents are deleted ${ID_RETENTION_DAYS} days later.`
+                              : !isAdmin
+                                ? 'Only admins can mark someone as left'
+                                : p.id === me.id
+                                  ? "You can't mark yourself as left"
+                                  : "Admin accounts can't be marked as left"
+                          }
+                          onDone={() => {
+                            markLeft(p.id, new Date().toISOString().slice(0, 10), p.stream);
+                            notify(`${p.name} has left and joined the ${STREAM_LABEL[p.stream]} community.`);
+                          }}
+                        />
+                        <DeleteButton
+                          small
+                          srText={p.name}
                           disabled={!manageable(p)}
                           title={manageable(p) ? undefined : !isAdmin ? 'Only admins can delete accounts' : p.id === me.id ? "You can't delete your own account" : 'Admin accounts can\'t be deleted'}
-                        >
-                          <BtnLabel icon="trash">
-                            Delete<span className="sr-only"> {p.name}</span>
-                          </BtnLabel>
-                        </button>
+                          onDone={() => (removePerson(p.id), notify(`${p.name} was removed.`))}
+                        />
                       </td>
                     )}
                   </tr>
@@ -157,73 +157,54 @@ export function People() {
           }}
         />
       )}
-      {leaving && (
-        <MarkLeftModal
-          person={leaving}
-          onClose={() => setLeaving(null)}
-          onConfirm={(left, stream) => {
-            markLeft(leaving.id, left, stream);
-            notify(`${leaving.name} has left and joined the ${STREAM_LABEL[stream]} community.`);
-          }}
-        />
-      )}
-      {deleting && <ConfirmDelete what={deleting.name} onClose={() => setDeleting(null)} onConfirm={() => (removePerson(deleting.id), notify(`${deleting.name} was removed.`))} />}
     </>
   );
 }
 
-/** Leaving moves someone out of the directory and into their stream's community; the stream can be corrected here. */
-function MarkLeftModal({ person, onClose, onConfirm }: { person: Person; onClose: () => void; onConfirm: (left: string, stream: Stream) => void }) {
-  const [left, setLeft] = useState(() => new Date().toISOString().slice(0, 10));
-  const [stream, setStream] = useState<Stream>(person.stream);
-  const [error, setError] = useState('');
+// how long the goodbye plays before they're marked as left (the CSS timeline in portal.css ends at 1.7s)
+const WAVE_MS = 1850;
+const WAVE_LABEL = 'Mark as left';
+
+/**
+ * Marks someone as left on click, with no form, waving goodbye on the button itself: the letters drift off one by one,
+ * a hand pops in and waves twice, and the button settles into a quiet "Left" chip with a tick. Only then is the person
+ * moved (see usePlayThen).
+ */
+function WaveButton({ srText, disabled, title, onDone }: { srText: string; disabled?: boolean; title?: string; onDone: () => void }) {
+  const [waving, play] = usePlayThen(WAVE_MS);
   return (
-    <Modal
-      title={`Mark ${person.name} as left`}
-      icon="logout"
-      onClose={onClose}
-      onSubmit={() => {
-        if (!left) return setError('Pick their last working day.');
-        onConfirm(left, stream);
-        onClose();
-      }}
-      footer={
-        <>
-          <button type="button" className={btnClass('ghost')} onClick={onClose}>
-            <BtnLabel>Cancel</BtnLabel>
-          </button>
-          <button type="submit" className={btnClass('primary')}>
-            <BtnLabel>Mark as left</BtnLabel>
-          </button>
-        </>
-      }
+    <button
+      type="button"
+      className={`${btnClass('ghost', { small: true })} p-wave`}
+      data-going={waving || undefined}
+      aria-disabled={waving || undefined}
+      aria-label={waving ? 'Marking as left' : `${WAVE_LABEL} ${srText}`}
+      disabled={disabled}
+      title={title}
+      onClick={() => play(onDone)}
     >
-      <p className="p-modal-text">
-        They leave the directory and join the {STREAM_LABEL[stream]} community straight away. Their tasks and certificates stay on record under their name; their
-        Aadhaar, PAN and other ID documents are deleted automatically {ID_RETENTION_DAYS} days after this date.
-      </p>
-      <div className="p-form-row">
-        <label className="p-field">
-          <span>Last working day</span>
-          <input type="date" value={left} onChange={(e) => (setLeft(e.target.value), setError(''))} autoFocus />
-        </label>
-        <label className="p-field">
-          <span>Community</span>
-          <select className="p-select" value={stream} onChange={(e) => setStream(e.target.value as Stream)}>
-            {STREAMS.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-      {error && (
-        <p className="p-error" role="alert">
-          {error}
-        </p>
-      )}
-    </Modal>
+      <PIcon name="logout" size={16} />
+      <span className="btn-text" aria-hidden="true">
+        <span>
+          {[...WAVE_LABEL].map((ch, i) => (
+            // a plain space would collapse inside its inline-block and the words would run together
+            <span key={i} className="p-wave-ch" style={{ '--i': i } as CSSProperties}>
+              {ch === ' ' ? ' ' : ch}
+            </span>
+          ))}
+        </span>
+      </span>
+      <svg className="p-wave-hand" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M18 11V6a2 2 0 0 0-4 0M14 10V4a2 2 0 0 0-4 0v2M10 10.5V6a2 2 0 0 0-4 0v8" />
+        <path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-6-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15" />
+      </svg>
+      <span className="p-wave-chip" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M5 12.5l4.5 4.5L19 7.5" pathLength="1" />
+        </svg>
+        Left
+      </span>
+    </button>
   );
 }
 

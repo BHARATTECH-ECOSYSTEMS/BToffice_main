@@ -1,0 +1,468 @@
+/* ── The company ID card (IdCardDialog in portal/IdCard.tsx) ─────────────────────────────────────────────────────
+   A physical card on a violet lanyard, over a dimmed, blurred page. Its position, swing, lean and flip are springs
+   written each frame by the TSX; this file is the card itself, plus the scrim, the straps and the two buttons.
+   The card is the same in light and dark mode, like a real one. */
+
+.idc-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+}
+.idc-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(14 11 30 / 0.58);
+  backdrop-filter: blur(8px) saturate(120%);
+  animation: idc-fade 260ms var(--ease) both;
+  transition: opacity 320ms var(--ease);
+}
+.idc-layer[data-closing] .idc-scrim {
+  opacity: 0;
+}
+.idc-dialog {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.idc-dialog > * {
+  pointer-events: auto;
+}
+.idc-lanyard {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none !important;
+}
+.idc-strap {
+  fill: none;
+  stroke: url(#idc-strap);
+  stroke-width: 13;
+  filter: drop-shadow(0 6px 10px rgb(10 6 40 / 0.35));
+}
+.idc-strap-text {
+  font-family: var(--mono);
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  fill: rgb(255 255 255 / 0.78);
+  dominant-baseline: central;
+}
+
+/* ── The card: hung from its top centre, where the clip is ── */
+.idc-card {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 50% 0;
+  perspective: 1200px;
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform;
+}
+.idc-card:active {
+  cursor: grabbing;
+}
+.idc-clip {
+  position: absolute;
+  left: 50%;
+  top: -24px;
+  z-index: 2;
+  width: 34px;
+  height: 36px;
+  margin-left: -17px;
+  border-radius: 9px 9px 12px 12px;
+  background: linear-gradient(180deg, #f4f3f9, #b9b5c9 55%, #8c879f);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.9),
+    inset 0 -2px 3px rgb(40 30 80 / 0.35),
+    0 4px 8px rgb(10 6 40 / 0.35);
+}
+.idc-clip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 7px;
+  width: 14px;
+  height: 6px;
+  margin-left: -7px;
+  border-radius: 3px;
+  background: rgb(40 30 80 / 0.45);
+}
+.idc-flip {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+.idc-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: #f7f7fb;
+  color: #17142b;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.7),
+    0 1px 0 rgb(255 255 255 / 0.4),
+    0 40px 70px -24px rgb(8 4 36 / 0.7),
+    0 14px 24px -12px rgb(8 4 36 / 0.45);
+}
+.idc-back {
+  transform: rotateY(180deg);
+}
+/* the punched slot the clip goes through */
+.idc-slot {
+  position: absolute;
+  left: 50%;
+  top: 14px;
+  z-index: 2;
+  width: 48px;
+  height: 9px;
+  margin-left: -24px;
+  border-radius: 999px;
+  background: rgb(20 12 60 / 0.35);
+  box-shadow: inset 0 1px 2px rgb(0 0 0 / 0.45), 0 1px 0 rgb(255 255 255 / 0.35);
+}
+
+/* The two faces share one small palette: cool card stock, violet-black ink, the brand violet and a deep violet band.
+   Labels are short sentence-case words in Figtree; only the employee ID is set in mono, because it is a code. The
+   name is the one loud thing: Bricolage Grotesque, large, two lines, left aligned. */
+.idc-face {
+  --idc-stock: #f7f7fb;
+  --idc-ink: #17142b;
+  --idc-soft: #5d5875;
+  --idc-label: #6b6785;
+  --idc-violet: #6e58f5;
+  --idc-band: #2a1a86;
+  font-family: var(--sans);
+}
+
+/* front: the deep band with a fine guilloche print, the portrait overlapping its edge, then the name and the facts */
+.idc-front::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 142px;
+  background:
+    repeating-radial-gradient(circle at 92% -30%, rgb(255 255 255 / 0.08) 0 1px, transparent 1px 8px),
+    repeating-radial-gradient(circle at -10% 130%, rgb(255 255 255 / 0.06) 0 1px, transparent 1px 10px),
+    radial-gradient(110% 120% at 0% 0%, #7b68ee, transparent 60%),
+    linear-gradient(165deg, #4b2dc0, var(--idc-band) 70%);
+}
+.idc-brand {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 36px 22px 0;
+  color: #fff;
+}
+.idc-brand .logo-mark {
+  flex: none;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px rgb(255 255 255 / 0.75);
+}
+.idc-brand strong {
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 600;
+  font-variation-settings: 'opsz' 16;
+  letter-spacing: -0.012em;
+}
+.idc-photo {
+  position: relative;
+  width: 104px;
+  height: 124px;
+  margin: 20px 0 0 22px;
+  border-radius: 20px;
+  background: linear-gradient(150deg, #efeaff, #cfc4ff);
+  box-shadow:
+    0 0 0 4px var(--idc-stock),
+    0 18px 30px -14px rgb(20 10 70 / 0.6);
+}
+.idc-photo img,
+.idc-photo > span {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+}
+.idc-photo img {
+  object-fit: cover;
+}
+.idc-photo > span {
+  display: grid;
+  place-items: center;
+  font-family: var(--display);
+  font-size: 44px;
+  font-weight: 500;
+  letter-spacing: -0.04em;
+  color: #4b2dc0;
+}
+/* the status sits under the role line */
+.idc-status {
+  display: inline-flex;
+  margin: 7px 22px 0;
+  align-items: center;
+  gap: 7px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.idc-status::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 20%, transparent);
+}
+.idc-status.is-active {
+  color: #15803d;
+}
+.idc-status.is-inactive {
+  color: #c2410c;
+}
+.idc-name {
+  display: grid;
+  margin: 16px 22px 0;
+  font-family: var(--display);
+  font-size: 31px;
+  font-weight: 600;
+  font-variation-settings: 'opsz' 48;
+  line-height: 0.98;
+  letter-spacing: -0.035em;
+  color: var(--idc-ink);
+}
+.idc-name.is-long {
+  font-size: 24px;
+  letter-spacing: -0.025em;
+}
+.idc-name span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.idc-role {
+  margin: 6px 22px 0;
+  font-size: 13px;
+  color: var(--idc-soft);
+}
+.idc-facts {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 22px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 16px;
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid rgb(23 20 43 / 0.1);
+}
+.idc-facts dt,
+.idc-back-facts dt {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--idc-label);
+}
+.idc-facts dd {
+  margin: 2px 0 0;
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--idc-ink);
+}
+.idc-facts dd.is-code {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+}
+
+/* back: the QR first, then how to reach the person, then the return note */
+.idc-back {
+  padding: 44px 22px 22px;
+  background:
+    repeating-linear-gradient(135deg, rgb(110 88 245 / 0.035) 0 2px, transparent 2px 9px),
+    var(--idc-stock);
+  color: var(--idc-ink);
+}
+.idc-scan {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.idc-qr {
+  flex: none;
+  width: 150px;
+  height: 150px;
+  border-radius: 12px;
+  box-shadow: 0 0 0 1px rgb(23 20 43 / 0.08), 0 10px 22px -14px rgb(20 10 70 / 0.5);
+}
+.idc-scan p {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--idc-soft);
+}
+.idc-scan strong {
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.015em;
+  color: var(--idc-ink);
+}
+.idc-back-facts {
+  display: grid;
+  gap: 12px;
+  margin: 24px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid rgb(23 20 43 / 0.1);
+}
+.idc-back-facts div {
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr);
+  align-items: baseline;
+  gap: 10px;
+}
+.idc-back-facts dd {
+  margin: 0;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.idc-back-facts dd.is-empty {
+  font-weight: 500;
+  color: var(--idc-label);
+}
+.idc-return {
+  margin: 18px 0 0;
+  padding-top: 14px;
+  border-top: 1px solid rgb(23 20 43 / 0.1);
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--idc-soft);
+}
+.idc-back-mark {
+  position: absolute;
+  right: -18px;
+  bottom: 34px;
+  opacity: 0.08;
+  rotate: -12deg;
+  scale: 2.2;
+  pointer-events: none;
+}
+
+/* ── The hint and the buttons under the card ── */
+.idc-hint,
+.idc-actions {
+  position: absolute;
+  left: 50%;
+  translate: -50% 0;
+  animation: idc-rise 360ms var(--ease) 520ms both;
+  transition: opacity 200ms var(--ease);
+}
+.idc-hint {
+  bottom: 84px;
+  margin: 0;
+  font-family: var(--sans);
+  font-size: 13px;
+  white-space: nowrap;
+  color: rgb(255 255 255 / 0.75);
+}
+.idc-actions {
+  bottom: 28px;
+  display: flex;
+  gap: 10px;
+}
+.idc-layer[data-closing] :is(.idc-hint, .idc-actions) {
+  opacity: 0;
+}
+.idc-btn {
+  min-height: 44px;
+  padding: 0 22px;
+  border-radius: 999px;
+  background: #fff;
+  color: #14130f;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 10px 24px -10px rgb(0 0 0 / 0.5);
+  transition: scale var(--dur-press) var(--ease), background var(--dur-hover) var(--ease);
+}
+.idc-btn.is-quiet {
+  background: rgb(255 255 255 / 0.14);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.28);
+  backdrop-filter: blur(12px);
+}
+@media (hover: hover) and (pointer: fine) {
+  .idc-btn.is-quiet:hover {
+    background: rgb(255 255 255 / 0.22);
+  }
+}
+.idc-btn:active {
+  scale: 0.97;
+}
+.idc-btn:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+@keyframes idc-fade {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes idc-rise {
+  from {
+    opacity: 0;
+    translate: -50% 8px;
+  }
+}
+
+/* reduced motion: no fall, swing or lean; the card fades in where it rests and turns over with a cross-fade */
+.idc-layer[data-reduced] .idc-card {
+  animation: idc-fade 200ms var(--ease) both;
+  cursor: default;
+}
+.idc-layer[data-reduced] .idc-flip {
+  transform: none !important;
+}
+.idc-layer[data-reduced] .idc-face {
+  backface-visibility: visible;
+  transition: opacity 200ms var(--ease);
+}
+.idc-layer[data-reduced] .idc-back {
+  transform: none;
+  opacity: 0;
+}
+.idc-layer[data-reduced] .idc-flip[data-flipped] .idc-front {
+  opacity: 0;
+}
+.idc-layer[data-reduced] .idc-flip[data-flipped] .idc-back {
+  opacity: 1;
+}
+.idc-layer[data-reduced][data-closing] .idc-card {
+  opacity: 0;
+  transition: opacity 160ms var(--ease);
+}
+.idc-layer[data-reduced] :is(.idc-hint, .idc-actions) {
+  animation-name: idc-fade;
+}
+@media (prefers-reduced-transparency: reduce) {
+  .idc-scrim {
+    background: rgb(14 11 30 / 0.85);
+    backdrop-filter: none;
+  }
+}

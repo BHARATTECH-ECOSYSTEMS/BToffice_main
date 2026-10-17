@@ -21,6 +21,10 @@ export interface Person {
   /** The line of work they're in; it decides which community they join when they leave. */
   stream: Stream;
   status: PersonStatus;
+  /** First working day (ISO). Someone still invited has none yet. */
+  joined?: string;
+  /** Where they work; when unset, the company's head office (HQ in content.ts). */
+  office?: string;
 }
 
 /* ── Community: people who have left, grouped by the stream they worked in ── */
@@ -34,8 +38,56 @@ export const STREAMS: { id: Stream; label: string }[] = [
 ];
 export const STREAM_LABEL = Object.fromEntries(STREAMS.map((s) => [s.id, s.label])) as Record<Stream, string>;
 
-/** Someone who has left. Marking a person as left moves them here, into their stream's community. */
-export type Alumnus = Person & { left: string };
+/**
+ * Someone who has left. Marking a person as left moves them here, into their stream's community. Their work email
+ * stops working when they go, so an admin adds the personal email the community reaches them on.
+ */
+export type Alumnus = Person & { left: string; personalEmail?: string };
+
+/**
+ * An internal job posting (IJP): an opening at Bharattech offered back to former colleagues in one stream. Those
+ * who apply and meet its criteria take a short knowledge check instead of an interview, and on passing they come
+ * back into the directory.
+ */
+export type WorkMode = 'onsite' | 'hybrid' | 'remote';
+export const WORK_MODE_LABEL: Record<WorkMode, string> = { onsite: 'On-site', hybrid: 'Hybrid', remote: 'Remote' };
+
+export interface InternalJob {
+  id: string;
+  stream: Stream;
+  title: string;
+  /** What the role involves, in a line or two. */
+  about: string;
+  location: string;
+  mode: WorkMode;
+  /** Free text, like "2+ years". */
+  experience: string;
+  openings: number;
+  /** The last day to apply (ISO); none means until it's filled. */
+  closes?: string;
+  /** What someone needs to be considered, one line each. */
+  criteria: string[];
+  /** What the knowledge check that replaces the interview covers. */
+  check: string;
+  /** Where former colleagues send their application, since they can't sign in yet. */
+  applyEmail: string;
+  postedBy: string;
+  posted: string;
+  open: boolean;
+}
+
+/** Where an application to an internal job is: applied → meets criteria → knowledge check sent → rejoined, or declined. */
+export type ApplicationStage = 'applied' | 'eligible' | 'checking' | 'rejoined' | 'declined';
+
+export interface JobApplication {
+  id: string;
+  jobId: string;
+  /** The former colleague who applied (an Alumnus id; it stays the same after they rejoin). */
+  personId: string;
+  stage: ApplicationStage;
+  /** When the stage last changed (ISO date). */
+  updated: string;
+}
 
 /** A job opening passed on to former colleagues in one stream. */
 export interface Referral {
@@ -52,12 +104,32 @@ export interface Referral {
 
 // Sample records only: every person, company and link here is made up.
 export const SEED_ALUMNI: Alumnus[] = [
-  { id: 'EMP9', name: 'Neha Kapoor', email: 'neha.kapoor@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'inactive', left: '2026-06-30' },
+  { id: 'EMP9', name: 'Neha Kapoor', email: 'neha.kapoor@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'inactive', left: '2026-06-30', personalEmail: 'neha.kapoor.home@example.net' },
   { id: 'EMP10', name: 'Vikram Joshi', email: 'vikram.joshi@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'operations', status: 'inactive', left: '2026-03-31' },
   { id: 'EMP11', name: 'Farah Khan', email: 'farah.khan@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'finance', status: 'inactive', left: '2025-12-15' },
   { id: 'EMP12', name: 'Aditya Bose', email: 'aditya.bose@example.com', role: 'subadmin', phone: '', team: 'BharatTech', stream: 'hr', status: 'inactive', left: '2026-08-14' },
   { id: 'EMP13', name: 'Tanvi Shah', email: 'tanvi.shah@example.com', role: 'intern', phone: '', team: 'BharatTech', stream: 'tech', status: 'inactive', left: '2025-11-30' },
 ];
+export const SEED_JOBS: InternalJob[] = [
+  {
+    id: 'J1',
+    stream: 'tech',
+    title: 'Frontend Engineer (sample)',
+    about: 'Build the screens of the Origin platform with the product team: the employee portal, dashboards and the public site.',
+    location: 'Kanpur',
+    mode: 'hybrid',
+    experience: '1+ year',
+    openings: 2,
+    closes: '2026-11-15',
+    criteria: ['Worked with us for at least a year', 'Left in good standing', 'Comfortable with React and TypeScript'],
+    check: 'A 45-minute online test on React, TypeScript and how we build the portal, sent to your personal email. Pass it and you rejoin.',
+    applyEmail: 'hello@bharattechorigin.com',
+    postedBy: 'Aanya Sharma',
+    posted: '2026-10-12',
+    open: true,
+  },
+];
+export const SEED_APPLICATIONS: JobApplication[] = [{ id: 'A1', jobId: 'J1', personId: 'EMP9', stage: 'applied', updated: '2026-10-14' }];
 export const SEED_REFERRALS: Referral[] = [
   { id: 'R1', stream: 'tech', title: 'Backend Engineer (Go)', company: 'Northwind Logistics', link: 'https://northwind.example.com/careers', note: 'Their platform team is hiring two people; ask for Meghna in the referral.', postedBy: 'Aanya Sharma', posted: '2026-10-11' },
   { id: 'R2', stream: 'finance', title: 'Senior Accounts Executive', company: 'Contoso Analytics', link: '', note: 'Bengaluru office, hybrid.', postedBy: 'Arjun Rao', posted: '2026-10-06' },
@@ -65,14 +137,14 @@ export const SEED_REFERRALS: Referral[] = [
 ];
 
 export const SEED_PEOPLE: Person[] = [
-  { id: 'EMP1', name: 'Aanya Sharma', email: 'aanya.sharma@example.com', role: 'admin', phone: '', team: 'BharatTech', stream: 'hr', status: 'active' },
-  { id: 'EMP2', name: 'Kabir Mehta', email: 'kabir.mehta@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'active' },
-  { id: 'EMP3', name: 'Ishita Verma', email: 'ishita.verma@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'active' },
-  { id: 'EMP4', name: 'Rohan Iyer', email: 'rohan.iyer@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'active' },
-  { id: 'EMP5', name: 'Meera Nair', email: 'meera.nair@example.com', role: 'intern', phone: '', team: 'BharatTech', stream: 'operations', status: 'active' },
-  { id: 'EMP6', name: 'Arjun Rao', email: 'arjun.rao@example.com', role: 'admin', phone: '', team: 'BharatTech', stream: 'operations', status: 'active' },
-  { id: 'EMP7', name: 'Sana Qureshi', email: 'sana.qureshi@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'active' },
-  { id: 'EMP8', name: 'Dev Malhotra', email: 'dev.malhotra@example.com', role: 'intern', phone: '', team: 'BharatTech', stream: 'finance', status: 'active' },
+  { id: 'EMP1', joined: '2023-04-03', name: 'Aanya Sharma', email: 'aanya.sharma@example.com', role: 'admin', phone: '', team: 'BharatTech', stream: 'hr', status: 'active' },
+  { id: 'EMP2', joined: '2024-01-15', name: 'Kabir Mehta', email: 'kabir.mehta@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'active' },
+  { id: 'EMP3', joined: '2024-07-01', name: 'Ishita Verma', email: 'ishita.verma@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'active' },
+  { id: 'EMP4', joined: '2024-11-18', name: 'Rohan Iyer', email: 'rohan.iyer@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'active' },
+  { id: 'EMP5', joined: '2026-06-02', name: 'Meera Nair', email: 'meera.nair@example.com', role: 'intern', phone: '', team: 'BharatTech', stream: 'operations', status: 'active' },
+  { id: 'EMP6', joined: '2023-08-21', name: 'Arjun Rao', email: 'arjun.rao@example.com', role: 'admin', phone: '', team: 'BharatTech', stream: 'operations', status: 'active' },
+  { id: 'EMP7', joined: '2025-02-10', name: 'Sana Qureshi', email: 'sana.qureshi@example.com', role: 'employee', phone: '', team: 'BharatTech', stream: 'tech', status: 'active' },
+  { id: 'EMP8', joined: '2026-07-01', name: 'Dev Malhotra', email: 'dev.malhotra@example.com', role: 'intern', phone: '', team: 'BharatTech', stream: 'finance', status: 'active' },
 ];
 
 export const CERTIFICATE_TYPES = [
@@ -135,6 +207,7 @@ export interface Tool {
 const web = (icon: PortalIconName) => ({ label: 'Direct Web Access', url: '', icon });
 
 export const TOOLS: Tool[] = [
+  { id: 'eoffice', name: 'e-Office', category: 'Virtual office', body: 'The online office the team works from during the day.', tags: ['Daily check-in', 'Team rooms'], url: '', icon: 'home', openLabel: 'Open' },
   { id: 'huly', name: 'Huly.io', navLabel: 'Workspace', category: 'Team workspace', body: 'Projects, chat and documents for the whole team in one place.', tags: ['Projects & chat', 'Documents'], url: '', icon: 'users', inNav: true, openLabel: 'Open', secondary: web('users') },
   { id: 'coder', name: 'Coder', category: 'Tool', body: 'Open the BharatTech coding workspace.', tags: ['Windows', 'macOS'], url: '', icon: 'code', openLabel: 'Open', caption: "Don't have an app yet?", secondary: { label: 'Install / Update app', url: '', icon: 'download' } },
   { id: 'filesync', name: 'File Transfer', category: 'Files', body: 'Send large files between teammates and devices.', tags: ['Peer to peer', 'Self-hosted'], url: '', icon: 'transfer', inNav: true, navOnly: true },

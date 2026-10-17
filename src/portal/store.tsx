@@ -7,12 +7,17 @@ import {
   SEED_POLICIES,
   SEED_REFERRALS,
   SEED_TASKS,
+  SEED_JOBS,
+  SEED_APPLICATIONS,
   COMPANY_CHECKS,
   EMPLOYEE_CHECKS,
   EMPLOYMENT_CHECKS,
   SEED_VERIFICATIONS,
   ID_RETENTION_DAYS,
   type Acceptance,
+  type ApplicationStage,
+  type InternalJob,
+  type JobApplication,
   type IdDocKind,
   type IdDocument,
   type Alumnus,
@@ -57,7 +62,7 @@ function usePortalState(session: Session) {
   const [people, setPeople] = useState<Person[]>(() =>
     SEED_PEOPLE.some((p) => p.email === session.email)
       ? SEED_PEOPLE
-      : [{ id: 'EMP0', name: session.name, email: session.email, role: session.role, phone: '', team: 'BharatTech', stream: 'tech', status: 'active' }, ...SEED_PEOPLE]
+      : [{ id: 'EMP0', name: session.name, email: session.email, role: session.role, phone: '', team: 'BharatTech', stream: 'tech', status: 'active', joined: today() }, ...SEED_PEOPLE]
   );
   const [certificates, setCertificates] = useState<Certificate[]>(SEED_CERTIFICATES);
   const [links, setLinks] = useState<LinkResource[]>(SEED_LINKS);
@@ -225,11 +230,54 @@ function usePortalState(session: Session) {
 
   // Job referrals shared with former colleagues, newest first.
   const [referrals, setReferrals] = useState<Referral[]>(SEED_REFERRALS);
-  const shareReferral = useCallback(
-    (draft: Omit<Referral, 'id' | 'postedBy' | 'posted'>) => setReferrals((list) => [{ ...draft, id: nextId('R'), postedBy: session.name, posted: today() }, ...list]),
+  const removeReferral = useCallback((id: string) => setReferrals((list) => list.filter((r) => r.id !== id)), []);
+  const setPersonalEmail = useCallback(
+    (id: string, personalEmail: string) => setAlumni((list) => list.map((a) => (a.id === id ? { ...a, personalEmail: personalEmail || undefined } : a))),
+    []
+  );
+
+  // Internal job postings for former colleagues, and who has applied to each.
+  const [jobs, setJobs] = useState<InternalJob[]>(SEED_JOBS);
+  const [applications, setApplications] = useState<JobApplication[]>(SEED_APPLICATIONS);
+  const postJob = useCallback(
+    (draft: Omit<InternalJob, 'id' | 'postedBy' | 'posted' | 'open'>) => {
+      const job: InternalJob = { ...draft, id: nextId('J'), postedBy: session.name, posted: today(), open: true };
+      setJobs((list) => [job, ...list]);
+      return job;
+    },
     [session.name]
   );
-  const removeReferral = useCallback((id: string) => setReferrals((list) => list.filter((r) => r.id !== id)), []);
+  const setJobOpen = useCallback((id: string, open: boolean) => setJobs((list) => list.map((j) => (j.id === id ? { ...j, open } : j))), []);
+  const removeJob = useCallback((id: string) => {
+    setJobs((list) => list.filter((j) => j.id !== id));
+    setApplications((list) => list.filter((a) => a.jobId !== id));
+  }, []);
+  const addApplicant = useCallback(
+    (jobId: string, personId: string) =>
+      setApplications((list) => (list.some((a) => a.jobId === jobId && a.personId === personId) ? list : [...list, { id: nextId('A'), jobId, personId, stage: 'applied', updated: today() }])),
+    []
+  );
+  // Coming back is leaving in reverse: out of the community, into the directory as active, with the same id.
+  const rejoin = useCallback(
+    (id: string) => {
+      const former = alumni.find((a) => a.id === id);
+      if (!former) return;
+      const { left: _left, personalEmail: _personal, ...person } = former;
+      setAlumni((list) => list.filter((a) => a.id !== id));
+      setPeople((list) => [...list, { ...person, status: 'active', joined: today() }]);
+    },
+    [alumni]
+  );
+  /** Moves an application on. Passing the knowledge check ('rejoined') brings the person back into the directory. */
+  const moveApplication = useCallback(
+    (id: string, stage: ApplicationStage) => {
+      const application = applications.find((a) => a.id === id);
+      if (!application) return;
+      setApplications((list) => list.map((a) => (a.id === id ? { ...a, stage, updated: today() } : a)));
+      if (stage === 'rejoined') rejoin(application.personId);
+    },
+    [applications, rejoin]
+  );
 
   // Learning platform. Completed lectures are stored as "personId:lectureId" so a lookup is one Set check.
   const [courses, setCourses] = useState<Course[]>(SEED_COURSES);
@@ -282,8 +330,15 @@ function usePortalState(session: Session) {
     alumni,
     markLeft,
     referrals,
-    shareReferral,
     removeReferral,
+    setPersonalEmail,
+    jobs,
+    applications,
+    postJob,
+    setJobOpen,
+    removeJob,
+    addApplicant,
+    moveApplication,
     issueCertificate,
     removeCertificate,
     addLink,

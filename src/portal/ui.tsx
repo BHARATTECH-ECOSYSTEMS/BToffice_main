@@ -1,6 +1,6 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { SearchPill } from '../components/SearchPill';
-import { Arrow, BtnText } from '../components/ui';
+import { Arrow, BtnText, LogoMark } from '../components/ui';
 import type { PortalIconName } from './data';
 
 const PATHS: Record<PortalIconName, string> = {
@@ -53,10 +53,135 @@ const PATHS: Record<PortalIconName, string> = {
   bell: 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0',
 };
 
+/**
+ * Each icon's colour from the site's three (base.css): violet for people, places and the system, saffron for time,
+ * progress and achievement, tangerine for documents and the things you do to them. It tints the glass body, and in
+ * the dark theme it lights the icon (.p-icon in portal.css).
+ */
+const HUE_OF: Record<PortalIconName, 'violet' | 'saffron' | 'tangerine'> = {
+  grid: 'violet',
+  users: 'violet',
+  cap: 'saffron',
+  book: 'violet',
+  code: 'violet',
+  transfer: 'tangerine',
+  kanban: 'tangerine',
+  shield: 'violet',
+  chat: 'tangerine',
+  screen: 'violet',
+  invoice: 'tangerine',
+  award: 'saffron',
+  file: 'tangerine',
+  clipboard: 'tangerine',
+  spark: 'saffron',
+  pen: 'tangerine',
+  layers: 'violet',
+  plus: 'violet',
+  search: 'violet',
+  trash: 'tangerine',
+  external: 'violet',
+  check: 'violet',
+  clock: 'saffron',
+  target: 'saffron',
+  trend: 'saffron',
+  key: 'violet',
+  calendar: 'saffron',
+  chevron: 'violet',
+  menu: 'violet',
+  close: 'violet',
+  logout: 'tangerine',
+  upload: 'tangerine',
+  link: 'violet',
+  home: 'violet',
+  alert: 'tangerine',
+  eye: 'violet',
+  download: 'tangerine',
+  share: 'violet',
+  refresh: 'tangerine',
+  filter: 'violet',
+  edit: 'tangerine',
+  chart: 'saffron',
+  play: 'saffron',
+  lock: 'violet',
+  settings: 'violet',
+  help: 'violet',
+  bell: 'saffron',
+};
+
+/** The closed parts of an icon that hold its glass body; line-only icons (arrows, ticks, crosses) have none. */
+const GLASS: Partial<Record<PortalIconName, string>> = {
+  grid: PATHS.grid,
+  users: 'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21v-1a6 6 0 0 1 12 0v1z',
+  cap: 'M2 9l10-5 10 5-10 5z',
+  book: PATHS.book,
+  kanban: 'M4 4h16v16H4z',
+  shield: PATHS.shield,
+  chat: PATHS.chat,
+  screen: 'M3 4h18v12H3z',
+  invoice: 'M6 3h12v18l-3-2-3 2-3-2-3 2z',
+  award: 'M12 3a6 6 0 1 0 0 12 6 6 0 0 0 0-12z',
+  file: 'M7 3h7l4 4v14H7z',
+  clipboard: 'M5 5h14v16H5z',
+  pen: 'M4 20h4L19 9l-4-4L4 16z',
+  layers: 'M12 3 2 8l10 5 10-5z',
+  search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z',
+  trash: 'M6 7l1 13h10l1-13z',
+  clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
+  target: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
+  key: 'M8 14a4 4 0 1 1 0-8 4 4 0 0 1 0 8z',
+  calendar: 'M4 5h16v16H4z',
+  home: 'M6 9.5 12 4.5l6 5V20H6z',
+  alert: 'M12 4 2.5 20h19z',
+  eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z',
+  share: 'M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
+  filter: PATHS.filter,
+  edit: 'M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
+  play: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
+  lock: 'M6 11h12v10H6z',
+  // the gear's ring, with its centre left clear (evenodd)
+  settings: PATHS.settings,
+  help: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
+  bell: 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4z',
+};
+
+/**
+ * A portal icon as a small glass bead: a crisp line in the colour of where it sits, and in its closed parts a glass
+ * body tinted with its own colour under a white sheen, resting on a fine ledge of shadow (.p-icon in portal.css). In
+ * the dark theme the glass glows in its colour. The glass is drawn inside the line, never beside it: at 16px an
+ * offset highlight doubled the outline.
+ */
 export function PIcon({ name, size = 18 }: { name: PortalIconName; size?: number }) {
+  const id = useId().replace(/:/g, '');
+  const glass = GLASS[name];
   return (
-    <svg className="p-icon" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-      <path d={PATHS[name]} />
+    <svg
+      className="p-icon"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      style={{ '--icon-hue': `var(--${HUE_OF[name]})` } as CSSProperties}
+    >
+      {glass && (
+        <>
+          <defs>
+            <linearGradient id={`${id}-body`} x1="0" y1="0" x2="0" y2="1">
+              <stop className="p-icon-body-top" offset="0" />
+              <stop className="p-icon-body-end" offset="1" />
+            </linearGradient>
+            <linearGradient id={`${id}-sheen`} x1="0" y1="0" x2="0" y2="1">
+              <stop className="p-icon-sheen-top" offset="0" />
+              <stop className="p-icon-sheen-end" offset="0.6" />
+            </linearGradient>
+          </defs>
+          <path d={glass} fill={`url(#${id}-body)`} fillRule="evenodd" />
+          <path d={glass} fill={`url(#${id}-sheen)`} fillRule="evenodd" />
+        </>
+      )}
+      <path d={PATHS[name]} stroke="currentColor" strokeWidth="1.75" />
     </svg>
   );
 }
@@ -268,33 +393,112 @@ export function Modal({
   );
 }
 
-/** Asks before anything is deleted. */
-export function ConfirmDelete({ what, onConfirm, onClose }: { what: string; onConfirm: () => void; onClose: () => void }) {
+/**
+ * For a button that plays its animation before the action happens: `play(action)` starts it and runs the action
+ * `ms` later, or at once with reduced motion. If the button goes away mid-way (its dialog closed, the page left),
+ * the action still runs: the user already chose it.
+ */
+export function usePlayThen(ms: number) {
+  const [playing, setPlaying] = useState(false);
+  const timer = useRef(0);
+  const pending = useRef<(() => void) | null>(null);
+  const run = () => {
+    const action = pending.current;
+    pending.current = null;
+    action?.();
+  };
+  useEffect(
+    () => () => {
+      window.clearTimeout(timer.current);
+      run();
+    },
+    [],
+  );
+  const play = (action: () => void) => {
+    if (pending.current) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return action();
+    pending.current = action;
+    setPlaying(true);
+    timer.current = window.setTimeout(run, ms);
+  };
+  return [playing, play] as const;
+}
+
+// how long the delete plays before the item is actually removed (the CSS timeline in portal.css ends at 2.1s)
+const DELETE_MS = 2300;
+
+/**
+ * Deletes on click, with no confirm dialog, after a reel the user picked: the letters of the label fall into the bin,
+ * whose lid lifts to take them; the pill shrinks to a circle, a ring draws round it, and the bin turns into the Origin
+ * logo with a soft glow. Only then is the item removed (see usePlayThen).
+ */
+export function DeleteButton({
+  label = 'Delete',
+  srText,
+  small = false,
+  disabled,
+  title,
+  onDone,
+}: {
+  label?: string;
+  /** Read after the label by screen readers, to say what is deleted ("Delete Asha Rao"). */
+  srText?: string;
+  small?: boolean;
+  disabled?: boolean;
+  title?: string;
+  onDone: () => void;
+}) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const [going, play] = usePlayThen(DELETE_MS);
+  const start = () => {
+    if (going) return;
+    const btn = ref.current!;
+    // the pill shrinks from its own width, so that width is handed to the CSS
+    btn.style.setProperty('--w', `${btn.offsetWidth}px`);
+    // each letter flies to the bin's centre from wherever it sits, so labels of any length and size land inside it
+    const bin = btn.querySelector('.p-del-bin')!.getBoundingClientRect();
+    const letters = btn.querySelectorAll<HTMLElement>('.p-del-word > span');
+    letters.forEach((s) => {
+      const r = s.getBoundingClientRect();
+      s.style.setProperty('--to', `${bin.left + bin.width / 2 - (r.left + r.width / 2)}px`);
+    });
+    // every letter must be in before the word collapses at 0.8s, so long labels stagger faster
+    btn.style.setProperty('--stagger', `${Math.min(55, 280 / Math.max(1, letters.length - 1))}ms`);
+    play(onDone);
+  };
   return (
-    <Modal
-      title={`Delete ${what}?`}
-      icon="trash"
-      onClose={onClose}
-      footer={
-        <>
-          <button type="button" className={btnClass('ghost')} onClick={onClose}>
-            <BtnLabel>Cancel</BtnLabel>
-          </button>
-          <button
-            type="button"
-            className={btnClass('danger')}
-            onClick={() => {
-              onConfirm();
-              onClose();
-            }}
-          >
-            <BtnLabel icon="trash">Delete</BtnLabel>
-          </button>
-        </>
-      }
+    <button
+      ref={ref}
+      type="button"
+      className={small ? 'p-del is-small' : 'p-del'}
+      data-going={going || undefined}
+      aria-disabled={going || undefined}
+      aria-label={going ? 'Deleting' : srText ? `${label} ${srText}` : label}
+      disabled={disabled}
+      title={title}
+      onClick={start}
     >
-      <p className="p-modal-text">This can't be undone.</p>
-    </Modal>
+      <span className="p-del-bin" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path className="p-del-lid" d="M4 7h16M9 7V4h6v3" />
+          <path d="M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+        </svg>
+      </span>
+      <span className="p-del-word" aria-hidden="true">
+        {[...label].map((ch, i) => (
+          // a plain space would collapse inside its inline-block and the words would run together
+          <span key={i} style={{ '--i': i } as CSSProperties}>
+            {ch === ' ' ? ' ' : ch}
+          </span>
+        ))}
+      </span>
+      <svg className="p-del-ring" viewBox="0 0 48 48" aria-hidden="true">
+        <circle cx="24" cy="24" r="22" pathLength="1" />
+      </svg>
+      <span className="p-del-logo" aria-hidden="true">
+        <LogoMark size={24} />
+      </span>
+    </button>
   );
 }
 

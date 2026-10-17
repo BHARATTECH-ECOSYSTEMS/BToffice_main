@@ -926,8 +926,12 @@ export class Engine {
     // the dust, placed from this frame's globe and target shape
     const d = gt.dust;
     const du = this.dust.uniforms;
-    // gated by the globe being present, so a fast scroll past the ride never leaves dust hanging on screen
-    const dustOn = !!d && d.show * d.break * globeAmt > 0.002 && this.dust.points.geometry.getAttribute('aTo') !== undefined;
+    // Only while the globe is the scene's subject: its target's `at` is a screen position from the scroll that set
+    // it, so after another section takes over (a fast jump past the ride) the letters would hang there, over the
+    // next page, for the ~1s the globe takes to fold away. The ride's track keeps the globe the subject until the
+    // letters have landed (Network.tsx), so this never cuts the ride short.
+    const dustOn =
+      t.key === 'globe' && !!d && d.show * d.break * globeAmt > 0.002 && this.dust.points.geometry.getAttribute('aTo') !== undefined;
     this.dust.points.visible = dustOn;
     if (dustOn && d) {
       const k = (2 * this.camera.position.z * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2))) / window.innerHeight;

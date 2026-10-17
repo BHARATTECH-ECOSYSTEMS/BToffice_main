@@ -4,7 +4,7 @@ import { animate } from 'motion';
 /** The glass boxes that lean (glass.css lists the same boxes for the glass itself, minus those animated in a sequence:
  *  the capabilities wheel card, the services swing deck, the careers deck and the nav panels, where a lean would fight
  *  the motion they already have). */
-const BOXES = '.cell:not(.cell-ink), .fan-card, .role-card, .stack-card__inner, .about-callout-card, .how-paper, .about-contact-details, .contact-sheet, .accordion, .footer-verify';
+const BOXES = '.cell:not(.cell-ink), .fan-card, .role-card, .stack-card__inner, .about-callout-card, .how-paper, .about-contact-details, .contact-sheet, .accordion';
 
 // the steepest lean, in degrees; big boxes lean less, so a wide sheet doesn't swing like a door
 const MAX_TILT = 7;
