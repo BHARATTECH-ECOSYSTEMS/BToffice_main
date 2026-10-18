@@ -8,6 +8,7 @@ import { About } from './pages/About';
 import { Research } from './pages/Research';
 import { Careers } from './pages/Careers';
 import { Blog } from './pages/Blog';
+import { Services } from './pages/Services';
 import { Article } from './pages/Article';
 import { Contact } from './pages/Contact';
 import { Privacy, Terms } from './pages/Legal';
@@ -54,12 +55,14 @@ function Layout() {
     return () => cancelAnimationFrame(raf);
   }, [pathname, state, scrollTo]);
 
-  // Dark mode trigger from URL: ?theme=dark, #/?theme=dark, or #/dark
+  // Dark mode trigger from URL: ?theme=dark, #/?theme=dark, or #/dark. The Services page is always dark: its journey
+  // is a night scene, and the whole page (nav, closing section, footer) stays with it.
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const searchTheme = searchParams.get('theme');
     const hash = window.location.hash || '';
-    const isDark = searchTheme === 'dark' || hash.includes('theme=dark') || hash.includes('/dark') || pathname.startsWith('/dark');
+    const isDark =
+      searchTheme === 'dark' || hash.includes('theme=dark') || hash.includes('/dark') || pathname.startsWith('/dark') || pathname === '/services';
 
     if (isDark) {
       document.documentElement.setAttribute('data-theme', 'dark');
@@ -110,7 +113,7 @@ const router = createHashRouter([
       { path: 'about', Component: About },
       { path: 'research', Component: Research },
       { path: 'careers', Component: Careers },
-      { path: 'services', Component: Blog },
+      { path: 'services', Component: Services },
       { path: 'services/:slug', Component: Article },
       // old links keep working
       { path: 'publications', Component: Blog },

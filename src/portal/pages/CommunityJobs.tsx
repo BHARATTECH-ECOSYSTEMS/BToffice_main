@@ -65,12 +65,14 @@ export function InternalJobs({ stream, notify, isAdmin }: { stream: Stream | '';
   const openCount = shown.filter(isOpen).length;
   return (
     <section className="p-comm-jobs" aria-labelledby="comm-jobs">
-      <header className="p-comm-jobs-head">
-        <h2 id="comm-jobs" className="p-comm-jobs-title">
-          Internal job postings
+      <header className="p-comm-head">
+        <h2 id="comm-jobs" className="p-comm-title">
+          Internal job postings <span className="p-comm-count">{shown.length}</span>
         </h2>
         <p className="p-muted">
           {openCount ? `${openCount} ${openCount === 1 ? 'role is' : 'roles are'} open to former colleagues right now.` : 'No roles are open to former colleagues right now.'}
+          {/* the admin runs the applications by hand while former colleagues can't sign in and the portal sends no email */}
+          {isAdmin && " They can't sign in yet: email them the job, and add the applications they send you to it."}
         </p>
       </header>
       {shown.length ? (
@@ -106,7 +108,7 @@ function JobCard({ job, notify, isAdmin }: { job: InternalJob; notify: (t: strin
     <article className="p-card p-ijp" data-closed={!open || undefined}>
       <header className="p-ijp-head">
         <div>
-          <h3 className="p-ijp-title">{job.title}</h3>
+          <h3 className="p-card-title p-ijp-title">{job.title}</h3>
           <p className="p-dim">
             For the {STREAM_LABEL[job.stream]} community. Posted by {job.postedBy} on {formatDate(job.posted)}
           </p>
@@ -280,25 +282,26 @@ function JobAdmin({ job, open, notify }: { job: InternalJob; open: boolean; noti
             </button>
           </form>
         )}
+        {/* one button height across the footer, level with the Add button beside the select */}
         <span className="p-ijp-foot-actions">
           {open &&
             (reach.length ? (
               <a
-                className={btnClass('primary', { small: true })}
+                className={btnClass('primary')}
                 href={mailto({ bcc: reach, subject: `Internal job for former colleagues: ${job.title}`, body: jobEmail(job) })}
                 onClick={() => notify(`Opening an email to ${reach.length} ${reach.length === 1 ? 'member' : 'members'} of the ${STREAM_LABEL[job.stream]} community. Their addresses are in Bcc.`)}
               >
                 <BtnLabel icon="share">Email this job</BtnLabel>
               </a>
             ) : (
-              <button type="button" className={btnClass('primary', { small: true })} disabled title={`Nobody in the ${STREAM_LABEL[job.stream]} community has a personal email yet. Add one under Members.`}>
+              <button type="button" className={btnClass('primary')} disabled title={`Nobody in the ${STREAM_LABEL[job.stream]} community has a personal email yet. Add one under Members.`}>
                 <BtnLabel icon="share">Email this job</BtnLabel>
               </button>
             ))}
-          <button type="button" className={btnClass('ghost', { small: true })} onClick={() => (setJobOpen(job.id, !job.open), notify(job.open ? `${job.title} is closed.` : `${job.title} is open again.`))}>
+          <button type="button" className={btnClass('ghost')} onClick={() => (setJobOpen(job.id, !job.open), notify(job.open ? `${job.title} is closed.` : `${job.title} is open again.`))}>
             <BtnLabel icon={job.open ? 'lock' : 'refresh'}>{job.open ? 'Close posting' : 'Reopen'}</BtnLabel>
           </button>
-          <DeleteButton small srText={job.title} onDone={() => (removeJob(job.id), notify(`${job.title} was deleted.`))} />
+          <DeleteButton srText={job.title} onDone={() => (removeJob(job.id), notify(`${job.title} was deleted.`))} />
         </span>
       </footer>
     </>

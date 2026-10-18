@@ -22,7 +22,7 @@ const LINKS: { label: string; to: string; section?: string; tone: HueName; peek?
 ];
 
 // the glass keys that lean towards the cursor (useGlassTilt): among the links only the tilt one
-const GLASS_KEYS = '.nav-brand, .nav-links > [data-fx="tilt"], .nav-cta';
+const GLASS_KEYS = '.nav-brand, .nav-links > [data-fx="tilt"]';
 // every button of the bar, for the liquid drop: the brand, the links and the login button
 const BAR_BUTTONS = '.nav-brand, .nav-links > a, .nav-links > button, .nav-cta';
 

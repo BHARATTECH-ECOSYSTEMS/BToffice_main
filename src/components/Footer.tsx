@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Brand } from './ui';
 import { useOpenLogin } from './Login';
@@ -92,10 +92,31 @@ const SOCIALS: Social[] = [
 
 const CONNECT = 'CONNECT';
 
+/** True once the footer has come into view, so its entrance plays once. */
+function useFooterSeen() {
+  const ref = useRef<HTMLElement>(null);
+  const [seen, setSeen] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || seen) return;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        if (e.isIntersecting) setSeen(true);
+      },
+      { rootMargin: '0px 0px -10% 0px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [seen]);
+  return { ref, seen };
+}
+
 export function Footer() {
   const openLogin = useOpenLogin();
+  const { ref, seen } = useFooterSeen();
   return (
-    <footer className="footer">
+    // its parts rise in one after another when it comes into view (base.css)
+    <footer ref={ref} className="footer" data-in={seen || undefined}>
       <div className="wrap">
         <div className="footer-top">
           <div className="footer-lead">

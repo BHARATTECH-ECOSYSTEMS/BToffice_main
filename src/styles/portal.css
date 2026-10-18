@@ -7,7 +7,8 @@ body:has(.portal) .scene {
   visibility: hidden;
 }
 
-/* The portal's own warm palette (light theme only): cream page, warm-white cards, the brand violet as the accent. */
+/* The portal's own warm palette (light theme only): the home hero's dark-white page, warm-white cards, the brand
+   violet as the accent. */
 .portal {
   --p-gap: 18px;
   --p-radius: 26px;
@@ -45,11 +46,14 @@ body:has(.portal) .scene {
   --bg: #f6f4ee;
   --paper: #fdfcf9;
   --p-field: #fff;
-  background:
-    radial-gradient(60% 55% at 100% 100%, rgb(110 88 245 / 0.2), transparent 70%),
-    radial-gradient(45% 45% at 0% 0%, rgb(190 176 255 / 0.28), transparent 70%),
-    #f1eee6;
-  background-attachment: fixed;
+  /* the strip round the frame: a step deeper than the hero's darkest edge, so the frame still reads as a window */
+  background: #e2ddd3;
+}
+/* Inside the frame, the home hero's own backdrop, measured from its render: a warm dark white, lightest in the middle
+   and deepening toward the edges under the hero's vignette. It's fixed to the screen like the hero, so the light
+   stays put while a page scrolls. */
+:root:not([data-theme='dark']) .p-frame {
+  background: radial-gradient(circle 100vh at 50% 50%, #f6f1e8 25%, #f2ede5 50%, #eee9e1 70%, #e8e3db 90%, #e6e2d9) fixed;
 }
 .portal {
   --p-card: var(--paper);
@@ -1079,32 +1083,21 @@ body:has(.portal) .scene {
 .p-user {
   position: relative;
 }
-/* The profile button is the site's violet glass button (.nav-cta in base.css: glass, gloss, name roll and its
-   entrance after the keys). Here it holds the avatar and the name, leans to the cursor (useGlassTilt) and stays
-   pressed in while its menu is open. No light follows the cursor across it, so the avatar and name stay calm. */
+/* The profile button is the site's solid violet button (.nav-cta in base.css: name roll and its entrance after the
+   keys). Here it holds the avatar and the name, and stays pressed in while its menu is open. */
 .p-user-btn {
   height: auto;
   min-height: 46px;
   padding: 5px 16px 5px 6px;
 }
-/* the site button's cursor bloom (::before, grown from --mx/--my) is switched off here */
-.p-user-btn::before {
-  content: none;
-}
-/* pressed in while the menu is open: the light goes inside, the gloss dims and the lift drops */
+/* pressed in while the menu is open: a deeper violet, the shadow goes inside and the lift drops */
 .p-user-btn[aria-expanded='true'],
 .p-bell-btn[aria-expanded='true'] {
   scale: 0.97;
-  box-shadow:
-    inset 0 2px 7px rgb(35 16 120 / 0.55),
-    inset 0 -1px 0 rgb(255 255 255 / 0.3),
-    0 4px 12px -8px rgb(110 88 245 / 0.6);
+  background-color: #5a41e2;
+  box-shadow: inset 0 2px 7px rgb(35 16 120 / 0.5);
 }
-.p-user-btn[aria-expanded='true']::after,
-.p-bell-btn[aria-expanded='true']::after {
-  opacity: 0.45;
-}
-/* ── The notifications bell: a round button of the same violet glass, just after the profile button. It rings
+/* ── The notifications bell: a round button of the same solid violet, just after the profile button. It rings
    once as its menu opens; the clapper swings a beat behind the bell. ── */
 .p-notify {
   position: relative;
@@ -1114,9 +1107,6 @@ body:has(.portal) .scene {
   width: 46px;
   height: 46px;
   padding: 0;
-}
-.p-bell-btn::before {
-  content: none;
 }
 .p-bell {
   width: 20px;
@@ -1361,17 +1351,22 @@ body:has(.portal) .scene {
   line-height: 1.4;
   color: var(--ink-soft);
 }
-/* the avatar as a glass orb (.nav-orb), its initials violet on white so they read on the violet glass. The orb is
+/* the avatar as a plain white disc, like the arrow disc on the site's login button, its initials violet so they read
+   on the violet button. It keeps the brand orb's shape (.nav-orb) without its gloss, rim or shading. The orb is
    held to the avatar's exact circle, and the avatar is a block, not a line of text: as text it sat on a line box
-   ~6px taller than itself, which stretched the orb into an oval and pushed its gloss and ring off the photo. */
+   ~6px taller than itself, which stretched the orb into an oval and pushed its ring off the photo. */
 .p-user-orb {
   width: 34px;
   height: 34px;
+  box-shadow: none;
+}
+.p-user-orb::after {
+  content: none;
 }
 .p-user-orb .p-avatar {
   display: grid;
   color: var(--violet);
-  background: linear-gradient(180deg, #fff, #e6e0ff);
+  background: #fff;
 }
 /* a light ring that draws once round the orb on hover, and is put away quickly when the pointer leaves */
 .p-user-ring {
@@ -5020,7 +5015,7 @@ html:has(.portal),
 /* ── Community (pages/Community.tsx): former colleagues by stream, and the referrals shared with them ── */
 
 .p-comm-streams {
-  margin-bottom: var(--p-gap);
+  margin: 10px 0 -4px;
 }
 .p-comm-main {
   display: grid;
@@ -5115,10 +5110,6 @@ html:has(.portal),
 }
 .p-ijp-title {
   margin: 0 0 2px;
-  font-family: var(--display);
-  font-size: 21px;
-  font-weight: 500;
-  letter-spacing: -0.015em;
 }
 .p-ijp-about {
   margin: 0;
@@ -5290,7 +5281,7 @@ html:has(.portal),
   align-items: center;
   gap: 6px;
 }
-/* ── Community layout: how it works, then the roles beside the people ── */
+/* ── Community layout: how it works, the stream filter, then the roles beside the people ── */
 /* the three things that happen, in order, as one quiet strip rather than three cards */
 .p-comm-steps {
   display: grid;
@@ -5340,78 +5331,98 @@ html:has(.portal),
   line-height: 1.45;
   color: var(--ink-soft);
 }
+/* Both columns share one grid: row 1 holds the column heads and row 2 the first cards, so the two columns start on
+   the same line whatever the head says. Each column is a subgrid of those two rows. A subgrid can't add rows,
+   so everything under the aside's first head stacks inside .p-comm-aside-body. */
 .p-comm-layout {
   display: grid;
   grid-template-columns: minmax(0, 8fr) minmax(300px, 4fr);
+  grid-template-rows: auto auto;
   align-items: start;
-  gap: var(--p-gap);
+  gap: 12px var(--p-gap);
 }
-.p-comm-jobs {
+.p-comm-jobs,
+.p-comm-aside {
   display: grid;
-  gap: 14px;
+  grid-template-rows: subgrid;
+  grid-row: 1 / span 2;
+  row-gap: 12px;
+  /* row 2 is as tall as the taller column; the shorter column must not stretch its cards to fill it */
+  align-items: start;
   min-width: 0;
 }
-.p-comm-jobs-head {
+/* a column head: the title with its count, then one line on what's below. It sits on the page edge, on the same
+   left line as the page title, the strip and the chips; only card content is inset. */
+.p-comm-head {
   display: grid;
-  gap: 2px;
-  padding: 0 4px;
+  gap: 4px;
 }
-.p-comm-jobs-title {
+.p-comm-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
   margin: 0;
   font-family: var(--display);
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 500;
   letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.p-comm-count {
+  font-size: 15px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+.p-comm-head .p-muted {
+  max-width: 64ch;
+}
+.p-comm-aside-body {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+.p-comm-aside-body > .p-comm-head {
+  margin-top: 12px;
 }
 .p-comm-jobs .p-ijp-list {
   margin-top: 0;
 }
-.p-comm-aside {
-  display: grid;
-  gap: var(--p-gap);
-  min-width: 0;
-}
+/* the card under a head holds only the list; the rows carry the rhythm, split by hairlines */
 .p-comm-panel {
-  gap: 4px;
+  gap: 0;
 }
-.p-comm-panel-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 12px;
-}
-.p-comm-count {
-  font-family: var(--display);
-  font-size: 22px;
-  line-height: 1;
-  letter-spacing: -0.03em;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink-soft);
-}
-/* the people and the referrals as a directory: rows split by hairlines, not a stack of tinted boxes */
 .p-comm-people {
-  margin: 10px 0 0;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 .p-comm-person,
 .p-comm-ref {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
   padding: 12px 0;
+}
+.p-comm-people > li:first-child {
+  padding-top: 0;
+}
+.p-comm-people > li:last-child {
+  padding-bottom: 0;
 }
 .p-comm-people > li + li {
   border-top: 1px solid var(--line);
 }
+.p-comm-person {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
 .p-comm-person .p-badge {
   margin-top: 2px;
 }
+/* a referral: the role, then its actions on their own line, so every row reads the same whatever it has */
 .p-comm-ref {
-  flex-wrap: wrap;
-}
-.p-comm-ref .p-comm-main {
-  flex: 1 1 200px;
+  display: grid;
+  gap: 10px;
 }
 .p-comm-ref-actions {
   display: flex;
@@ -5459,6 +5470,15 @@ html:has(.portal),
 @media (max-width: 1100px) {
   .p-comm-layout {
     grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: none;
+  }
+  .p-comm-jobs,
+  .p-comm-aside {
+    grid-template-rows: none;
+    grid-row: auto;
+  }
+  .p-comm-aside {
+    margin-top: 12px;
   }
 }
 @media (max-width: 900px) {

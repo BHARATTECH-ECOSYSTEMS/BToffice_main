@@ -125,6 +125,142 @@ export const DOMAINS = [
   },
 ];
 
+/**
+ * The Services page (pages/Services.tsx): every card on the ring, and what its pop-up says. `kind` sets the card's
+ * look: a service, an approach (how we work), or a sector (who it is for). Written for the redesign of 2026-10-18;
+ * the approach cards describe commitments the company should confirm before launch.
+ */
+export type ServiceKind = 'service' | 'approach' | 'sector';
+export interface ServiceCard {
+  id: string;
+  kind: ServiceKind;
+  icon: 'building' | 'cloud' | 'search' | 'layers' | 'rocket' | 'vision' | 'voice' | 'globe' | 'cpu' | 'shield' | 'flask' | 'cap' | 'landmark' | 'code' | 'docs';
+  title: string;
+  line: string;
+  summary: string;
+  points: string[];
+  steps?: string[];
+}
+export const SERVICES: ServiceCard[] = [
+  {
+    id: 'enterprise-intelligence', kind: 'service', icon: 'building', title: 'Enterprise Intelligence',
+    line: 'Ask anything your organisation knows, and get an answer with its sources.',
+    summary: 'We connect Rivinity to your documents, databases and tools, so a team can ask in plain language and get an answer that cites the records behind it, limited to what that person is allowed to see.',
+    points: ['Connectors for document stores, databases and chat tools', 'Answers that link back to the source record', 'Access rules taken from the permissions you already have', 'Runs in your cloud, ours, or on your own servers'],
+    steps: ['Pick one question your team asks every week', 'Connect the sources that answer it', 'Widen to more teams once it earns trust'],
+  },
+  {
+    id: 'sovereign-cloud', kind: 'service', icon: 'cloud', title: 'Sovereign Cloud',
+    line: 'Models and data hosted on infrastructure inside India.',
+    summary: 'For institutions whose data cannot leave the country, we deploy and run the whole stack on Indian infrastructure, from model serving to storage and audit logs.',
+    points: ['Hosting in Indian data centres or on your own racks', 'Separation between departments and tenants', 'An audit trail for every request and answer', 'Upgrades without moving your data'],
+    steps: ['Agree where the data and models will live', 'Stand up an isolated environment', 'Move workloads in, one service at a time'],
+  },
+  {
+    id: 'ai-search', kind: 'service', icon: 'search', title: 'AI Search',
+    line: 'Search that finds the passage that answers the question.',
+    summary: 'Built on the engine behind BSearch, our search service reads your content and returns the passage that answers a question, not only the pages that share its words.',
+    points: ['Search across sites, archives and internal documents', 'Answers in plain language, with the passage highlighted', 'Filters by date, department and document type', 'An API so your own apps can use it'],
+  },
+  {
+    id: 'knowledge-memory', kind: 'service', icon: 'layers', title: 'Knowledge Memory',
+    line: 'Context that carries across sessions, people and tools.',
+    summary: 'A memory layer for your AI systems: it keeps what was learned in one conversation or project and makes it available to the next, instead of starting from zero every time.',
+    points: ['Memory that persists across sessions and teams', 'A knowledge graph of people, projects and records', 'Controls for what is remembered and for how long', 'Works with the models you already use'],
+  },
+  {
+    id: 'agents-workflows', kind: 'service', icon: 'rocket', title: 'Agents & Workflows',
+    line: 'Hand repeated work to agents that already know your context.',
+    summary: 'We turn a process your team repeats, like triaging requests or drafting reports, into an agent that follows the steps, uses your tools and asks a person when it is unsure.',
+    points: ["Agents that inherit the organisation's memory", 'Each step logged, so the work can be checked', 'A person approves anything that matters', 'Built on the Workflow and Agent Builder tools'],
+    steps: ['Map the process as it runs today', 'Automate the safest steps first', 'Add the rest as the agent proves itself'],
+  },
+  {
+    id: 'document-vision', kind: 'service', icon: 'vision', title: 'Document & Vision',
+    line: 'Read forms, scans, images and video into structured data.',
+    summary: 'Our vision models read what people usually type in by hand: forms, scanned files, photographs and footage, and turn them into records you can search and act on.',
+    points: ['Forms and scanned documents into clean records', 'Image and video understanding for inspections', 'A person reviews whatever the model is unsure of', 'Output into your existing systems'],
+  },
+  {
+    id: 'voice-intelligence', kind: 'service', icon: 'voice', title: 'Voice Intelligence',
+    line: 'Real-time speech understanding for calls and field teams.',
+    summary: 'Speech recognition and response for help lines, kiosks and teams in the field, connected to the same memory as everything else, so a caller never has to repeat themselves.',
+    points: ['Real-time transcription and understanding', 'Spoken answers drawn from your knowledge', 'Summaries and follow-ups after every call', 'Runs on servers or on the device'],
+  },
+  {
+    id: 'geospatial', kind: 'service', icon: 'globe', title: 'Geospatial Analytics',
+    line: 'Satellite imagery and maps, reasoned over by AI.',
+    summary: 'From our Geo Intelligence research: we combine satellite imagery, maps and field data so a model can answer questions about places, such as where groundwater is falling or which roads flood.',
+    points: ['Change detection across satellite imagery', 'Questions about places answered in plain language', 'Layers from your own GIS data', 'Reports for planners and field teams'],
+  },
+  {
+    id: 'edge-ai', kind: 'service', icon: 'cpu', title: 'Edge AI',
+    line: 'Compact models that run on devices, offline when they must.',
+    summary: 'From our Miniature Intelligence research: models small enough for laptops, phones and embedded hardware, which work without a connection and sync with the larger system when they can.',
+    points: ['Models sized for your hardware', 'Inference on the device, without a connection', 'Sync with the central memory when online', 'Updates rolled out over the air'],
+  },
+  {
+    id: 'ai-security', kind: 'service', icon: 'shield', title: 'AI Security Review',
+    line: 'An outside look at how your AI systems could fail or leak.',
+    summary: 'From our Defense Intelligence research: we test your AI systems the way an attacker would, then report what could leak, be manipulated or fail, and how to fix it.',
+    points: ['Prompt injection and data leakage testing', 'A review of access and data flows', 'Findings ranked by real risk', 'A retest once fixes are in'],
+  },
+  {
+    id: 'custom-models', kind: 'service', icon: 'flask', title: 'Custom Models',
+    line: 'Models trained or tuned for your field and your data.',
+    summary: 'When a general model is not enough, we train or tune one for your domain, measure it against your own examples, and hand it over with its evaluation.',
+    points: ['Tuning on your data, which stays yours', 'Evaluation against your own test cases', 'Deployment in the cloud or on the edge', 'Documentation of what the model can and cannot do'],
+  },
+  {
+    id: 'research-collaboration', kind: 'service', icon: 'cap', title: 'Research Collaboration',
+    line: 'Joint research programmes and fellowships with institutions.',
+    summary: 'We work with universities and labs on long-horizon problems in memory, reasoning and sovereign AI, through joint programmes and sponsored fellowships.',
+    points: ['Joint research programmes', 'Sponsored fellowships for students', 'Shared publications and open results', 'Access to Rivinity for research use'],
+  },
+  {
+    id: 'one-real-problem', kind: 'approach', icon: 'docs', title: 'Start with one real problem',
+    line: 'We scope every pilot around a single question your team already asks.',
+    summary: 'Large AI programmes stall because they start too wide. We begin with one question that matters to one team, show the answer working on your data, and only then widen the scope.',
+    points: ['A pilot scoped to one team and one question', 'Success agreed in writing before work starts', 'A clear decision point at the end'],
+  },
+  {
+    id: 'traceable', kind: 'approach', icon: 'search', title: 'Every answer is traceable',
+    line: 'Each answer links back to the sources and steps behind it.',
+    summary: 'An answer nobody can check is a liability. Everything our systems say comes with the records it used and the steps it took, so a person can verify it before acting on it.',
+    points: ['Citations on every answer', 'A log of the steps behind each result', 'Exports for audit and review'],
+  },
+  {
+    id: 'sovereign-default', kind: 'approach', icon: 'shield', title: 'Sovereign by default',
+    line: 'Deployments run on infrastructure inside India unless you choose otherwise.',
+    summary: 'Data about citizens, students and patients should stay under national control. Our default deployment keeps data, models and logs inside India.',
+    points: ['Indian infrastructure as the default', 'No data used for training without consent', 'Clear terms on where everything is stored'],
+  },
+  {
+    id: 'for-government', kind: 'sector', icon: 'landmark', title: 'Governments',
+    line: 'Public services that remember the citizen and respect their data.',
+    summary: 'For ministries, departments and public bodies: services that answer citizens in their own words, keep case history across offices, and run on sovereign infrastructure.',
+    points: ['Sovereign Cloud', 'Enterprise Intelligence', 'Document & Vision', 'Geospatial Analytics'],
+  },
+  {
+    id: 'for-universities', kind: 'sector', icon: 'cap', title: 'Universities & labs',
+    line: 'Research tools that keep every source, experiment and dead end.',
+    summary: 'For universities and research labs: AI that remembers a project across years and students, plus joint programmes with our own research team.',
+    points: ['Research Collaboration', 'Knowledge Memory', 'AI Search', 'Custom Models'],
+  },
+  {
+    id: 'for-enterprises', kind: 'sector', icon: 'building', title: 'Enterprises',
+    line: 'One intelligence across every team, under your governance.',
+    summary: 'For companies that want AI across departments without a different tool in every one: a single system that shares memory and follows your rules.',
+    points: ['Enterprise Intelligence', 'Agents & Workflows', 'AI Security Review', 'Voice Intelligence'],
+  },
+  {
+    id: 'for-developers', kind: 'sector', icon: 'code', title: 'Developers',
+    line: 'Memory, reasoning and agents, exposed as clean APIs.',
+    summary: 'For developers and startups building on Origin: the same capabilities we use ourselves, offered as typed APIs and SDKs, from prototype to production.',
+    points: ['Developer APIs and SDKs', 'Edge AI', 'Knowledge Memory', 'Custom Models'],
+  },
+];
+
 export const PRINCIPLES = [
   { title: 'Intelligence should remember.', body: 'Context is never lost. Every interaction and every piece of knowledge persists and compounds.' },
   { title: 'Intelligence should evolve.', body: 'Systems that improve through use, rather than waiting for the next retraining cycle.' },

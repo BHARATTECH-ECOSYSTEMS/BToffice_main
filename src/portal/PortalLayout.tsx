@@ -125,7 +125,7 @@ export function PortalLayout() {
   const reduceMotion = useReducedMotion();
   usePointerBloom();
   // the brand, the tilt key, the bell and the profile button lean towards the cursor, as on the site's nav
-  useGlassTilt(topRef, '.nav-brand, .nav-links > [data-fx="tilt"], .p-bell-btn, .p-user-btn');
+  useGlassTilt(topRef, '.nav-brand, .nav-links > [data-fx="tilt"]');
   // one liquid drop glides along the whole bar and wraps whichever button the pointer is on
   const bubbleRef = useRef<HTMLSpanElement>(null);
   useNavBubble(topRef, bubbleRef, TOP_BUTTONS);

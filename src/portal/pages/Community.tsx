@@ -83,104 +83,102 @@ export function Community() {
         ))}
       </div>
 
-      {/* the roles lead, because bringing people back is what the community is for; the people sit beside them */}
+      {/* the roles lead, because bringing people back is what the community is for; the people sit beside them.
+          Each group is a head on the page edge, then a card; the heads of both columns share one grid row. */}
       <div className="p-comm-layout">
         <InternalJobs stream={stream} notify={notify} isAdmin={isAdmin} />
 
         <aside className="p-comm-aside" aria-label="Community members and referrals">
-          <section className="p-card p-comm-panel" aria-labelledby="comm-members">
-            <header className="p-comm-panel-head">
-              <h2 id="comm-members" className="p-card-title">
-                Members
-              </h2>
-              <span className="p-comm-count">{members.length}</span>
-            </header>
+          <header className="p-comm-head">
+            <h2 id="comm-members" className="p-comm-title">
+              Members <span className="p-comm-count">{members.length}</span>
+            </h2>
             <p className="p-muted">
               Former colleagues in the {label}
               {isAdmin ? ', reached on their personal email.' : '.'}
             </p>
-            {members.length ? (
-              <ul className="p-comm-people" ref={membersRef}>
-                {members.map((a) => (
-                  <li key={a.id} className="p-comm-person" data-flip={a.id}>
-                    <span className="p-avatar is-soft is-small" aria-hidden="true">
-                      {initials(a.name)}
-                    </span>
-                    <span className="p-comm-main">
-                      <strong>{a.name}</strong>
-                      <small>Left {formatDate(a.left)}</small>
-                      {isAdmin && <PersonalEmail member={a} notify={notify} />}
-                    </span>
-                    <Badge kind="soft">{STREAM_LABEL[a.stream]}</Badge>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <Empty icon="users" title="No members yet">
-                People join when they're marked as left on the People page.
-              </Empty>
-            )}
-          </section>
-
-          {showReferrals && (
-            <section className="p-card p-comm-panel" aria-labelledby="comm-referrals">
-              <header className="p-comm-panel-head">
-                <h2 id="comm-referrals" className="p-card-title">
-                  Referrals
-                </h2>
-                <span className="p-comm-count">{shared.length}</span>
-              </header>
-              <p className="p-muted">Roles at other companies passed on to the {label}.</p>
-              {shared.length ? (
-                <ul className="p-comm-people" ref={referralsRef}>
-                  {shared.map((r) => (
-                    <li key={r.id} className="p-comm-ref" data-flip={r.id}>
-                      <span className="p-comm-main">
-                        <strong>{r.title}</strong>
-                        <span>{r.company}</span>
-                        {r.note && <p>{r.note}</p>}
-                        <small>
-                          {STREAM_LABEL[r.stream]}, shared by {r.postedBy} on {formatDate(r.posted)}
-                        </small>
+          </header>
+          {/* only this first head shares the grid row with the jobs head; everything under it stacks in here */}
+          <div className="p-comm-aside-body">
+            <section className="p-card p-comm-panel" aria-labelledby="comm-members">
+              {members.length ? (
+                <ul className="p-comm-people" ref={membersRef}>
+                  {members.map((a) => (
+                    <li key={a.id} className="p-comm-person" data-flip={a.id}>
+                      <span className="p-avatar is-soft is-small" aria-hidden="true">
+                        {initials(a.name)}
                       </span>
-                      {(r.link || isAdmin) && (
-                        <span className="p-comm-ref-actions">
-                          {r.link && (
-                            <a className={btnClass('ghost', { small: true })} href={r.link} target="_blank" rel="noreferrer">
-                              <BtnLabel icon="external">
-                                Open<span className="sr-only"> {r.title} at {r.company} (opens in a new tab)</span>
-                              </BtnLabel>
-                            </a>
-                          )}
-                          {isAdmin && (
-                            <DeleteButton
-                              small
-                              label="Remove"
-                              srText={r.title}
-                              onDone={() => {
-                                removeReferral(r.id);
-                                notify('The referral was removed.');
-                              }}
-                            />
-                          )}
-                        </span>
-                      )}
+                      <span className="p-comm-main">
+                        <strong>{a.name}</strong>
+                        <small>Left {formatDate(a.left)}</small>
+                        {isAdmin && <PersonalEmail member={a} notify={notify} />}
+                      </span>
+                      <Badge kind="soft">{STREAM_LABEL[a.stream]}</Badge>
                     </li>
                   ))}
                 </ul>
               ) : (
-                <Empty icon="share" title="No referrals here yet">
-                  Roles passed on to the {label} show up here.
+                <Empty icon="users" title="No members yet">
+                  People join when they're marked as left on the People page.
                 </Empty>
               )}
             </section>
-          )}
 
-          {isAdmin && (
-            <p className="p-field-hint">
-              Former colleagues can't sign in yet, and the portal doesn't send email itself. Use Email this job to reach them, and add the applications they send you to each job.
-            </p>
-          )}
+            {showReferrals && (
+              <>
+                <header className="p-comm-head">
+                  <h2 id="comm-referrals" className="p-comm-title">
+                    Referrals <span className="p-comm-count">{shared.length}</span>
+                  </h2>
+                  <p className="p-muted">Roles at other companies passed on to the {label}.</p>
+                </header>
+                <section className="p-card p-comm-panel" aria-labelledby="comm-referrals">
+                  {shared.length ? (
+                    <ul className="p-comm-people" ref={referralsRef}>
+                      {shared.map((r) => (
+                        <li key={r.id} className="p-comm-ref" data-flip={r.id}>
+                          <span className="p-comm-main">
+                            <strong>{r.title}</strong>
+                            <span>{r.company}</span>
+                            {r.note && <p>{r.note}</p>}
+                            <small>
+                              {STREAM_LABEL[r.stream]}, shared by {r.postedBy} on {formatDate(r.posted)}
+                            </small>
+                          </span>
+                          {(r.link || isAdmin) && (
+                            <span className="p-comm-ref-actions">
+                              {r.link && (
+                                <a className={btnClass('ghost', { small: true })} href={r.link} target="_blank" rel="noreferrer">
+                                  <BtnLabel icon="external">
+                                    Open<span className="sr-only"> {r.title} at {r.company} (opens in a new tab)</span>
+                                  </BtnLabel>
+                                </a>
+                              )}
+                              {isAdmin && (
+                                <DeleteButton
+                                  small
+                                  label="Remove"
+                                  srText={r.title}
+                                  onDone={() => {
+                                    removeReferral(r.id);
+                                    notify('The referral was removed.');
+                                  }}
+                                />
+                              )}
+                            </span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <Empty icon="share" title="No referrals here yet">
+                      Roles passed on to the {label} show up here.
+                    </Empty>
+                  )}
+                </section>
+              </>
+            )}
+          </div>
         </aside>
       </div>
 
