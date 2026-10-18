@@ -455,9 +455,11 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, dark = false
     camera.aspect = W / H;
     camera.updateProjectionMatrix();
   };
+  // Nothing is drawn until the shaders are compiled (see the end), so a resize before then only resizes.
+  let compiled = false;
   const ro = new ResizeObserver(() => {
     resize();
-    if (!running) frame(performance.now());
+    if (!running && compiled) frame(performance.now());
   });
   ro.observe(host);
   resize();
@@ -539,7 +541,7 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, dark = false
     raf = requestAnimationFrame(loop);
   };
   const sync = () => {
-    const should = visible && !document.hidden && !reduced;
+    const should = compiled && visible && !document.hidden && !reduced;
     if (should && !running) {
       running = true;
       clock.last = 0;
@@ -559,9 +561,19 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, dark = false
   );
   io.observe(host);
   document.addEventListener('visibilitychange', sync);
-  frame(performance.now());
+  // The first draw used to compile every shader at once, holding the page for most of a second as the card scrolled
+  // in. They compile in the background first, where the browser can; the cap covers browsers where that never
+  // reports back, which then compile on the first draw as before.
+  let disposed = false;
+  Promise.race([renderer.compileAsync(scene, camera).catch(() => undefined), new Promise((done) => setTimeout(done, 1500))]).then(() => {
+    if (disposed) return;
+    compiled = true;
+    frame(performance.now());
+    sync();
+  });
 
   return () => {
+    disposed = true;
     running = false;
     cancelAnimationFrame(raf);
     io.disconnect();

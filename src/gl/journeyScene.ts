@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CSS3DObject, CSS3DRenderer } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
+import { HUE } from './palette';
 
 /** A card's size in CSS pixels, which are also the scene's world units. */
 export const CARD_W = 280;
@@ -94,7 +95,8 @@ const WALLS = [
 
 export interface Journey {
   /** Draws one frame for `progress` (0…1 through the section). */
-  frame: (now: number, progress: number) => void;
+  /** Draws one frame for `progress` (0…1 through the journey) and `outro` (0…1 through the stretch after it). */
+  frame: (now: number, progress: number, outro?: number) => void;
   /** Brings card `i` to the front of the ring. */
   focus: (i: number) => void;
   /** How far card `i` is turned away from the viewer, in degrees (0 outside the ring). */
@@ -215,7 +217,7 @@ export function mountJourney({
       fragmentShader: `uniform float uOpacity; varying float vDepth;
         void main(){
           float fog = smoothstep(4600.0, 900.0, vDepth) * smoothstep(0.0, 160.0, vDepth);
-          gl_FragColor = vec4(vec3(0.72, 0.66, 1.0), fog * uOpacity * 0.42);
+          gl_FragColor = vec4(vec3(0.647, 0.592, 1.0), fog * uOpacity * 0.42);
         }`,
     });
     wire.add(new THREE.LineSegments(wireGeo, wireMat));
@@ -247,9 +249,13 @@ export function mountJourney({
         void main(){
           float ends = smoothstep(-0.2, 0.8, vAlong) * smoothstep(uCount + 0.2, uCount - 0.8, vAlong);
           float pulse = pow(1.0 - fract(vAlong * 0.5 - uPulse), 6.0);
-          vec3 violet = vec3(0.43, 0.35, 0.96), tangerine = vec3(1.0, 0.53, 0.26);
-          vec3 c = mix(violet, tangerine, vAlong / uCount);
-          gl_FragColor = vec4(c, min(1.0, (0.55 + pulse * 1.6) * ends * uOpacity));
+          // the brand's three colours down the helix: Violet, Tango Orange, Pitch Yellow. The line is drawn near full
+          // strength, because orange and yellow faded over the night read as brown; the pulse lifts toward white.
+          vec3 violet = vec3(0.431, 0.345, 0.961), tangerine = vec3(1.0, 0.525, 0.263), saffron = vec3(0.961, 0.62, 0.0);
+          float t = vAlong / uCount;
+          vec3 c = t < 0.5 ? mix(violet, tangerine, t * 2.0) : mix(tangerine, saffron, t * 2.0 - 1.0);
+          c = mix(c, vec3(1.0), pulse * 0.45);
+          gl_FragColor = vec4(c, min(1.0, (0.85 + pulse) * ends * uOpacity));
         }`,
     });
     thread.add(new THREE.Mesh(threadGeo, threadMat));
@@ -272,8 +278,8 @@ export function mountJourney({
           float d = length(vP) / uR;
           float pool = smoothstep(1.5, 0.0, d);
           float rim = exp(-pow((d - 1.0) / 0.3, 2.0));
-          float a = atan(vP.y, vP.x);
-          vec3 c = mix(vec3(0.43, 0.35, 0.96), vec3(1.0, 0.53, 0.26), 0.5 + 0.5 * sin(a * 2.0));
+          // violet only: Tango Orange this faint over the night reads as brown
+          vec3 c = mix(vec3(0.43, 0.35, 0.96), vec3(0.647, 0.592, 1.0), rim);
           gl_FragColor = vec4(c, (pool * 0.16 + rim * 0.16) * uOpacity);
         }`,
     });
@@ -292,11 +298,13 @@ export function mountJourney({
     const yBottom = RING_Y - 900;
     const dustPos = new Float32Array(count * 3);
     const dustCol = new Float32Array(count * 3);
-    const warm = new THREE.Color('#ffb067');
-    const cool = new THREE.Color('#b8a9ff');
+    const yellow = new THREE.Color(HUE.saffron);
+    const orange = new THREE.Color(HUE.tangerine);
+    const violet = new THREE.Color('#a597ff'); // the site's light violet (--violet-text, dark theme)
     for (let k = 0; k < count; k++) {
       dustPos.set([(Math.random() - 0.5) * 3600, yBottom + Math.random() * (yTop - yBottom), zMin + Math.random() * zRange], k * 3);
-      const c = Math.random() < 0.35 ? warm : cool;
+      const pick = Math.random();
+      const c = pick < 0.5 ? violet : pick < 0.75 ? orange : yellow;
       dustCol.set([c.r, c.g, c.b], k * 3);
     }
     const dustGeo = new THREE.BufferGeometry();
@@ -370,6 +378,7 @@ export function mountJourney({
   const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
   let last = performance.now();
   const shown = hosts.map(() => -1);
+  const awayShown = hosts.map(() => false);
 
   const camPos = new THREE.Vector3();
   const camAt = new THREE.Vector3();
@@ -384,7 +393,7 @@ export function mountJourney({
   let spreadNow = 0;
   let dragSpeed = 0; // radians per second under the pointer, for the lean while the ring is held
 
-  const frame = (now: number, rawProgress: number) => {
+  const frame = (now: number, rawProgress: number, rawOutro = 0) => {
     const p = reduced ? 1 : rawProgress;
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
     last = now;
@@ -401,7 +410,11 @@ export function mountJourney({
     const spin = p * SPIN_SCROLL + spinIdle;
 
     // the ring: a little turn from scrolling, momentum, the slow turn, and steering to a focused card
-    scrollTurn = reduced ? 0 : Math.max(0, p - PHASES.toRing) * 1.6;
+    // The ending: past the ring the page keeps scrolling for a stretch, and the ring leaves on it, lifting away,
+    // still turning, its cards dissolving one after another, so the scene has gone by the time the next section is up.
+    const outroRaw = reduced ? 0 : Math.min(1, Math.max(0, rawOutro));
+    const outro = smooth(outroRaw);
+    scrollTurn = reduced ? 0 : Math.max(0, p - PHASES.toRing) * 1.6 + outro * 0.9;
     if (!dragging) {
       if (steering !== null) {
         // measured against this frame's scroll turn, which keeps changing while the page scrolls to the ring
@@ -461,6 +474,9 @@ export function mountJourney({
     camPos.lerp(tmpA, c2);
     tmpA.set(0, RING_Y - 430, 0);
     camAt.lerp(tmpA, c2);
+    camPos.y -= outro * 260;
+    camPos.z += outro * 900;
+    camAt.y -= outro * 380;
     camera.position.copy(camPos);
     camera.lookAt(camAt);
     camera.fov = 60 + (40 - 60) * c1 + (30 - 40) * c2;
@@ -497,8 +513,18 @@ export function mountJourney({
       normal.set(0, 0, 1).applyQuaternion(obj.quaternion);
       toCam.subVectors(camera.position, obj.position).normalize();
       const facing = normal.dot(toCam);
+      // a card seen from behind shows its plain back (CSS, on the one surface each card has)
+      const away = facing < 0;
+      if (away !== awayShown[i]) {
+        awayShown[i] = away;
+        hosts[i].toggleAttribute('data-away', away);
+      }
       alpha *= 1 - (1 - (0.35 + 0.65 * smooth((facing + 0.15) / 0.4))) * w1;
-      const rounded = Math.round(alpha * 100) / 100;
+      // the dissolve sweeps across the ring from left to right
+      // (timed on the raw stretch, so the last cards go just as the stretch ends)
+      if (outroRaw > 0) alpha *= 1 - smooth((outroRaw * 1.25 - 0.25 - (ndc.x + 1) * 0.15) / 0.6);
+      // in steps of 1/32: too fine to see, but far fewer style writes than every hundredth
+      const rounded = Math.round(alpha * 32) / 32;
       if (rounded !== shown[i]) {
         shown[i] = rounded;
         // the fade goes to the card's two sides through a variable: opacity on the host itself would flatten its 3D,
@@ -535,7 +561,7 @@ export function mountJourney({
     // ── the light around the cards
     u.wire.value = (1 - span(p, 0.08, 0.3)) * arrive;
     u.thread.value = span(p, 0.12, PHASES.onSpiral) * (1 - c2);
-    u.floor.value = c2;
+    u.floor.value = c2 * (1 - outro);
     // a layer faded right out is not drawn at all, so each stretch of the page only pays for the light it shows
     wire.visible = u.wire.value > 0.001;
     thread.visible = u.thread.value > 0.001;

@@ -5,10 +5,16 @@
    reading pop-up (ServiceDialog) that flies out and turns over. Then a closing call to action. */
 
 .svc {
-  --svc-night: #0b0a10;
-  --svc-on: #f4f1ea;
-  --svc-on-2: rgb(244 241 234 / 0.72);
-  --svc-on-3: rgb(244 241 234 / 0.56);
+  /* Everything here comes from the site palette in base.css: Violet, Tango Orange and Pitch Yellow, with the dark
+     theme's page, surface and text tones (the page is always dark). The three groups of cards take the three hues. */
+  --svc-night: var(--bg);
+  --svc-surface: var(--paper);
+  --svc-on: var(--ink);
+  --svc-on-2: var(--ink-soft);
+  --svc-on-3: var(--muted);
+  --svc-lavender: var(--violet-text);
+  --svc-light: #f8f7f3; /* Cultured: the face of a light card */
+  --svc-dark-ink: #14130f; /* Charcoal Ink: type on a light card */
 }
 
 /* ── The journey ───────────────────────────────────────────────────────────── */
@@ -30,9 +36,9 @@
   overflow: hidden;
   isolation: isolate;
   color: var(--svc-on);
+  /* violet light only: Tango Orange this faint over the night reads as brown */
   background:
     radial-gradient(70% 60% at 50% 40%, rgb(110 88 245 / 0.16), transparent 70%),
-    radial-gradient(45% 45% at 100% 100%, rgb(255 134 67 / 0.08), transparent 72%),
     var(--svc-night);
 }
 .svc-journey__stage {
@@ -63,10 +69,10 @@
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(to top, rgb(11 10 16 / 0.85) 0%, rgb(11 10 16 / 0.5) 20%, transparent 40%),
-    linear-gradient(to bottom, rgb(11 10 16 / 0.7), transparent 18%),
-    linear-gradient(to right, rgb(11 10 16 / 0.55), transparent 42%),
-    radial-gradient(120% 90% at 50% 45%, transparent 58%, rgb(6 5 10 / 0.7));
+    linear-gradient(to top, rgb(10 9 16 / 0.85) 0%, rgb(10 9 16 / 0.5) 20%, transparent 40%),
+    linear-gradient(to bottom, rgb(10 9 16 / 0.7), transparent 18%),
+    linear-gradient(to right, rgb(10 9 16 / 0.55), transparent 42%),
+    radial-gradient(120% 90% at 50% 45%, transparent 58%, rgb(0 0 0 / 0.55));
 }
 
 /* the veil: a fade into the page colour that rises from the bottom over the tail, as at the end of the home hero
@@ -104,7 +110,7 @@
   padding: 5px;
   border-radius: 18px;
   /* cards pass behind it in the ring, so it keeps a dark backing of its own */
-  background: rgb(11 10 16 / 0.72);
+  background: rgb(10 9 16 / 0.72);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
 }
 .svc-index__stop {
@@ -153,7 +159,7 @@
   scale: 0.97;
 }
 .svc-index__stop:focus-visible {
-  outline: 2px solid #b8a9ff;
+  outline: 2px solid var(--svc-lavender);
   outline-offset: 2px;
 }
 
@@ -198,7 +204,7 @@
 }
 /* the last stretch: the ring holds while the veil brings the page colour up into the frame */
 .svc-chapter.is-tail {
-  height: 70svh;
+  height: 60svh;
 }
 .svc-chapter.is-ring {
   display: flex;
@@ -305,10 +311,6 @@
   font-size: clamp(44px, 5vw, 80px);
   letter-spacing: -0.05em;
 }
-.svc .svc-h1 .is-accent,
-.svc .svc-h2 .is-accent {
-  color: rgb(244 241 234 / 0.5);
-}
 .svc .svc-h2 .is-accent {
   display: block;
 }
@@ -336,7 +338,7 @@
   font-size: 13px;
   color: var(--svc-on-2);
   /* near-solid, because cards pass behind it */
-  background: rgb(22 21 30 / 0.92);
+  background: color-mix(in oklab, var(--svc-surface) 92%, transparent);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
   transition:
     color var(--dur-hover) var(--ease),
@@ -353,7 +355,7 @@
 .svc-chip.is-service,
 .svc-focus__card.is-service,
 .svc-group.is-service {
-  --kind: #b8a9ff;
+  --kind: var(--svc-lavender);
 }
 .svc-chip.is-approach,
 .svc-focus__card.is-approach,
@@ -363,24 +365,24 @@
 .svc-chip.is-sector,
 .svc-focus__card.is-sector,
 .svc-group.is-sector {
-  --kind: #ece8df;
+  --kind: var(--saffron);
 }
 .svc-chip[aria-pressed='true'] {
   color: var(--svc-on);
-  background: rgb(40 38 52 / 0.96);
+  background: color-mix(in oklab, var(--svc-surface), white 10%);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kind) 60%, transparent);
 }
 @media (hover: hover) and (pointer: fine) {
   .svc-chip:hover {
     color: var(--svc-on);
-    background: rgb(40 38 52 / 0.96);
+    background: color-mix(in oklab, var(--svc-surface), white 10%);
   }
 }
 .svc-chip:active {
   scale: 0.96;
 }
 .svc-chip:focus-visible {
-  outline: 2px solid #b8a9ff;
+  outline: 2px solid var(--svc-lavender);
   outline-offset: 2px;
 }
 .svc-focus__card {
@@ -390,7 +392,7 @@
   gap: 10px;
   padding: 22px 24px 24px;
   border-radius: 22px;
-  background: linear-gradient(160deg, rgb(38 36 48 / 0.94), rgb(18 17 24 / 0.96));
+  background: linear-gradient(160deg, color-mix(in oklab, var(--svc-surface), white 6%), var(--svc-surface));
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 0.1),
     inset 0 1px 0 rgb(255 255 255 / 0.08),
@@ -446,23 +448,30 @@
   margin-top: 8px;
 }
 
-/* the cards */
-.svc-card-host {
-  transform-style: preserve-3d;
-}
-.svc-card-host .svc-card__face,
-.svc-card-host .svc-card__back {
+/* The cards. Each is ONE flat surface in the 3D scene: a separate back face doubled the surfaces the browser has to
+   depth-sort every frame (with each pair coplanar, the costly case), and that was what dropped frames. */
+.svc-card-host .svc-card__face {
   opacity: var(--fade, 1);
+  /* its own GPU layer, so the scene's fades are composited instead of repainting the card every frame */
+  will-change: transform;
 }
 .svc-card {
   position: relative;
   width: 100%;
   height: 100%;
-  transform-style: preserve-3d;
 }
 /* the open card has left the ring for the pop-up */
 .svc-card.is-away {
   visibility: hidden;
+}
+.svc-card {
+  --card-hue: var(--violet);
+}
+.svc-card.is-approach {
+  --card-hue: var(--tangerine);
+}
+.svc-card.is-sector {
+  --card-hue: var(--saffron);
 }
 .svc-card__face {
   position: absolute;
@@ -474,39 +483,34 @@
   border-radius: 18px;
   text-align: left;
   color: var(--svc-on);
-  background: linear-gradient(160deg, #262430, #15141c);
+  background: linear-gradient(160deg, color-mix(in oklab, var(--svc-surface), white 7%), var(--svc-surface));
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 0.1),
     0 24px 50px -24px rgb(0 0 0 / 0.8);
-  backface-visibility: hidden;
   cursor: pointer;
-  transition:
-    background-color 0.5s var(--ease),
-    color 0.5s var(--ease),
-    box-shadow 0.5s var(--ease),
-    translate 0.4s var(--ease-expo);
+  /* only the hover lift animates: colour transitions on cards that change focus several times a second cost a
+     repaint per frame */
+  transition: translate 0.4s var(--ease-expo);
 }
-/* the far side of the ring shows the cards' plain backs, not their text in mirror writing */
-.svc-card__back {
+/* the group's colour as a crisp line along the top edge: violet, Tango Orange or Pitch Yellow at full strength */
+.svc-card__face::before {
+  content: '';
   position: absolute;
-  inset: 0;
-  border-radius: 18px;
-  transform: rotateY(180deg);
-  backface-visibility: hidden;
-  background: linear-gradient(160deg, #1d1c25, #111017);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
-}
-.svc-card.is-approach .svc-card__face {
-  background: linear-gradient(160deg, #2c1f18, #16110f);
+  left: 20px;
+  right: 20px;
+  top: 0;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--card-hue);
 }
 .svc-card.is-sector .svc-card__face {
-  color: #14130f;
-  background: #ece8df;
+  color: var(--svc-dark-ink);
+  background: var(--svc-light);
 }
 /* the card nearest the viewer lights up, as in the reference */
 .svc-card.is-front .svc-card__face {
-  color: #14130f;
-  background: #fdfcf9;
+  color: var(--svc-dark-ink);
+  background: var(--svc-light);
   box-shadow:
     inset 0 0 0 1px rgb(255 255 255 / 0.7),
     0 30px 70px -22px rgb(110 88 245 / 0.6);
@@ -526,20 +530,32 @@
   width: calc(32px * var(--up, 1));
   height: calc(32px * var(--up, 1));
   border-radius: calc(10px * var(--up, 1));
-  color: #b8a9ff;
+  color: var(--svc-lavender);
   background: rgb(255 255 255 / 0.08);
 }
 .svc-card.is-approach .svc-card__icon {
   color: var(--tangerine);
 }
-.svc-card.is-sector .svc-card__icon,
 .svc-card.is-front .svc-card__icon {
   color: var(--violet);
   background: rgb(110 88 245 / 0.12);
 }
+.svc-card.is-sector .svc-card__icon {
+  color: var(--svc-dark-ink);
+  background: var(--saffron);
+}
 .svc-card.is-sector.is-front .svc-card__icon {
   color: #fff;
   background: rgb(255 255 255 / 0.18);
+}
+/* a card turned away (the scene marks it) shows a plain back, not its text in mirror writing */
+.svc-card-host[data-away] .svc-card .svc-card__face {
+  color: transparent;
+  background: linear-gradient(160deg, var(--svc-surface), var(--svc-night));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
+}
+.svc-card-host[data-away] .svc-card__face > * {
+  visibility: hidden;
 }
 .svc-card__kind {
   font-family: var(--mono);
@@ -567,7 +583,7 @@
   }
 }
 .svc-card__face:focus-visible {
-  outline: 2px solid #b8a9ff;
+  outline: 2px solid var(--svc-lavender);
   outline-offset: 4px;
 }
 
@@ -666,6 +682,9 @@
 }
 .svc-dialog__kind.is-approach::before {
   background: var(--tangerine);
+}
+.svc-dialog__kind.is-sector::before {
+  background: var(--saffron);
 }
 .svc .svc-dialog__title,
 .svc-dialog__title {

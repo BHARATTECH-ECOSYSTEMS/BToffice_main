@@ -24,7 +24,6 @@
   :is(
     .cell:not(.cell-ink),
     .fan-card,
-    .deck-card,
     .role-card,
     .stack-card__inner,
     .about-callout-card,
@@ -43,9 +42,6 @@
 /* the shadows that carried meaning, kept under the glass */
 .fan-card {
   --glass-drop: 0 28px 50px -30px rgb(40 24 110 / 0.55);
-}
-.deck-card {
-  --glass-drop: 0 -8px 24px -18px rgb(40 24 110 / 0.5);
 }
 .wheel-card {
   --glass-drop: 0 30px 60px -38px color-mix(in srgb, var(--tone) 60%, transparent);

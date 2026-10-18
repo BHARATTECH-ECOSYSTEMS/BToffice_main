@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { DOMAIN_REELS } from '../data/reelScreenplays';
 import { span } from '../gl/ink';
 import type { ReelPainter } from '../gl/reelPainters';
+import { openingPlaying } from './StoryOpening';
 import '../styles/domain-cinema.css';
 
 const CHAPTER_SEC = 4;
@@ -15,7 +16,10 @@ const LOOP_SEC = CHAPTER_SEC * CHAPTERS;
  * Shaders are compiled in the background (compileWorld) before a reel's first frame.
  */
 const WARM_AFTER_MS = 6000;
-const WARM_GAP_MS = 700;
+/** Without the opening film (any later visit in the session, or another page) the builds start almost at once:
+ *  waiting the film's length anyway left a fast scroller arriving before the worlds were built, building them mid-scroll. */
+const WARM_SOON_MS = 1200;
+const WARM_GAP_MS = 400;
 /** How long the page must have been still before a build may start. */
 const WARM_QUIET_MS = 600;
 
@@ -56,7 +60,7 @@ function warmWhenQuiet(run: () => void): () => void {
       listening = true;
       window.addEventListener('scroll', () => (lastScrollAt = performance.now()), { passive: true });
     }
-    window.setTimeout(pumpWarm, WARM_AFTER_MS);
+    window.setTimeout(pumpWarm, openingPlaying() ? WARM_AFTER_MS : WARM_SOON_MS);
   }
   return () => {
     task.cancelled = true;

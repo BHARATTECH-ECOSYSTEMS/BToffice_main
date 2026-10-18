@@ -49,6 +49,13 @@ interface Props {
   onReveal: (grow: number, draw: number) => void;
 }
 
+/**
+ * Whether the opening film is playing on this visit. Read-only: it never makes the once-a-session decision itself,
+ * so asking from another page can't use up the visit's play. It is decided in a layout effect, so by the time other
+ * components' effects run on the home page, it is settled.
+ */
+export const openingPlaying = () => plays === true;
+
 export function StoryOpening({ hero, onReveal }: Props) {
   const root = useRef<HTMLDivElement>(null);
   const [done, setDone] = useState(false);

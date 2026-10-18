@@ -106,9 +106,9 @@ export const ServiceJourney = forwardRef<
       const run = Math.max(1, box.height - pinH - tailH);
       const p = reduced ? 1 : Math.min(1, Math.max(0, (scroll - box.top) / run));
       progress.current = p;
-      j.frame(performance.now(), p);
-      // the veil rides as if fixed to the section's bottom edge, so it rises into the frame over the tail
+      // how much of the tail is left to scroll: the ring leaves over it (outro), and the veil rises with it
       const left = Math.round(Math.min(pinH, Math.max(0, box.top + box.height - (scroll + pinH))));
+      j.frame(performance.now(), p, 1 - Math.min(1, left / Math.max(1, tailH)));
       if (left !== shownVeil) {
         shownVeil = left;
         if (veilRef.current) veilRef.current.style.transform = `translate3d(0, ${left}px, 0)`;
@@ -306,7 +306,6 @@ const JourneyCard = memo(function JourneyCard({
       <button type="button" className="svc-card__face" onClick={(e) => onClick(index, e.currentTarget)} onFocus={(e) => onFocus(index, e.currentTarget)}>
         <CardFace card={card} />
       </button>
-      <span className="svc-card__back" aria-hidden="true" />
     </div>
   );
 });

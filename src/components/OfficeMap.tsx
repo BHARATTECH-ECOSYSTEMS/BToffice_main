@@ -15,11 +15,14 @@ export function OfficeMap() {
     if (!el) return;
     let cleanup: (() => void) | undefined;
     let gone = false;
-    const io = new IntersectionObserver(
-      ([e]) => {
-        if (!e.isIntersecting) return;
-        io.disconnect();
-        import('../gl/officeMap')
+    let started = false;
+    // Built at the first idle moment after the page opens (the card is barely a screen down), or as it nears the
+    // screen if that comes first: built on arrival, the city's construction landed in the middle of the scroll.
+    const start = () => {
+      if (started) return;
+      started = true;
+      io.disconnect();
+      import('../gl/officeMap')
           .then(({ mountOfficeMap }) => {
             if (gone) return;
             cleanup = mountOfficeMap(el, {
@@ -31,12 +34,13 @@ export function OfficeMap() {
           })
           // the drawn fallback stays in place; the page itself is unaffected
           .catch((err) => console.warn('office map:', err));
-      },
-      { rootMargin: '300px' },
-    );
+    };
+    const io = new IntersectionObserver(([e]) => e.isIntersecting && start(), { rootMargin: '300px' });
     io.observe(el);
+    const soon = window.setTimeout(() => ('requestIdleCallback' in window ? window.requestIdleCallback(start, { timeout: 2000 }) : start()), 600);
     return () => {
       gone = true;
+      window.clearTimeout(soon);
       io.disconnect();
       cleanup?.();
     };

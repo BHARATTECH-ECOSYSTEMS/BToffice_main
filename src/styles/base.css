@@ -143,12 +143,14 @@ body.dark {
     inset 0 0 0 1px rgb(255 255 255 / 0.08),
     0 6px 14px -8px rgb(0 0 0 / 0.6);
 }
+/* On dark glass a tint of orange or yellow muddies into brown, so the lit key stays neutral glass and carries its colour
+   as a crisp ring (and its dot) at full strength. */
 [data-theme='dark'] :where(:not([data-drop])) > .nav-links > [data-lit],
 .dark :where(:not([data-drop])) > .nav-links > [data-lit] {
-  background-color: color-mix(in srgb, var(--tone, var(--violet)) 26%, rgb(255 255 255 / 0.06));
+  background-color: rgb(255 255 255 / 0.1);
   box-shadow:
     var(--key-edge),
-    inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--violet)) 40%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--violet)) 75%, transparent),
     0 6px 14px -8px rgb(0 0 0 / 0.6);
 }
 [data-theme='dark'] .nav-links > a::after,
@@ -167,10 +169,10 @@ body.dark {
   color: var(--ink);
 }
 
-/* the colour pool glows brighter under dark glass; the violet glass login button is the same in both themes */
+/* under dark glass the pool is neutral light: a faint orange or yellow pool reads as brown on the dark bar */
 [data-theme='dark'] .nav-hl,
 .dark .nav-hl {
-  background: color-mix(in srgb, var(--tone, var(--violet)) 36%, transparent);
+  background: rgb(255 255 255 / 0.07);
 }
 
 [data-theme='dark'] .nav-brand,
@@ -584,7 +586,7 @@ h3 {
 }
 /* Everything else that can be clicked gives a little under the press too. The scale property, not transform,
    so cards that already sit on a transform (the fan, the deck, a lifted card) don't jump. */
-:is(.cell:has(.cell-link), .roles a, .careers-role a, .pipe-step, .wheel-fams button, .arch-family button, .deck-card, .fan-card, .peek-tile, .peek-row, .how-paper-step button):active {
+:is(.cell:has(.cell-link), .roles a, .careers-role a, .pipe-step, .wheel-fams button, .arch-family button, .fan-card, .peek-tile, .peek-row, .how-paper-step button):active {
   scale: 0.98;
 }
 .careers-role a,
@@ -1333,6 +1335,18 @@ h3 {
   background:
     radial-gradient(120% 90% at 30% 18%, rgb(255 255 255 / 0.45), rgb(255 255 255 / 0.04) 45%, rgb(255 255 255 / 0) 70%),
     color-mix(in srgb, var(--tone, var(--violet)) 9%, transparent);
+}
+/* On dark glass the drop's warm tint and inner glow muddied orange and yellow keys into copper: there it is neutral
+   glass with a crisp ring of the key's colour. */
+:is([data-theme='dark'], .dark) .nav-bubble,
+:is([data-theme='dark'], .dark) .nav-bubble[data-wrap] {
+  background:
+    radial-gradient(120% 90% at 30% 18%, rgb(255 255 255 / 0.22), rgb(255 255 255 / 0.04) 45%, rgb(255 255 255 / 0) 70%),
+    rgb(255 255 255 / 0.05);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--tone, var(--violet)) 75%, transparent),
+    inset 0 3px 5px rgb(255 255 255 / 0.16),
+    0 8px 18px -8px rgb(0 0 0 / 0.6);
 }
 .nav-hl[data-glide] {
   transition:

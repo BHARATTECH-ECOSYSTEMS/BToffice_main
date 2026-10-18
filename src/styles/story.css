@@ -1006,106 +1006,8 @@
   margin: 0;
 }
 
-/* ══ Careers: the deck and the role cards ══════════════════════════════════ */
+/* ══ Careers: the role cards (phones and reduced motion) ══════════════════════ */
 
-.deck {
-  position: relative;
-  width: min(100%, 420px);
-  height: calc(var(--n) * 56px + 84px);
-  margin: 0 auto;
-}
-.deck-card {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: calc(var(--i) * 56px);
-  z-index: var(--i);
-  display: grid;
-  gap: 2px;
-  padding: 12px 18px 14px;
-  border-radius: var(--r-md);
-  background: var(--paper);
-  box-shadow: 0 0 0 1px var(--line), 0 -8px 24px -18px rgb(40 24 110 / 0.5);
-  transition:
-    transform 0.55s var(--ease-expo),
-    box-shadow 0.4s var(--ease),
-    scale var(--dur-press) var(--ease);
-  animation: deckIn 0.8s var(--ease-expo) backwards;
-  animation-delay: calc(0.25s + var(--i) * 0.06s);
-}
-/* its own entrance: the fan's includes the -50% shift that centres fan cards, which slid these in sideways */
-@keyframes deckIn {
-  from {
-    opacity: 0;
-    transform: translateY(16px);
-  }
-}
-.deck-card[data-below] {
-  transform: translateY(62px);
-}
-.deck-card[data-open] {
-  transform: translateX(-14px);
-  box-shadow: 0 0 0 1.5px var(--tone), 0 24px 40px -24px var(--tone);
-}
-.deck-dept {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: var(--mono);
-  font-size: var(--fs-label-sm);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: color-mix(in srgb, var(--tone) 75%, var(--ink));
-}
-.deck-dept i {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--tone);
-}
-.deck-card > b {
-  font-family: var(--display);
-  font-size: 18px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-.deck-more {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 14px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
-  max-height: 0;
-  overflow: hidden;
-  margin-top: 0;
-  padding-top: 0;
-  border-top-color: transparent;
-  font-size: 13px;
-  color: var(--ink-soft);
-  opacity: 0;
-  transition:
-    opacity 0.3s var(--ease),
-    max-height 0.5s var(--ease-expo),
-    margin 0.5s var(--ease-expo),
-    padding 0.5s var(--ease-expo);
-}
-.deck-card[data-open] .deck-more {
-  max-height: 70px;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top-color: var(--line);
-  opacity: 1;
-}
-.deck-apply {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-  font-weight: 600;
-  color: var(--ink);
-}
 .role-grid {
   display: flex;
   flex-wrap: wrap;
@@ -1630,6 +1532,24 @@
   background: color-mix(in srgb, var(--tone) 8%, var(--paper));
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 16%, transparent);
 }
+/* On the dark theme a tone tint on the dark surface reads as brown (orange) or olive (yellow): the tiles stay neutral
+   and carry their colour as a crisp top edge, as the Services cards do. */
+:root[data-theme='dark'] :is(.peek-domain, .peek-family),
+.dark :is(.peek-domain, .peek-family) {
+  background: color-mix(in srgb, white 4%, var(--paper));
+  box-shadow:
+    inset 0 2px 0 var(--tone),
+    inset 0 0 0 1px var(--line);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-theme='dark'] :is(.peek-domain, .peek-family):hover,
+  .dark :is(.peek-domain, .peek-family):hover {
+    box-shadow:
+      inset 0 2px 0 var(--tone),
+      inset 0 0 0 1px color-mix(in srgb, var(--tone) 70%, transparent),
+      0 14px 26px -18px rgb(0 0 0 / 0.8);
+  }
+}
 .peek-family-art {
   height: 128px;
   overflow: hidden;
@@ -1740,7 +1660,8 @@
   padding: 0 15px;
   border-radius: var(--r-pill);
   background: var(--ink);
-  color: #fff;
+  /* the page colour, so it is the opposite of --ink in both themes (a fixed white vanished on the dark theme's light pill) */
+  color: var(--bg);
   font-size: 13px;
   font-weight: 600;
   transition: background-color 0.25s var(--ease);
