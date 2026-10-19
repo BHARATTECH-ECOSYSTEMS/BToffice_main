@@ -54,13 +54,7 @@ export function Audiences() {
                     {/* Progress Line Bar */}
                     <div className="svc-list__track" data-local>
                       {isActive ? (
-                        <div
-                          className="svc-list__fill"
-                          style={{
-                            backgroundColor: `var(--${tone})`,
-                            boxShadow: `0 0 10px var(--${tone})`,
-                          }}
-                        />
+                        <div className="svc-list__fill" />
                       ) : (
                         <div className="svc-list__line-subtle" />
                       )}

@@ -4,7 +4,7 @@ import type { HueName } from './gl/palette';
 
 export const EMAIL = 'hello@bharattechorigin.com';
 /** Gmail's compose window, addressed to `to`: the site's email links open this in a new tab instead of a mail app. */
-export const gmailCompose = (to: string) => `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}`;
+const gmailCompose = (to: string) => `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}`;
 export const EMAIL_HREF = gmailCompose(EMAIL);
 export const PRIVACY_EMAIL = 'privacy@bharattechorigin.com';
 
@@ -20,24 +20,16 @@ export const INSTAGRAM_URL = 'https://www.instagram.com/bharattech_org/';
 
 export const PROBLEMS = [
   {
-    title: 'It forgets.',
     body: 'Every session starts from zero. Three weeks later, the groundwater study and its 7 flagged districts are gone.',
-    caption: 'Context retained',
   },
   {
-    title: 'It is fragmented.',
     body: 'Survey notes in documents, satellite data in a GIS tool, the discussion in chat. None of them share what they know.',
-    caption: '6 tools · 0 shared memory',
   },
   {
-    title: 'It stops learning.',
     body: 'The model was trained before the new imagery existed. The water table kept falling; what it knows did not move.',
-    caption: 'Frozen at training time',
   },
   {
-    title: 'It works alone.',
     body: 'Each tool reaches for the others and falls short, so the team copies data between them by hand.',
-    caption: '0 of 7 connections complete',
   },
 ];
 
@@ -261,15 +253,6 @@ export const SERVICES: ServiceCard[] = [
   },
 ];
 
-export const PRINCIPLES = [
-  { title: 'Intelligence should remember.', body: 'Context is never lost. Every interaction and every piece of knowledge persists and compounds.' },
-  { title: 'Intelligence should evolve.', body: 'Systems that improve through use, rather than waiting for the next retraining cycle.' },
-  { title: 'Intelligence should collaborate.', body: 'Specialised systems sharing knowledge to create capabilities none could achieve alone.' },
-  { title: 'Intelligence should remain trustworthy.', body: 'Security, sovereignty and ethics are foundations, not features.' },
-  { title: 'Intelligence should be accessible.', body: 'From cloud to edge, available to everyone who needs it.' },
-  { title: 'Intelligence should serve humanity.', body: 'Technology exists to amplify human potential. People remain the constant.' },
-];
-
 export const TECHNOLOGY = [
   'Artificial Intelligence', 'Generative Intelligence', 'Autonomous Systems', 'Large Language Models', 'Knowledge Systems', 'AI Infrastructure', 'Edge AI',
   'Geospatial Intelligence', 'Intelligent Automation', 'AI Security', 'Developer Platforms', 'Research Infrastructure', 'Human-AI Collaboration',
@@ -415,9 +398,9 @@ export const LEGAL_DATE = "June 2026";
 // ── Explainers: written for a first-time visitor ─────────────────────────
 
 export const PILLARS_PLAIN = [
-  { title: 'It remembers', body: 'Context carries over between sessions, tools and people, instead of starting from zero every time.' },
-  { title: 'It connects', body: 'Specialised systems for language, vision, research and location share one memory and work as one.' },
-  { title: 'It keeps learning', body: 'It improves through use after it is deployed, rather than waiting for the next training cycle.' },
+  { body: 'Context carries over between sessions, tools and people, instead of starting from zero every time.' },
+  { body: 'Specialised systems for language, vision, research and location share one memory and work as one.' },
+  { body: 'It improves through use after it is deployed, rather than waiting for the next training cycle.' },
 ];
 
 export const FLOW = [
@@ -594,10 +577,10 @@ export const HQ_MAP = 'https://maps.google.com/?q=Kanpur,+Uttar+Pradesh,+India';
 export const PRODUCTS = ['BharatAI', 'CollegeCue', 'Recag', 'BSearch'];
 
 export const AWARDS = [
-  { year: '2023', title: 'Uttar Pradesh Global Investor Summit', body: 'Launch of BSearch by PM Shri Narendra Modi, and recognition among the top technology startups in the state.' },
-  { year: '2023', title: 'International Trade Show', body: 'Bharattech represented at the UP International Trade Show 2023.' },
-  { year: '2024', title: 'Indian Web Browser Development Challenge', body: 'Bharattech took part in the Indian Web Browser Development Challenge.' },
-  { year: '2024', title: 'MeitY Open Challenge Program', body: 'Bharattech took part in the MeitY Open Challenge Program.' },
+  { title: 'Uttar Pradesh Global Investor Summit', body: 'Launching of BSearch by PM Shri Narendra Modi and recognition among top tech startups in the state.' },
+  { title: 'International Trade Show', body: 'Official representation of Bharattech at the UP International Trade Show 2023.' },
+  { title: 'Indian Web Browser Development Challenge', body: 'National participation and selection of Bharattech in the Indian Web Browser Development Challenge.' },
+  { title: 'MeitY Open Challenge Program', body: 'Honored participant in the Ministry of Electronics & IT (MeitY) Open Challenge Program.' },
 ];
 
 export const CONTACT_NEEDS = ['Research collaboration', 'Enterprise intelligence', 'Foundation models', 'Rivinity & RECAG', 'Fellowships & careers', 'Press & media'];

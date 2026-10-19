@@ -7,7 +7,7 @@ import type { Verification } from './data';
  * they are gone after a reload. With a backend this module becomes one POST from the form.
  */
 
-export type EmploymentRequestDraft = Pick<
+type EmploymentRequestDraft = Pick<
   Extract<Verification, { kind: 'employment' }>,
   'requesterCompany' | 'requesterName' | 'requesterEmail' | 'candidate' | 'employeeId' | 'designation' | 'from' | 'to'
 >;

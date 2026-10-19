@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { motion, useReducedMotion, type Transition } from 'motion/react';
-import { CardFace, type CardOrigin } from './ServiceJourney';
+import { CardFace, KIND_LABEL, type CardOrigin } from './ServiceJourney';
 import { Arrow, BtnText } from './ui';
 import { useScene } from '../gl/Scene';
 import type { ServiceCard } from '../content';
@@ -113,7 +113,7 @@ export function ServiceDialog({ card, from, onClose }: { card: ServiceCard; from
                 <h2 id={`svc-${card.id}-title`} className="svc-dialog__title">
                   {card.title}
                 </h2>
-                <p className={`svc-dialog__kind is-${card.kind}`}>{card.kind === 'service' ? 'Service' : card.kind === 'approach' ? 'How we work' : 'Who it is for'}</p>
+                <p className={`svc-dialog__kind is-${card.kind}`}>{KIND_LABEL[card.kind]}</p>
               </Rise>
               <Rise>
                 <p className="svc-dialog__summary">{card.summary}</p>

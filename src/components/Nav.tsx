@@ -58,51 +58,52 @@ function usePeek() {
 }
 
 /**
- * Where the reader is in the home story: the chapter holding the middle of the screen, and how far through each
- * chapter they are. The fills are drawn straight onto the progress bars in `bars`, so scrolling only re-renders
- * the nav when the current chapter changes; positions come from cached boxes, so it never forces a layout.
+ * How far through each chapter of the home story the reader is, measured at the middle of the screen. The fills
+ * are drawn straight onto the progress bars in `bars`, so scrolling never re-renders the nav; positions come from
+ * cached boxes, so it never forces a layout.
  */
 function useChapterProgress(enabled: boolean, bars: RefObject<HTMLDivElement>) {
-  const [index, setIndex] = useState(0);
   useEffect(() => {
     if (!enabled) return;
     const tracked = CHAPTERS.map((c) => document.getElementById(c.id)).map((el) => (el ? trackBox(el) : null));
     const footer = document.querySelector('.footer');
     const end = footer ? trackBox(footer) : null;
+    // the bars render under the same condition as `enabled`, so they are already mounted and never change
+    const fills = bars.current?.querySelectorAll<HTMLElement>(':scope > button > span');
+    let vh = window.innerHeight;
     let raf = 0;
 
     const measure = () => {
       raf = 0;
-      const mid = pageScroll() + window.innerHeight * 0.5;
-      let current = 0;
-      const fills = bars.current?.querySelectorAll<HTMLElement>(':scope > button > span');
+      const mid = pageScroll() + vh * 0.5;
       tracked.forEach((t, i) => {
         if (!t) return;
         const s = t.box.top;
         const e = i < tracked.length - 1 ? (tracked[i + 1]?.box.top ?? Infinity) : (end?.box.top ?? document.body.scrollHeight);
-        if (mid >= s) current = i;
         const fill = Math.min(1, Math.max(0, (mid - s) / Math.max(1, e - s)));
         const bar = fills?.[i];
         const next = `scaleX(${fill.toFixed(3)})`;
         if (bar && bar.style.transform !== next) bar.style.transform = next;
       });
-      setIndex((p) => (p === current ? p : current));
     };
     const on = () => {
       if (!raf) raf = requestAnimationFrame(measure);
     };
+    const onResize = () => {
+      vh = window.innerHeight;
+      on();
+    };
     measure();
     window.addEventListener('scroll', on, { passive: true });
-    window.addEventListener('resize', on, { passive: true });
+    window.addEventListener('resize', onResize, { passive: true });
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('scroll', on);
-      window.removeEventListener('resize', on);
+      window.removeEventListener('resize', onResize);
       tracked.forEach((t) => t?.release());
       end?.release();
     };
   }, [enabled, bars]);
-  return index;
 }
 
 export function Nav() {
@@ -124,8 +125,9 @@ export function Nav() {
   // one liquid drop glides along the whole bar and wraps whichever button the pointer is on
   useNavBubble(barRef, bubbleRef, BAR_BUTTONS);
   const progressRef = useRef<HTMLDivElement>(null);
-  const chapter = useChapterProgress(home, progressRef);
+  useChapterProgress(home, progressRef);
   const { peek, open: openPeek, close: closePeek, hold } = usePeek();
+  const leavePeek = useCallback(() => closePeek(), [closePeek]);
   const [caret, setCaret] = useState(0);
 
   // compact once the page moves; tucked away while reading down, back the moment you scroll up
@@ -264,7 +266,7 @@ export function Nav() {
   });
 
   return (
-    <header className="nav" data-peek={peek || undefined} data-hidden={(hidden && !open && !peek) || undefined} data-compact={compact || open || undefined} data-open={open || undefined}>
+    <header className="nav" data-hidden={(hidden && !open && !peek) || undefined} data-compact={compact || open || undefined} data-open={open || undefined}>
       {/* with reduced motion the bar is simply there: `initial={false}` starts it at its open state */}
       <motion.div className="nav-bar" ref={barRef} initial={reduceMotion ? false : 'closed'} animate="open">
         <motion.span className="nav-glass" aria-hidden="true" variants={OPENING.glass} />
@@ -326,12 +328,12 @@ export function Nav() {
         </div>
       </motion.div>
 
-      <NavPeek peek={peek} caret={caret} onEnter={hold} onLeave={() => closePeek()} onGo={fromPeek} />
+      <NavPeek peek={peek} caret={caret} onEnter={hold} onLeave={leavePeek} onGo={fromPeek} />
 
       {home && (
         <div className="nav-progress" ref={progressRef} aria-hidden="true">
-          {CHAPTERS.map((c, i) => (
-            <button key={c.id} tabIndex={-1} style={toneStyle(c.tone)} onClick={() => toChapter(c.id)} title={c.label} data-on={i === chapter || undefined}>
+          {CHAPTERS.map((c) => (
+            <button key={c.id} tabIndex={-1} style={toneStyle(c.tone)} onClick={() => toChapter(c.id)} title={c.label}>
               <span />
             </button>
           ))}

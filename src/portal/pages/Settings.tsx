@@ -46,14 +46,8 @@ export function Settings() {
   );
 }
 
-/** A section card: title on top, labelled rows, and an optional footer for the save action. */
-function SettingsCard({ id, title, sub, children, footer, onSubmit }: { id: string; title: string; sub: string; children: ReactNode; footer?: ReactNode; onSubmit?: (e: FormEvent) => void }) {
-  const body = (
-    <>
-      <div className="p-set-rows">{children}</div>
-      {footer && <div className="p-set-foot">{footer}</div>}
-    </>
-  );
+/** A section card: title on top, labelled rows, and a footer for the save action. */
+function SettingsCard({ id, title, sub, children, footer, onSubmit }: { id: string; title: string; sub: string; children: ReactNode; footer: ReactNode; onSubmit: (e: FormEvent) => void }) {
   return (
     <section className="p-card p-set-card" aria-labelledby={id}>
       <header className="p-set-head">
@@ -62,13 +56,10 @@ function SettingsCard({ id, title, sub, children, footer, onSubmit }: { id: stri
         </h2>
         <p className="p-muted">{sub}</p>
       </header>
-      {onSubmit ? (
-        <form onSubmit={onSubmit} noValidate>
-          {body}
-        </form>
-      ) : (
-        body
-      )}
+      <form onSubmit={onSubmit} noValidate>
+        <div>{children}</div>
+        <div className="p-set-foot">{footer}</div>
+      </form>
     </section>
   );
 }

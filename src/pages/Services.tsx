@@ -5,7 +5,6 @@ import { ServiceDialog } from '../components/ServiceDialog';
 import { Arrow, BtnText, Headline, Reveal } from '../components/ui';
 import { useQuiet } from '../gl/Scene';
 import { SERVICES, type ServiceCard, type ServiceKind } from '../content';
-import '../styles/services.css';
 
 /** What each group of cards holds, said in a line each, as the helix carries them past. */
 const GROUP_COPY: { kind: ServiceKind; title: string; text: string }[] = [
@@ -78,7 +77,7 @@ export function Services() {
   ];
 
   return (
-    <div className="svc" data-ready={ready || undefined}>
+    <div className="svc">
       <ServiceJourney ref={journeyRef} items={SERVICES} chapters={chapters} openId={open?.card.id} onOpen={(card, from) => setOpen({ card, from })} />
 
       <section ref={ctaRef} className="section svc-cta">

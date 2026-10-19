@@ -12,7 +12,6 @@ body:has(.portal) .scene {
 .portal {
   --p-gap: 18px;
   --p-radius: 26px;
-  --p-line: var(--line-strong);
   min-height: 100vh;
   /* the gutter round the frame is the portal's own padding: a margin on the frame would collapse out of the top and
      bottom of this box and show the page's near-white behind it as two strips */
@@ -48,12 +47,29 @@ body:has(.portal) .scene {
   --p-field: #fff;
   /* the strip round the frame: a step deeper than the hero's darkest edge, so the frame still reads as a window */
   background: #e2ddd3;
+  /* so the fixed light layer below (z-index -1) paints above this background, not under it */
+  isolation: isolate;
 }
 /* Inside the frame, the home hero's own backdrop, measured from its render: a warm dark white, lightest in the middle
    and deepening toward the edges under the hero's vignette. It's fixed to the screen like the hero, so the light
-   stays put while a page scrolls. */
+   stays put while a page scrolls. It lives on its own fixed layer rather than as a `fixed` background on the frame:
+   Chrome can't composite a fixed background on a box with a radius or shadow, so it repainted the whole page on
+   every scroll frame. */
+:root:not([data-theme='dark']) .portal::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(circle 100vh at 50% 50%, #f6f1e8 25%, #f2ede5 50%, #eee9e1 70%, #e8e3db 90%, #e6e2d9);
+}
+/* the frame lets the light through; the last, wide spread shadow paints the strip round it, following its corners */
 :root:not([data-theme='dark']) .p-frame {
-  background: radial-gradient(circle 100vh at 50% 50%, #f6f1e8 25%, #f2ede5 50%, #eee9e1 70%, #e8e3db 90%, #e6e2d9) fixed;
+  background: none;
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--paper) 80%, transparent),
+    0 40px 90px -50px rgb(40 30 90 / 0.35),
+    0 0 0 100vmax #e2ddd3;
 }
 .portal {
   --p-card: var(--paper);
@@ -119,7 +135,6 @@ body:has(.portal) .scene {
     0 0 0 1px var(--line-strong),
     0 12px 24px -12px rgb(30 20 70 / 0.22),
     0 36px 72px -24px rgb(30 20 70 / 0.38);
-  transform-origin: top right;
   /* Hover menus. Resources (and HR OPS) drops like a curtain: the menu is revealed from its top edge down, and its
      links fall in one after another. Closing rolls it back up, faster. The clip reaches past the edges so the
      shadow isn't cut off. */
@@ -158,11 +173,6 @@ body:has(.portal) .scene {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 4px;
   width: 520px;
-}
-.p-menu ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 .p-menu-label {
   margin: 6px 0 4px;
@@ -216,29 +226,6 @@ body:has(.portal) .scene {
   overflow-x: clip;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.p-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  height: 46px;
-  padding: 0 18px;
-  border-radius: var(--r-pill);
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--ink-2);
-  background: var(--p-card);
-  box-shadow: var(--p-shadow);
-  transition: background var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease), scale var(--dur-press) var(--ease);
-}
-.p-chip.active {
-  color: var(--paper);
-  background: var(--ink);
-}
-@media (hover: hover) and (pointer: fine) {
-  .p-chip:not(.active):hover {
-    color: var(--ink);
-  }
 }
 
 /* ── Settings: side tabs, then one card of labelled rows ── */
@@ -298,10 +285,6 @@ body:has(.portal) .scene {
     background: color-mix(in srgb, var(--violet) 7%, transparent);
   }
 }
-.p-set-tab:focus-visible {
-  outline: 2px solid var(--violet);
-  outline-offset: 2px;
-}
 /* each section settles in from just below; short enough not to slow anyone switching tabs */
 .p-set-panel {
   animation: p-set-in 220ms var(--ease);
@@ -331,11 +314,6 @@ body:has(.portal) .scene {
   gap: 8px 32px;
   padding: 20px 0;
   border-top: 1px solid var(--line);
-}
-.p-set-row.is-switch {
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  cursor: pointer;
 }
 .p-set-label {
   display: grid;
@@ -455,30 +433,17 @@ body:has(.portal) .scene {
   opacity: 0.38;
   box-shadow: none;
 }
-.p-set-foot .p-notice {
-  margin: 0;
-}
 .p-set-foot-actions {
   display: flex;
   gap: 10px;
   margin-left: auto;
-}
-.p-set-foot-note {
-  margin: 0;
-  font-size: 13px;
-  color: var(--ink-soft);
 }
 @media (prefers-reduced-motion: reduce) {
   .p-set-pill {
     transition: none;
   }
   .p-set-panel {
-    animation-name: p-set-fade;
-  }
-  @keyframes p-set-fade {
-    from {
-      opacity: 0;
-    }
+    animation-name: p-fade;
   }
 }
 /* a checkbox drawn as an on/off switch; the knob slides with transform only */
@@ -512,10 +477,6 @@ body:has(.portal) .scene {
 .p-switch:checked::after {
   transform: translateX(18px);
 }
-.p-switch:focus-visible {
-  outline: 2px solid var(--violet);
-  outline-offset: 2px;
-}
 @media (prefers-reduced-motion: reduce) {
   .p-switch,
   .p-switch::after {
@@ -533,7 +494,7 @@ body:has(.portal) .scene {
   display: grid;
   grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
   align-items: start;
-  gap: 20px;
+  gap: var(--p-gap);
 }
 .p-desk-list {
   position: sticky;
@@ -568,6 +529,20 @@ body:has(.portal) .scene {
   background: var(--ink);
   color: var(--paper);
 }
+/* Searching is how a long desk is worked, so here the pill stays open across the column instead of resting folded
+   to its lens on a row of its own. The doubled class outranks search-pill.css's folded state. */
+.p-desk-list .search-pill-wrap {
+  width: 100%;
+}
+.p-desk-list .search-pill.search-pill {
+  width: 100%;
+  gap: 8px;
+  padding-left: 18px;
+  cursor: text;
+}
+.p-desk-list .search-pill.search-pill input {
+  opacity: 1;
+}
 .p-desk-count {
   min-width: 20px;
   padding: 1px 6px;
@@ -587,11 +562,12 @@ body:has(.portal) .scene {
   overflow-y: auto;
   overscroll-behavior: contain;
 }
+/* name and badge share the top line; the email and the progress line run under both, so the progress never wraps */
 .p-desk-item {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
-  align-items: start;
-  gap: 12px;
+  align-items: center;
+  gap: 2px 12px;
   width: 100%;
   padding: 14px;
   border-radius: var(--r-sm);
@@ -612,16 +588,28 @@ body:has(.portal) .scene {
     box-shadow: inset 0 0 0 1px var(--line-strong);
   }
 }
-.p-desk-item:focus-visible {
-  outline: 2px solid var(--violet);
-  outline-offset: 2px;
+.p-desk-item > .p-avatar {
+  grid-row: 1 / span 3;
+  align-self: start;
 }
 .p-desk-item-main {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
+  display: contents;
+}
+.p-desk-item > .p-badge {
+  grid-area: 1 / 3;
+  /* the shared trailing gap is for badge rows; here it would inset the badge
+     past the item's padding */
+  margin-right: 0;
+}
+.p-desk-item-main small,
+.p-desk-item-meta {
+  grid-column: 2 / 4;
 }
 .p-desk-item-main strong {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 14.5px;
   font-weight: 600;
   color: var(--ink);
@@ -663,7 +651,7 @@ body:has(.portal) .scene {
 }
 .p-meter.is-wide {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(var(--n, 5), 1fr);
   gap: 4px;
   margin-bottom: 6px;
 }
@@ -691,9 +679,6 @@ body:has(.portal) .scene {
   letter-spacing: -0.02em;
   line-height: 1.1;
   color: var(--ink);
-}
-.p-file-head .p-dim {
-  margin: 0;
 }
 /* the decision, set like an ink stamp on the file */
 .p-stamp {
@@ -755,6 +740,13 @@ body:has(.portal) .scene {
 .p-file-facts > div + div {
   border-left: 1px solid var(--line);
 }
+/* with more than three facts the strip wraps: each row starts clean and the rows get a hairline between them */
+.p-file-facts > div:nth-child(3n + 1) {
+  border-left: 0;
+}
+.p-file-facts > div:nth-child(n + 4) {
+  border-top: 1px solid var(--line);
+}
 .p-file-facts dt {
   font-size: 12px;
   color: var(--ink-soft);
@@ -773,7 +765,8 @@ body:has(.portal) .scene {
 }
 .p-file-body {
   display: grid;
-  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+  /* the checklist carries the file names of uploaded IDs, so it gets the wider share */
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
   gap: 24px;
 }
 .p-file-docs {
@@ -799,17 +792,81 @@ body:has(.portal) .scene {
 .p-file-docs legend .p-dim {
   font-weight: 500;
 }
-.p-doc {
-  position: relative;
+/* one row per document: the tick and its name, then (for an uploaded ID) the file itself at the row's end */
+.p-doc-line {
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 42px;
+  min-width: 0;
   padding: 0 10px;
   border-radius: var(--r-xs);
+  transition: background var(--dur-hover) var(--ease);
+}
+/* the padding only holds the hover tint: pull the row out by it so the ticks line up with the legend and meter */
+@media (min-width: 901px) {
+  .p-doc-line {
+    margin-inline: -10px;
+  }
+}
+.p-doc {
+  position: relative;
+  display: flex;
+  flex: 1 0 auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
   font-size: 14.5px;
   cursor: pointer;
-  transition: background var(--dur-hover) var(--ease);
+}
+.p-doc-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+.p-doc-file a {
+  overflow: hidden;
+  font-weight: 600;
+  color: var(--p-accent-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.p-doc-file > span:not(.sr-only) {
+  flex: none;
+}
+.p-doc-file[data-missing] {
+  gap: 6px;
+  color: var(--p-amber-text);
+}
+.p-doc-file[data-missing] .p-icon {
+  flex: none;
+}
+.p-doc input:disabled:not(:checked) + .p-doc-box {
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+}
+.p-doc:has(input:disabled) {
+  cursor: not-allowed;
+}
+.p-file-docs-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px 14px;
+  margin: 12px 0 0;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.p-file-docs-note > span {
+  flex: 1 1 240px;
 }
 .p-doc input {
   position: absolute;
@@ -845,7 +902,7 @@ body:has(.portal) .scene {
   cursor: default;
 }
 @media (hover: hover) and (pointer: fine) {
-  .p-file-docs:not(:disabled) .p-doc:hover {
+  .p-file-docs:not(:disabled) .p-doc-line:has(input:enabled):hover {
     background: color-mix(in srgb, var(--ink) 4%, transparent);
   }
 }
@@ -905,6 +962,20 @@ body:has(.portal) .scene {
   align-items: center;
   gap: 10px;
 }
+/* Deleting a whole file is the rare move here, so it rests as quiet text and leaves the colour to the decision
+   buttons; the bin animation still plays when it's used. */
+.p-file-foot .p-del:not([data-going]) {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  color: var(--p-danger-text);
+}
+@media (hover: hover) and (pointer: fine) {
+  .p-file-foot .p-del:not([data-going]):hover {
+    background: color-mix(in srgb, var(--p-danger-text) 9%, transparent);
+    box-shadow: none;
+  }
+}
 .p-file-actions .p-dim {
   font-size: 13px;
 }
@@ -936,7 +1007,7 @@ body:has(.portal) .scene {
 }
 @media (prefers-reduced-motion: reduce) {
   .p-stamp[data-fresh] {
-    animation: p-set-fade 200ms ease both;
+    animation: p-fade 200ms ease both;
   }
 }
 .p-help {
@@ -1170,7 +1241,7 @@ body:has(.portal) .scene {
 @media (prefers-reduced-motion: reduce) {
   .p-bell-badge,
   .p-bell-badge.is-new {
-    animation-name: p-set-fade;
+    animation-name: p-fade;
   }
 }
 @keyframes p-bell-ring {
@@ -1302,8 +1373,6 @@ body:has(.portal) .scene {
   color: var(--ink);
 }
 .p-notify-head {
-  display: grid;
-  gap: 2px;
   margin: 0 0 4px;
   padding: 8px 10px 12px;
   border-bottom: 1px solid var(--line);
@@ -1445,6 +1514,13 @@ body:has(.portal) .scene {
     translate 140ms var(--ease),
     scale 140ms var(--ease),
     visibility 0s linear 140ms;
+}
+/* on the one-line bar, hang 10px below the glass like the key menus: the glass runs 7px past the buttons. A wrapped
+   bar (1180px and down) puts the keys under the user row, so this offset doesn't hold there. */
+@media (min-width: 1181px) {
+  .p-top-menu {
+    top: calc(100% + 17px);
+  }
 }
 .p-top-menu[data-open] {
   opacity: 1;
@@ -1715,11 +1791,19 @@ body:has(.portal) .scene {
   grid-template-columns: minmax(0, 1fr) auto;
   grid-template-areas: 'value icon' 'label label' 'hint hint';
   align-items: start;
+  /* a tile stretched to a neighbour that has a hint keeps its rows at the top, so labels line up across the row */
+  align-content: start;
   row-gap: 6px;
   padding: 20px 22px;
   border-radius: 22px;
   background: var(--p-card);
   box-shadow: var(--p-shadow);
+}
+/* the same side padding as the cards below a stat row, so the values start on the card titles' line */
+@media (min-width: 901px) {
+  .p-stat {
+    padding-inline: clamp(18px, 2vw, 26px);
+  }
 }
 .p-stats.is-compact .p-stat {
   padding: 16px 18px;
@@ -1797,12 +1881,14 @@ body:has(.portal) .scene {
 .p-checks .p-icon {
   color: var(--p-accent-text);
 }
-.p-hrms :is(.btn, .p-btn) {
-  margin-top: auto;
+
+/* ── Calendar: the month on the left, the picked day's agenda on the right (portal/Calendar.tsx) ── */
+
+.p-cal-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
-
-/* ── Calendar ── */
-
 .p-cal-nav {
   display: flex;
   align-items: center;
@@ -1815,10 +1901,22 @@ body:has(.portal) .scene {
   font-size: 14px;
   font-weight: 600;
 }
+.p-cal-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 24px;
+  flex: 1;
+}
+.p-cal-month-col {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+}
 .p-cal-grid {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 4px;
+  gap: 2px;
   text-align: center;
 }
 .p-cal-dow {
@@ -1838,19 +1936,229 @@ body:has(.portal) .scene {
   color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
+button.p-cal-day {
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease), box-shadow var(--dur-hover) var(--ease), scale var(--dur-press) var(--ease);
+}
+button.p-cal-day:active {
+  scale: 0.94;
+}
+@media (hover: hover) and (pointer: fine) {
+  button.p-cal-day:not(.is-today, [aria-pressed='true']):hover {
+    background: color-mix(in srgb, var(--ink) 6%, transparent);
+  }
+}
+.p-cal-day[aria-pressed='true'] {
+  font-weight: 650;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--violet) 10%, transparent);
+  box-shadow: inset 0 0 0 1.5px var(--violet);
+}
 .p-cal-day.is-today {
   background: var(--ink);
   color: var(--paper);
   font-weight: 700;
 }
-.p-cal-day.has-due::after {
-  content: '';
+/* today, picked: a violet ring just outside the dark tile */
+.p-cal-day.is-today[aria-pressed='true'] {
+  box-shadow: 0 0 0 2px var(--p-card), 0 0 0 3.5px var(--violet);
+}
+/* one dot per kind of thing on that day, in the legend's colours */
+.p-cal-dots {
   position: absolute;
-  bottom: 5px;
-  width: 5px;
-  height: 5px;
+  bottom: 4px;
+  display: flex;
+  gap: 2px;
+}
+.p-cal-dots i,
+.p-cal-legend i,
+.p-cal-item-dot {
+  display: block;
+  flex: none;
   border-radius: 50%;
-  background: var(--tangerine);
+  background: var(--tone);
+}
+.p-cal-dots i {
+  width: 4px;
+  height: 4px;
+}
+[data-kind='task'] {
+  --tone: var(--violet);
+}
+[data-kind='event'] {
+  --tone: var(--tangerine);
+}
+[data-kind='people'] {
+  --tone: #16a34a;
+}
+[data-kind='followup'] {
+  --tone: var(--p-error-text);
+}
+.p-cal-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.p-cal-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.p-cal-legend i {
+  width: 7px;
+  height: 7px;
+}
+
+.p-cal-agenda {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  padding-left: 24px;
+  border-left: 1px solid var(--line);
+}
+.p-cal-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--ink);
+}
+.p-cal-heading.is-small {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.p-cal-today {
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--ink);
+}
+.p-cal-ahead {
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+.p-cal-items {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.p-cal-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding: 9px 10px 9px 12px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--tone) 8%, var(--p-card));
+}
+.p-cal-items.is-compact {
+  gap: 2px;
+}
+.p-cal-items.is-compact .p-cal-item {
+  padding: 6px 2px;
+  background: none;
+}
+.p-cal-item-dot {
+  width: 8px;
+  height: 8px;
+}
+.p-cal-item-text {
+  display: grid;
+  flex: 1;
+  gap: 1px;
+  min-width: 0;
+}
+.p-cal-item-title,
+.p-cal-item-text small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.p-cal-item-title {
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--ink);
+}
+a.p-cal-item-title {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--ink) 25%, transparent);
+  text-underline-offset: 3px;
+}
+@media (hover: hover) and (pointer: fine) {
+  a.p-cal-item-title:hover {
+    text-decoration-color: currentColor;
+  }
+}
+.p-cal-item-text small {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.p-cal-item-time {
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+}
+.p-cal-item .p-icon-btn {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: -4px -4px -4px 0;
+}
+/* the date chip in "Coming up" */
+.p-cal-item-date {
+  display: grid;
+  flex: none;
+  justify-items: center;
+  width: 32px;
+  font-size: 11px;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.p-cal-item-date strong {
+  font-size: 16px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.p-cal-empty {
+  margin: 0;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+/* a newly picked day's agenda settles in, so the change registers without a jump */
+.p-cal-day-items {
+  animation: p-cal-agenda-in 200ms var(--ease) both;
+}
+@keyframes p-cal-agenda-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .p-cal-day-items {
+    animation: none;
+  }
+  button.p-cal-day:active {
+    scale: none;
+  }
 }
 
 /* ── Buttons & controls ── */
@@ -1883,13 +2191,6 @@ body:has(.portal) .scene {
 .portal .btn-ghost {
   backdrop-filter: none;
 }
-.portal .btn-ghost.is-danger {
-  color: var(--p-danger-text);
-  box-shadow: inset 0 0 0 1px rgb(194 65 12 / 0.3);
-}
-.portal .btn-ghost.is-danger::before {
-  background: #c2410c;
-}
 .portal .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
@@ -1898,9 +2199,6 @@ body:has(.portal) .scene {
   display: none;
 }
 @media (hover: hover) and (pointer: fine) {
-  .portal .btn-ghost.is-danger:hover {
-    box-shadow: inset 0 0 0 1px #c2410c;
-  }
   .portal .btn:disabled:hover .btn-text > span,
   .portal .btn:disabled:hover .arrow path {
     transform: none;
@@ -1927,13 +2225,11 @@ body:has(.portal) .scene {
   text-align: center;
   opacity: 0.7;
   cursor: not-allowed;
+  gap: 8px;
+  white-space: nowrap;
 }
 .p-btn.is-wide {
   width: 100%;
-}
-.p-btn.is-disabled {
-  gap: 8px;
-  white-space: nowrap;
 }
 .p-not-connected {
   display: inline-flex;
@@ -2100,7 +2396,8 @@ body:has(.portal) .scene {
 
 .p-table-wrap {
   overflow-x: auto;
-  margin: 0 -4px;
+  /* bleed by the cell padding, so the first and last columns line up with the card's content edges */
+  margin: 0 -12px;
 }
 .p-table {
   width: 100%;
@@ -2186,35 +2483,6 @@ body:has(.portal) .scene {
   text-underline-offset: 3px;
 }
 
-/* ── Tasks ── */
-
-.p-tasks {
-  display: grid;
-  gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.p-task {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 14px;
-  border-radius: var(--r-sm);
-  background: var(--bg);
-}
-.p-task-title {
-  margin: 0;
-  font-weight: 600;
-  color: var(--ink);
-}
-.p-task-meta {
-  margin: 2px 0 0;
-  font-size: 13px;
-  color: var(--ink-soft);
-}
-
 /* ── Resources ── */
 
 .p-grid {
@@ -2234,9 +2502,6 @@ body:has(.portal) .scene {
 }
 .p-resource .p-tile-icon {
   margin-bottom: 6px;
-}
-.p-resource .cell-label {
-  margin: 0;
 }
 .p-resource-foot {
   display: grid;
@@ -2505,10 +2770,6 @@ body:has(.portal) .scene {
 .p-modal-head > div {
   flex: 1;
 }
-.p-modal-head .cell-label {
-  margin: 0 0 2px;
-  color: var(--p-accent-text);
-}
 .p-modal-icon {
   display: grid;
   place-items: center;
@@ -2546,7 +2807,7 @@ body:has(.portal) .scene {
    draws round it · 1.7s the bin turns into the logo, which glows. */
 .p-del {
   /* the button's height, which is also the circle it ends as */
-  --size: 44px;
+  --size: 40px;
   --gap: 8px;
   position: relative;
   isolation: isolate;
@@ -2776,9 +3037,9 @@ body:has(.portal) .scene {
 .p-wave-hand {
   left: 50%;
   top: 50%;
-  width: 22px;
-  height: 22px;
-  margin: -11px 0 0 -11px;
+  width: 18px;
+  height: 18px;
+  margin: -9px 0 0 -9px;
   fill: none;
   stroke: currentColor;
   stroke-width: 1.8;
@@ -2813,11 +3074,6 @@ body:has(.portal) .scene {
 }
 .p-wave-ch {
   display: inline-block;
-}
-.is-small .p-wave-hand {
-  width: 18px;
-  height: 18px;
-  margin: -9px 0 0 -9px;
 }
 .p-wave[data-going] {
   cursor: default;
@@ -3075,9 +3331,6 @@ body:has(.portal) .scene {
 .p-bars {
   display: grid;
   gap: 12px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 .p-bars li {
   display: grid;
@@ -3121,7 +3374,6 @@ body:has(.portal) .scene {
   border-radius: var(--r-pill);
   background: var(--p-card);
   box-shadow: 0 0 0 1px var(--line);
-  align-self: flex-start;
 }
 .p-lms-tab {
   display: inline-flex;
@@ -3151,7 +3403,7 @@ body:has(.portal) .scene {
   justify-items: center;
   gap: 14px;
   padding: clamp(36px, 6vw, 72px) clamp(20px, 4vw, 48px);
-  border-radius: var(--r-lg);
+  border-radius: var(--p-radius);
   text-align: center;
   color: var(--ink);
   background:
@@ -3162,10 +3414,6 @@ body:has(.portal) .scene {
 }
 .p-lms-hero.is-compact {
   padding-block: clamp(28px, 4vw, 44px);
-}
-.p-lms-hero .cell-label {
-  margin: 0;
-  color: var(--p-accent-text);
 }
 .p-lms-hero-title {
   max-width: 22ch;
@@ -3189,7 +3437,6 @@ body:has(.portal) .scene {
 .p-lms-hero-sub strong {
   color: var(--ink);
 }
-.p-lms-hero .p-lms-crumbs,
 .p-lms-hero .p-lms-crumbs a {
   color: var(--ink-soft);
 }
@@ -3218,9 +3465,6 @@ body:has(.portal) .scene {
 .p-lms-result a {
   color: var(--p-accent-text);
 }
-.p-lms-h1 {
-  font-size: 24px;
-}
 
 .p-course-grid {
   display: grid;
@@ -3229,9 +3473,6 @@ body:has(.portal) .scene {
 }
 .p-course {
   gap: 6px;
-}
-.p-course .cell-label {
-  margin: 8px 0 0;
 }
 .p-course .btn {
   margin-top: auto;
@@ -3343,9 +3584,6 @@ body:has(.portal) .scene {
   }
 }
 .p-lectures {
-  margin: 0;
-  padding: 0;
-  list-style: none;
   border-top: 1px solid var(--line);
 }
 .p-lectures li {
@@ -3552,9 +3790,6 @@ body:has(.portal) .scene {
 }
 .p-star-input {
   display: inline-flex;
-  margin: 0;
-  padding: 0;
-  border: 0;
 }
 .p-star-input label {
   position: relative;
@@ -3619,9 +3854,6 @@ body:has(.portal) .scene {
   gap: 14px;
   padding: 18px 22px 22px;
 }
-.p-player-bar .cell-label {
-  margin: 0 0 4px;
-}
 .p-player-bar .p-dim {
   margin: 4px 0 0;
 }
@@ -3646,10 +3878,11 @@ body:has(.portal) .scene {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-  gap: 16px;
+  gap: 24px;
   margin-bottom: 10px;
 }
 .p-edu-head .p-muted {
+  max-width: 60ch;
   margin-top: 12px;
   font-size: 15px;
 }
@@ -3675,7 +3908,6 @@ body:has(.portal) .scene {
 .p-course-form {
   max-width: 860px;
   width: 100%;
-  margin-inline: auto;
 }
 .p-course-form form {
   display: grid;
@@ -3748,10 +3980,6 @@ body:has(.portal) .scene {
 .p-course-content {
   display: grid;
   gap: 12px;
-  margin: 0;
-  padding: 0;
-  border: 0;
-  min-width: 0;
 }
 .p-course-content legend {
   margin-bottom: 12px;
@@ -3793,9 +4021,6 @@ body:has(.portal) .scene {
 .p-draft-lectures {
   display: grid;
   width: 100%;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 .p-draft-lectures li {
   display: flex;
@@ -3809,9 +4034,6 @@ body:has(.portal) .scene {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
-  margin: 0;
-  padding: 0;
-  border: 0;
 }
 .p-source legend {
   margin-bottom: 6px;
@@ -3876,7 +4098,6 @@ body:has(.portal) .scene {
 
 @media (prefers-reduced-motion: reduce) {
   .portal *,
-  .p-modal,
   .p-modal::backdrop {
     animation: none !important;
     transition-duration: 0.01ms !important;
@@ -3962,8 +4183,6 @@ body:has(.portal) .scene {
   animation: p-draw 420ms var(--ease) backwards;
   animation-delay: calc(120ms + var(--i, 0) * 60ms);
 }
-.p-tally-part:nth-child(2) .p-tally-pill { --i: 1; }
-.p-tally-part:nth-child(3) .p-tally-pill { --i: 2; }
 @keyframes p-draw {
   from {
     clip-path: inset(0 100% 0 0 round 999px);
@@ -4003,6 +4222,9 @@ body:has(.portal) .scene {
 .p-bento > .p-board-col {
   grid-column: 4;
   grid-row: 1 / span 2;
+  /* the other cards size the rows; a long task list fills both rows exactly and scrolls inside instead of
+     stretching them */
+  contain: size;
 }
 .p-bento > .p-cal {
   grid-column: 2 / span 2;
@@ -4225,7 +4447,6 @@ body:has(.portal) .scene {
   stroke: var(--violet);
   stroke-linecap: round;
   stroke-dasharray: var(--len);
-  stroke-dashoffset: var(--off);
 }
 /* every frame of the ring (arc, tip, ticks, number) is written by useRing in Dashboard.tsx */
 .p-ring-ticks line {
@@ -4263,7 +4484,6 @@ body:has(.portal) .scene {
   font-size: 44px;
   font-weight: 400;
   letter-spacing: -0.05em;
-  font-variant-numeric: tabular-nums;
 }
 .p-ring-value span + span {
   font-size: 22px;
@@ -4294,7 +4514,7 @@ body:has(.portal) .scene {
 .p-today-next {
   margin-top: 6px;
   padding: 12px 14px;
-  border-radius: 18px;
+  border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--violet) 7%, var(--paper));
 }
 .p-today-next .p-menu-label {
@@ -4323,7 +4543,6 @@ body:has(.portal) .scene {
 /* the dark task board */
 .p-card.p-board {
   gap: 10px;
-  max-height: 640px;
   overflow-y: auto;
   color: #f4f2ec;
   background: #17161c;
@@ -4353,9 +4572,6 @@ body:has(.portal) .scene {
 .p-board-list {
   display: grid;
   gap: 4px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 .p-board-item {
   display: flex;
@@ -4479,16 +4695,6 @@ body:has(.portal) .scene {
   display: flex;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  /* nothing slides or draws in, the cards just appear */
-  .p-page > *,
-  .p-bento > *,
-  .p-tally-pill,
-  .p-ring-fill {
-    animation: none;
-  }
-}
-
 @media (max-width: 1280px) {
   .p-bento {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -4509,6 +4715,13 @@ body:has(.portal) .scene {
   }
   .p-tally {
     width: 100%;
+  }
+}
+/* once the figures drop under the greeting they start on the left, so each number starts under its label too
+   (desktop widths only: phones aren't designed yet) */
+@media (min-width: 901px) and (max-width: 1100px) {
+  .p-figures > div {
+    justify-items: start;
   }
 }
 
@@ -4710,167 +4923,6 @@ body:has(.portal) .scene {
 }
 
 
-/* ── Calendar: tasks pinned to their due dates (after a glass-and-light flow reference) ──
-   The card keeps its own light colours. Lines draw in from each date, then the label pops in; a spark runs along
-   each line every few seconds (constant motion, so linear). On a mouse the card leans towards the pointer. */
-.p-card.p-cal {
-  padding: 0;
-  transform-style: preserve-3d;
-  transition: transform 420ms var(--ease);
-}
-.p-cal-stage {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  gap: 14px;
-  padding: clamp(18px, 2vw, 26px);
-  border-radius: inherit;
-  transform-style: preserve-3d;
-}
-.p-cal-day.is-pinned {
-  color: var(--ink);
-  font-weight: 650;
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--violet) 55%, transparent);
-  transition: box-shadow var(--dur-hover) var(--ease), background var(--dur-hover) var(--ease);
-}
-.p-cal-day.is-pinned.is-hot {
-  background: color-mix(in srgb, var(--violet) 12%, transparent);
-  box-shadow: inset 0 0 0 1.5px var(--violet), 0 0 16px rgb(110 88 245 / 0.35);
-}
-.p-cal-links {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-  transform: translateZ(14px);
-}
-/* the labels' own strip under the month, pushed to the bottom of the card */
-.p-cal-lane {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin: auto 0 0;
-  padding: 26px 0 0;
-  list-style: none;
-  transform-style: preserve-3d;
-}
-.p-cal-links path {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
-.p-cal-line {
-  stroke: var(--violet);
-  stroke-width: 1.6;
-  stroke-dasharray: 1;
-  filter: drop-shadow(0 0 3px rgb(110 88 245 / 0.55));
-  transition: stroke-width var(--dur-hover) var(--ease);
-  animation: p-line-draw 560ms var(--ease) calc(180ms + var(--i, 0) * 140ms) backwards;
-}
-.p-cal-links .is-hot .p-cal-line {
-  stroke-width: 2.4;
-}
-@keyframes p-line-draw {
-  from {
-    stroke-dashoffset: 1;
-  }
-}
-.p-cal-spark {
-  stroke: #fff;
-  stroke-width: 2.6;
-  stroke-dasharray: 0.08 1.2;
-  stroke-dashoffset: 0.08;
-  filter: drop-shadow(0 0 4px var(--violet));
-  animation: p-spark 3.8s linear calc(1400ms + var(--i, 0) * 900ms) infinite;
-}
-@keyframes p-spark {
-  0% {
-    stroke-dashoffset: 0.08;
-  }
-  45%,
-  100% {
-    stroke-dashoffset: -1;
-  }
-}
-.p-cal-node {
-  position: relative;
-  display: flex;
-  align-items: flex-start;
-  gap: 10px;
-  flex: 1 1 0;
-  min-width: 0;
-  max-width: 300px;
-  padding: 9px 13px 10px 11px;
-  border-radius: 14px;
-  pointer-events: auto;
-  background: rgb(255 255 255 / 0.66);
-  backdrop-filter: blur(10px) saturate(1.15);
-  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.8), 0 0 0 1px rgb(20 19 15 / 0.07), 0 14px 30px -16px rgb(40 30 90 / 0.4);
-  transform: translateZ(28px);
-  transition: box-shadow var(--dur-hover) var(--ease);
-  animation: p-node-in 260ms var(--ease) calc(600ms + var(--i, 0) * 140ms) backwards;
-}
-@keyframes p-node-in {
-  from {
-    opacity: 0;
-    transform: translateZ(28px) translateY(4px) scale(0.96);
-  }
-}
-@media (hover: hover) and (pointer: fine) {
-  .p-cal-node:hover {
-    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.9), 0 0 0 1.5px color-mix(in srgb, var(--violet) 45%, transparent), 0 16px 34px -14px rgb(40 30 90 / 0.45);
-  }
-}
-/* in the dark theme the labels are smoked glass, so their light text reads */
-[data-theme='dark'] .p-cal-node {
-  background: rgb(30 28 48 / 0.78);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1), 0 0 0 1px rgb(255 255 255 / 0.1), 0 14px 30px -16px rgb(0 0 0 / 0.7);
-}
-.p-cal-node-dot {
-  flex: none;
-  width: 8px;
-  height: 8px;
-  margin-top: 6px;
-  border-radius: 50%;
-  background: var(--muted);
-}
-.p-cal-node.is-doing .p-cal-node-dot {
-  background: var(--violet);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--violet) 20%, transparent);
-}
-.p-cal-node-text {
-  display: grid;
-  gap: 2px;
-  min-width: 0;
-}
-.p-cal-node-text strong,
-.p-cal-node-text small {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.p-cal-node-text strong {
-  font-size: 13.5px;
-  font-weight: 650;
-  line-height: 1.3;
-  color: var(--ink);
-}
-.p-cal-node-text small {
-  font-size: 12px;
-  color: var(--ink-soft);
-}
-@media (prefers-reduced-motion: reduce) {
-  .p-card.p-cal {
-    transform: none !important;
-  }
-  .p-cal-spark {
-    display: none;
-  }
-}
-
 /* ── Finish: press feedback, browser surfaces, type details ── */
 
 /* Every icon is a small glass bead (PIcon in portal/ui.tsx): a crisp line, a glass body tinted with the icon's own
@@ -4923,7 +4975,7 @@ body:has(.portal) .scene {
 }
 
 /* everything pressable gives a little under the finger; the site's own .btn already does this */
-.portal :is(.p-chip, .p-chips button, .p-seg button, .p-round-link, .p-icon-btn, .p-menu-link, .p-user-btn):active {
+.portal :is(.p-chips button, .p-seg button, .p-round-link, .p-icon-btn, .p-menu-link):active {
   scale: 0.97;
 }
 .portal ::selection {
@@ -5015,7 +5067,7 @@ html:has(.portal),
 /* ── Community (pages/Community.tsx): former colleagues by stream, and the referrals shared with them ── */
 
 .p-comm-streams {
-  margin: 10px 0 -4px;
+  margin-top: 14px;
 }
 .p-comm-main {
   display: grid;
@@ -5038,10 +5090,11 @@ html:has(.portal),
 }
 /* a member's personal email, under their name, added or changed in place by an admin */
 .p-comm-email {
-  display: inline-flex;
-  flex-wrap: wrap;
+  display: grid;
+  justify-items: start;
   align-items: baseline;
-  gap: 4px 10px;
+  gap: 4px;
+  width: 100%;
   overflow-wrap: anywhere;
 }
 .p-comm-email .p-text-btn,
@@ -5052,11 +5105,7 @@ html:has(.portal),
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  justify-self: start;
   margin-top: 2px;
-}
-.p-comm-person:has(.p-comm-email-form) {
-  align-items: flex-start;
 }
 .p-comm-email-form {
   display: flex;
@@ -5066,7 +5115,7 @@ html:has(.portal),
   margin-top: 6px;
 }
 .p-comm-email-form input {
-  flex: 1 1 180px;
+  flex: 1 1 100%;
   min-width: 0;
   height: 34px;
   padding: 0 12px;
@@ -5086,14 +5135,12 @@ html:has(.portal),
 }
 .p-comm-email-form .p-error {
   flex-basis: 100%;
-  margin: 0;
 }
 
 /* ── Internal job postings (pages/CommunityJobs.tsx): one card per opening, its criteria, then its applicants ── */
 .p-ijp-list {
   display: grid;
   gap: 14px;
-  margin-top: 18px;
 }
 .p-card.p-ijp {
   display: grid;
@@ -5125,7 +5172,7 @@ html:has(.portal),
   gap: 12px 16px;
   margin: 0;
   padding: 14px 16px;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-sm);
   background: var(--bg);
 }
 .p-ijp-facts dt {
@@ -5154,7 +5201,7 @@ html:has(.portal),
   align-items: flex-start;
   gap: 10px;
   padding: 12px 14px;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-sm);
   background: color-mix(in srgb, var(--violet) 7%, var(--paper));
   color: var(--p-accent-text);
 }
@@ -5202,9 +5249,6 @@ html:has(.portal),
 .p-ijp-criteria {
   display: grid;
   gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
   font-size: 14px;
   color: var(--ink-2);
 }
@@ -5237,9 +5281,6 @@ html:has(.portal),
 .p-ijp-applicants ul {
   display: grid;
   gap: 8px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 .p-ijp-applicant {
   display: flex;
@@ -5247,7 +5288,7 @@ html:has(.portal),
   align-items: center;
   gap: 10px 12px;
   padding: 10px 12px;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-sm);
   background: var(--bg);
 }
 .p-ijp-actions {
@@ -5286,9 +5327,6 @@ html:has(.portal),
 .p-comm-steps {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin: 0;
-  padding: 0;
-  list-style: none;
   border-radius: var(--p-radius);
   background: var(--p-card);
   box-shadow: var(--p-shadow);
@@ -5331,25 +5369,28 @@ html:has(.portal),
   line-height: 1.45;
   color: var(--ink-soft);
 }
-/* Both columns share one grid: row 1 holds the column heads and row 2 the first cards, so the two columns start on
-   the same line whatever the head says. Each column is a subgrid of those two rows. A subgrid can't add rows,
-   so everything under the aside's first head stacks inside .p-comm-aside-body. */
-.p-comm-layout {
+/* Community: the member wall, with the referrals beside it for admins and sub admins */
+.p-comm-wall-layout {
   display: grid;
-  grid-template-columns: minmax(0, 8fr) minmax(300px, 4fr);
-  grid-template-rows: auto auto;
+  grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  gap: 12px var(--p-gap);
+  gap: 32px var(--p-gap);
+  margin-top: 4px;
 }
-.p-comm-jobs,
-.p-comm-aside {
+/* admins and sub admins see the referrals in a column beside the wall */
+.p-comm-wall-layout[data-aside] {
+  grid-template-columns: minmax(0, 8fr) minmax(300px, 4fr);
+}
+.p-comm-wall,
+.p-comm-refs {
   display: grid;
-  grid-template-rows: subgrid;
-  grid-row: 1 / span 2;
-  row-gap: 12px;
-  /* row 2 is as tall as the taller column; the shorter column must not stretch its cards to fill it */
-  align-items: start;
+  align-content: start;
+  gap: 14px;
   min-width: 0;
+}
+/* the referrals card holds only the list; the rows carry the rhythm, split by hairlines */
+.p-comm-panel {
+  gap: 0;
 }
 /* a column head: the title with its count, then one line on what's below. It sits on the page edge, on the same
    left line as the page title, the strip and the chips; only card content is inset. */
@@ -5378,27 +5419,215 @@ html:has(.portal),
 .p-comm-head .p-muted {
   max-width: 64ch;
 }
-.p-comm-aside-body {
+
+/* ── The member wall: a card per former colleague ── */
+.p-comm-grid {
   display: grid;
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: var(--p-gap);
+}
+.p-comm-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 20px 20px 18px;
+  border-radius: var(--p-radius);
+  background: var(--p-card);
+  box-shadow: var(--p-shadow);
+  transition:
+    translate var(--dur-ui) var(--ease),
+    box-shadow var(--dur-ui) var(--ease);
+}
+/* the stream's colour as a crisp line along the top: orange and yellow stay at full strength, never a faint wash */
+.p-comm-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 20px;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--tone);
+}
+.p-comm-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+/* initials in a ring of the stream's colour */
+.p-comm-face {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 2px var(--tone);
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.p-comm-name {
+  font-family: var(--display);
+  font-size: 17px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.p-comm-left {
+  font-size: 12.5px;
+  color: var(--ink-soft);
+}
+/* the admin's personal-email line, set apart at the foot of the card */
+.p-comm-card-email {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
   min-width: 0;
 }
-.p-comm-aside-body > .p-comm-head {
-  margin-top: 12px;
+.p-comm-email-text {
+  display: block;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.p-comm-jobs .p-ijp-list {
-  margin-top: 0;
+@media (hover: hover) and (pointer: fine) {
+  .p-comm-card:hover {
+    translate: 0 -3px;
+    box-shadow: var(--shadow-lg);
+  }
 }
-/* the card under a head holds only the list; the rows carry the rhythm, split by hairlines */
-.p-comm-panel {
-  gap: 0;
+/* on arrival the cards come in one after another; later filter changes slide instead (useListFlip) */
+.p-comm-grid[data-enter] .p-comm-card {
+  animation: p-comm-in 0.5s var(--ease) both;
+  animation-delay: calc(min(var(--i), 12) * 45ms);
 }
-.p-comm-people {
+@keyframes p-comm-in {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .p-comm-card {
+    transition: none;
+  }
+}
+
+/* ── Join the community, for employees: an icon, what it means, and the email form or what they joined with ── */
+.p-comm-join {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) minmax(360px, 440px);
+  align-items: center;
+  gap: 18px 20px;
+}
+.p-comm-join-icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--r-sm);
+  color: var(--p-accent-text);
+  background: color-mix(in srgb, var(--violet) 12%, var(--paper));
+}
+.p-comm-join-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.p-comm-join-text h2 {
   margin: 0;
-  padding: 0;
-  list-style: none;
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--ink);
 }
-.p-comm-person,
+.p-comm-join-text p {
+  margin: 0;
+  max-width: 62ch;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+.p-comm-join-email {
+  font-weight: 600;
+  color: var(--ink);
+  overflow-wrap: anywhere;
+}
+.p-comm-join-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.p-comm-join-form input {
+  flex: 1 1 160px;
+  min-width: 0;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-xs);
+  background: var(--paper);
+  font: inherit;
+  font-size: 14px;
+  color: var(--ink);
+}
+.p-comm-join-form input:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 1px;
+}
+.p-comm-join-form input[aria-invalid] {
+  border-color: var(--p-error-text);
+}
+.p-comm-join-form .p-error {
+  flex-basis: 100%;
+}
+.p-comm-join-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+/* once joined, the card settles into a quiet confirmation */
+.p-comm-join.is-joined {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.p-comm-join.is-joined .p-comm-join-icon {
+  color: var(--p-success-text);
+  background: color-mix(in srgb, var(--p-success-text) 12%, var(--paper));
+}
+@media (max-width: 1100px) {
+  .p-comm-join,
+  .p-comm-join.is-joined {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .p-comm-join-form,
+  .p-comm-join-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+}
+
+/* the internal job postings, for admins and sub admins, below the wall across the full width */
+.p-comm-jobs {
+  display: grid;
+  gap: 14px;
+  margin-top: 36px;
+  min-width: 0;
+}
 .p-comm-ref {
   padding: 12px 0;
 }
@@ -5410,14 +5639,6 @@ html:has(.portal),
 }
 .p-comm-people > li + li {
   border-top: 1px solid var(--line);
-}
-.p-comm-person {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-.p-comm-person .p-badge {
-  margin-top: 2px;
 }
 /* a referral: the role, then its actions on their own line, so every row reads the same whatever it has */
 .p-comm-ref {
@@ -5435,9 +5656,6 @@ html:has(.portal),
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 .p-ijp-pipeline li {
   display: inline-flex;
@@ -5468,17 +5686,8 @@ html:has(.portal),
   padding-left: 4px;
 }
 @media (max-width: 1100px) {
-  .p-comm-layout {
+  .p-comm-wall-layout[data-aside] {
     grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: none;
-  }
-  .p-comm-jobs,
-  .p-comm-aside {
-    grid-template-rows: none;
-    grid-row: auto;
-  }
-  .p-comm-aside {
-    margin-top: 12px;
   }
 }
 @media (max-width: 900px) {
@@ -5516,8 +5725,6 @@ img.p-avatar {
   display: grid;
   gap: 8px;
   margin: 18px 0 14px;
-  padding: 0;
-  border: 0;
 }
 .p-docs legend {
   margin-bottom: 8px;
@@ -5561,57 +5768,9 @@ img.p-avatar {
   font-weight: 600;
   color: var(--ink);
 }
-.p-doc-main a,
-.p-file-ids a {
+.p-doc-main a {
   color: var(--p-accent-text);
   font-weight: 600;
-}
-.p-file-ids {
-  margin: 16px 0 4px;
-  padding: 14px 16px;
-  border-radius: var(--r-sm);
-  background: var(--bg);
-}
-.p-file-ids h3 {
-  margin: 0 0 8px;
-  font-size: 14px;
-  font-weight: 600;
-}
-.p-file-ids ul {
-  display: grid;
-  gap: 6px;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.p-file-ids li {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  font-size: 13.5px;
-  color: var(--ink-soft);
-}
-.p-file-ids li > .p-icon {
-  color: var(--p-amber-text);
-}
-.p-file-ids li[data-done] > .p-icon {
-  color: var(--p-success-text);
-}
-.p-file-ids li strong {
-  color: var(--ink);
-  font-weight: 600;
-}
-.p-file-ids > p {
-  margin: 10px 0 0;
-  font-size: 13px;
-}
-.p-file-ids-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
 }
 /* the name block at the top of the user menu is a link to the profile */
 a.p-user-meta {

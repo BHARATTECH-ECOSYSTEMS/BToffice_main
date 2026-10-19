@@ -9,7 +9,6 @@ import { TeamRing, type Team } from '../components/careers/TeamRing';
 import { ValueTunnel, type Value } from '../components/careers/ValueTunnel';
 import { RoleSpiral, type Role } from '../components/careers/RoleSpiral';
 import type { HueName } from '../gl/palette';
-import '../styles/careers.css';
 
 const applyHref = (r: Role) => `mailto:${EMAIL}?subject=${encodeURIComponent(`Application: ${r.title}, ${r.focus}`)}`;
 
@@ -92,7 +91,7 @@ export function Careers() {
   );
 
   return (
-    <div className="cr" data-flat={flat || undefined}>
+    <div className="cr">
       <PageHero
         tone="tangerine"
         title={['Build the', 'foundation.']}

@@ -3,8 +3,8 @@ import { HUE } from '../palette';
 import { cardWriter, cssStage, DUST_FRAGMENT, glOn, isDarkTheme, onThemeChange, smooth, pointerIn } from './shared';
 
 /** A value panel, in CSS pixels (= world units). */
-export const VALUE_W = 540;
-export const VALUE_H = 280;
+const VALUE_W = 540;
+const VALUE_H = 280;
 
 const TUN_R = 600; // the tunnel's radius
 const GAP = 1500; // depth between panels

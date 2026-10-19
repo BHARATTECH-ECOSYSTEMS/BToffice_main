@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { TOOLS, toolById, type LinkResource, type Tool } from '../data';
 import { managesPortal, useSession } from '../session';
 import { usePeopleById, usePortal } from '../store';
-import { btnClass, BtnLabel, DeleteButton, Empty, Modal, PageHead, PIcon, useNotice } from '../ui';
-import { NotConnected, ToolButton } from './Dashboard';
+import { btnClass, BtnLabel, DeleteButton, Empty, Modal, NotConnected, PageHead, PIcon, PortalNotFound, ToolButton, useNotice } from '../ui';
 
 // The cards keep the old portal's order, which differs from the sidebar's.
 const CARD_ORDER = ['coder', 'huly', 'librechat', 'chatwoot', 'invoice', 'plane', 'securo', 'screego', 'excalidraw', 'lobehub'];
@@ -224,12 +223,5 @@ export function Soon({ title, sub, body }: { title: string; sub: string; body: s
   );
 }
 
-export function PortalNotFound() {
-  return (
-    <section className="p-card">
-      <Empty icon="alert" title="This page doesn't exist">
-        <Link to="/portal">Go to the dashboard</Link>
-      </Empty>
-    </section>
-  );
-}
+// Re-exported so the router can still lazy-load the portal's 404 page from this chunk.
+export { PortalNotFound };

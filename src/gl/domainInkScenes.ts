@@ -10,6 +10,7 @@ import {
   lerp,
   line,
   pointAlong,
+  rand,
   span,
   wobble,
 } from './ink';
@@ -22,7 +23,7 @@ import {
  * Coordinates are in a 460×380 design space centred on (0, 0); the reel scales it to fit.
  */
 
-export interface SceneWorld {
+interface SceneWorld {
   ctx: CanvasRenderingContext2D;
   c: Palette;
   t: number;
@@ -32,12 +33,6 @@ export interface SceneWorld {
 type Layer = (w: SceneWorld, build: number) => void;
 
 const TAU = Math.PI * 2;
-
-/** Stable pseudo-random value in [0, 1) for a given seed. */
-const rand = (seed: number) => {
-  const x = Math.sin(seed * 12.9898) * 43758.5453;
-  return x - Math.floor(x);
-};
 
 function pen(ctx: CanvasRenderingContext2D, color: string, width: number, alpha = 1, dash: number[] = []) {
   ctx.strokeStyle = color;

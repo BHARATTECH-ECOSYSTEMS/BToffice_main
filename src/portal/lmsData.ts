@@ -56,7 +56,7 @@ export interface Rating {
   stars: number;
 }
 
-export const CURRENCY = 'USD';
+const CURRENCY = 'USD';
 
 let lectureCounter = 0;
 const lec = (title: string, minutes: number, preview = false): Lecture => ({ id: `LEC${++lectureCounter}`, title, minutes, videoUrl: '', preview });

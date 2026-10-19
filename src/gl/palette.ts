@@ -4,9 +4,7 @@ export const HUE = {
   tangerine: '#FF8643', // Tango Orange
   saffron: '#F59E00',   // Pitch Yellow
   cobalt: '#6E58F5',    // Violet (generic mapping)
-  emerald: '#F59E00',   // Pitch Yellow (generic mapping)
   pink: '#FF8643',      // Tango Orange (generic mapping)
-  signal: '#FF8643',    // Tango Orange (generic mapping)
   ink: '#14130F',       // Charcoal Ink
 } as const;
 

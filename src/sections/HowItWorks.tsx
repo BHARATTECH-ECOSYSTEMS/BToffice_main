@@ -126,7 +126,7 @@ export function HowItWorks() {
               aria-selected={i === step}
               className="pipe-step"
               data-done={i < step || undefined}
-              style={toneStyle(FLOW_TONES[i], { '--i': i } as CSSProperties)}
+              style={toneStyle(FLOW_TONES[i])}
               onClick={() => goTo(i)}
             >
               <span className="pipe-node">

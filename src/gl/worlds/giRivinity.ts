@@ -17,6 +17,7 @@ import {
   seeded,
   setColor,
   setGroupOpacity,
+  setXYZ,
   timeline,
 } from './kit';
 
@@ -167,7 +168,7 @@ export function createGiRivinity(): DomainWorld {
         bez.v0.copy(from);
         bez.v2.copy(to);
         bez.getPoint(u, p);
-        inflow.pos.set([p.x, p.y, p.z], i * 3);
+        setXYZ(inflow.pos, i, p.x, p.y, p.z);
         setColor(inflow.col, i, colour);
         inflow.size[i] = 0.035;
         // Strong while learning, a gentle trickle after: learning never stops.
@@ -178,7 +179,7 @@ export function createGiRivinity(): DomainWorld {
       beam.grow(reason);
       const head = (t * 0.3) % 1;
       routePath.getPointAt(head, p);
-      pulse.pos.set([p.x, p.y, p.z], 0);
+      setXYZ(pulse.pos, 0, p.x, p.y, p.z);
       setColor(pulse.col, 0, HUE.saffron);
       pulse.size[0] = 0.11;
       pulse.alpha[0] = span(reason, 0.95, 1) * (1 - decide);

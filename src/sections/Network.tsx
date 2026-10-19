@@ -2,6 +2,7 @@ import { useEffect, useRef, type CSSProperties } from 'react';
 import { fitTo, poseAt, useFormation, useScene, WIDE_QUERY } from '../gl/Scene';
 import { GLOBE_SIZE, type Target } from '../gl/Engine';
 import { headingPoints } from '../gl/headingPoints';
+import { clamp01, smooth01 as smooth } from '../gl/ink';
 import { Headline, Reveal } from '../components/ui';
 import { Icon, type IconName } from '../components/fx';
 import { pageScroll, trackBox } from '../components/trackBox';
@@ -28,8 +29,6 @@ interface Ride {
   riding: boolean;
 }
 
-const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-const smooth = (x: number) => x * x * (3 - 2 * x);
 const progressOf = (r: Ride, y: number) => clamp01((y + window.innerHeight / 2 - r.stageY) / (r.headY - r.stageY));
 
 /**
@@ -156,13 +155,13 @@ export function Network({ landOn }: { landOn?: string }) {
   }, [landOn, engine]);
 
   return (
-    <section id="network" ref={ref} className="section network">
+    <section id="network" ref={ref} className="section">
       <div className="wrap network-grid">
         <div className="network-visual">
           <div className="network-stage" ref={stage} aria-hidden="true" />
           <div className="network-ride" ref={track} aria-hidden="true" />
         </div>
-        <div className="network-copy">
+        <div>
           <Headline tone="saffron" lines={['Built in Bharat.', 'For the world.']} />
           <Reveal as="p" className="lede" delay={100}>
             The core of Origin lives in India, and reaches every region it serves: from national data centres to the devices people carry.

@@ -1,20 +1,14 @@
-import { useState, type ReactNode } from 'react';
+import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
-import { COMPANY_CHECKS, EMPLOYEE_CHECKS, EMPLOYMENT_CHECKS, ID_DOCS, ID_RETENTION_DAYS, type PersonRole, type Verification, type VerificationKind, type VerificationStatus } from '../data';
+import { COMPANY_CHECKS, EMAIL_SHAPE, EMPLOYEE_CHECKS, EMPLOYMENT_CHECKS, ID_DOCS, ID_RETENTION_DAYS, ROLE_LABEL, VERIFICATION_STALE_DAYS, type Verification, type VerificationKind, type VerificationStatus } from '../data';
 import { useSession } from '../session';
-import { documentsDeleteOn, formatDate, usePeopleById, usePortal } from '../store';
-import { formatSize } from './Profile';
-import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PageHead, PIcon, SearchField, useNotice } from '../ui';
-import { PortalNotFound } from './Resources';
+import { documentsDeleteOn, formatDate, formatSize, usePeopleById, usePortal } from '../store';
+import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PageHead, PIcon, PortalNotFound, SearchField, useNotice } from '../ui';
 
 const STATUS_LABEL: Record<VerificationStatus, string> = { pending: 'Pending', verified: 'Verified', rejected: 'Rejected' };
 // status badges reuse the portal's existing colours: amber waiting, green done, red stopped
 const STATUS_BADGE: Record<VerificationStatus, string> = { pending: 'todo', verified: 'done', rejected: 'rejected' };
 const CHECKS: Record<VerificationKind, readonly { id: string; label: string }[]> = { company: COMPANY_CHECKS, employee: EMPLOYEE_CHECKS, employment: EMPLOYMENT_CHECKS };
-const ROLE_LABEL: Record<PersonRole, string> = { admin: 'Admin', subadmin: 'Sub Admin', employee: 'Employee', intern: 'Intern' };
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-// a pending check older than this is flagged, so stale requests don't sit unnoticed
-const STALE_DAYS = 7;
 const FILTERS: (VerificationStatus | '')[] = ['', 'pending', 'verified', 'rejected'];
 
 const COPY = {
@@ -110,7 +104,7 @@ function VerificationPage({ kind }: { kind: VerificationKind }) {
                 {rows.map((v) => {
                   const total = CHECKS[kind].length;
                   const age = daysBetween(v.requested, v.decided ?? todayIso());
-                  const stale = v.status === 'pending' && age > STALE_DAYS;
+                  const stale = v.status === 'pending' && age > VERIFICATION_STALE_DAYS;
                   return (
                     <li key={v.id}>
                       <button type="button" className="p-desk-item" aria-current={v.id === open?.id ? 'true' : undefined} onClick={() => select(v.id)}>
@@ -286,53 +280,6 @@ function CaseFile({
         ))}
       </dl>
 
-      {request.kind === 'employee' && (
-        <section className="p-file-ids" aria-labelledby="file-ids">
-          <h3 id="file-ids">Government ID from {subject}</h3>
-          {deletedOn ? (
-            <p className="p-dim">
-              Deleted automatically on {formatDate(deletedOn)}, {ID_RETENTION_DAYS} days after they left. Their name, dates and this result are kept.
-            </p>
-          ) : (
-            <ul>
-              {ID_DOCS.map((d) => {
-                const file = ids.find((u) => u.kind === d.id);
-                return (
-                  <li key={d.id} data-done={file ? '' : undefined}>
-                    <PIcon name={file ? 'check' : 'clock'} size={15} />
-                    <strong>{d.label}</strong>
-                    {file ? (
-                      <span>
-                        <a href={file.url} target="_blank" rel="noreferrer">
-                          {file.fileName}
-                          <span className="sr-only"> (opens in a new tab)</span>
-                        </a>{' '}
-                        · {formatSize(file.size)} · {formatDate(file.uploaded)}
-                      </span>
-                    ) : (
-                      <span className="p-dim">Not uploaded yet</span>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          {leftOn && !deletedOn && ids.length > 0 && (
-            <p className="p-dim">
-              They left on {formatDate(leftOn)}, so these files are deleted automatically on {formatDate(documentsDeleteOn(leftOn))}.
-            </p>
-          )}
-          {pending && !idsComplete && !deletedOn && (
-            <p className="p-file-ids-link">
-              <span className="p-dim">Email isn't connected yet, so send {subject} the upload link yourself.</span>
-              <button type="button" className={btnClass('ghost', { small: true })} onClick={copyLink}>
-                <BtnLabel icon="link">Copy upload link</BtnLabel>
-              </button>
-            </p>
-          )}
-        </section>
-      )}
-
       <div className="p-file-body">
         <fieldset className="p-file-docs" disabled={!pending}>
           <legend>
@@ -341,27 +288,73 @@ function CaseFile({
               {request.done.length} of {checks.length} checked
             </span>
           </legend>
-          <span className="p-meter is-wide" aria-hidden="true">
+          <span className="p-meter is-wide" aria-hidden="true" style={{ '--n': checks.length } as CSSProperties}>
             {checks.map((c) => (
               <i key={c.id} data-on={request.done.includes(c.id) || undefined} />
             ))}
           </span>
           {checks.map((c) => {
-            // the Government ID can't be ticked off before the Aadhaar and PAN are in
-            const waiting = request.kind === 'employee' && c.id === 'identity' && !idsComplete && !request.done.includes(c.id);
+            const isUpload = request.kind === 'employee' && ID_DOCS.some((d) => d.id === c.id);
+            const file = isUpload ? ids.find((u) => u.kind === c.id) : undefined;
+            // an ID can't be ticked off before the employee has uploaded it
+            const waiting = isUpload && !file && !request.done.includes(c.id);
+            const fileId = `${request.id}-${c.id}-file`;
             return (
-              <label key={c.id} className="p-doc">
-                <input type="checkbox" checked={request.done.includes(c.id)} disabled={waiting} onChange={(e) => setVerificationCheck(request.id, c.id, e.target.checked)} />
-                <span className="p-doc-box" aria-hidden="true">
-                  <PIcon name="check" size={12} />
-                </span>
-                <span>
-                  {c.label}
-                  {waiting && <span className="p-dim"> (waiting for Aadhaar and PAN)</span>}
-                </span>
-              </label>
+              <div key={c.id} className="p-doc-line">
+                <label className="p-doc">
+                  <input
+                    type="checkbox"
+                    checked={request.done.includes(c.id)}
+                    disabled={waiting}
+                    aria-describedby={isUpload ? fileId : undefined}
+                    onChange={(e) => setVerificationCheck(request.id, c.id, e.target.checked)}
+                  />
+                  <span className="p-doc-box" aria-hidden="true">
+                    <PIcon name="check" size={12} />
+                  </span>
+                  <span>{c.label}</span>
+                </label>
+                {isUpload && (
+                  <span id={fileId} className="p-doc-file" data-missing={file ? undefined : ''}>
+                    {file ? (
+                      <>
+                        <a href={file.url} target="_blank" rel="noreferrer" title={file.fileName}>
+                          {file.fileName}
+                          <span className="sr-only"> (opens in a new tab)</span>
+                        </a>
+                        <span>{formatSize(file.size)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <PIcon name="clock" size={13} />
+                        {deletedOn ? 'Deleted' : pending ? 'Not uploaded yet' : 'No file on record'}
+                      </>
+                    )}
+                  </span>
+                )}
+              </div>
             );
           })}
+          {request.kind === 'employee' && (deletedOn || (leftOn && ids.length > 0) || (pending && !idsComplete)) && (
+            <p className="p-file-docs-note">
+              {deletedOn ? (
+                <span>
+                  The Aadhaar and PAN were deleted automatically on {formatDate(deletedOn)}, {ID_RETENTION_DAYS} days after they left. Their name, dates and this result are kept.
+                </span>
+              ) : leftOn && ids.length > 0 ? (
+                <span>
+                  They left on {formatDate(leftOn)}, so their files are deleted automatically on {formatDate(documentsDeleteOn(leftOn))}.
+                </span>
+              ) : (
+                <>
+                  <span>{subject} uploads the Aadhaar and PAN. Email isn’t connected yet, so send them the link yourself.</span>
+                  <button type="button" className={btnClass('ghost', { small: true })} onClick={copyLink}>
+                    <BtnLabel icon="link">Copy upload link</BtnLabel>
+                  </button>
+                </>
+              )}
+            </p>
+          )}
         </fieldset>
 
         <section className="p-file-log" aria-labelledby="file-log">

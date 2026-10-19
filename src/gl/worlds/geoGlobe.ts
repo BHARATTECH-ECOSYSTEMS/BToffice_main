@@ -18,6 +18,7 @@ import {
   seeded,
   setColor,
   setGroupOpacity,
+  setXYZ,
 } from './kit';
 
 /**
@@ -318,12 +319,6 @@ export function createGeoGlobe(): DomainWorld {
   const viewer = new THREE.Vector3();
   let lastMapped = -1;
 
-  const setPoint = (cloud: typeof weather, i: number, p: THREE.Vector3) => {
-    cloud.pos[i * 3] = p.x;
-    cloud.pos[i * 3 + 1] = p.y;
-    cloud.pos[i * 3 + 2] = p.z;
-  };
-
   return {
     scene,
     camera,
@@ -389,7 +384,7 @@ export function createGeoGlobe(): DomainWorld {
         setColor(dots.col, i, tone);
         dots.alpha[i] *= span(sensing, 0, 0.3);
       }
-      dots.commit();
+      dots.commit(false); // positions are fixed (set at build) and uploaded on the first draw
 
       if (mapped !== lastMapped) {
         lastMapped = mapped;
@@ -419,7 +414,7 @@ export function createGeoGlobe(): DomainWorld {
           const j = i * TRAIL + k;
           const at = Math.max(0, u - k * 0.022);
           route.curve.getPoint(at, v);
-          setPoint(traffic, j, v);
+          setXYZ(traffic.pos, j, v.x, v.y, v.z);
           setColor(traffic.col, j, HUE.orange);
           traffic.size[j] = 0.07 * (1 - k / TRAIL);
           // Traffic only runs on road that has been drawn.
@@ -437,7 +432,7 @@ export function createGeoGlobe(): DomainWorld {
         for (let k = 0; k < JET_TRAIL; k++, w++) {
           const at = lon - k * 2.4;
           setLatLon(v, lat + Math.sin(at * D2R * 3 + phase * TAU) * 4, at, R * 1.05);
-          setPoint(weather, w, v);
+          setXYZ(weather.pos, w, v.x, v.y, v.z);
           setColor(weather.col, w, HUE.violet);
           weather.size[w] = 0.024 * (1 - k / (JET_TRAIL + 1));
           weather.alpha[w] = climate * 0.6 * (1 - k / JET_TRAIL) * span(v.dot(viewer) / v.length(), -0.05, 0.3);
@@ -449,7 +444,7 @@ export function createGeoGlobe(): DomainWorld {
         const rho = 0.03 + (1 - life) * 0.19;
         const angle = (arm / 3) * TAU + rho * 14 + t * 0.9;
         onCircle(v, storm, rho, angle, R * 1.04);
-        setPoint(weather, w, v);
+        setXYZ(weather.pos, w, v.x, v.y, v.z);
         setColor(weather.col, w, HUE.violet);
         weather.size[w] = 0.032;
         weather.alpha[w] = climate * 0.85 * span(life, 0, 0.2) * span(life, 1, 0.8) * span(v.dot(viewer) / v.length(), -0.05, 0.3);
@@ -461,7 +456,7 @@ export function createGeoGlobe(): DomainWorld {
         const rho = 0.04 + life * 0.2;
         for (let k = 0; k < RING_DOTS; k++, w++) {
           onCircle(v, heatFrame, rho, (k / RING_DOTS) * TAU, R * 1.012);
-          setPoint(weather, w, v);
+          setXYZ(weather.pos, w, v.x, v.y, v.z);
           setColor(weather.col, w, HUE.saffron);
           weather.size[w] = 0.026;
           weather.alpha[w] = climate * (1 - life) * span(v.dot(viewer) / v.length(), -0.05, 0.3);

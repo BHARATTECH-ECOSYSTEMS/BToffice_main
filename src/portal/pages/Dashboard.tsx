@@ -1,16 +1,15 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { CERTIFICATE_TYPES, toolById, type Person, type PersonRole, type PersonStatus, type PortalIconName, type SecurityEvent, type Task, type TaskStatus } from '../data';
+import { CERTIFICATE_TYPES, PERSON_STATUS_LABEL, ROLE_LABEL, toolById, type Person, type PersonRole, type PortalIconName, type SecurityEvent, type Task, type TaskStatus } from '../data';
 import { hasArrived, managesPortal, markArrived, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
-import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PIcon, SearchField, Stat, useListFlip, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, NotConnected, PIcon, SearchField, Stat, ToolButton, useListFlip, useNotice } from '../ui';
 import { useOfficeDay } from '../eoffice';
 import { IdCardDialog } from '../IdCard';
 import { InviteModal } from './People';
+import { CalendarCard } from '../Calendar';
 
 const STATUS_LABEL: Record<TaskStatus, string> = { todo: 'To do', doing: 'In progress', done: 'Done' };
-const ROLE_LABEL: Record<PersonRole, string> = { admin: 'Admin', subadmin: 'Sub Admin', employee: 'Employee', intern: 'Intern' };
-const PERSON_STATUS_LABEL: Record<PersonStatus, string> = { active: 'Active', inactive: 'Inactive', invited: 'Invited' };
 const certName = (id: string) => CERTIFICATE_TYPES.find((c) => c.id === id)?.name ?? id;
 
 // SecuPrompt reports these once it's connected; until then the panel shows that nothing is being reported.
@@ -162,7 +161,7 @@ function EmployeeDashboard({ arrive }: { arrive: boolean }) {
           <TaskBoard title="My tasks" list={mine} editable />
         </div>
         <WorkspaceCard notify={notify} />
-        <CalendarCard tasks={mine.filter((t) => t.status !== 'done')} />
+        <CalendarCard tasks={mine.filter((t) => t.status !== 'done')} notify={notify} />
       </div>
     </>
   );
@@ -210,7 +209,7 @@ function AdminDashboard({ arrive }: { arrive: boolean }) {
             <NextDueCard list={tasks} />
             <TaskBoard title="Team tasks" list={tasks} />
             <WorkspaceCard notify={notify} />
-            <CalendarCard tasks={tasks.filter((t) => t.status !== 'done')} />
+            <CalendarCard tasks={tasks.filter((t) => t.status !== 'done')} notify={notify} />
           </div>
           <CertificatesPanel />
           <TeamPanel />
@@ -391,7 +390,7 @@ function ProgressCard({ title, done, total, empty, delay = 0 }: { title: string;
   const share = total ? done / total : 0;
   const { arc, head, ticks, label, value, glow } = useRing(share, delay);
   return (
-    <section className="p-card p-ringcard" aria-labelledby="progress-title">
+    <section className="p-card" aria-labelledby="progress-title">
       <div className="p-card-head">
         <h2 id="progress-title" className="p-card-title">
           {title}
@@ -410,7 +409,7 @@ function ProgressCard({ title, done, total, empty, delay = 0 }: { title: string;
             })}
           </g>
           <circle className="p-ring-track" cx="64" cy="64" r={RING_R} />
-          <circle ref={arc} className="p-ring-fill" cx="64" cy="64" r={RING_R} style={{ '--len': RING_LENGTH, '--off': RING_LENGTH } as CSSProperties} />
+          <circle ref={arc} className="p-ring-fill" cx="64" cy="64" r={RING_R} style={{ '--len': RING_LENGTH } as CSSProperties} />
           <g ref={head} className="p-ring-head">
             <circle cx={64 + RING_R} cy="64" r="6.5" />
           </g>
@@ -435,7 +434,7 @@ function NextDueCard({ list }: { list: Task[] }) {
   const next = list.filter((t) => t.status !== 'done').sort((a, b) => a.due.localeCompare(b.due))[0];
   const days = next ? daysUntil(next.due) : 0;
   return (
-    <section className="p-card p-today" aria-labelledby="today-title">
+    <section className="p-card" aria-labelledby="today-title">
       <h2 id="today-title" className="p-card-title">
         Today
       </h2>
@@ -666,256 +665,6 @@ function Breakdown({ title, icon, total, rows }: { title: string; icon: PortalIc
         ))}
       </ul>
       <p className="p-dim">{total === 1 ? '1 in total' : `${total} in total`}</p>
-    </section>
-  );
-}
-
-/** Opens a self-hosted tool, or says plainly that its address hasn't been set up yet. */
-export function ToolButton({
-  url,
-  label,
-  name,
-  icon,
-  variant = 'primary',
-  wide = true,
-}: {
-  url: string;
-  label: string;
-  /** The tool's name, for screen readers when the label alone ("Open") doesn't say which tool. */
-  name: string;
-  icon?: PortalIconName;
-  variant?: 'primary' | 'ghost';
-  wide?: boolean;
-}) {
-  if (url) {
-    return (
-      <a className={btnClass(variant, { wide })} href={url} target="_blank" rel="noreferrer">
-        <BtnLabel icon={icon} arrow={icon ? undefined : 'up-right'}>
-          {label}
-        </BtnLabel>
-        <span className="sr-only">{name} (opens in a new tab)</span>
-      </a>
-    );
-  }
-  return (
-    // the label stays visible so a card's two buttons can still be told apart; the card says it isn't connected yet
-    <span className={`p-btn is-disabled ${wide ? 'is-wide' : ''}`} aria-disabled="true" title="Not connected yet: its address hasn't been set up">
-      {icon && <PIcon name={icon} size={16} />}
-      {label}
-      <span className="sr-only"> for {name}, not connected yet</span>
-    </span>
-  );
-}
-
-/** Shown once on a card whose tool has no address yet (aria-hidden: each button already says so to screen readers). */
-export function NotConnected() {
-  return (
-    <p className="p-not-connected" aria-hidden="true">
-      <PIcon name="alert" size={14} /> Not connected yet
-    </p>
-  );
-}
-
-const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-
-type CalLink = { id: string; d: string };
-
-/**
- * An element's box inside `host`, from layout offsets (unaffected by the card's lean). Walks the offsetParent chain
- * because 3D layers (preserve-3d) become offset parents of their own in Chrome.
- */
-function boxIn(el: HTMLElement, host: HTMLElement) {
-  let x = 0;
-  let y = 0;
-  for (let n: HTMLElement | null = el; n && n !== host; n = n.offsetParent as HTMLElement | null) {
-    x += n.offsetLeft;
-    y += n.offsetTop;
-  }
-  return { x, y, w: el.offsetWidth, h: el.offsetHeight };
-}
-
-/** A polyline with every inner corner rounded off (radius r, or less where a leg is shorter). */
-function roundedPath(pts: [number, number][], r = 10) {
-  let d = `M ${pts[0][0]} ${pts[0][1]}`;
-  for (let i = 1; i < pts.length - 1; i++) {
-    const [px, py] = pts[i - 1];
-    const [x, y] = pts[i];
-    const [nx, ny] = pts[i + 1];
-    const a = Math.min(r, Math.hypot(x - px, y - py) / 2, Math.hypot(nx - x, ny - y) / 2);
-    const ux = Math.sign(x - px), uy = Math.sign(y - py), vx = Math.sign(nx - x), vy = Math.sign(ny - y);
-    d += ` L ${x - ux * a} ${y - uy * a} Q ${x} ${y} ${x + vx * a} ${y + vy * a}`;
-  }
-  const [lx, ly] = pts[pts.length - 1];
-  return `${d} L ${lx} ${ly}`;
-}
-
-/**
- * The month, with each open task due in it pinned to its date: a glass label (task, who, status) in a strip under the
- * month, joined to its day by a line that draws itself in, with a spark running along it now and then. Labels never
- * cover a date. On a mouse the card leans a few degrees towards the pointer and the labels float above it.
- * The labels are real tasks; nothing is invented.
- */
-function CalendarCard({ tasks }: { tasks: Task[] }) {
-  const byId = usePeopleById();
-  const [offset, setOffset] = useState(0);
-  // which way the last month change went, so the new month slides in from that side; none on first draw
-  const [dir, setDir] = useState<'prev' | 'next' | undefined>();
-  const step = (by: -1 | 1) => (setOffset((o) => o + by), setDir(by < 0 ? 'prev' : 'next'));
-  const stage = useRef<HTMLDivElement>(null);
-  const [links, setLinks] = useState<CalLink[] | null>(null);
-  const [hot, setHot] = useState<string | null>(null);
-
-  const now = new Date();
-  const month = new Date(now.getFullYear(), now.getMonth() + offset, 1);
-  const label = month.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' });
-  const due = useMemo(() => new Set(tasks.map((t) => t.due)), [tasks]);
-
-  // Weeks start on Sunday. The grid is filled out to whole weeks with the neighbouring months' days, greyed out.
-  const lead = month.getDay();
-  const days = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
-  const prevDays = new Date(month.getFullYear(), month.getMonth(), 0).getDate();
-  const trail = (7 - ((lead + days) % 7)) % 7;
-  const before = Array.from({ length: lead }, (_, i) => prevDays - lead + 1 + i);
-  const after = Array.from({ length: trail }, (_, i) => i + 1);
-  const iso = (d: number) => `${month.getFullYear()}-${String(month.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  const isToday = (d: number) => offset === 0 && d === now.getDate();
-
-  // at most three labels, the soonest; laid out by weekday so their lines don't cross
-  const pinned = tasks
-    .filter((t) => t.due.startsWith(iso(1).slice(0, 8)))
-    .sort((x, y) => x.due.localeCompare(y.due))
-    .slice(0, 3)
-    .sort((x, y) => new Date(`${x.due}T00:00`).getDay() - new Date(`${y.due}T00:00`).getDay() || x.due.localeCompare(y.due));
-  const pinnedKey = pinned.map((t) => `${t.id}:${t.due}:${t.status}`).join();
-
-  // Route each line out of its date's right edge, down the gap between columns (clear of every digit), then bend
-  // into the top of its label. Offsets, not screen boxes, so the lean can't skew the measurements.
-  useLayoutEffect(() => {
-    const host = stage.current;
-    if (!host) return;
-    const place = () => {
-      const out: CalLink[] = [];
-      for (const t of pinned) {
-        const cell = host.querySelector<HTMLElement>(`[data-iso="${t.due}"]`);
-        const node = host.querySelector<HTMLElement>(`[data-node="${t.id}"]`);
-        if (!cell || !node) continue;
-        const c = boxIn(cell, host);
-        const n = boxIn(node, host);
-        const sx = c.x + c.w + 2;
-        const sy = c.y + c.h / 2;
-        const top = n.y;
-        const nx = Math.min(Math.max(sx, n.x + 22), n.x + n.w - 22);
-        const bend = top - 12;
-        const pts: [number, number][] = [[c.x + c.w, sy], [sx, sy], [sx, bend], [nx, bend], [nx, top]];
-        out.push({ id: t.id, d: roundedPath(Math.abs(nx - sx) < 1 ? [pts[0], [sx, sy], [sx, top]] : pts) });
-      }
-      setLinks(out);
-    };
-    place();
-    const ro = new ResizeObserver(place);
-    ro.observe(host);
-    return () => ro.disconnect();
-    // pinnedKey stands for the pinned tasks; the month is part of it through the due dates
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pinnedKey, offset]);
-
-  // The lean: a few degrees towards the pointer, eased by a CSS transition so it never snaps. Mouse only.
-  // It tilts the whole card (background and shadow too), so the contents can never lean out past its edges.
-  const lean = (e: PointerEvent<HTMLElement>) => {
-    if (e.pointerType !== 'mouse' || reducedMotion()) return;
-    const box = e.currentTarget.getBoundingClientRect();
-    const nx = (e.clientX - box.left) / box.width - 0.5;
-    const ny = (e.clientY - box.top) / box.height - 0.5;
-    e.currentTarget.style.transform = `perspective(1400px) rotateX(${(-ny * 5).toFixed(2)}deg) rotateY(${(nx * 6).toFixed(2)}deg)`;
-  };
-
-  return (
-    <section className="p-card p-cal" aria-labelledby="cal" onPointerMove={lean} onPointerLeave={(e) => (e.currentTarget.style.transform = '')}>
-      <div ref={stage} className="p-cal-stage">
-        <div className="p-card-head">
-          <h2 id="cal" className="p-card-title">
-            <PIcon name="calendar" /> Calendar &amp; schedules
-          </h2>
-          <div className="p-cal-nav">
-            <button type="button" className="p-icon-btn is-flip" onClick={() => step(-1)} aria-label="Previous month">
-              <PIcon name="chevron" />
-            </button>
-            <p className="p-cal-month" aria-live="polite">
-              {label}
-            </p>
-            <button type="button" className="p-icon-btn" onClick={() => step(1)} aria-label="Next month">
-              <PIcon name="chevron" />
-            </button>
-          </div>
-        </div>
-        <div key={offset} className="p-cal-grid" role="grid" aria-label={label} data-dir={dir}>
-          {WEEKDAYS.map((w) => (
-            <span key={w} className="p-cal-dow" role="columnheader">
-              {w}
-            </span>
-          ))}
-          {before.map((d) => (
-            <span key={`p${d}`} className="p-cal-day is-other" aria-hidden="true">
-              {d}
-            </span>
-          ))}
-          {Array.from({ length: days }, (_, i) => i + 1).map((d) => {
-            const pin = pinned.find((t) => t.due === iso(d));
-            return (
-              <span
-                key={d}
-                role="gridcell"
-                data-iso={iso(d)}
-                className={`p-cal-day ${isToday(d) ? 'is-today' : ''} ${due.has(iso(d)) ? 'has-due' : ''} ${pin ? 'is-pinned' : ''} ${pin && pin.id === hot ? 'is-hot' : ''}`}
-                aria-current={isToday(d) ? 'date' : undefined}
-              >
-                {d}
-                {due.has(iso(d)) && <span className="sr-only"> (task due)</span>}
-              </span>
-            );
-          })}
-          {after.map((d) => (
-            <span key={`n${d}`} className="p-cal-day is-other" aria-hidden="true">
-              {d}
-            </span>
-          ))}
-        </div>
-
-        {pinned.length > 0 && (
-          <>
-            <svg key={`links-${offset}`} className="p-cal-links" aria-hidden="true">
-              {links?.map((l, i) => (
-                <g key={l.id} className={l.id === hot ? 'is-hot' : undefined} style={{ '--i': i } as CSSProperties}>
-                  <path className="p-cal-line" d={l.d} pathLength={1} />
-                  <path className="p-cal-spark" d={l.d} pathLength={1} />
-                </g>
-              ))}
-            </svg>
-            <ul key={`lane-${offset}`} className="p-cal-lane" aria-label={`Due in ${label}`}>
-              {pinned.map((t, i) => (
-                <li
-                  key={t.id}
-                  data-node={t.id}
-                  className={`p-cal-node is-${t.status}`}
-                  style={{ '--i': i } as CSSProperties}
-                  title={t.title}
-                  onPointerEnter={() => setHot(t.id)}
-                  onPointerLeave={() => setHot(null)}
-                >
-                  <span className="p-cal-node-dot" aria-hidden="true" />
-                  <span className="p-cal-node-text">
-                    <strong>{t.title}</strong>
-                    <small>
-                      {byId.get(t.assigneeId)?.name ?? 'Removed user'} · {STATUS_LABEL[t.status]}
-                      <span className="sr-only">, due {formatDate(t.due)}</span>
-                    </small>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </>
-        )}
-      </div>
     </section>
   );
 }
@@ -1285,7 +1034,7 @@ function SecurityPanel() {
       </div>
       <div className="p-toolbar">
         <SearchField value={q} onChange={setQ} label="Search security events" placeholder="Search by name or email" />
-        <label className="p-select-wrap p-filter">
+        <label className="p-filter">
           <PIcon name="filter" size={16} />
           <span className="sr-only">Filter by action</span>
           <select className="p-select" value={action} onChange={(e) => setAction(e.target.value as SecurityEvent['action'] | '')}>

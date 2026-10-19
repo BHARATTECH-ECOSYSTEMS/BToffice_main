@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router';
 import { formatMinutes, plural, totalMinutes, youtubeId, type Lecture } from '../../lmsData';
 import { usePortal } from '../../store';
 import { btnClass, BtnLabel, DeleteButton, Modal, PIcon } from '../../ui';
+import { EduHead } from './parts';
 
 const MAX_THUMB_MB = 2;
 const THUMB_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -83,140 +84,137 @@ export function AddCourse() {
   };
 
   return (
-    <section className="p-card p-course-form" aria-labelledby="create-course">
-      <div>
-        <h1 id="create-course" className="p-lms-h1">
-          Create new course
-        </h1>
-        <p className="p-muted">Add the details, structure the content, and publish the course.</p>
-      </div>
-      <form
-        noValidate
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <label className="p-field">
-          <span>Course title</span>
-          <input value={title} onChange={(e) => (setTitle(e.target.value), setError(''))} placeholder="Enter course title" maxLength={120} />
-        </label>
-        <label className="p-field">
-          <span>Course description</span>
-          <textarea value={description} onChange={(e) => (setDescription(e.target.value), setError(''))} rows={6} placeholder="What will people learn? Leave a blank line between paragraphs." maxLength={4000} />
-        </label>
-        <div className="p-form-row">
+    <>
+      <EduHead id="create-course" title="Create new course" sub="Add the details, structure the content, and publish the course." />
+      <section className="p-card p-course-form" aria-labelledby="create-course">
+        <form
+          noValidate
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit();
+          }}
+        >
           <label className="p-field">
-            <span>Course price ($)</span>
-            <input type="number" min={0} step="0.01" inputMode="decimal" value={price} onChange={(e) => (setPrice(e.target.value), setError(''))} placeholder="0" />
+            <span>Course title</span>
+            <input value={title} onChange={(e) => (setTitle(e.target.value), setError(''))} placeholder="Enter course title" maxLength={120} />
           </label>
           <label className="p-field">
-            <span>Discount (%)</span>
-            <input type="number" min={0} max={100} step={1} inputMode="numeric" value={discount} onChange={(e) => (setDiscount(e.target.value), setError(''))} />
+            <span>Course description</span>
+            <textarea value={description} onChange={(e) => (setDescription(e.target.value), setError(''))} rows={6} placeholder="What will people learn? Leave a blank line between paragraphs." maxLength={4000} />
           </label>
-        </div>
-        <div className="p-field">
-          <span>Thumbnail (optional)</span>
-          <label className="p-drop">
-            <input type="file" accept={THUMB_TYPES.join(',')} onChange={(e) => pickThumb(e.target.files?.[0])} />
-            {thumb ? (
-              <img src={thumb.url} alt="" />
-            ) : (
-              <>
-                <PIcon name="upload" size={22} />
-                <span>Click to upload a thumbnail</span>
-                <span className="p-dim">
-                  PNG, JPG or WebP, up to {MAX_THUMB_MB} MB. Without one, the course gets a generated cover.
-                </span>
-              </>
-            )}
-            {thumb && <span className="sr-only">Selected: {thumb.file.name}. Choose another file to replace it.</span>}
-          </label>
-        </div>
-
-        <fieldset className="p-course-content">
-          <legend className="p-card-title">Course content</legend>
-          {chapters.map((c, i) => (
-            <section key={c.id} className="p-draft-chapter" aria-label={`Chapter ${i + 1}: ${c.title}`}>
-              <div className="p-draft-head">
-                <button type="button" className="p-draft-toggle" aria-expanded={c.open} onClick={() => updateChapter(c.id, (x) => ({ ...x, open: !x.open }))}>
-                  <PIcon name="chevron" size={16} />
-                  <span className="is-strong">
-                    {i + 1}. {c.title}
-                  </span>
+          <div className="p-form-row">
+            <label className="p-field">
+              <span>Course price ($)</span>
+              <input type="number" min={0} step="0.01" inputMode="decimal" value={price} onChange={(e) => (setPrice(e.target.value), setError(''))} placeholder="0" />
+            </label>
+            <label className="p-field">
+              <span>Discount (%)</span>
+              <input type="number" min={0} max={100} step={1} inputMode="numeric" value={discount} onChange={(e) => (setDiscount(e.target.value), setError(''))} />
+            </label>
+          </div>
+          <div className="p-field">
+            <span>Thumbnail (optional)</span>
+            <label className="p-drop">
+              <input type="file" accept={THUMB_TYPES.join(',')} onChange={(e) => pickThumb(e.target.files?.[0])} />
+              {thumb ? (
+                <img src={thumb.url} alt="" />
+              ) : (
+                <>
+                  <PIcon name="upload" size={22} />
+                  <span>Click to upload a thumbnail</span>
                   <span className="p-dim">
-                    {plural(c.lectures.length, 'lecture')}
-                    {c.lectures.length > 0 && ` · ${formatMinutes(totalMinutes(c.lectures))}`}
+                    PNG, JPG or WebP, up to {MAX_THUMB_MB} MB. Without one, the course gets a generated cover.
                   </span>
-                </button>
-                <button type="button" className="p-text-btn is-danger" onClick={() => setChapters((list) => list.filter((x) => x.id !== c.id))}>
-                  Remove<span className="sr-only"> chapter {c.title}</span>
-                </button>
-              </div>
-              {c.open && (
-                <div className="p-draft-body">
-                  {c.lectures.length > 0 && (
-                    <ul className="p-draft-lectures">
-                      {c.lectures.map((l, j) => (
-                        <li key={l.id}>
-                          <PIcon name="play" size={15} />
-                          <span className="p-lecture-title">
-                            {j + 1}. {l.title}
-                          </span>
-                          {l.preview && <span className="p-badge is-soft">Free preview</span>}
-                          <span className="p-dim">{formatMinutes(l.minutes)}</span>
-                          <DeleteButton
-                            small
-                            srText={`lecture ${l.title}`}
-                            onDone={() => updateChapter(c.id, (x) => ({ ...x, lectures: x.lectures.filter((y) => y.id !== l.id) }))}
-                          />
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <button type="button" className={btnClass('ghost', { small: true })} onClick={() => setLectureFor(c.id)}>
-                    <BtnLabel icon="plus">
-                      Add lecture<span className="sr-only"> to {c.title}</span>
-                    </BtnLabel>
+                </>
+              )}
+              {thumb && <span className="sr-only">Selected: {thumb.file.name}. Choose another file to replace it.</span>}
+            </label>
+          </div>
+
+          <fieldset className="p-course-content">
+            <legend className="p-card-title">Course content</legend>
+            {chapters.map((c, i) => (
+              <section key={c.id} className="p-draft-chapter" aria-label={`Chapter ${i + 1}: ${c.title}`}>
+                <div className="p-draft-head">
+                  <button type="button" className="p-draft-toggle" aria-expanded={c.open} onClick={() => updateChapter(c.id, (x) => ({ ...x, open: !x.open }))}>
+                    <PIcon name="chevron" size={16} />
+                    <span className="is-strong">
+                      {i + 1}. {c.title}
+                    </span>
+                    <span className="p-dim">
+                      {plural(c.lectures.length, 'lecture')}
+                      {c.lectures.length > 0 && ` · ${formatMinutes(totalMinutes(c.lectures))}`}
+                    </span>
+                  </button>
+                  <button type="button" className="p-text-btn is-danger" onClick={() => setChapters((list) => list.filter((x) => x.id !== c.id))}>
+                    Remove<span className="sr-only"> chapter {c.title}</span>
                   </button>
                 </div>
-              )}
-            </section>
-          ))}
-          <button type="button" className={btnClass('light', { wide: true })} onClick={() => setAddingChapter(true)}>
-            <BtnLabel icon="plus">Add chapter</BtnLabel>
+                {c.open && (
+                  <div className="p-draft-body">
+                    {c.lectures.length > 0 && (
+                      <ul className="p-draft-lectures">
+                        {c.lectures.map((l, j) => (
+                          <li key={l.id}>
+                            <PIcon name="play" size={15} />
+                            <span className="p-lecture-title">
+                              {j + 1}. {l.title}
+                            </span>
+                            {l.preview && <span className="p-badge is-soft">Free preview</span>}
+                            <span className="p-dim">{formatMinutes(l.minutes)}</span>
+                            <DeleteButton
+                              small
+                              srText={`lecture ${l.title}`}
+                              onDone={() => updateChapter(c.id, (x) => ({ ...x, lectures: x.lectures.filter((y) => y.id !== l.id) }))}
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    <button type="button" className={btnClass('ghost', { small: true })} onClick={() => setLectureFor(c.id)}>
+                      <BtnLabel icon="plus">
+                        Add lecture<span className="sr-only"> to {c.title}</span>
+                      </BtnLabel>
+                    </button>
+                  </div>
+                )}
+              </section>
+            ))}
+            <button type="button" className={btnClass('light', { wide: true })} onClick={() => setAddingChapter(true)}>
+              <BtnLabel icon="plus">Add chapter</BtnLabel>
+            </button>
+          </fieldset>
+
+          {error && (
+            <p className="p-error" role="alert">
+              {error}
+            </p>
+          )}
+          <button type="submit" className={btnClass('primary', { wide: true })}>
+            <BtnLabel>Create course</BtnLabel>
           </button>
-        </fieldset>
+        </form>
 
-        {error && (
-          <p className="p-error" role="alert">
-            {error}
-          </p>
+        {addingChapter && (
+          <ChapterModal
+            onClose={() => setAddingChapter(false)}
+            onAdd={(t) => {
+              setChapters((list) => [...list, { id: newId(), title: t, open: true, lectures: [] }]);
+              setError('');
+            }}
+          />
         )}
-        <button type="submit" className={btnClass('primary', { wide: true })}>
-          <BtnLabel>Create course</BtnLabel>
-        </button>
-      </form>
-
-      {addingChapter && (
-        <ChapterModal
-          onClose={() => setAddingChapter(false)}
-          onAdd={(t) => {
-            setChapters((list) => [...list, { id: newId(), title: t, open: true, lectures: [] }]);
-            setError('');
-          }}
-        />
-      )}
-      {lectureFor && (
-        <LectureModal
-          onClose={() => setLectureFor(null)}
-          onAdd={(lecture) => {
-            updateChapter(lectureFor, (x) => ({ ...x, open: true, lectures: [...x.lectures, lecture] }));
-            setError('');
-          }}
-        />
-      )}
-    </section>
+        {lectureFor && (
+          <LectureModal
+            onClose={() => setLectureFor(null)}
+            onAdd={(lecture) => {
+              updateChapter(lectureFor, (x) => ({ ...x, open: true, lectures: [...x.lectures, lecture] }));
+              setError('');
+            }}
+          />
+        )}
+      </section>
+    </>
   );
 }
 

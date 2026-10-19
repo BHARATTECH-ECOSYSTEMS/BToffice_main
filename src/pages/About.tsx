@@ -11,7 +11,6 @@ import { Reveal, BtnText, Arrow } from '../components/ui';
 import { PageHero } from '../components/PageHero';
 import { HowWeWorkPipeline } from '../components/HowWeWorkPipeline';
 import { AWARDS, EMAIL, EMAIL_HREF, HQ, HQ_MAP, PRODUCTS } from '../content';
-import '../styles/company-about.css';
 
 
 
@@ -49,13 +48,6 @@ const REASONS = [
   },
 ];
 
-const AWARD_COPY = [
-  'Launching of BSearch by PM Shri Narendra Modi and recognition among top tech startups in the state.',
-  'Official representation of Bharattech at the UP International Trade Show 2023.',
-  'National participation and selection of Bharattech in the Indian Web Browser Development Challenge.',
-  'Honored participant in the Ministry of Electronics & IT (MeitY) Open Challenge Program.',
-];
-
 export function About() {
   return (
     <div className="company-about-page">
@@ -70,7 +62,7 @@ export function About() {
       <section className="section about-overview-section" id="overview">
         <div className="wrap about-overview-grid">
           <div className="about-who-sticky">
-            <Reveal as="h2" className="h2 about-section-h2">
+            <Reveal as="h2" className="h2">
               Who we are
             </Reveal>
             <Reveal as="p" className="about-who-lead">
@@ -95,7 +87,7 @@ export function About() {
           </div>
 
           <div className="about-drives-col">
-            <Reveal as="h2" className="h2 about-section-h2">
+            <Reveal as="h2" className="h2">
               What drives us
             </Reveal>
             {DRIVES.map((d, index) => (
@@ -113,7 +105,7 @@ export function About() {
         <div className="wrap">
           <div className="section-head">
             <div>
-              <Reveal as="h2" className="h2 about-section-h2">
+              <Reveal as="h2" className="h2">
                 Why Bharattech
               </Reveal>
             </div>
@@ -144,7 +136,7 @@ export function About() {
         <div className="wrap">
           <div className="section-head">
             <div>
-              <Reveal as="h2" className="h2 about-section-h2">
+              <Reveal as="h2" className="h2">
                 Awards
               </Reveal>
             </div>
@@ -161,7 +153,7 @@ export function About() {
                     <Award className="about-award-badge-icon" size={22} />
                   </div>
                   <h3>{award.title}</h3>
-                  <p>{AWARD_COPY[index] || award.body}</p>
+                  <p>{award.body}</p>
                 </div>
               </Reveal>
             ))}
@@ -175,7 +167,7 @@ export function About() {
           <div className="about-contact-card">
             <div className="about-contact-grid">
               <div className="about-contact-copy">
-                <h2 className="h2 about-section-h2">
+                <h2 className="h2">
                   Let’s connect and build smarter, faster, and sovereign together.
                 </h2>
                 <p>

@@ -1,4 +1,5 @@
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { Link } from 'react-router';
 import { SearchPill } from '../components/SearchPill';
 import { Arrow, BtnText, LogoMark } from '../components/ui';
 import type { PortalIconName } from './data';
@@ -23,16 +24,13 @@ const PATHS: Record<PortalIconName, string> = {
   layers: 'M12 3 2 8l10 5 10-5zM2 13l10 5 10-5',
   plus: 'M12 5v14M5 12h14',
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4',
-  trash: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6',
   external: 'M14 4h6v6M20 4l-9 9M18 14v6H4V6h6',
   check: 'M5 12.5 10 17l9-10',
   clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v5l3 2',
   target: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 12h.01',
-  trend: 'M3 17l6-6 4 4 8-8M15 7h6v6',
   key: 'M8 14a4 4 0 1 1 0-8 4 4 0 0 1 0 8zM11 11l9 0M17 11v3M20 11v2',
   calendar: 'M4 5h16v16H4zM4 10h16M8 3v4M16 3v4',
   chevron: 'M9 6l6 6-6 6',
-  menu: 'M4 7h16M4 12h16M4 17h16',
   close: 'M6 6l12 12M18 6 6 18',
   logout: 'M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11',
   upload: 'M12 16V4M7 9l5-5 5 5M4 20h16',
@@ -50,7 +48,6 @@ const PATHS: Record<PortalIconName, string> = {
   lock: 'M6 11h12v10H6zM8.5 11V8a3.5 3.5 0 0 1 7 0v3',
   settings: 'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
   help: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.6v.6M12 17h.01',
-  bell: 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0',
 };
 
 /**
@@ -78,16 +75,13 @@ const HUE_OF: Record<PortalIconName, 'violet' | 'saffron' | 'tangerine'> = {
   layers: 'violet',
   plus: 'violet',
   search: 'violet',
-  trash: 'tangerine',
   external: 'violet',
   check: 'violet',
   clock: 'saffron',
   target: 'saffron',
-  trend: 'saffron',
   key: 'violet',
   calendar: 'saffron',
   chevron: 'violet',
-  menu: 'violet',
   close: 'violet',
   logout: 'tangerine',
   upload: 'tangerine',
@@ -105,7 +99,6 @@ const HUE_OF: Record<PortalIconName, 'violet' | 'saffron' | 'tangerine'> = {
   lock: 'violet',
   settings: 'violet',
   help: 'violet',
-  bell: 'saffron',
 };
 
 /** The closed parts of an icon that hold its glass body; line-only icons (arrows, ticks, crosses) have none. */
@@ -125,7 +118,6 @@ const GLASS: Partial<Record<PortalIconName, string>> = {
   pen: 'M4 20h4L19 9l-4-4L4 16z',
   layers: 'M12 3 2 8l10 5 10-5z',
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14z',
-  trash: 'M6 7l1 13h10l1-13z',
   clock: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
   target: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
   key: 'M8 14a4 4 0 1 1 0-8 4 4 0 0 1 0 8z',
@@ -141,7 +133,6 @@ const GLASS: Partial<Record<PortalIconName, string>> = {
   // the gear's ring, with its centre left clear (evenodd)
   settings: PATHS.settings,
   help: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18z',
-  bell: 'M6 16V11a6 6 0 0 1 12 0v5l2 2H4z',
 };
 
 /**
@@ -186,14 +177,14 @@ export function PIcon({ name, size = 18 }: { name: PortalIconName; size?: number
   );
 }
 
-export type BtnVariant = 'primary' | 'ghost' | 'light' | 'danger';
+type BtnVariant = 'primary' | 'ghost' | 'light';
 
 /**
  * The site's own button classes (base.css): the label rolls up on hover, the arrow slides out and back in, and a
  * purple bloom grows from where the cursor came in. Portal buttons use these so they behave like the rest of the site.
  */
 export const btnClass = (variant: BtnVariant = 'ghost', { small = false, wide = false } = {}) =>
-  ['btn', variant === 'primary' ? 'btn-primary' : variant === 'light' ? 'btn-light' : 'btn-ghost', variant === 'danger' && 'is-danger', 'p-btn-site', small && 'is-small', wide && 'is-wide']
+  ['btn', variant === 'primary' ? 'btn-primary' : variant === 'light' ? 'btn-light' : 'btn-ghost', 'p-btn-site', small && 'is-small', wide && 'is-wide']
     .filter(Boolean)
     .join(' ');
 
@@ -206,6 +197,52 @@ export function BtnLabel({ icon, arrow, children }: { icon?: PortalIconName; arr
       <BtnText>{children}</BtnText>
       {arrow && arrow !== 'left' && <Arrow dir={arrow} />}
     </>
+  );
+}
+
+/** Opens a self-hosted tool, or says plainly that its address hasn't been set up yet. */
+export function ToolButton({
+  url,
+  label,
+  name,
+  icon,
+  variant = 'primary',
+  wide = true,
+}: {
+  url: string;
+  label: string;
+  /** The tool's name, for screen readers when the label alone ("Open") doesn't say which tool. */
+  name: string;
+  icon?: PortalIconName;
+  variant?: 'primary' | 'ghost';
+  wide?: boolean;
+}) {
+  if (url) {
+    return (
+      <a className={btnClass(variant, { wide })} href={url} target="_blank" rel="noreferrer">
+        <BtnLabel icon={icon} arrow={icon ? undefined : 'up-right'}>
+          {label}
+        </BtnLabel>
+        <span className="sr-only">{name} (opens in a new tab)</span>
+      </a>
+    );
+  }
+  return (
+    // the label stays visible so a card's two buttons can still be told apart; the card says it isn't connected yet
+    <span className={`p-btn is-disabled ${wide ? 'is-wide' : ''}`} aria-disabled="true" title="Not connected yet: its address hasn't been set up">
+      {icon && <PIcon name={icon} size={16} />}
+      {label}
+      <span className="sr-only"> for {name}, not connected yet</span>
+    </span>
+  );
+}
+
+/** Shown once on a card whose tool has no address yet (aria-hidden: each button already says so to screen readers). */
+export function NotConnected() {
+  return (
+    <p className="p-not-connected" aria-hidden="true">
+      <PIcon name="alert" size={14} /> Not connected yet
+    </p>
   );
 }
 
@@ -257,6 +294,16 @@ export function Empty({ icon = 'file', title, children }: { icon?: PortalIconNam
       <p className="p-empty-title">{title}</p>
       {children && <p className="p-empty-body">{children}</p>}
     </div>
+  );
+}
+
+export function PortalNotFound() {
+  return (
+    <section className="p-card">
+      <Empty icon="alert" title="This page doesn't exist">
+        <Link to="/portal">Go to the dashboard</Link>
+      </Empty>
+    </section>
   );
 }
 

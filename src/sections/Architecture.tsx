@@ -50,7 +50,7 @@ export function Architecture() {
         <div className="arch-visual">
           <LayerStack names={LAYERS.map((x) => x.name)} active={step} tones={TONES} />
           <div className="arch-card" style={{ '--tone': TONES[step] } as CSSProperties}>
-            <Steps step={step} className="arch-card-steps">
+            <Steps step={step}>
               {LAYERS.map((x, i) => (
                 <div key={x.name} className="arch-card-body">
                   <p className="cell-label">

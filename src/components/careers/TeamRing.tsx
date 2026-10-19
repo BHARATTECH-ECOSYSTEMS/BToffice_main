@@ -38,7 +38,7 @@ export function TeamRing({ teams, onPick }: { teams: Team[]; onPick: (team: Team
   }, [hosts, reduced, frame]);
 
   return (
-    <div ref={wrapRef} className="cr-ring" data-reduced={reduced || undefined}>
+    <div ref={wrapRef} className="cr-ring">
       <div ref={stageRef} className="cr-ring__stage" role="group" aria-label="Teams" />
       <p className="cr-ring__hint">Pick a team to see its roles</p>
       {hosts.map((host, i) =>

@@ -392,7 +392,7 @@ function SignOutButton({ onSignOut, onLeaving }: { onSignOut: () => void; onLeav
   };
   return (
     <button type="button" className="p-logout" data-leaving={leaving || undefined} onClick={go} aria-disabled={leaving || undefined}>
-      <span className="p-logout-label">Sign out</span>
+      <span>Sign out</span>
       <span className="p-logout-scene" aria-hidden="true">
         <span className="p-logout-doorway" />
         <span className="p-logout-bang">

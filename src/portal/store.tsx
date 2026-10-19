@@ -7,6 +7,7 @@ import {
   SEED_POLICIES,
   SEED_REFERRALS,
   SEED_TASKS,
+  SEED_EVENTS,
   SEED_JOBS,
   SEED_APPLICATIONS,
   COMPANY_CHECKS,
@@ -21,6 +22,7 @@ import {
   type IdDocKind,
   type IdDocument,
   type Alumnus,
+  type CalendarEvent,
   type Certificate,
   type CertificateType,
   type LinkResource,
@@ -130,6 +132,14 @@ function usePortalState(session: Session) {
   const setTaskStatus = useCallback((id: string, status: TaskStatus) => setTasks((list) => list.map((t) => (t.id === id ? { ...t, status } : t))), []);
   const removeTask = useCallback((id: string) => setTasks((list) => list.filter((t) => t.id !== id)), []);
 
+  // Calendar events: an admin adds them and everyone's calendar shows them.
+  const [events, setEvents] = useState<CalendarEvent[]>(SEED_EVENTS);
+  const addEvent = useCallback(
+    (draft: Omit<CalendarEvent, 'id' | 'addedBy'>) => setEvents((list) => [...list, { ...draft, id: nextId('E'), addedBy: session.name }]),
+    [session.name]
+  );
+  const removeEvent = useCallback((id: string) => setEvents((list) => list.filter((e) => e.id !== id)), []);
+
   const addPolicy = useCallback((doc: Omit<PolicyDoc, 'id'>) => setPolicies((list) => [...list, { ...doc, id: nextId('P') }]), []);
   const removePolicy = useCallback((id: string) => {
     setPolicies((list) => {
@@ -231,6 +241,12 @@ function usePortalState(session: Session) {
   // Job referrals shared with former colleagues, newest first.
   const [referrals, setReferrals] = useState<Referral[]>(SEED_REFERRALS);
   const removeReferral = useCallback((id: string) => setReferrals((list) => list.filter((r) => r.id !== id)), []);
+  // Joining ahead of leaving: the person keeps their personal email on their own record until they leave, when
+  // markLeft carries it into the community with the rest of them. An empty email takes them off the list again.
+  const joinCommunity = useCallback(
+    (id: string, personalEmail: string) => setPeople((list) => list.map((p) => (p.id === id ? { ...p, personalEmail: personalEmail || undefined } : p))),
+    []
+  );
   const setPersonalEmail = useCallback(
     (id: string, personalEmail: string) => setAlumni((list) => list.map((a) => (a.id === id ? { ...a, personalEmail: personalEmail || undefined } : a))),
     []
@@ -332,6 +348,7 @@ function usePortalState(session: Session) {
     referrals,
     removeReferral,
     setPersonalEmail,
+    joinCommunity,
     jobs,
     applications,
     postJob,
@@ -347,6 +364,9 @@ function usePortalState(session: Session) {
     addTask,
     setTaskStatus,
     removeTask,
+    events,
+    addEvent,
+    removeEvent,
     addPolicy,
     removePolicy,
     acceptPolicy,
@@ -390,5 +410,11 @@ export function usePeopleById() {
   return useMemo(() => new Map<string, Person>([...people, ...alumni].map((p) => [p.id, p])), [people, alumni]);
 }
 
-export const formatDate = (iso: string) =>
-  new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+// Built once, since toLocaleDateString with options builds a new formatter on every call. format() throws on an
+// invalid date where toLocaleDateString returned "Invalid Date", so the guard keeps that text.
+const DATE_FMT = new Intl.DateTimeFormat('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+export const formatDate = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? 'Invalid Date' : DATE_FMT.format(d);
+};
+export const formatSize = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);

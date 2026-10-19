@@ -16,6 +16,7 @@ import {
   seeded,
   setColor,
   setGroupOpacity,
+  setXYZ,
   timeline,
 } from './kit';
 
@@ -182,6 +183,9 @@ export function createMiniatureChip(): DomainWorld {
   const screenCentre = new THREE.Vector3();
   const target = new THREE.Vector3();
   const tone = new THREE.Color();
+  // the screen pixels in `world`'s space, mapped once per frame rather than once per grain
+  const phoneToWorld = new THREE.Matrix4();
+  const pixelsInWorld = pixels.map(() => new THREE.Vector3());
 
   return {
     scene,
@@ -200,6 +204,8 @@ export function createMiniatureChip(): DomainWorld {
 
       phone.scale.setScalar(Math.max(0.0001, easeOutBack(span(shrink, 0, 0.2))));
       phone.updateMatrixWorld(true);
+      phoneToWorld.copy(world.matrixWorld).invert().multiply(phone.matrixWorld);
+      pixelsInWorld.forEach((out, k) => out.copy(pixels[k]).applyMatrix4(phoneToWorld));
       screenCentre.set(0, 0, PHONE.d / 2);
       phone.localToWorld(screenCentre);
       world.worldToLocal(screenCentre);
@@ -211,11 +217,9 @@ export function createMiniatureChip(): DomainWorld {
         const a = g.angle + spin * (1 + (1 - g.radius) * 0.8);
         const swirlR = g.radius * (1 - pour * 0.85);
         p.set(Math.cos(a) * swirlR, g.lift * (1 - pour), Math.sin(a) * swirlR * 0.55).add(CLOUD_CENTRE);
-        target.copy(pixels[g.pixel]);
-        phone.localToWorld(target);
-        world.worldToLocal(target);
+        target.copy(pixelsInWorld[g.pixel]);
         p.lerp(target, pour * pour);
-        cloud.pos.set([p.x, p.y, p.z], i * 3);
+        setXYZ(cloud.pos, i, p.x, p.y, p.z);
         const landed = pour >= 1;
         setColor(cloud.col, i, tone.copy(g.colour).lerp(HUE.violet, pour * 0.6));
         cloud.size[i] = lerp(0.034, 0.026, pour);
@@ -261,7 +265,7 @@ export function createMiniatureChip(): DomainWorld {
         for (let k = 0; k < STREAM; k++) {
           const u = (k / STREAM + t * 0.6) % 1;
           bez.getPoint(u, p);
-          sparks.pos.set([p.x, p.y, p.z], n * 3);
+          setXYZ(sparks.pos, n, p.x, p.y, p.z);
           setColor(sparks.col, n, BRAND[i]);
           sparks.size[n] = 0.035;
           sparks.alpha[n] = (flow > 0 && flow < 1 ? 1 : 0) * span(u, 0, 0.1) * (1 - span(u, 0.9, 1)) * 0.9;
@@ -270,7 +274,7 @@ export function createMiniatureChip(): DomainWorld {
         // Link: a dotted arc that stays, with a packet each way.
         for (let k = 0; k < LINK_BEADS; k++) {
           bez.getPoint(k / (LINK_BEADS - 1), p);
-          sparks.pos.set([p.x, p.y, p.z], n * 3);
+          setXYZ(sparks.pos, n, p.x, p.y, p.z);
           setColor(sparks.col, n, HUE.mist);
           sparks.size[n] = 0.022;
           sparks.alpha[n] = span(connect, (k / LINK_BEADS) * 0.5 + i * 0.08, (k / LINK_BEADS) * 0.5 + i * 0.08 + 0.06) * 0.85;
@@ -279,7 +283,7 @@ export function createMiniatureChip(): DomainWorld {
         [0, 1].forEach((back) => {
           const u = (t * 0.45 + i / 3 + back * 0.5) % 1;
           bez.getPoint(back ? 1 - u : u, p);
-          sparks.pos.set([p.x, p.y, p.z], n * 3);
+          setXYZ(sparks.pos, n, p.x, p.y, p.z);
           setColor(sparks.col, n, back ? HUE.violet : BRAND[i]);
           sparks.size[n] = 0.07;
           sparks.alpha[n] = span(connect, 0.7, 1);

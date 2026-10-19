@@ -10,12 +10,10 @@ import { Studio } from '../gl/Studio';
  */
 export function LogoGlass({
   background = '#F8F7F3',
-  className = '',
   entrance = false,
   bounce = false,
 }: {
   background?: string;
-  className?: string;
   entrance?: boolean;
   bounce?: boolean;
 }) {
@@ -79,5 +77,5 @@ export function LogoGlass({
     };
   }, [background, entrance, bounce]);
 
-  return gl ? <canvas ref={canvas} className={`logo-glass ${className}`} aria-hidden="true" /> : null;
+  return gl ? <canvas ref={canvas} className="logo-glass" aria-hidden="true" /> : null;
 }

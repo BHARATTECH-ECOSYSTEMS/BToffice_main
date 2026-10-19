@@ -1,19 +1,15 @@
 import * as THREE from 'three';
-import { SAMPLED_THREADS, THREAD_HALF_WIDTH } from './threads';
 import { CONTINENTS, INDIA, INDIA_BBOX, INDIA_HUBS, WORLD, GLOBE_LABELS, inPolygon, lonLatToVec, type LonLat } from './geo';
 
 /**
- * The site's 3D layer: two physically lit objects that share one stage.
- *  - the mark: the Bharattech Origin logo as a glazed violet sphere with its three white threads inlaid
- *  - the globe: a ceramic planet with raised dot-matrix continents, India in violet and live routes to the world
- * Each section asks for one of them (or none) at a place on the page; the outgoing object folds away
- * while the incoming one unfolds, and the pose glides between stages.
+ * The site's 3D layer: a physically lit globe, a ceramic planet with raised dot-matrix continents, India in
+ * violet and live routes to the world. Each section asks for it (or nothing) at a place on the page; it folds
+ * away when no longer wanted, unfolds when it is, and the pose glides between stages.
  */
 
-export type ObjectKey = 'mark' | 'globe' | 'none';
-export type Vec3 = [number, number, number];
+type ObjectKey = 'globe' | 'none';
 
-export interface Pose {
+interface Pose {
   x: number;
   y: number;
   s: number;
@@ -31,8 +27,6 @@ export interface Target {
   fade?: number;
   /** the globe only: how much of its place names show (1 by default) */
   labels?: number;
-  /** the globe only: 1 stops its idle sway, so `spin` alone sets which way it faces */
-  still?: number;
   /** how much of the object's contact shadow shows (1 by default) */
   shadow?: number;
   /**
@@ -41,23 +35,9 @@ export interface Target {
    * globe's body has dissolved (the dots show only as it goes), `show` their overall opacity.
    */
   dust?: { progress: number; at: [number, number]; break: number; show: number };
-  /** the mark only, one value per thread (memory, connection, learning): 1 drawn, 0 wiped */
-  show?: Vec3;
-  /** the mark only, per thread: 1 cut into pieces */
-  broken?: Vec3;
-  /** the mark only: 1 every thread stops short of the origin */
-  apart?: number;
-  /** the mark only: the one thread drawn in `tint` while the others sink into the glaze */
-  focus?: number;
-  tint?: string;
-  /** the mark only: 1 signals run along the threads into the origin */
-  flow?: number;
-  /** the mark only: 1 dulled to slate and frozen in place */
-  grey?: number;
 }
 
-const LOGO_R = 1.35;
-export const GLOBE_R = 1.45;
+const GLOBE_R = 1.45;
 /** Footprints in world units, for fitting an object into its stage. */
 export const GLOBE_SIZE = GLOBE_R * 2.35;
 /** Radius of a continent dot on the globe. */
@@ -66,7 +46,6 @@ const DOT_R = 0.019;
 const DOT_INK: [number, number, number] = [0x2b / 255, 0x26 / 255, 0x40 / 255];
 const DOT_INDIA: [number, number, number] = [0xff / 255, 0x86 / 255, 0x43 / 255];
 
-const VIOLET = new THREE.Color('#4a2fd0');
 const damp = (a: number, b: number, lambda: number, dt: number) => a + (b - a) * (1 - Math.exp(-lambda * dt));
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
@@ -112,175 +91,6 @@ function contactShadow(): THREE.Mesh {
   const tex = new THREE.CanvasTexture(cv);
   const mesh = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false }));
   return mesh;
-}
-
-// ── The mark ─────────────────────────────────────────────────────────────────
-
-/**
- * Two textures in the logo's unit-disk space, one colour channel per thread (memory, connection, learning):
- *  - mask: where each thread is inlaid
- *  - param: how far along its thread a point is, 0 at the edge of the sphere … 1 at the origin point
- */
-function threadTextures(): { mask: THREE.CanvasTexture; param: THREE.CanvasTexture } {
-  const S = 1024;
-  const px = ([x, y]: [number, number]) => [(x * 0.5 + 0.5) * S, (0.5 - y * 0.5) * S] as const;
-  const width = THREAD_HALF_WIDTH * 2 * (S / 2) * 0.92;
-  const layer = (draw: (g: CanvasRenderingContext2D, curve: [number, number][]) => void, curve: [number, number][]) => {
-    const cv = document.createElement('canvas');
-    cv.width = cv.height = S;
-    const g = cv.getContext('2d')!;
-    g.fillStyle = '#000';
-    g.fillRect(0, 0, S, S);
-    g.lineCap = 'round';
-    g.lineJoin = 'round';
-    draw(g, curve);
-    return g.getImageData(0, 0, S, S).data;
-  };
-  const solid = (g: CanvasRenderingContext2D, curve: [number, number][]) => {
-    g.strokeStyle = '#fff';
-    g.lineWidth = width;
-    g.beginPath();
-    curve.forEach((p, i) => (i ? g.lineTo(...px(p)) : g.moveTo(...px(p))));
-    g.stroke();
-  };
-  // drawn a little wider than the thread, so filtering never pulls the edge of a thread towards 0
-  const along = (g: CanvasRenderingContext2D, curve: [number, number][]) => {
-    g.lineWidth = width * 1.7;
-    for (let i = 0; i < curve.length - 1; i++) {
-      const v = Math.round((i / (curve.length - 2)) * 255);
-      g.strokeStyle = `rgb(${v},${v},${v})`;
-      g.beginPath();
-      g.moveTo(...px(curve[i]));
-      g.lineTo(...px(curve[i + 1]));
-      g.stroke();
-    }
-  };
-  const merge = (draw: typeof solid) => {
-    const out = document.createElement('canvas');
-    out.width = out.height = S;
-    const og = out.getContext('2d')!;
-    const img = og.createImageData(S, S);
-    const chans = SAMPLED_THREADS.map((c) => layer(draw, c as [number, number][]));
-    for (let i = 0; i < S * S * 4; i += 4) {
-      img.data[i] = chans[0][i];
-      img.data[i + 1] = chans[1][i];
-      img.data[i + 2] = chans[2][i];
-      img.data[i + 3] = 255;
-    }
-    og.putImageData(img, 0, 0);
-    const tex = new THREE.CanvasTexture(out);
-    tex.colorSpace = THREE.NoColorSpace;
-    tex.anisotropy = 4;
-    return tex;
-  };
-  return { mask: merge(solid), param: merge(along) };
-}
-
-export interface MarkUniforms {
-  uShow: { value: THREE.Vector3 };
-  uBreak: { value: THREE.Vector3 };
-  uDim: { value: THREE.Vector3 };
-  uTint: { value: THREE.Vector3 };
-  uTintCol: { value: THREE.Color };
-  uApart: { value: number };
-  uFlow: { value: number };
-  uGrey: { value: number };
-  uTime: { value: number };
-}
-
-/**
- * The logo as one glazed violet sphere with its three white threads inlaid. The threads carry the story:
- * each can dissolve (memory wiped), break into pieces (fragmented), sink into the glaze (out of focus),
- * pull back from the origin so the three no longer meet (working alone), take a colour, or carry signals
- * towards the origin (learning).
- */
-function markMaterial(tex: { mask: THREE.Texture; param: THREE.Texture }, u: MarkUniforms) {
-  const mat = new THREE.MeshPhysicalMaterial({
-    color: VIOLET,
-    roughness: 0.38,
-    metalness: 0,
-    clearcoat: 1,
-    clearcoatRoughness: 0.06,
-    sheen: 0.12,
-    sheenColor: new THREE.Color('#9d8cff'),
-    sheenRoughness: 0.5,
-    transparent: true,
-  });
-  mat.onBeforeCompile = (sh) => {
-    Object.assign(sh.uniforms, u, { uMask: { value: tex.mask }, uParam: { value: tex.param } });
-    sh.vertexShader = sh.vertexShader
-      .replace('#include <common>', '#include <common>\nvarying vec3 vObjN;')
-      .replace('#include <begin_vertex>', '#include <begin_vertex>\nvObjN = normalize(position);');
-    sh.fragmentShader = sh.fragmentShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-        varying vec3 vObjN;
-        uniform sampler2D uMask; uniform sampler2D uParam;
-        uniform vec3 uShow; uniform vec3 uBreak; uniform vec3 uDim; uniform vec3 uTint; uniform vec3 uTintCol;
-        uniform float uApart; uniform float uFlow; uniform float uGrey; uniform float uTime;
-        float threadAmt;`,
-      )
-      .replace(
-        '#include <map_fragment>',
-        `#include <map_fragment>
-        vec2 pc = vObjN.z >= 0.0 ? vObjN.xy : vec2(-vObjN.x, vObjN.y);
-        vec2 tuv = pc * 0.5 + 0.5;
-        vec3 m = smoothstep(0.35, 0.65, texture2D(uMask, tuv).rgb);
-        vec3 tp = texture2D(uParam, tuv).rgb;
-        // memory wiped: a thread breaks up cell by cell
-        float cell = fract(sin(dot(floor(vObjN * 46.0), vec3(12.9898, 78.233, 37.719))) * 43758.5453);
-        m *= smoothstep(vec3(cell), vec3(cell + 0.12), uShow * 1.12);
-        // fragmented: the thread is cut into short lengths with gaps between them
-        vec3 seg = fract(tp * 9.0);
-        m *= 1.0 - uBreak * smoothstep(0.58, 0.62, seg) * (1.0 - smoothstep(0.96, 0.99, seg));
-        // working alone: every thread stops short of the origin, so the three never meet
-        m *= 1.0 - smoothstep(0.99 - uApart * 0.36, 1.01 - uApart * 0.36, tp);
-        vec3 amt = m * (1.0 - uDim * 0.78);
-        // learning: short lengths of colour travel along each thread into the origin
-        vec3 run = fract(tp * 2.0 - uTime * 0.32 + vec3(0.0, 0.33, 0.66));
-        vec3 pulse = smoothstep(0.0, 0.03, run) * (1.0 - smoothstep(0.16, 0.19, run)) * uFlow;
-        vec3 white = vec3(0.93, 0.92, 0.97);
-        vec3 pulseCol = vec3(1.0, 0.43, 0.0);
-        vec3 c0 = mix(mix(white, uTintCol, uTint.x), pulseCol, pulse.x);
-        vec3 c1 = mix(mix(white, uTintCol, uTint.y), pulseCol, pulse.y);
-        vec3 c2 = mix(mix(white, uTintCol, uTint.z), pulseCol, pulse.z);
-        float wsum = amt.x + amt.y + amt.z;
-        vec3 tcol = wsum > 0.001 ? (c0 * amt.x + c1 * amt.y + c2 * amt.z) / wsum : white;
-        threadAmt = max(amt.x, max(amt.y, amt.z));
-        // the logo's own gradient: lighter violet towards the top right, deeper at the lower left
-        float grad = clamp(0.5 + 0.42 * (vObjN.x * 0.55 + vObjN.y * 0.85), 0.0, 1.0);
-        diffuseColor.rgb = mix(vec3(0.036, 0.009, 0.32), vec3(0.155, 0.098, 0.91), grad); // #35189A → #6E58F5, in linear light
-        diffuseColor.rgb = mix(diffuseColor.rgb, tcol, threadAmt);
-        // a model that stopped learning: the glaze dulls to slate
-        float lum = dot(diffuseColor.rgb, vec3(0.2126, 0.7152, 0.0722));
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.05, 0.05, 0.065) + vec3(lum) * 0.75, uGrey * 0.9);`,
-      )
-      .replace('#include <roughnessmap_fragment>', '#include <roughnessmap_fragment>\nroughnessFactor = mix(mix(roughnessFactor, 0.55, threadAmt), 0.72, uGrey);');
-  };
-  return mat;
-}
-
-function buildMark(tex: { mask: THREE.Texture; param: THREE.Texture }) {
-  const group = new THREE.Group();
-  const uniforms: MarkUniforms = {
-    uShow: { value: new THREE.Vector3(1, 1, 1) },
-    uBreak: { value: new THREE.Vector3() },
-    uDim: { value: new THREE.Vector3() },
-    uTint: { value: new THREE.Vector3() },
-    uTintCol: { value: new THREE.Color('#ffffff') },
-    uApart: { value: 0 },
-    uFlow: { value: 0 },
-    uGrey: { value: 0 },
-    uTime: { value: 0 },
-  };
-  const surface = markMaterial(tex, uniforms);
-  const geo = new THREE.SphereGeometry(LOGO_R, 160, 120);
-  const ball = new THREE.Mesh(geo, surface);
-  // facing the camera like the logo, turned a touch so the glaze catches the key light
-  ball.rotation.set(0.04, -0.18, 0);
-  group.add(ball);
-  return { group, surface, uniforms, mats: [surface] as THREE.Material[], dispose: () => (geo.dispose(), surface.dispose()) };
 }
 
 // ── The globe ────────────────────────────────────────────────────────────────
@@ -528,8 +338,8 @@ function buildGlobe() {
     mats,
     dotsAt,
     atmo: atmoMat,
-    update(time: number, spin: number, show = 1, still = 0) {
-      spinner.rotation.y = Math.sin(time * 0.12) * 0.55 * (1 - still) + spin;
+    update(time: number, spin: number, show = 1) {
+      spinner.rotation.y = Math.sin(time * 0.12) * 0.55 + spin;
       heads.forEach((h) => {
         const t = (((h.phase + time * h.speed) % 1) + 1) % 1;
         h.mesh.position.copy(h.curve.getPointAt(t));
@@ -655,31 +465,21 @@ export class Engine {
   private renderer: THREE.WebGLRenderer;
   private scene = new THREE.Scene();
   private camera = new THREE.PerspectiveCamera(35, 1, 0.1, 100);
-  private slots: Record<'mark' | 'globe', Slot>;
-  private mark: ReturnType<typeof buildMark>;
+  private slots: Record<'globe', Slot>;
   private globe: ReturnType<typeof buildGlobe>;
   private dust = buildDust();
-  private tex: { mask: THREE.Texture; param: THREE.Texture };
   private env: THREE.Texture;
-  private target: Target = { key: 'mark' };
+  private target: Target = { key: 'none' };
   private pointer = new THREE.Vector2();
   private lean = new THREE.Vector2();
   private velocity = 0;
-  private show = new THREE.Vector3(1, 1, 1);
-  private broken = new THREE.Vector3();
-  private dim = new THREE.Vector3();
-  private tintAmt = new THREE.Vector3();
-  private tintCol = new THREE.Color('#ffffff');
-  private apart = 0;
-  private flow = 0;
-  private grey = 0;
-  /** a clock that stops when the mark freezes */
-  private life = 0;
   private spin = 0;
   private time = 0;
   private last = performance.now();
   private listeners = new Set<() => void>();
   private idleFrames = 0;
+  /** the canvas is hidden while it has nothing to draw, so the compositor stops blending an empty layer */
+  private hidden = false;
   private warmTask = 0;
   private destroyed = false;
   private onPointer = (e: PointerEvent) => this.pointer.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
@@ -701,8 +501,6 @@ export class Engine {
     key.position.set(-4, 5, 6);
     this.scene.add(key, new THREE.HemisphereLight('#ffffff', '#cbbfae', 0.35));
 
-    this.tex = threadTextures();
-    this.mark = buildMark(this.tex);
     this.globe = buildGlobe();
     const slot = (group: THREE.Group, mats: THREE.Material[], shadowW: number): Slot => {
       const holder = new THREE.Group();
@@ -720,8 +518,7 @@ export class Engine {
       });
       return { group: holder, mats: all, amt: 0, pose: { x: 1.7, y: 0, s: 1 }, shadow, target: { key: 'none' } as Target };
     };
-    this.slots = { mark: slot(this.mark.group, this.mark.mats, LOGO_R * 2.2), globe: slot(this.globe.group, this.globe.mats, GLOBE_R * 2.3) };
-    this.slots.mark.shadow.position.set(0, -LOGO_R * 1.32, -0.4);
+    this.slots = { globe: slot(this.globe.group, this.globe.mats, GLOBE_R * 2.3) };
     this.slots.globe.shadow.position.set(0, -GLOBE_R * 1.28, -0.4);
     this.scene.add(this.dust.points);
     this.dust.uniforms.uFromM.value = this.globe.spinner.matrixWorld; // by reference: current at every draw
@@ -731,7 +528,7 @@ export class Engine {
     window.addEventListener('pointermove', this.onPointer, { passive: true });
     // once the page has settled, draw the objects off to one side so their first real appearance is free
     const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1200));
-    this.warmTask = idle(() => this.warm(), { timeout: 4000 });
+    this.warmTask = idle(() => void this.warm(), { timeout: 4000 });
   }
 
   /**
@@ -739,7 +536,14 @@ export class Engine {
    * the page for a few hundred milliseconds when the globe first scrolled into view. Drawing every object once
    * into a single pixel does that work up front; that pixel is cleared again on the next frame.
    */
-  private warm() {
+  private async warm() {
+    if (this.destroyed) return;
+    // Link every program (the hidden dust's too) off the main thread first. Some browsers never report a program
+    // ready until it is drawn, so the wait is capped; if the cap wins, the draw below links them as before.
+    await Promise.race([
+      this.renderer.compileAsync(this.scene, this.camera).catch(() => undefined),
+      new Promise((done) => window.setTimeout(done, 1500)),
+    ]);
     if (this.destroyed) return;
     const slots = Object.values(this.slots);
     const was = slots.map((s) => s.group.visible);
@@ -750,9 +554,6 @@ export class Engine {
     this.renderer.clear();
     this.renderer.setScissorTest(false);
     slots.forEach((s, i) => (s.group.visible = was[i]));
-    // The dust is hidden until the globe pours into the heading, so the draw above skips it; compiling it on
-    // the spot froze that moment for ~0.6 s. compileAsync links its shaders in the background.
-    void this.renderer.compileAsync(this.dust.points, this.camera, this.scene);
   }
 
   /**
@@ -837,12 +638,9 @@ export class Engine {
     this.lean.y = damp(this.lean.y, this.pointer.y * moving, 3, dt);
 
     let busy = false;
-    (['mark', 'globe'] as const).forEach((k) => {
+    (['globe'] as const).forEach((k) => {
       const s = this.slots[k];
-      const want = t.key === k ? 1 : 0;
-      // the outgoing object folds away before the incoming one unfolds, so they never overlap
-      const other = this.slots[k === 'mark' ? 'globe' : 'mark'];
-      const gate = want && other.amt > 0.15 ? 0 : want;
+      const gate = t.key === k ? 1 : 0;
       s.amt = damp(s.amt, gate, gate ? 5 : 8, dt);
       if (Math.abs(s.amt - gate) < 0.001) s.amt = gate;
       else busy = true;
@@ -876,52 +674,9 @@ export class Engine {
       (s.shadow.material as THREE.Material).opacity *= s.target.shadow ?? 1;
     });
 
-    // the mark's threads carry the story; each eases to what the section asks for
-    const m = this.mark;
-    const mt = t.key === 'mark' ? t : null;
-    const k = 1 - Math.exp(-2.4 * dt);
-    const v3 = (cur: THREE.Vector3, want: Vec3 | undefined, rest: number) => {
-      const w = want ?? [rest, rest, rest];
-      cur.set(cur.x + (w[0] - cur.x) * k, cur.y + (w[1] - cur.y) * k, cur.z + (w[2] - cur.z) * k);
-    };
-    const focus = mt?.focus ?? -1;
-    v3(this.show, mt?.show, 1);
-    v3(this.broken, mt?.broken, 0);
-    v3(this.dim, focus < 0 ? undefined : ([0, 1, 2].map((i) => (i === focus ? 0 : 1)) as Vec3), 0);
-    v3(this.tintAmt, focus < 0 ? undefined : ([0, 1, 2].map((i) => (i === focus ? 0.85 : 0)) as Vec3), 0);
-    if (mt?.tint) this.tintCol.lerp(new THREE.Color(mt.tint), k);
-    this.apart = damp(this.apart, mt?.apart ?? 0, 2.4, dt);
-    this.flow = damp(this.flow, mt?.flow ?? 0, 2.4, dt);
-    this.grey = damp(this.grey, mt?.grey ?? 0, 2.4, dt);
-    const u = m.uniforms;
-    u.uShow.value.copy(this.show);
-    u.uBreak.value.copy(this.broken);
-    u.uDim.value.copy(this.dim);
-    u.uTint.value.copy(this.tintAmt);
-    u.uTintCol.value.copy(this.tintCol);
-    u.uApart.value = this.apart;
-    u.uFlow.value = this.flow;
-    u.uGrey.value = this.grey;
-    (m.surface as THREE.MeshPhysicalMaterial).clearcoat = 1 - this.grey * 0.85;
-    if (!this.reducedMotion) this.life += dt * (1 - this.grey * 0.95);
-    u.uTime.value = this.life;
-    if (Math.abs(this.flow) > 0.001 || Math.abs(this.apart - (mt?.apart ?? 0)) > 0.001) busy = true;
-
-    // it breathes and leans toward the cursor, like an object on a desk; frozen, it stops
-    const mk = m.group;
-    const alive = 1 - this.grey * 0.9;
-    mk.rotation.y = this.lean.x * 0.28 * alive + Math.sin(this.life * 0.45) * 0.12 + this.spin;
-    mk.rotation.x = this.lean.y * 0.18 * alive + Math.sin(this.life * 0.35) * 0.04;
-    mk.position.y = Math.sin(this.life * 0.9) * 0.06;
-    this.slots.mark.shadow.scale.set(LOGO_R * 2.2 * (1 - mk.position.y * 0.6), LOGO_R * 0.92 * (1 - mk.position.y * 0.6), 1);
-
     const gt = this.slots.globe.target;
     const globeAmt = easeOut(this.slots.globe.amt);
     const globeShown = globeAmt * (gt.fade ?? 1);
-    const still = gt.still ?? 0;
-    this.globe.group.rotation.x = this.lean.y * 0.1 * (1 - still);
-    this.globe.update(this.time, (gt.spin ?? 0) + (this.lean.x * 0.25 + this.spin * 2) * (1 - still), globeShown * (gt.labels ?? 1), still);
-    this.globe.atmo.uniforms.uOpacity.value = globeShown;
 
     // the dust, placed from this frame's globe and target shape
     const d = gt.dust;
@@ -946,12 +701,26 @@ export class Engine {
       du.uDpr.value = this.renderer.getPixelRatio();
     }
 
-    const anyVisible = this.slots.mark.group.visible || this.slots.globe.group.visible || dustOn;
-    if (anyVisible || busy) {
-      this.idleFrames = 0;
+    // Nothing the globe draws needs updating while it is hidden, except its spin, which the dust leaves from.
+    if (this.slots.globe.group.visible || dustOn) {
+      this.globe.group.rotation.x = this.lean.y * 0.1;
+      this.globe.update(this.time, (gt.spin ?? 0) + (this.lean.x * 0.25 + this.spin * 2), globeShown * (gt.labels ?? 1));
+      this.globe.atmo.uniforms.uOpacity.value = globeShown;
+    }
+
+    const anyVisible = this.slots.globe.group.visible || dustOn;
+    const show = anyVisible || busy;
+    if (show) this.idleFrames = 0;
+    // after the last object leaves, render twice more to clear the canvas, then hide it until it has work again
+    if (show || this.idleFrames++ < 2) {
+      if (this.hidden) {
+        this.renderer.domElement.style.visibility = '';
+        this.hidden = false;
+      }
       this.renderer.render(this.scene, this.camera);
-    } else if (this.idleFrames++ < 2) {
-      this.renderer.render(this.scene, this.camera); // clear once after the last object leaves
+    } else if (!this.hidden) {
+      this.renderer.domElement.style.visibility = 'hidden';
+      this.hidden = true;
     }
   }
 
@@ -960,12 +729,15 @@ export class Engine {
     (window.cancelIdleCallback ?? window.clearTimeout)(this.warmTask);
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('pointermove', this.onPointer);
-    this.mark.dispose();
     this.globe.dispose();
     this.dust.points.geometry.dispose();
     this.dust.material.dispose();
-    this.tex.mask.dispose();
-    this.tex.param.dispose();
+    Object.values(this.slots).forEach(({ shadow }) => {
+      const m = shadow.material as THREE.MeshBasicMaterial;
+      m.map?.dispose();
+      m.dispose();
+      shadow.geometry.dispose();
+    });
     this.env.dispose();
     this.renderer.dispose();
   }

@@ -1,4 +1,4 @@
-import { useEffect, type ComponentType } from 'react';
+import { useEffect, useLayoutEffect, type ComponentType } from 'react';
 import { createHashRouter, Navigate, Outlet, RouterProvider, useLocation } from 'react-router';
 import { SceneProvider, useScene } from './gl/Scene';
 import { Nav } from './components/Nav';
@@ -123,7 +123,9 @@ function Layout() {
 
   // Dark mode trigger from URL: ?theme=dark, #/?theme=dark, or #/dark. The Services page is always dark: its journey
   // is a night scene, and the whole page (nav, closing section, footer) stays with it.
-  useEffect(() => {
+  // A layout effect, so the theme is right before any page's effects run: the hero's 3D scene reads it once when it
+  // is built, and coming from Services (always dark) it used to be built while the page was still dark.
+  useLayoutEffect(() => {
     const searchParams = new URLSearchParams(window.location.search);
     const searchTheme = searchParams.get('theme');
     const hash = window.location.hash || '';

@@ -3,9 +3,10 @@ import { Link } from 'react-router';
 import { Arrow, Headline, toneStyle, BtnText } from '../components/ui';
 import { useQuiet, useScene, WIDE_QUERY } from '../gl/Scene';
 import { Cover } from '../components/art';
-import { trackBox } from '../components/trackBox';
+import { pageScroll, trackBox } from '../components/trackBox';
 import { POSTS } from '../content';
 import type { HueName } from '../gl/palette';
+import { clamp01, easeInOut, smooth01 as smooth } from '../gl/ink';
 import '../styles/domain-cinema.css';
 import '../styles/services-swing.css';
 
@@ -25,10 +26,6 @@ const BEHIND_SCALE = 0.05;
  * wide arc. A waiting card scales from its top edge instead; the two only swap while the card is at rest.
  */
 const PIVOT = '30% 230%';
-
-const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
-const smooth = (x: number) => x * x * (3 - 2 * x);
-const easeInOut = (x: number) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
 
 /**
  * Services, one card at a time. The section pins while it is read; scrolling, the front card
@@ -98,7 +95,7 @@ export function Journal() {
     const off = lenis?.on('scroll', () => apply(lenis.scroll));
     let raf = 0;
     const onScroll = () => {
-      if (!raf) raf = requestAnimationFrame(() => ((raf = 0), apply(window.scrollY)));
+      if (!raf) raf = requestAnimationFrame(() => ((raf = 0), apply(pageScroll())));
     };
     if (!lenis) window.addEventListener('scroll', onScroll, { passive: true });
     const onMedia = () => apply(lenis ? lenis.scroll : window.scrollY, true);

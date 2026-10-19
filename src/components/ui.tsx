@@ -32,7 +32,6 @@ export function LogoMark({ size = 28 }: { size?: number }) {
   );
 }
 
-/** The logo and the wordmark. The logo is the live ThreadMark; `mark` swaps in another, such as the nav's glass orb. */
 /**
  * The live logo, used wherever the brand shows: the mark drawn flat, its three threads drawing in, meeting at the
  * origin and letting go again (the loop is in story.css, .faq-mark-*). `size` in px; without it the CSS sizes it.
@@ -56,7 +55,8 @@ export function ThreadMark({ size }: { size?: number }) {
   );
 }
 
-export function Brand({ size = 28, mark }: { size?: number; mark?: ReactNode }) {
+/** The logo and the wordmark. The logo is the live ThreadMark; `mark` swaps in another, such as the nav's glass orb. */
+export function Brand({ size, mark }: { size?: number; mark?: ReactNode }) {
   return (
     <span className="brand">
       {mark ?? <ThreadMark size={size} />}
@@ -87,8 +87,6 @@ export function BtnText({ children }: { children: ReactNode }) {
     </span>
   );
 }
-
-/** Mono label with a diamond in the chapter's colour. */
 
 /** Fires once when the element comes into view. */
 export function useInView<T extends Element>(margin = '0px 0px -12% 0px') {

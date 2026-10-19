@@ -4,8 +4,7 @@ import { CSS3DObject, CSS3DRenderer } from 'three/examples/jsm/renderers/CSS3DRe
 /** Helpers shared by the three Careers scenes (team ring, values tunnel, roles spiral). */
 
 export const smooth = (t: number) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
-export const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
-export const mod = (a: number, n: number) => ((a % n) + n) % n;
+const clamp01 = (t: number) => Math.min(1, Math.max(0, t));
 
 /** The pointer as -1…1 across the viewport. Read from the event alone: a layout read per move forced a reflow. */
 export const pointerIn = (e: PointerEvent) => [(e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1];
@@ -105,6 +104,8 @@ export function cardWriter(hosts: HTMLElement[], objects: THREE.Object3D[]) {
 export function glOn(canvas: HTMLCanvasElement) {
   try {
     const gl = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'low-power' });
+    // reading back every shader's log makes the page wait on the GPU; development builds still report errors
+    gl.debug.checkShaderErrors = import.meta.env.DEV;
     gl.setClearColor(0x000000, 0);
     return gl;
   } catch {

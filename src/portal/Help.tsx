@@ -5,8 +5,8 @@ import { managesPortal, useSession, type Role } from './session';
 import { usePortal } from './store';
 import { btnClass, BtnLabel, Empty, Modal, PIcon, SearchField } from './ui';
 
-/** Who a topic is for: everyone, admins and sub admins ("manager"), or admins only. */
-type Audience = 'all' | 'manager' | 'admin';
+/** Who a topic is for when it is not everyone (leave it unset): admins and sub admins ("manager"), or admins only. */
+type Audience = 'manager' | 'admin';
 
 interface Topic {
   q: string;
@@ -67,7 +67,7 @@ const GROUPS: { title: string; icon: PortalIconName; topics: Topic[] }[] = [
 ];
 
 const visibleTo = (t: Topic, role: Role) =>
-  (!t.only || t.only === role) && (!t.audience || t.audience === 'all' || (t.audience === 'manager' ? managesPortal(role) : role === 'admin'));
+  (!t.only || t.only === role) && (!t.audience || (t.audience === 'manager' ? managesPortal(role) : role === 'admin'));
 
 export function HelpModal({ onClose }: { onClose: () => void }) {
   const role = useSession()!.role;

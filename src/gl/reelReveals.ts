@@ -1,10 +1,10 @@
-import { type Palette, lerp, span } from './ink';
+import { type Palette, lerp, rand, span } from './ink';
 
 /**
  * How a domain reel brings a chapter's layer on screen. Every reel shares the same
  * ink drawings; the reveal is what gives each domain its own motion signature.
  */
-export type RevealStyle = 'bloom' | 'slot' | 'boot' | 'scan' | 'sweep' | 'resolve';
+type RevealStyle = 'bloom' | 'slot' | 'boot' | 'scan' | 'sweep' | 'resolve';
 
 /** Indexed like DOMAIN_SCENES. Each reveal echoes what that domain does. */
 export const DOMAIN_REVEALS: RevealStyle[] = [
@@ -16,7 +16,7 @@ export const DOMAIN_REVEALS: RevealStyle[] = [
   'resolve', // Miniature Intelligence: the picture sharpens through quantisation steps
 ];
 
-export interface RevealSurface {
+interface RevealSurface {
   ctx: CanvasRenderingContext2D;
   c: Palette;
   /** Full-size offscreen canvas for styles that need to composite the whole layer at once. */
@@ -36,11 +36,6 @@ const BOOT_COLS = 10;
 const BOOT_ROWS = 9;
 /** Pixel block sizes for 'resolve', coarse to sharp — stepped like model quantisation levels. */
 const RESOLVE_STEPS = [32, 16, 8, 4, 2];
-
-const rand = (seed: number) => {
-  const x = Math.sin(seed * 12.9898) * 43758.5453;
-  return x - Math.floor(x);
-};
 
 /** Renders `paint` into the buffer with the main canvas's current design-space transform. */
 function paintToBuffer({ ctx, buffer }: RevealSurface, paint: Paint) {

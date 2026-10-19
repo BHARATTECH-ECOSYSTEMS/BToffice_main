@@ -4,8 +4,8 @@ import { HUE } from '../palette';
 import { cardWriter, cssStage, DUST_FRAGMENT, facingOf, glOn, isDarkTheme, onThemeChange, smooth, pointerIn } from './shared';
 
 /** A role card, in CSS pixels (= world units). */
-export const ROLE_W = 380;
-export const ROLE_H = 236;
+const ROLE_W = 380;
+const ROLE_H = 236;
 
 const R = 520; // the helix's radius, round the horizontal axis
 const STEP = 0.42; // radians the helix turns from one card to the next

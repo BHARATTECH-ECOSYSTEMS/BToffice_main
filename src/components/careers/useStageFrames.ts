@@ -3,7 +3,7 @@ import { pageScroll, trackBox } from '../trackBox';
 import { useScene } from '../../gl/Scene';
 
 /** One frame of a Careers scene: the time, and the progress (0…1) through the section's pinned stretch. */
-export type StageFrame = (now: number, progress: number) => void;
+type StageFrame = (now: number, progress: number) => void;
 
 /**
  * Drives a Careers scene while its section is on screen. Frames come from the site's loop when there is one, right
@@ -25,6 +25,7 @@ export function useStageFrames(sectionRef: RefObject<HTMLElement>, pinRef?: RefO
     const { box, release } = trackBox(section, () => {
       pinH = pinRef?.current?.offsetHeight ?? 0;
     });
+    let onScreen = true;
     let visible = true;
     const tick = () => {
       if (!visible || !frame.current) return;
@@ -39,10 +40,11 @@ export function useStageFrames(sectionRef: RefObject<HTMLElement>, pinRef?: RefO
     };
     const off = engine ? engine.onFrame(tick) : ((raf = requestAnimationFrame(own)), () => cancelAnimationFrame(raf));
     const io = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting && !document.hidden;
+      onScreen = entry.isIntersecting;
+      visible = onScreen && !document.hidden;
     });
     io.observe(section);
-    const onVisibility = () => (visible = !document.hidden);
+    const onVisibility = () => (visible = onScreen && !document.hidden);
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       off();

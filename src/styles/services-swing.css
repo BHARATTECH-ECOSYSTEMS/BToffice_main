@@ -54,6 +54,10 @@
   .swing-pin > .wrap > .wrap-col {
     width: 100%;
   }
+  /* lifts the button 6px like .section-head-link, level with the heading's text */
+  .swing-side {
+    padding-bottom: 6px;
+  }
   .swing-stage {
     flex: 0 1 470px;
     height: auto;
@@ -76,8 +80,6 @@
 .swing-face {
   height: 100%;
   min-height: 0;
-  color: inherit;
-  text-decoration: none;
   /* the same warm off-white as the Six domains cards */
   background: var(--bg-2);
 }
@@ -107,9 +109,12 @@
 .swing-face .stack-card__copy {
   padding: 0;
 }
+/* No blur behind the tag: the cover under it is one flat colour, and the cards move every scroll frame, so the
+   blur would be recomputed each frame for no visible change */
 .swing-cover .cover-tag {
   left: 20px;
   bottom: 18px;
+  backdrop-filter: none;
 }
 
 /* Phones: no pinning, the cards simply follow each other (as the Six domains deck does) */

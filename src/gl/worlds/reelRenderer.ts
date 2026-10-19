@@ -17,6 +17,8 @@ export function getReelRenderer(): THREE.WebGLRenderer | null {
   if (renderer !== undefined) return renderer;
   try {
     const r = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
+    // reading back every shader's log makes the page wait on the GPU; development builds still report errors
+    r.debug.checkShaderErrors = import.meta.env.DEV;
     // Sizes below are already in device pixels.
     r.setPixelRatio(1);
     r.setClearColor(0x000000, 0);
@@ -47,16 +49,13 @@ export async function compileWorld(world: DomainWorld): Promise<void> {
 }
 
 /** Insets (device pixels) that the reel's own UI covers, plus breathing room on every side. */
-export interface ReelInsets {
+interface ReelInsets {
   top: number;
   bottom: number;
   pad: number;
 }
 
-/**
- * The area a world may draw in, as view-axis tangents. The picture is shifted down by half the
- * difference between the top and bottom insets (see renderWorld), so the safe band is centred on the axis.
- */
+/** The area a world may draw in, as view-axis tangents. */
 export function safeView(fov: number, width: number, height: number, { top, bottom, pad }: ReelInsets): SafeView {
   const tanHalf = Math.tan(THREE.MathUtils.degToRad(fov) / 2);
   const halfH = height / 2;
@@ -67,16 +66,12 @@ export function safeView(fov: number, width: number, height: number, { top, bott
   };
 }
 
-/**
- * Renders `world` at `width`×`height` device pixels and copies the result onto `target`.
- * `shiftY` moves the picture down (device pixels) to keep it clear of overlaid UI.
- */
+/** Renders `world` at `width`×`height` device pixels and copies the result onto `target`. */
 export function renderWorld(
   world: DomainWorld,
   target: CanvasRenderingContext2D,
   width: number,
-  height: number,
-  shiftY = 0
+  height: number
 ) {
   const r = getReelRenderer();
   if (!r || width < 1 || height < 1) return;
@@ -87,7 +82,7 @@ export function renderWorld(
 
   const { camera, scene } = world;
   camera.aspect = width / height;
-  camera.setViewOffset(width, height, 0, -shiftY, width, height);
+  camera.updateProjectionMatrix();
   pointScale.value = height / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
   if (!scene.environment) scene.environment = environment;
 

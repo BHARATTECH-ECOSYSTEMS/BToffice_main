@@ -21,11 +21,14 @@ export function usePinned(ref: RefObject<HTMLElement>, n: number) {
     if (!el) return;
     // positions come from the cached box, so scrolling never forces the browser to recalculate layout
     const { box, release } = trackBox(el);
+    // queried once: the marked elements render unconditionally, and walking the section every frame is costly
+    const locals = el.querySelectorAll<HTMLElement>('[data-local]');
+    let vh = window.innerHeight;
     let raf = 0;
     let shown = -1;
     const measure = () => {
       raf = 0;
-      const run = Math.max(1, box.height - window.innerHeight);
+      const run = Math.max(1, box.height - vh);
       const p = Math.min(1, Math.max(0, (pageScroll() - box.top) / run));
       progress.current = p;
       const s = Math.min(n - 1, Math.floor(p * n));
@@ -33,21 +36,25 @@ export function usePinned(ref: RefObject<HTMLElement>, n: number) {
       // off-screen the value stops changing, so there is nothing to write
       if (local !== shown) {
         shown = local;
-        el.querySelectorAll<HTMLElement>('[data-local]').forEach((m) => m.style.setProperty('--local', String(local)));
+        locals.forEach((m) => m.style.setProperty('--local', String(local)));
       }
       setStep((prev) => (prev === s ? prev : s));
     };
     const on = () => {
       if (!raf) raf = requestAnimationFrame(measure);
     };
+    const onResize = () => {
+      vh = window.innerHeight;
+      on();
+    };
     measure();
     window.addEventListener('scroll', on, { passive: true });
-    window.addEventListener('resize', on);
+    window.addEventListener('resize', onResize);
     return () => {
       cancelAnimationFrame(raf);
       release();
       window.removeEventListener('scroll', on);
-      window.removeEventListener('resize', on);
+      window.removeEventListener('resize', onResize);
     };
   }, [ref, n]);
 
@@ -71,17 +78,17 @@ export function Chapter({
   id,
   innerRef,
   n,
-  screens = 0.8,
+  screens,
   tone,
-  className = '',
+  className,
   children,
 }: {
   id: string;
   innerRef: RefObject<HTMLElement>;
   n: number;
-  screens?: number;
+  screens: number;
   tone: HueName;
-  className?: string;
+  className: string;
   children: ReactNode;
 }) {
   return (

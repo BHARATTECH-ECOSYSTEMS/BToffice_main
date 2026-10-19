@@ -1,14 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { ID_DOC_MAX_MB, ID_DOCS, ID_RETENTION_DAYS, STREAM_LABEL, type IdDocument, type PersonRole } from '../data';
+import { ID_DOC_MAX_MB, ID_DOCS, ID_RETENTION_DAYS, PERSON_STATUS_LABEL, ROLE_LABEL, STREAM_LABEL, type IdDocument } from '../data';
 import { useSession } from '../session';
-import { formatDate, usePortal } from '../store';
+import { formatDate, formatSize, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, Empty, initials, PageHead, PIcon, useNotice } from '../ui';
 
-const ROLE_LABEL: Record<PersonRole, string> = { admin: 'Admin', subadmin: 'Sub Admin', employee: 'Employee', intern: 'Intern' };
-const STATUS_LABEL = { active: 'Active', inactive: 'Inactive', invited: 'Invited' } as const;
-
-export const formatSize = (bytes: number) => (bytes < 1024 * 1024 ? `${Math.max(1, Math.round(bytes / 1024))} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`);
 
 /**
  * The signed-in person's own profile, opened from their name in the top bar. Its documents section is where the
@@ -35,7 +31,7 @@ export function Profile() {
     ['Role', ROLE_LABEL[me.role]],
     ['Stream', STREAM_LABEL[me.stream]],
     ['Team', me.team],
-    ['Status', STATUS_LABEL[me.status]],
+    ['Status', PERSON_STATUS_LABEL[me.status]],
   ];
 
   return (
@@ -47,7 +43,7 @@ export function Profile() {
       </PageHead>
       {notice}
       <div className="p-split">
-        <section className="p-card p-me" aria-label="Your details">
+        <section className="p-card" aria-label="Your details">
           <div className="p-me-head">
             {photo ? (
               <img className="p-avatar is-large" src={photo} alt="" />
@@ -71,7 +67,7 @@ export function Profile() {
           </dl>
         </section>
 
-        <section className="p-card" id="documents" ref={docsRef} aria-labelledby="me-docs">
+        <section className="p-card" ref={docsRef} aria-labelledby="me-docs">
           <div className="p-card-head is-start">
             <span className="p-tile-icon">
               <PIcon name="shield" />

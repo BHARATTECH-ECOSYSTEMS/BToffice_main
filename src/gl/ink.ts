@@ -36,9 +36,15 @@ export const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
 export const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 export const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+export const smooth01 = (x: number) => x * x * (3 - 2 * x);
 export const easeOutBack = (t: number) => 1 + 2.4 * Math.pow(t - 1, 3) + 1.4 * Math.pow(t - 1, 2);
 /** Maps `v` from the window [a, b] onto 0–1. */
 export const span = (v: number, a: number, b: number) => clamp01((v - a) / (b - a));
+/** Stable pseudo-random value in [0, 1) for a given seed. */
+export const rand = (seed: number) => {
+  const x = Math.sin(seed * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+};
 
 export const line = (a: Pt, b: Pt, n = 10): Pt[] =>
   Array.from({ length: n + 1 }, (_, i) => [lerp(a[0], b[0], i / n), lerp(a[1], b[1], i / n)]);

@@ -19,7 +19,6 @@
   border-radius: var(--r-lg);
   background: #14130f;
   color: #fff;
-  box-shadow: 0 40px 80px -48px rgb(20 19 15 / 0.6);
   opacity: 0;
   transform: translateY(48px) scale(0.98);
   transition: opacity 0.9s var(--ease), transform 1.2s var(--ease-expo);
@@ -52,6 +51,8 @@
 }
 .careers-light,
 .careers-light::after {
+  --gx: inherit;
+  --gy: inherit;
   position: absolute;
   inset: 0;
   border-radius: inherit;
@@ -72,13 +73,18 @@
   -webkit-mask-composite: xor;
   mask-composite: exclude;
 }
-.careers-light {
-  border-radius: var(--r-lg);
-}
 @media (hover: hover) and (pointer: fine) {
   .careers-panel:hover .careers-light,
   .careers-panel:hover .careers-light::after {
     opacity: 1;
+  }
+}
+/* Desktop: the panel runs to the sheet edges like the other dark sheets, so it takes their side padding and
+   radius; the vertical padding keeps fitting the screen height. The light layers inherit the radius. */
+@media (min-width: 901px) {
+  .careers-panel {
+    padding-inline: var(--sheet-pad);
+    border-radius: var(--r-sheet);
   }
 }
 
@@ -94,20 +100,34 @@
   width: 48%;
   aspect-ratio: 1;
   border-radius: 50%;
-  filter: blur(70px);
   opacity: 0.24;
   animation: careers-drift 20s ease-in-out infinite alternate paused;
+}
+/* the softness is painted as a gradient rather than a blur filter: a filtered layer under a transform
+   animation is re-blurred on the GPU every frame. It lives on a child so the box (and with it the drift,
+   which moves by percentages of the box) keeps its size; the inset is about two blur radii. */
+.careers-glow i::before {
+  content: '';
+  position: absolute;
+  inset: -140px;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    var(--glow) 32%,
+    color-mix(in srgb, var(--glow) 50%, transparent) 62%,
+    transparent
+  );
 }
 .careers-glow i:nth-child(1) {
   left: -14%;
   top: -30%;
-  background: var(--violet);
+  --glow: var(--violet);
 }
 .careers-glow i:nth-child(2) {
   right: -12%;
   bottom: -40%;
   /* warm hues go muddy at low strength over near-black, so these stay faint accents to the violet */
-  background: var(--tangerine);
+  --glow: var(--tangerine);
   opacity: 0.12;
   animation-duration: 26s;
   animation-delay: -8s;
@@ -116,7 +136,7 @@
   left: 34%;
   top: 30%;
   width: 34%;
-  background: var(--saffron);
+  --glow: var(--saffron);
   opacity: 0.07;
   animation-duration: 30s;
   animation-delay: -14s;
@@ -143,7 +163,6 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 18px;
-  margin: 0;
   font-family: var(--display);
   font-size: clamp(44px, min(5.4vw, 7.4vh), 80px);
   font-weight: 700;
@@ -154,7 +173,6 @@
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-bottom: 0;
   font-family: var(--sans);
   font-size: 16px;
   font-weight: 500;
@@ -204,7 +222,6 @@
 }
 .careers-lede {
   max-width: 40ch;
-  margin: 0;
   font-size: 16px;
   line-height: 1.6;
   color: rgb(255 255 255 / 0.68);
@@ -223,11 +240,9 @@
   border: 1px solid rgb(255 255 255 / 0.14);
   border-radius: var(--r-pill);
   background: rgb(255 255 255 / 0.05);
-  font: inherit;
   font-size: 13.5px;
   font-weight: 600;
   color: #fff;
-  cursor: pointer;
   transition: background 0.3s var(--ease), border-color 0.3s var(--ease), transform 0.3s var(--ease);
 }
 .careers-filter button:hover {
@@ -263,9 +278,6 @@
 /* ── right: the roles ── */
 .careers-roles {
   align-self: center;
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
 /* a role folds away by its row's height (0fr), the one change here that is not transform or opacity */
 .careers-role {
@@ -289,8 +301,6 @@
   align-items: center;
   gap: 14px;
   padding: clamp(8px, 1.2vh, 15px) 10px;
-  color: inherit;
-  text-decoration: none;
 }
 /* each row's rule draws itself in as the row arrives */
 .careers-role a::after {

@@ -2,9 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { allLectures, formatMinutes, plural, totalMinutes, youtubeId, type Course } from '../../lmsData';
 import { usePortal } from '../../store';
-import { Badge, btnClass, BtnLabel, Empty, PIcon, useNotice } from '../../ui';
-import { PortalNotFound } from '../Resources';
-import { CourseStructure, CourseThumb, StarInput, useMyProgress } from './parts';
+import { Badge, btnClass, BtnLabel, Empty, PIcon, PortalNotFound, useNotice } from '../../ui';
+import { CourseStructure, CourseThumb, EduHead, StarInput, useMyProgress } from './parts';
 
 export function MyEnrollments() {
   const { me, courses, enrollments } = usePortal();
@@ -15,14 +14,7 @@ export function MyEnrollments() {
 
   return (
     <>
-      <header className="p-edu-head">
-        <div>
-          <h1 id="my-enrollments" className="p-lms-h1">
-            My enrollments
-          </h1>
-          <p className="p-muted">The courses you've joined, and how far through each one you are.</p>
-        </div>
-      </header>
+      <EduHead id="my-enrollments" title="My enrollments" sub="The courses you've joined, and how far through each one you are." />
       <section className="p-card" aria-labelledby="my-enrollments">
         {mine.length ? (
           <div className="p-table-wrap">
@@ -213,7 +205,7 @@ function CourseProgress({ done, total, complete }: { done: number; total: number
   }, [complete]);
 
   return (
-    <div className="p-course-progress" data-complete={complete || undefined} data-fresh={justFinished || undefined}>
+    <div className="p-course-progress" data-fresh={justFinished || undefined}>
       <span className="p-course-bar" aria-hidden="true">
         <i style={{ transform: `scaleX(${total ? done / total : 0})` }} />
       </span>

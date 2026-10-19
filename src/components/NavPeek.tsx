@@ -1,23 +1,22 @@
-import { Fragment, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
+import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { Arrow, toneStyle } from './ui';
 import { Cover, DomainArt, MetricsArt, SearchArt, WorkflowArt } from './art';
 import { Icon, type IconName } from './fx';
-import { AWARDS, CAPABILITIES, CAPABILITY_GROUPS, DOMAINS, EMAIL, EMAIL_HREF, HQ, POSTS, PRINCIPLES, PRIVACY_EMAIL, ROLES } from '../content';
+import { AWARDS, CAPABILITIES, CAPABILITY_GROUPS, DEPT_TONES, DOMAINS, EMAIL, EMAIL_HREF, HQ, POSTS, PRIVACY_EMAIL, ROLES } from '../content';
 import type { HueName } from '../gl/palette';
 
 export type PeekId = 'research' | 'capabilities' | 'services' | 'careers' | 'about' | 'contact';
-export const PEEK_ORDER: PeekId[] = ['research', 'services', 'capabilities', 'careers', 'about', 'contact'];
+const PEEK_ORDER: PeekId[] = ['research', 'services', 'capabilities', 'careers', 'about', 'contact'];
 
 const DOMAIN_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
 const FAMILY_TONES: HueName[] = ['violet', 'tangerine', 'saffron'];
 const FAMILY_ART = [SearchArt, WorkflowArt, MetricsArt];
-const DEPT_TONE: Record<string, HueName> = { Research: 'violet', Engineering: 'saffron', Operations: 'tangerine' };
 
 /**
  * The glance under the nav. One panel serves every section: its height follows the open pane, each section
  * plays its own entrance whenever it becomes the open one (styles in story.css), and a caret tracks the link.
  */
-export function NavPeek({
+export const NavPeek = memo(function NavPeek({
   peek,
   caret,
   onEnter,
@@ -41,6 +40,16 @@ export function NavPeek({
   const [wasOpen, setWasOpen] = useState(false);
   // true once the pointer has moved to another section while open; only then does the caret glide
   const [morph, setMorph] = useState(false);
+  // Pane content exists only while the glance shows or fades out: hidden drawings would otherwise keep their
+  // endless animations and timers running on every page. Each showing remounts it anyway (see epoch).
+  const [awake, setAwake] = useState(false);
+  if (peek && !awake) setAwake(true);
+  useEffect(() => {
+    if (peek) return;
+    // after .nav-peek's close (opacity 0.14s, visibility at 0.18s, story.css)
+    const t = window.setTimeout(() => setAwake(false), 250);
+    return () => window.clearTimeout(t);
+  }, [peek]);
   if (!!peek !== wasOpen) {
     setWasOpen(!!peek);
     if (peek) {
@@ -58,6 +67,7 @@ export function NavPeek({
   const shown = peek ?? last;
   mountedFor.current[shown] = epoch;
 
+  // re-measures on `awake` too: content comes back on open, and must be measured before paint, not a frame later
   useLayoutEffect(() => {
     const el = panes.current[shown];
     if (!el) return;
@@ -66,7 +76,7 @@ export function NavPeek({
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [shown]);
+  }, [shown, awake]);
   useLayoutEffect(() => {
     const place = () => {
       const vw = document.documentElement.clientWidth;
@@ -115,20 +125,22 @@ export function NavPeek({
             data-on={id === shown || undefined}
             aria-hidden={id !== shown}
           >
-            <Fragment key={`${id}-${mountedFor.current[id] ?? 0}`}>
-              {id === 'research' && <ResearchPeek go={go} />}
-              {id === 'capabilities' && <CapabilitiesPeek go={go} />}
-              {id === 'services' && <ServicesPeek go={go} />}
-              {id === 'careers' && <CareersPeek go={go} />}
-              {id === 'about' && <AboutPeek go={go} />}
-              {id === 'contact' && <ContactPeek go={go} />}
-            </Fragment>
+            {awake && id === shown && (
+              <Fragment key={`${id}-${mountedFor.current[id] ?? 0}`}>
+                {id === 'research' && <ResearchPeek go={go} />}
+                {id === 'capabilities' && <CapabilitiesPeek go={go} />}
+                {id === 'services' && <ServicesPeek go={go} />}
+                {id === 'careers' && <CareersPeek go={go} />}
+                {id === 'about' && <AboutPeek go={go} />}
+                {id === 'contact' && <ContactPeek go={go} />}
+              </Fragment>
+            )}
           </div>
         ))}
       </div>
     </div>
   );
-}
+});
 
 type Go = (to: string, section?: string) => () => void;
 
@@ -226,7 +238,7 @@ function CareersPeek({ go }: { go: Go }) {
     <div className="peek-grid">
       <ul className="peek-list">
         {ROLES.slice(0, 5).map((r, k) => (
-          <li key={r.title} style={toneStyle(DEPT_TONE[r.dept], { '--k': k } as CSSProperties)}>
+          <li key={r.title} style={toneStyle(DEPT_TONES[r.dept], { '--k': k } as CSSProperties)}>
             <button className="peek-row" onClick={go('/careers', 'roles')}>
               <span className="peek-dot" />
               <span className="peek-row-text">
@@ -241,10 +253,10 @@ function CareersPeek({ go }: { go: Go }) {
         ))}
       </ul>
       <div className="peek-side" style={toneStyle('tangerine', { '--k': 6 } as CSSProperties)}>
-        <p className="peek-side-figure is-words">Open roles</p>
+        <p className="peek-side-figure">Open roles</p>
         <ul className="peek-depts">
           {depts.map((d) => (
-            <li key={d} style={toneStyle(DEPT_TONE[d])}>
+            <li key={d} style={toneStyle(DEPT_TONES[d])}>
               <i />
               {d}
             </li>
@@ -260,7 +272,7 @@ function CareersPeek({ go }: { go: Go }) {
 
 const ABOUT_ROWS: { icon: IconName; title: string; body: string; tone: HueName; section?: string }[] = [
   { icon: 'building', title: 'Our story', body: 'Deep technology, designed in India.', tone: 'violet' },
-  { icon: 'spark', title: 'Principles', body: `${PRINCIPLES.length} beliefs about what intelligence should be.`, tone: 'tangerine', section: 'principles' },
+  { icon: 'spark', title: 'Principles', body: '6 beliefs about what intelligence should be.', tone: 'tangerine', section: 'principles' },
   { icon: 'rocket', title: 'Recognition', body: `${AWARDS.length} milestones since 2023.`, tone: 'saffron', section: 'recognition' },
   { icon: 'users', title: 'How we work', body: 'Built for decades, not quarters.', tone: 'violet', section: 'values' },
 ];

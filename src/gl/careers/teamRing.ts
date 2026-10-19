@@ -3,8 +3,8 @@ import { CSS3DObject } from 'three/examples/jsm/renderers/CSS3DRenderer.js';
 import { cardWriter, cssStage, facingOf, smooth, pointerIn } from './shared';
 
 /** A team card, in CSS pixels (= world units). */
-export const TEAM_W = 210;
-export const TEAM_H = 250;
+const TEAM_W = 210;
+const TEAM_H = 250;
 
 const PITCH = 252; // room per card around the ring: wider than a card, so neighbours never touch
 const FOV = 30;

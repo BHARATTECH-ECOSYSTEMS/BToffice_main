@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { ThreadMark } from './ui';
 
 /** An endless row that drifts sideways and pauses under the cursor. */
-export function Marquee({ children, speed = 40, reverse = false }: { children: ReactNode; speed?: number; reverse?: boolean }) {
+export function Marquee({ children, speed, reverse = false }: { children: ReactNode; speed: number; reverse?: boolean }) {
   return (
     <div className="marquee" style={{ '--speed': `${speed}s` } as CSSProperties} data-reverse={reverse || undefined}>
       <div className="marquee-track">
@@ -49,7 +49,7 @@ export function Typewriter({ text, run, speed = 22, onDone }: { text: string; ru
  * Tools arranged around the mark, each joined to it by a beam that carries light inward:
  * many systems, one memory.
  */
-export function Beams({ nodes, size = 460 }: { nodes: { label: string; icon: ReactNode; tone: string }[]; size?: number }) {
+export function Beams({ nodes, size }: { nodes: { label: string; icon: ReactNode; tone: string }[]; size: number }) {
   const c = size / 2;
   const R = size * 0.34;
   const pts = nodes.map((_, i) => {
@@ -84,7 +84,6 @@ export function Beams({ nodes, size = 460 }: { nodes: { label: string; icon: Rea
         <span
           key={n.label}
           className="beams-node"
-          data-side={pts[i].x < c - 2 ? 'left' : pts[i].x > c + 2 ? 'right' : 'mid'}
           style={{ left: `${(pts[i].x / size) * 100}%`, top: `${(pts[i].y / size) * 100}%`, '--tone': n.tone, '--i': i } as CSSProperties}
         >
           {n.icon}
@@ -96,7 +95,7 @@ export function Beams({ nodes, size = 460 }: { nodes: { label: string; icon: Rea
 }
 
 /** Small line icons for tools and capabilities. */
-export const ICON_PATHS: Record<string, string> = {
+const ICON_PATHS: Record<string, string> = {
   chat: 'M4 5h16v11H9l-5 4z',
   search: 'M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4',
   docs: 'M7 3h7l4 4v14H7zM14 3v4h4M10 12h5M10 16h5',

@@ -19,7 +19,7 @@ export function OfficeMap() {
     // Built at the first idle moment after the page opens (the card is barely a screen down), or as it nears the
     // screen if that comes first: built on arrival, the city's construction landed in the middle of the scroll.
     const start = () => {
-      if (started) return;
+      if (started || gone) return;
       started = true;
       io.disconnect();
       import('../gl/officeMap')

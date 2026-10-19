@@ -57,24 +57,39 @@ const isPinned = (track: HTMLElement) => {
   return !!frame && getComputedStyle(frame).position === 'sticky';
 };
 
+/** Station strokes that depend only on the canvas size: built on resize, not every frame. */
+interface Shapes {
+  dome: Pt[];
+  trunk: Pt[];
+  branches: Pt[][];
+  links: Pt[][];
+  mast: Pt[][];
+  beams: Pt[][];
+  pads: Pt[][];
+}
+
 interface World {
   ctx: CanvasRenderingContext2D;
   c: Palette;
   u: number;
   G: number;
   t: number;
+  shapes: Shapes;
 }
 
 // ── 01 · A dashed sovereign dome; records drop in and resolve into intent ──
+function ingestShapes(x: number, u: number, G: number): Pick<Shapes, 'dome'> {
+  // The gap at the lower left is the gate records enter through.
+  return { dome: wobble(arc(x, G, 62 * u, Math.PI * 1.14, Math.PI * 2), 1, 0.8 * u) };
+}
+
 function drawIngest(w: World, x: number, build: number) {
-  const { ctx, c, u, G, t } = w;
-  const r = 62 * u;
+  const { ctx, c, u, G, t, shapes } = w;
 
   ctx.strokeStyle = c.ink;
   ctx.lineWidth = 2 * u;
   ctx.setLineDash([7 * u, 6 * u]);
-  // The gap at the lower left is the gate records enter through.
-  drawStrokes(ctx, [wobble(arc(x, G, r, Math.PI * 1.14, Math.PI * 2), 1, 0.8 * u)], span(build, 0, 0.45));
+  drawStrokes(ctx, [shapes.dome], span(build, 0, 0.45));
   ctx.setLineDash([]);
 
   for (let k = 0; k < 3; k++) {
@@ -114,38 +129,41 @@ function drawIngest(w: World, x: number, build: number) {
 }
 
 // ── 02 · A knowledge tree grows; its nodes take the three thread colours ──
+const treeNodes = (x: number, u: number, G: number): Pt[] => [
+  [x - 40 * u, G - 72 * u],
+  [x + 42 * u, G - 84 * u],
+  [x - 28 * u, G - 124 * u],
+  [x + 32 * u, G - 132 * u],
+  [x, G - 156 * u],
+];
+
+function memoryShapes(x: number, u: number, G: number): Pick<Shapes, 'trunk' | 'branches' | 'links'> {
+  const nodes = treeNodes(x, u, G);
+  const roots: Pt[] = [[x, G - 50 * u], [x, G - 62 * u], [x, G - 98 * u], [x, G - 98 * u], [x, G - 104 * u]];
+  return {
+    trunk: wobble(line([x, G], [x, G - 104 * u], 12), 4, 1.2 * u),
+    branches: nodes.map((n, i) => wobble(line(roots[i], n, 8), 7 + i, 1.1 * u)),
+    // Cross-links: recall that jumps between branches, not just along them
+    links: [[0, 2], [1, 3], [2, 4], [3, 4]].map(([a, b]) => line(nodes[a], nodes[b], 6)),
+  };
+}
+
 function drawMemory(w: World, x: number, build: number) {
-  const { ctx, c, u, G, t } = w;
-  const nodes: Pt[] = [
-    [x - 40 * u, G - 72 * u],
-    [x + 42 * u, G - 84 * u],
-    [x - 28 * u, G - 124 * u],
-    [x + 32 * u, G - 132 * u],
-    [x, G - 156 * u],
-  ];
+  const { ctx, c, u, G, t, shapes } = w;
+  const nodes = treeNodes(x, u, G);
   const hues = [c.violet, c.orange, c.saffron, c.orange, c.violet];
 
   ctx.strokeStyle = c.ink;
   ctx.lineWidth = 2.4 * u;
-  drawStrokes(ctx, [wobble(line([x, G], [x, G - 104 * u], 12), 4, 1.2 * u)], span(build, 0, 0.3));
+  drawStrokes(ctx, [shapes.trunk], span(build, 0, 0.3));
 
   ctx.lineWidth = 1.8 * u;
-  const roots: Pt[] = [[x, G - 50 * u], [x, G - 62 * u], [x, G - 98 * u], [x, G - 98 * u], [x, G - 104 * u]];
-  drawStrokes(
-    ctx,
-    nodes.map((n, i) => wobble(line(roots[i], n, 8), 7 + i, 1.1 * u)),
-    span(build, 0.22, 0.7)
-  );
+  drawStrokes(ctx, shapes.branches, span(build, 0.22, 0.7));
 
-  // Cross-links: recall that jumps between branches, not just along them
   ctx.lineWidth = 1.2 * u;
   ctx.setLineDash([4 * u, 4 * u]);
   ctx.strokeStyle = c.violet;
-  drawStrokes(
-    ctx,
-    [[0, 2], [1, 3], [2, 4], [3, 4]].map(([a, b]) => line(nodes[a], nodes[b], 6)),
-    span(build, 0.62, 1)
-  );
+  drawStrokes(ctx, shapes.links, span(build, 0.62, 1));
   ctx.setLineDash([]);
 
   nodes.forEach(([nx, ny], i) => {
@@ -206,13 +224,17 @@ function drawCompute(w: World, x: number, build: number) {
 }
 
 // ── 04 · A broadcast tower rises and lights up the four platforms ──
-function drawScale(w: World, x: number, build: number) {
-  const { ctx, c, u, G, t } = w;
-  const top: Pt = [x, G - 140 * u];
-  const tip: Pt = [x, G - 160 * u];
+const towerTip = (x: number, u: number, G: number): Pt => [x, G - 160 * u];
+const PLATFORMS: Pt[] = [
+  [-118, -150],
+  [-58, -206],
+  [58, -206],
+  [118, -150],
+];
 
-  ctx.strokeStyle = c.ink;
-  ctx.lineWidth = 2.2 * u;
+function scaleShapes(x: number, u: number, G: number): Pick<Shapes, 'mast' | 'beams' | 'pads'> {
+  const top: Pt = [x, G - 140 * u];
+  const tip = towerTip(x, u, G);
   const braces: Pt[][] = [];
   for (let i = 0; i < 4; i++) {
     const y0 = G - i * 34 * u;
@@ -220,16 +242,26 @@ function drawScale(w: World, x: number, build: number) {
     const half = (y: number) => lerp(24 * u, 5 * u, (G - y) / (140 * u));
     braces.push(line([x - half(y0), y0], [x + half(y1), y1], 4));
   }
-  drawStrokes(
-    ctx,
-    [
+  const spots: Pt[] = PLATFORMS.map(([dx, dy]) => [x + dx * u, G + dy * u]);
+  return {
+    mast: [
       wobble(line([x - 24 * u, G], [x - 5 * u, top[1]], 10), 11, 0.9 * u),
       wobble(line([x + 24 * u, G], [x + 5 * u, top[1]], 10), 13, 0.9 * u),
       ...braces,
       line(top, tip, 4),
     ],
-    span(build, 0, 0.45)
-  );
+    beams: spots.map((p) => line(tip, p, 6)),
+    pads: spots.map((p) => arc(p[0], p[1], 11 * u, -Math.PI / 2, Math.PI * 1.5, 24)),
+  };
+}
+
+function drawScale(w: World, x: number, build: number) {
+  const { ctx, c, u, G, t, shapes } = w;
+  const tip = towerTip(x, u, G);
+
+  ctx.strokeStyle = c.ink;
+  ctx.lineWidth = 2.2 * u;
+  drawStrokes(ctx, shapes.mast, span(build, 0, 0.45));
 
   // Signal ripples once the mast is up
   const live = span(build, 0.45, 0.55);
@@ -244,24 +276,17 @@ function drawScale(w: World, x: number, build: number) {
   }
   ctx.globalAlpha = 1;
 
-  const platforms: [number, number, string][] = [
-    [-118, -150, c.violet],
-    [-58, -206, c.orange],
-    [58, -206, c.saffron],
-    [118, -150, c.violet],
-  ];
-  platforms.forEach(([dx, dy, hue], i) => {
+  [c.violet, c.orange, c.saffron, c.violet].forEach((hue, i) => {
     const f = span(build, 0.5 + i * 0.08, 0.66 + i * 0.08);
     if (f <= 0) return;
-    const p: Pt = [x + dx * u, G + dy * u];
     ctx.strokeStyle = c.faint;
     ctx.lineWidth = 1.2 * u;
     ctx.setLineDash([3 * u, 4 * u]);
-    drawStrokes(ctx, [line(tip, p, 6)], f);
+    drawStrokes(ctx, [shapes.beams[i]], f);
     ctx.setLineDash([]);
     ctx.strokeStyle = hue;
     ctx.lineWidth = 2.4 * u;
-    drawStrokes(ctx, [arc(p[0], p[1], 11 * u, -Math.PI / 2, Math.PI * 1.5, 24)], f);
+    drawStrokes(ctx, [shapes.pads[i]], f);
   });
 
   const spark = span(build, 0.9, 1);
@@ -282,6 +307,24 @@ function drawScale(w: World, x: number, build: number) {
 }
 
 const STATIONS = [drawIngest, drawMemory, drawCompute, drawScale];
+
+/** Everything about the scene that depends only on the canvas size, so it is rebuilt on resize, not per frame. */
+function buildLayout(W: number, H: number) {
+  const u = Math.max(0.45, Math.min(1.4, W / 1200, H / 330));
+  const G = H * 0.82;
+  const X = [0.14, 0.38, 0.62, 0.86].map((f) => f * W);
+  // Full-width sky threads; each frame inks only the part the orb has walked past.
+  const sky = [0, 1, 2].map((k) => {
+    const pts: Pt[] = [];
+    for (let px = 0; px <= W; px += 8) {
+      pts.push([px, G - (182 - k * 20) * u + Math.sin((px / W) * Math.PI * 2.2 + k * 1.4) * 16 * u]);
+    }
+    return pts;
+  });
+  const ground = wobble(line([0, G], [W, G], 60), 3, 0.9 * u);
+  const shapes: Shapes = { ...ingestShapes(X[0], u, G), ...memoryShapes(X[1], u, G), ...scaleShapes(X[3], u, G) };
+  return { u, G, X, sky, ground, shapes };
+}
 
 /** The Origin orb: walks the ground, trailing the three brand threads behind it. */
 function drawOrb(w: World, x: number, speed: number, blink: boolean) {
@@ -388,6 +431,7 @@ export function HowWeWorkPipeline() {
     let lastTime = 0;
     let shown = progressRef.current;
     let orbX = -1;
+    let layout = buildLayout(W, H);
 
     const resize = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1);
@@ -395,6 +439,7 @@ export function HowWeWorkPipeline() {
       H = canvas.clientHeight;
       canvas.width = Math.round(W * dpr);
       canvas.height = Math.round(H * dpr);
+      layout = buildLayout(W, H);
     };
 
     const render = (time: number) => {
@@ -410,10 +455,8 @@ export function HowWeWorkPipeline() {
 
       const c = getPalette();
       const t = reduced ? 0 : time * 0.001;
-      const u = Math.max(0.45, Math.min(1.4, W / 1200, H / 330));
-      const G = H * 0.82;
-      const X = [0.14, 0.38, 0.62, 0.86].map((f) => f * W);
-      const world: World = { ctx, c, u, G, t };
+      const { u, G, X, sky, ground, shapes } = layout;
+      const world: World = { ctx, c, u, G, t, shapes };
 
       // Each step: the orb walks to its station (first 30%), then the station is drawn.
       const s = shown * STEP_COUNT;
@@ -424,24 +467,23 @@ export function HowWeWorkPipeline() {
       const speed = orbX < 0 ? 0 : Math.abs(targetX - orbX) / Math.max(dt, 1 / 120) / (90 * u);
       orbX = targetX;
 
-      // Faint thread lines across the sky, inked only as far as the orb has travelled
-      [c.violet, c.orange, c.saffron].forEach((hue, k) => {
-        const pts: Pt[] = [];
-        for (let px = 0; px <= orbX - 30 * u; px += 8) {
-          pts.push([px, G - (182 - k * 20) * u + Math.sin((px / W) * Math.PI * 2.2 + k * 1.4) * 16 * u]);
-        }
-        if (pts.length < 2) return;
-        ctx.strokeStyle = hue;
-        ctx.globalAlpha = 0.35;
-        ctx.lineWidth = 1.2 * u;
-        drawStrokes(ctx, [pts], 1);
-        ctx.globalAlpha = 1;
-      });
+      // Faint thread lines across the sky, inked only as far as the orb has travelled. They stop at the last
+      // sample the orb has passed, not at an interpolated point, so a length-based reveal would not match.
+      const inked = Math.floor((orbX - 30 * u) / 8) + 1;
+      if (inked >= 2) {
+        [c.violet, c.orange, c.saffron].forEach((hue, k) => {
+          ctx.strokeStyle = hue;
+          ctx.globalAlpha = 0.35;
+          ctx.lineWidth = 1.2 * u;
+          drawStrokes(ctx, [sky[k].slice(0, inked)], 1);
+          ctx.globalAlpha = 1;
+        });
+      }
 
       // Ground line with hatching
       ctx.strokeStyle = c.ink;
       ctx.lineWidth = 2.4 * u;
-      drawStrokes(ctx, [wobble(line([0, G], [W, G], 60), 3, 0.9 * u)], 1);
+      drawStrokes(ctx, [ground], 1);
       ctx.strokeStyle = c.faint;
       ctx.lineWidth = 1 * u;
       for (let gx = 12 * u; gx < W; gx += 34 * u) {

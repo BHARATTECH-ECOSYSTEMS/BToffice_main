@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { allLectures, COURSE_INCLUDES, finalPrice, formatMinutes, plural, totalMinutes, type Course } from '../../lmsData';
 import { usePeopleById, usePortal } from '../../store';
-import { btnClass, BtnLabel, PIcon, useNotice } from '../../ui';
-import { PortalNotFound } from '../Resources';
+import { btnClass, BtnLabel, PIcon, PortalNotFound, useNotice } from '../../ui';
 import { CourseStructure, CourseThumb, PriceTag, Stars, useCourseStats, useMyProgress } from './parts';
 
 export function CourseDetail() {

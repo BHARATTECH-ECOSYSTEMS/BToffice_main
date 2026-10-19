@@ -15,6 +15,7 @@ import {
   lacquer,
   setColor,
   setGroupOpacity,
+  setXYZ,
 } from './kit';
 
 /**
@@ -168,7 +169,7 @@ export function createRivinityCore(): DomainWorld {
           const i = ri * PACKETS_PER_ROUTE + k;
           const u = (t * 0.28 + k / PACKETS_PER_ROUTE + ri * 0.13) % 1;
           path.getPointAt(u, tmp);
-          packets.pos.set([tmp.x, tmp.y, tmp.z], i * 3);
+          setXYZ(packets.pos, i, tmp.x, tmp.y, tmp.z);
           setColor(packets.col, i, BRAND[ri % 3]);
           packets.size[i] = 0.07;
           packets.alpha[i] = span(route, 0.3, 1) * span(u, 0, 0.08) * (1 - span(u, 0.92, 1));
@@ -176,21 +177,25 @@ export function createRivinityCore(): DomainWorld {
       });
       packets.commit();
 
-      for (let ix = 0; ix < FABRIC_X; ix++) {
-        for (let iz = 0; iz < FABRIC_Z; iz++) {
-          const i = ix * FABRIC_Z + iz;
-          const x = (ix / (FABRIC_X - 1) - 0.5) * 3.2;
-          const z = (iz / (FABRIC_Z - 1) - 0.5) * 2.1;
-          const wave = Math.sin(x * 2.1 + t * 1.6) * 0.06 + Math.cos(z * 2.7 - t * 1.2) * 0.05;
-          // The lattice unrolls from the centre outward as the chapter arrives.
-          const reach = span(fabricOn * 2.4 - Math.hypot(x / 1.6, z / 1.05), 0, 0.4);
-          fabric.pos.set([x, FABRIC_Y + wave - (1 - reach) * 0.3, z], i * 3);
-          setColor(fabric.col, i, wave > 0.04 ? HUE.violet : HUE.mist);
-          fabric.size[i] = 0.035;
-          fabric.alpha[i] = reach * 0.8;
+      // until its chapter arrives every point is fully transparent, so it is neither computed nor drawn
+      fabric.points.visible = fabricOn > 0;
+      if (fabricOn > 0) {
+        for (let ix = 0; ix < FABRIC_X; ix++) {
+          for (let iz = 0; iz < FABRIC_Z; iz++) {
+            const i = ix * FABRIC_Z + iz;
+            const x = (ix / (FABRIC_X - 1) - 0.5) * 3.2;
+            const z = (iz / (FABRIC_Z - 1) - 0.5) * 2.1;
+            const wave = Math.sin(x * 2.1 + t * 1.6) * 0.06 + Math.cos(z * 2.7 - t * 1.2) * 0.05;
+            // The lattice unrolls from the centre outward as the chapter arrives.
+            const reach = span(fabricOn * 2.4 - Math.hypot(x / 1.6, z / 1.05), 0, 0.4);
+            setXYZ(fabric.pos, i, x, FABRIC_Y + wave - (1 - reach) * 0.3, z);
+            setColor(fabric.col, i, wave > 0.04 ? HUE.violet : HUE.mist);
+            fabric.size[i] = 0.035;
+            fabric.alpha[i] = reach * 0.8;
+          }
         }
+        fabric.commit();
       }
-      fabric.commit();
       setGroupOpacity(tethers, span(fabricOn, 0.4, 1) * (0.5 + 0.5 * beat));
     },
     dispose: () => disposeScene(scene),

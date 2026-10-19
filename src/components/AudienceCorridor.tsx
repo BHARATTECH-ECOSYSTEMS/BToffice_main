@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from 'react';
 import type { HueName } from '../gl/palette';
+import { clamp01 } from '../gl/ink';
 
 /** How many cards deep the corridor is: more on wide stages, fewer on narrow ones so cards don't pile up. */
 const DEPTH = 10;
@@ -41,7 +42,6 @@ interface AudienceCorridorProps {
   progress: RefObject<number>;
 }
 
-const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const smooth = (a: number, b: number, x: number) => {
   const t = clamp01((x - a) / (b - a));
   return t * t * (3 - 2 * t);

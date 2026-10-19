@@ -32,7 +32,6 @@ uniform int uA;
 uniform int uB;
 uniform float uMix;
 uniform float uMorph;    // how far the field has blended into uB's shape (only the frozen gem is a different shape)
-uniform float uTime;
 uniform float uSteps;
 uniform sampler2D uBg;
 uniform sampler2D uLogo;  // r: the threads, g: how far along its thread a point is (0 tail, 1 origin)
@@ -56,7 +55,6 @@ uniform vec4 uOrbs;   // the orb family: x ring radius, y orb radius, z centre r
 #define PI 3.14159265
 
 float smin(float a, float b, float k) { float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0); return mix(b, a, h) - k * h * (1.0 - h); }
-float sdCapsule(vec3 p, vec3 a, vec3 b, float r) { vec3 pa = p - a, ba = b - a; float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0); return length(pa - ba * h) - r; }
 float sdRoundCone(vec3 p, vec3 a, vec3 b, float r1, float r2) {
   vec3 ba = b - a; float l2 = dot(ba, ba); float rr = r1 - r2; float a2 = l2 - rr * rr; float il2 = 1.0 / l2;
   vec3 pa = p - a; float y = dot(pa, ba); float z = y - l2; vec3 xv = pa * l2 - ba * y; float x2 = dot(xv, xv);
@@ -76,8 +74,6 @@ vec3 fold3(vec3 p) {
   p.xy = mat2(cos(k * sector), -sin(k * sector), sin(k * sector), cos(k * sector)) * p.xy;
   return p;
 }
-
-float sSphere(vec3 p) { return length(p) - 1.0; }
 
 /**
  * The orb family. One sphere is three orbs at ring radius 0; pulled out they part like a cell dividing.
@@ -142,8 +138,8 @@ vec3 normalAt(vec3 p) {
 
 // ── the mark painted on a form ──────────────────────────────────────────────
 
-// the logo seen face on: the threads on the front of a sphere of radius r at c
-float logoOn(vec3 p, vec3 c, float r, out vec2 uv) {
+// the logo seen face on: the threads on the front of a sphere centred at c
+float logoOn(vec3 p, vec3 c, out vec2 uv) {
   vec3 d = normalize(p - c);
   uv = d.xy;
   vec4 t = texture2D(uLogo, uv * 0.5 + 0.5);
@@ -154,7 +150,7 @@ float logoOn(vec3 p, vec3 c, float r, out vec2 uv) {
 }
 
 // one thread round an orb: a band, each orb's tilted its own way
-float bandOn(vec3 p, int i, vec3 c, float r, out vec2 uv) {
+float bandOn(vec3 p, int i, vec3 c, out vec2 uv) {
   vec3 d = normalize(p - c);
   uv = d.xy;
   float a = float(i) * 2.1 + 0.6;
@@ -170,12 +166,12 @@ int nearestOrb(vec3 p) {
 }
 
 float threadsOf(int k, vec3 p, out vec2 uv) {
-  if (isSphere(k)) return logoOn(p, vec3(0.0), 1.0, uv);
+  if (isSphere(k)) return logoOn(p, vec3(0.0), uv);
   int i = nearestOrb(p);
   vec3 c = orbDir(i) * uOrbs.x;
   // with a hub, the mark sits on the centre and a thread runs round each orb
-  if (uOrbs.z > 0.3 && length(p) < uOrbs.z + 0.2) return logoOn(p, vec3(0.0), uOrbs.z, uv);
-  return bandOn(p, i, c, uOrbs.y, uv);
+  if (uOrbs.z > 0.3 && length(p) < uOrbs.z + 0.2) return logoOn(p, vec3(0.0), uv);
+  return bandOn(p, i, c, uv);
 }
 
 // the logo's own fill: a radial violet lit from the upper right

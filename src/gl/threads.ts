@@ -2,11 +2,11 @@
 // in unit-disk space (x right, y up, radius 1). All three meet at ORIGIN_POINT,
 // the notch of the "B": the site's visual thesis is built on that convergence.
 
-export type Vec2 = [number, number];
+type Vec2 = [number, number];
 
 export const ORIGIN_POINT: Vec2 = [0.42, 0.37];
 
-export const THREADS: Vec2[][] = [
+const THREADS: Vec2[][] = [
   // upper thread: enters left, arcs over the first cap, lands in the notch
   [[-1.25, -0.08], [-0.99, 0.03], [-0.62, 0.22], [-0.36, 0.44], [-0.19, 0.64], [0.04, 0.76], [0.28, 0.66], [0.4, 0.5], ORIGIN_POINT],
   // middle thread: rises under the first cap straight into the notch
@@ -14,9 +14,6 @@ export const THREADS: Vec2[][] = [
   // lower thread: sweeps around the second cap and climbs back up to the notch
   [[-0.6, -1.12], [-0.35, -0.94], [0.05, -0.76], [0.42, -0.55], [0.7, -0.3], [0.8, -0.02], [0.68, 0.24], ORIGIN_POINT],
 ];
-
-/** Half-width of a thread (the white gap) in unit-disk space. */
-export const THREAD_HALF_WIDTH = 0.1;
 
 function catmullRom(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: number): Vec2 {
   const t2 = t * t;
@@ -27,7 +24,7 @@ function catmullRom(p0: Vec2, p1: Vec2, p2: Vec2, p3: Vec2, t: number): Vec2 {
 }
 
 /** Resample a control polyline into a smooth, dense curve. */
-export function sampleThread(points: Vec2[], perSegment = 24): Vec2[] {
+function sampleThread(points: Vec2[], perSegment = 24): Vec2[] {
   const out: Vec2[] = [];
   for (let i = 0; i < points.length - 1; i++) {
     const p0 = points[Math.max(i - 1, 0)];

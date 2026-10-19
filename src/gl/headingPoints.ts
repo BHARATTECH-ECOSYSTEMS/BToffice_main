@@ -3,7 +3,7 @@
  * Each `.line > span` of a `Headline` is drawn with its own computed font onto a hidden canvas, which is then
  * sampled on a staggered grid. Positions are CSS px from the centre of `block`, y down; colours are sRGB 0…1.
  */
-export interface HeadingPoints {
+interface HeadingPoints {
   to: Float32Array;
   color: Float32Array;
   /** px size a dot should be drawn at, so neighbours just touch and the letters read solid */

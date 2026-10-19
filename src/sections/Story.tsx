@@ -21,7 +21,7 @@ const BEAT_COPY: Beat[] = [
   { act: 0, title: ['Intelligence', 'should never', 'forget.'], body: 'We are building the operating system for intelligence: one shared layer that lets AI remember, connect and keep learning.', fact: '' },
   { act: 1, title: ['It forgets.'], body: PROBLEMS[0].body, fact: 'Week 3 · the 7 flagged districts are gone' },
   { act: 1, title: ['It is', 'fragmented.'], body: PROBLEMS[1].body, fact: 'Three tools · nothing shared' },
-  { act: 1, title: ['It stops', 'learning.'], body: PROBLEMS[2].body, fact: PROBLEMS[2].caption },
+  { act: 1, title: ['It stops', 'learning.'], body: PROBLEMS[2].body, fact: 'Frozen at training time' },
   { act: 1, title: ['It works', 'alone.'], body: PROBLEMS[3].body, fact: '0 of 3 connections made' },
   { act: 2, title: ['It', 'remembers.'], body: PILLARS_PLAIN[0].body, fact: 'The memory thread returns, whole' },
   { act: 2, title: ['It', 'connects.'], body: PILLARS_PLAIN[1].body, fact: 'Three tools · one shared memory' },
@@ -37,7 +37,6 @@ export function Story() {
   const canvas = useRef<HTMLCanvasElement>(null);
   const veil = useRef<HTMLDivElement>(null);
   const beats = useRef<(HTMLElement | null)[]>([]);
-  const [gl, setGl] = useState(true);
   const [current, setCurrent] = useState(0);
   const { scrollTo } = useScene();
   useQuiet(ref);
@@ -59,20 +58,20 @@ export function Story() {
       studio.setReveal(reveal.current.grow, reveal.current.draw);
       studioRef.current = studio;
     } catch {
-      setGl(false);
+      /* no WebGL: the DOM headlines still carry the film */
     }
     let raf = 0;
     // the section's cached position, so the per-frame update never forces a layout
     const { box, release } = trackBox(ref.current!);
     let lastP = -1;
-    const measure = (force = false) => {
+    const measure = () => {
       raf = 0;
       const el = ref.current;
       if (!el) return;
       const run = Math.max(1, box.height - window.innerHeight);
       const p = Math.min(1, Math.max(0, (pageScroll() - box.top) / run));
       // past the film the progress stays pinned at 0 or 1: nothing to redraw
-      if (p === lastP && !force) return;
+      if (p === lastP) return;
       lastP = p;
       // the veil rides as if fixed to the section's bottom edge, so it rises into the frame over the last stretch
       if (veil.current) veil.current.style.transform = `translate3d(0, ${Math.min(window.innerHeight, (1 - p) * run).toFixed(1)}px, 0)`;
@@ -118,7 +117,7 @@ export function Story() {
   }, []);
 
   return (
-    <section id="top" ref={ref} className="story" data-gl={gl || undefined} style={{ '--beats': BEATS, '--pace': PACE } as CSSProperties}>
+    <section id="top" ref={ref} className="story" style={{ '--beats': BEATS, '--pace': PACE } as CSSProperties}>
       {/* anchors for the nav: each sits where its chapter starts */}
       <span id="problem" className="story-anchor" style={{ '--at': 1 } as CSSProperties} />
       <span id="promise" className="story-anchor" style={{ '--at': 5 } as CSSProperties} />

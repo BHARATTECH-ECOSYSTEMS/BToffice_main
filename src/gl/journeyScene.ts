@@ -3,8 +3,8 @@ import { CSS3DObject, CSS3DRenderer } from 'three/examples/jsm/renderers/CSS3DRe
 import { HUE } from './palette';
 
 /** A card's size in CSS pixels, which are also the scene's world units. */
-export const CARD_W = 280;
-export const CARD_H = 184;
+const CARD_W = 280;
+const CARD_H = 184;
 
 /**
  * The journey runs down the page: the corridor at the top, a vertical helix through the middle, the ring at the
@@ -175,6 +175,8 @@ export function mountJourney({
   };
   try {
     gl = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: 'low-power' });
+    // reading back every shader's log makes the page wait on the GPU; development builds still report errors
+    gl.debug.checkShaderErrors = import.meta.env.DEV;
     gl.setClearColor(0x000000, 0);
 
     // the corridor's wireframe: cross frames every FRAME_GAP plus lines running along each wall, fading with depth
@@ -374,10 +376,14 @@ export function mountJourney({
   let focusIndex = -1;
   const scores = hosts.map(() => 0);
   // the entrance: the corridor rushes in from far away when the page opens
-  const born = performance.now();
+  // The clock starts on the frame after the first draw: that draw compiles the shaders and can stall for a while,
+  // and a clock started before it skipped the start of the rush-in.
+  let born = Infinity;
+  let primed = false;
   const pointer = { x: 0, y: 0, tx: 0, ty: 0 };
   let last = performance.now();
   const shown = hosts.map(() => -1);
+  const faces: (HTMLElement | null)[] = hosts.map(() => null);
   const awayShown = hosts.map(() => false);
 
   const camPos = new THREE.Vector3();
@@ -397,6 +403,10 @@ export function mountJourney({
     const p = reduced ? 1 : rawProgress;
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
     last = now;
+    if (born === Infinity) {
+      if (primed) born = now;
+      primed = true;
+    }
 
     if (!reduced) {
       idleSpeed += ((overCard || held ? 0 : 1) - idleSpeed) * Math.min(1, dt * 5);
@@ -405,7 +415,7 @@ export function mountJourney({
       pointer.x += (pointer.tx - pointer.x) * Math.min(1, dt * 3);
       pointer.y += (pointer.ty - pointer.y) * Math.min(1, dt * 3);
     }
-    const arrive = reduced ? 1 : 1 - Math.pow(1 - Math.min(1, (now - born) / INTRO_MS), 3);
+    const arrive = reduced ? 1 : 1 - Math.pow(1 - Math.min(1, Math.max(0, (now - born) / INTRO_MS)), 3);
     const travel = p * TRAVEL_SCROLL + travelIdle - (1 - arrive) * INTRO_DEPTH;
     const spin = p * SPIN_SCROLL + spinIdle;
 
@@ -527,9 +537,10 @@ export function mountJourney({
       const rounded = Math.round(alpha * 32) / 32;
       if (rounded !== shown[i]) {
         shown[i] = rounded;
-        // the fade goes to the card's two sides through a variable: opacity on the host itself would flatten its 3D,
-        // and the far side would show the face's text in mirror writing instead of the card's back
-        hosts[i].style.setProperty('--fade', String(rounded));
+        // the fade goes on the card's one surface, not the host: opacity on the host would flatten its 3D, and a
+        // variable on the host would restyle everything inside the card on each step
+        const face = (faces[i] ??= hosts[i].querySelector<HTMLElement>('.svc-card__face'));
+        if (face) face.style.opacity = String(rounded);
       }
       // a card that can't be seen is switched off: CSS3DRenderer then stops placing it and the browser stops
       // compositing it

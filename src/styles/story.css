@@ -99,63 +99,6 @@
   }
 }
 
-/* ── Thread dial: names the logo's three threads over the 3D mark ── */
-
-.dial {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  z-index: 6;
-  width: min(100cqw, 100cqh);
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-}
-.dial > svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-@keyframes dial-turn {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes dial-state {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-}
-
-/* on narrow screens the mark sits in a band above the copy; the caption alone tells the step */
-
-/* the capability families, one per thread, under the mark */
-
-/* ── Answer ── */
-
-.orbit {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: min(100cqw, 100cqh);
-  aspect-ratio: 1;
-  transform: translate(-50%, -50%);
-}
-.orbit > svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-/* ── Capabilities ── */
-
 /* ── How it works ── */
 
 .ch-how .chapter-pin {
@@ -208,10 +151,6 @@
   left: calc(var(--how-pad) + var(--node) / 2);
   right: calc(var(--how-pad) + var(--node) / 2);
 }
-.ch-how .pipe-fill {
-  background: var(--ink);
-  transition: transform 0.9s var(--ease-expo);
-}
 .ch-how .how-panel {
   grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1.15fr);
   /* the boxes take the panel's height rather than their content's, so on short screens they shrink with the
@@ -224,6 +163,13 @@
   /* fills the frame's 1fr row so the panel matches the full-height chapters around it */
   min-height: 0;
   transition: background-color 0.6s var(--ease);
+}
+/* a background fade can't run on the compositor, so each step would repaint the
+   whole panel for 0.6s mid-scroll; weak GPUs snap to the new tone instead */
+@media (min-width: 901px) {
+  .lite .ch-how .how-panel {
+    transition: none;
+  }
 }
 .how-copy .how-main {
   animation: none;
@@ -271,7 +217,7 @@
   min-height: 0;
   gap: 8px;
   overflow: hidden;
-  padding: 14px 16px 16px;
+  padding: 14px 14px 16px;
   /* on short screens the trace can run past the box; it fades out rather than ending on a cut line */
   -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent);
   mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent);
@@ -298,7 +244,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  padding: 10px 16px;
+  padding: 10px 14px;
   border-top: 1px solid rgb(255 255 255 / 0.07);
   font-family: var(--mono);
   font-size: var(--fs-label);
@@ -524,6 +470,8 @@
 }
 /* the frost: a pale top and the cursor's shine (--gx/--gy from useGlassTilt), above the black and below the words */
 .ch-arch .chapter-pin::after {
+  --gx: inherit;
+  --gy: inherit;
   background:
     radial-gradient(460px circle at var(--gx, 30%) var(--gy, 0%), rgb(255 255 255 / 0.1), rgb(255 255 255 / 0) 65%),
     linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0) 36%);
@@ -731,8 +679,6 @@
     background-color 0.4s var(--ease);
 }
 
-/* ══ Hero plate ═════════════════════════════════════════════════════════════ */
-
 /* ══ Beams: icon and label in one chip, so a label never hides under its icon ══ */
 
 .beams-node {
@@ -828,7 +774,6 @@
   }
   .ch-how .how-panel {
     grid-template-columns: minmax(0, 1fr);
-    max-height: none;
   }
   .ch-how .console {
     display: none;
@@ -1109,11 +1054,6 @@
 }
 .role-card .role-go {
   margin-top: auto;
-}
-@media (hover: hover) and (pointer: fine) {
-  .role-card:hover .role-go .arrow {
-    transform: translateX(4px);
-  }
 }
 
 @media (max-width: 640px) {
@@ -1563,18 +1503,10 @@
 }
 .peek-family-name {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
   padding: 0 14px;
   font-family: var(--display);
   font-size: 16px;
   font-weight: 640;
-}
-.peek-family-name small {
-  font-family: var(--mono);
-  font-size: 10.5px;
-  font-weight: 500;
-  color: var(--tone);
 }
 .peek-family-list {
   display: flex;
@@ -1611,13 +1543,13 @@
   display: none;
 }
 .peek-post small {
-  padding: 0 4px;
+  padding: 0 6px;
   font-family: var(--mono);
   font-size: 10.5px;
   color: var(--muted);
 }
 .peek-post b {
-  padding: 0 4px;
+  padding: 0 6px;
   font-size: 14px;
   font-weight: 600;
   line-height: 1.3;
@@ -1628,7 +1560,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 8px 8px 4px 12px;
+  padding: 8px 0 4px 14px;
 }
 .peek-foot p {
   display: flex;
@@ -1671,19 +1603,11 @@
     background: var(--tone, var(--brand));
   }
 }
-.peek-go .arrow {
-  transition: transform 200ms var(--ease);
-}
-@media (hover: hover) and (pointer: fine) {
-  .peek-go:hover .arrow {
-    transform: translateX(3px);
-  }
-}
 
 .peek-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 240px;
-  gap: 10px;
+  gap: 8px;
 }
 .peek-list {
   display: grid;
@@ -1713,19 +1637,14 @@
   flex: none;
   color: var(--tone);
   opacity: 0;
-  transform: translateX(-6px);
-  transition:
-    opacity 0.25s var(--ease),
-    transform 200ms var(--ease);
+  transition: opacity 0.25s var(--ease);
 }
 .peek-row:focus-visible > .arrow {
   opacity: 1;
-  transform: none;
 }
 @media (hover: hover) and (pointer: fine) {
   .peek-row:hover > .arrow {
     opacity: 1;
-    transform: none;
   }
 }
 .peek-dot {
@@ -1783,27 +1702,21 @@
 }
 .peek-side-figure {
   font-family: var(--display);
-  font-size: 48px;
+  font-size: 30px;
   font-weight: var(--fw-head);
-  line-height: 0.95;
+  line-height: 1.05;
   letter-spacing: -0.035em;
   color: color-mix(in srgb, var(--tone) 80%, var(--ink));
 }
-/* a title in place of the count: smaller, so the two words sit on one line in the side panel */
-.peek-side-figure.is-words {
-  font-size: 30px;
-  line-height: 1.05;
-}
 .peek-side-label {
-  margin-top: 4px;
-  font-size: 15px;
+  font-size: 19px;
   font-weight: 650;
 }
 .peek-side-blurb {
   margin: 6px 0 16px;
   font-size: 13px;
   line-height: 1.45;
-  color: var(--ink-2);
+  color: rgb(255 255 255 / 0.72);
 }
 .peek-depts {
   display: grid;
@@ -1836,13 +1749,6 @@
   background: #151424;
   border: 1px solid rgba(255, 255, 255, 0.12);
   color: #FAF9F6;
-}
-.peek-side-ink .peek-side-label {
-  margin-top: 0;
-  font-size: 19px;
-}
-.peek-side-ink .peek-side-blurb {
-  color: rgb(255 255 255 / 0.72);
 }
 :root[data-theme='dark'] .peek-side-ink .peek-side-blurb,
 .dark .peek-side-ink .peek-side-blurb {
@@ -1890,74 +1796,6 @@
   padding-top: clamp(24px, 3vw, 48px);
 }
 
-.track {
-  position: relative;
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 14px;
-  padding-top: 8px;
-}
-.track::before,
-.track::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 46px;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--line-strong);
-}
-.track::after {
-  background: var(--tangerine);
-  transform-origin: 0 50%;
-  transform: scaleX(0);
-  transition: transform 1.6s var(--ease-expo) 0.2s;
-}
-.track[data-in]::after {
-  transform: scaleX(1);
-}
-.track li {
-  position: relative;
-  display: grid;
-  gap: 14px;
-  opacity: 0;
-  transform: translateY(16px);
-  transition:
-    opacity 0.7s var(--ease),
-    transform 0.9s var(--ease-expo);
-  transition-delay: calc(0.3s + var(--k) * 0.18s);
-}
-.track[data-in] li {
-  opacity: 1;
-  transform: none;
-}
-
-@media (max-width: 900px) {
-
-  .track {
-    grid-template-columns: minmax(0, 1fr);
-    padding-left: 24px;
-  }
-  .track::before,
-  .track::after {
-    left: 6px;
-    right: auto;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    height: auto;
-  }
-  .track::after {
-    transform-origin: 50% 0;
-    transform: scaleY(0);
-  }
-  .track[data-in]::after {
-    transform: scaleY(1);
-  }
-
-}
-
 /* product drawings keep their own ink, even inside dark cells */
 .ui-card {
   color: var(--ink);
@@ -1966,8 +1804,14 @@
 /* ══ FAQ: tagged questions beside an ask card ═══════════════════════════════ */
 
 .faq .faq-grid {
-  align-items: start;
   gap: clamp(24px, 4vw, 56px);
+}
+/* desktop uses the shared split token so Home's FAQ matches Contact's (which
+   misses the descendant rule above) and every other split layout */
+@media (min-width: 901px) {
+  .faq .faq-grid {
+    gap: var(--split-gap);
+  }
 }
 .faq-head {
   display: flex;
@@ -2014,18 +1858,30 @@
   width: 60%;
   aspect-ratio: 1;
   border-radius: 50%;
-  filter: blur(46px);
   animation: faq-glow 14s ease-in-out infinite alternate;
+}
+/* a gradient instead of a blur filter, on a child so the drift path keeps its size: see .careers-glow i::before */
+.faq-ask-glow i::before {
+  content: '';
+  position: absolute;
+  inset: -92px;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    var(--glow) 32%,
+    color-mix(in srgb, var(--glow) 50%, transparent) 62%,
+    transparent
+  );
 }
 .faq-ask-glow i:first-child {
   left: -18%;
   top: -40%;
-  background: rgb(140 121 255 / 0.75);
+  --glow: rgb(140 121 255 / 0.75);
 }
 .faq-ask-glow i:last-child {
   right: -16%;
   bottom: -46%;
-  background: rgb(255 170 60 / 0.35);
+  --glow: rgb(255 170 60 / 0.35);
   animation-duration: 18s;
   animation-delay: -6s;
 }
@@ -2036,6 +1892,8 @@
 }
 /* the frost: a pale top half and the cursor's shine, above the drifting light and below the words */
 .faq .faq-ask::after {
+  --gx: inherit;
+  --gy: inherit;
   z-index: -1;
   padding: 0;
   background:
@@ -2135,7 +1993,6 @@
 .acc-tag {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   justify-self: start;
   padding: 5px 10px;
   border-radius: var(--r-pill);
@@ -2146,10 +2003,6 @@
   font-weight: 500;
   letter-spacing: 0;
   color: color-mix(in srgb, var(--tone) 80%, var(--ink));
-}
-.acc-tag small {
-  font-size: 10px;
-  opacity: 0.6;
 }
 .faq .acc-panel p {
   padding-left: 128px;

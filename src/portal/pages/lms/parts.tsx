@@ -19,12 +19,9 @@ const EDUCATOR_TABS: [string, string, PortalIconName][] = [
 ];
 
 /**
- * Who may open the educator pages: admins and sub admins, and anyone who already teaches a course. This is a browser-side
- * demo check, like the portal's "View as" switch; the real rule has to be enforced by the server.
- */
-/**
  * Educator pages are for admins and sub admins only. Employees never get them, even when a course lists them as its
- * educator; this one check decides both the "View as educator" switch and the educator routes.
+ * educator; this one check decides both the "View as educator" switch and the educator routes. This is a browser-side
+ * demo check, like the portal's "View as" switch; the real rule has to be enforced by the server.
  */
 export function useCanTeach() {
   const session = useSession();
@@ -54,6 +51,20 @@ export function LmsShell() {
       </div>
       <Outlet />
     </>
+  );
+}
+
+export function EduHead({ id, title, sub, count, children }: { id?: string; title: string; sub: string; count?: string; children?: ReactNode }) {
+  return (
+    <header className="p-edu-head">
+      <div>
+        <h1 id={id} className="p-lms-h1">
+          {title} {count && <span className="p-count">{count}</span>}
+        </h1>
+        <p className="p-muted">{sub}</p>
+      </div>
+      {children}
+    </header>
   );
 }
 

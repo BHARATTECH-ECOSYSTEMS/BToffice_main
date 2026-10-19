@@ -7,7 +7,7 @@ import { useMemo, useSyncExternalStore } from 'react';
  */
 
 /** Today's visit: when the person checked in and, once they've left, when they checked out (both epoch ms). */
-export interface OfficeDay {
+interface OfficeDay {
   date: string;
   since: number;
   left?: number;

@@ -67,7 +67,7 @@ const OFFICE = { x: 0, z: 0, w: 2.6, h: 7.2 };
 const RIVER_Z = -16;
 const riverZ = (x: number) => RIVER_Z + Math.sin(x * 0.045) * 2.6;
 
-export interface OfficeMapOptions {
+interface OfficeMapOptions {
   /** Pin label lines, top to bottom. */
   label: [string, string];
   /** Visitors who asked for less motion get one still frame. */
@@ -591,7 +591,10 @@ export function mountOfficeMap(host: HTMLElement, { label, reduced, dark = false
         m.dispose();
       });
     });
+    sun.shadow.dispose();
     renderer.dispose();
+    // the canvas is ours and never reused, so free its context now rather than whenever it is collected
+    renderer.forceContextLoss();
     renderer.domElement.remove();
   };
 }

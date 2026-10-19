@@ -56,7 +56,7 @@ function IssueWizard({ onIssued }: { onIssued: (name: string, type: CertificateT
   const percent = Math.round(((step + 1) / 3) * 100);
 
   return (
-    <section className="p-card p-wizard" aria-labelledby="wiz-title">
+    <section className="p-card" aria-labelledby="wiz-title">
       <div className="p-progress">
         <p className="p-progress-line">
           <span>

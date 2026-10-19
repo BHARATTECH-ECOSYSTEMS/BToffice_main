@@ -6,9 +6,6 @@ import { DOMAINS } from '../content';
 import { pageScroll, trackBox } from './trackBox';
 import '../styles/domain-cinema.css';
 
-/** Accent per domain; the tags and reel progress pick it up through `--tint`. */
-const DOMAIN_TINTS = ['#6E58F5', '#FF8643', '#F59E00', '#6E58F5', '#FF8643', '#F59E00'];
-
 export const DOMAIN_TONES = [
   'var(--violet)',
   'var(--tangerine)',
@@ -88,7 +85,7 @@ export function DomainGrid({ link = true, numbered = false }: { link?: boolean; 
             cardRefs.current[i] = el;
           }}
           className={`stack-card ${i < activeIdx ? 'is-behind' : ''}`}
-          style={{ '--tint': DOMAIN_TINTS[i], '--i': i } as CSSProperties}
+          style={{ '--i': i } as CSSProperties}
         >
           <div className="stack-card__inner">
             <div className="stack-card__copy">

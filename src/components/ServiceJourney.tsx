@@ -82,6 +82,25 @@ export const ServiceJourney = forwardRef<
     const stage = stageRef.current;
     const canvas = glRef.current;
     if (!section || !pin || !stage || !canvas) return;
+    // Arriving from another page, the scene is built once the nav's page-change sweep has played and the page is idle:
+    // building it (WebGL, the CSS3D cards, the first shader compile) on the navigation frame stalled the sweep and
+    // the rush-in. Opened directly, it builds at once.
+    let stop: (() => void) | undefined;
+    let idle = 0;
+    const sweeping = !!document.querySelector('.route-sweep.is-running');
+    const build = () => (stop = start(section, pin, stage, canvas));
+    const soon = window.setTimeout(() => {
+      if (typeof window.requestIdleCallback === 'function') idle = window.requestIdleCallback(build, { timeout: 400 });
+      else build();
+    }, sweeping ? 700 : 0);
+    return () => {
+      window.clearTimeout(soon);
+      if (idle) window.cancelIdleCallback(idle);
+      stop?.();
+    };
+  }, [hosts, engine, reduced]);
+
+  const start = (section: HTMLElement, pin: HTMLElement, stage: HTMLDivElement, canvas: HTMLCanvasElement) => {
     const j = mountJourney({ stage, canvas, hosts, reduced, onFocusCard: setFocus });
     journey.current = j;
 
@@ -98,6 +117,7 @@ export const ServiceJourney = forwardRef<
     let shownSide = -1;
     let shownCopy = -1;
 
+    let onScreen = true;
     let visible = true;
     let shownChapter = -1;
     const tick = () => {
@@ -144,10 +164,11 @@ export const ServiceJourney = forwardRef<
     const off = engine ? engine.onFrame(tick) : ((raf = requestAnimationFrame(own)), () => cancelAnimationFrame(raf));
 
     const io = new IntersectionObserver(([entry]) => {
-      visible = entry.isIntersecting && !document.hidden;
+      onScreen = entry.isIntersecting;
+      visible = onScreen && !document.hidden;
     });
     io.observe(section);
-    const onVisibility = () => (visible = !document.hidden);
+    const onVisibility = () => (visible = onScreen && !document.hidden);
     document.addEventListener('visibilitychange', onVisibility);
     tick();
 
@@ -159,7 +180,7 @@ export const ServiceJourney = forwardRef<
       j.destroy();
       journey.current = null;
     };
-  }, [hosts, engine, reduced]);
+  };
 
   /** Scrolls the page to a formation (0…1 through the journey). */
   const goTo = (stop: number) => {
@@ -201,7 +222,7 @@ export const ServiceJourney = forwardRef<
   const card = items[focus] ?? items[0];
 
   return (
-    <section ref={sectionRef} className="svc-journey" data-reduced={reduced || undefined} aria-label="Services">
+    <section ref={sectionRef} className="svc-journey" aria-label="Services">
       <div ref={pinRef} className="svc-journey__pin">
         <div ref={stageRef} className={`svc-journey__stage ${chapter === 2 ? 'is-ring' : ''}`}>
           <canvas ref={glRef} className="svc-journey-gl" aria-hidden="true" />

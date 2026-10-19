@@ -1,9 +1,8 @@
-import type { ReactNode } from 'react';
 import { Link, Navigate, Outlet, useLocation } from 'react-router';
 import { finalPrice, formatMoney, plural, type Enrollment } from '../../lmsData';
 import { formatDate, usePeopleById, usePortal } from '../../store';
 import { Badge, btnClass, BtnLabel, Empty, initials, Stat } from '../../ui';
-import { CourseThumb, useCanTeach } from './parts';
+import { CourseThumb, EduHead, useCanTeach } from './parts';
 
 /** Keeps the educator pages to people who may teach; everyone else lands on the student home. */
 export function EducatorOnly() {
@@ -23,20 +22,6 @@ function useTeaching() {
 }
 
 const EARNINGS_NOTE = "Worked out from course prices. Payments aren't connected yet, so nothing has been charged.";
-
-function EduHead({ title, sub, count, children }: { title: string; sub: string; count?: string; children?: ReactNode }) {
-  return (
-    <header className="p-edu-head">
-      <div>
-        <h1 className="p-lms-h1">
-          {title} {count && <span className="p-count">{count}</span>}
-        </h1>
-        <p className="p-muted">{sub}</p>
-      </div>
-      {children}
-    </header>
-  );
-}
 
 export function EducatorDashboard() {
   const { mine, enrolled, courseOf, earnings } = useTeaching();

@@ -10,6 +10,9 @@ import type { Role } from './session';
 export type PersonRole = Role | 'intern';
 /** `invited` = added but not signed in yet; `inactive` = an admin switched the account off. */
 export type PersonStatus = 'active' | 'inactive' | 'invited';
+export const ROLE_LABEL: Record<PersonRole, string> = { admin: 'Admin', subadmin: 'Sub Admin', employee: 'Employee', intern: 'Intern' };
+export const PERSON_STATUS_LABEL: Record<PersonStatus, string> = { active: 'Active', inactive: 'Inactive', invited: 'Invited' };
+export const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export interface Person {
   id: string;
@@ -25,6 +28,11 @@ export interface Person {
   joined?: string;
   /** Where they work; when unset, the company's head office (HQ in content.ts). */
   office?: string;
+  /**
+   * The personal email they gave when joining the community ahead of leaving. Marking them as left carries it into
+   * the community with them, so they are reachable from day one.
+   */
+  personalEmail?: string;
 }
 
 /* ── Community: people who have left, grouped by the stream they worked in ── */
@@ -239,6 +247,8 @@ export const SEED_LINKS: LinkResource[] = [
 /* ── HR OPS: verification requests ── */
 
 export type VerificationStatus = 'pending' | 'verified' | 'rejected';
+/** A request still pending after this many days is flagged on the desk and needs a follow-up on the calendar. */
+export const VERIFICATION_STALE_DAYS = 7;
 
 /** The documents an admin ticks off before a request can be marked verified. */
 export const COMPANY_CHECKS = [
@@ -247,13 +257,6 @@ export const COMPANY_CHECKS = [
   { id: 'address', label: 'Registered address' },
   { id: 'bank', label: 'Bank account details' },
   { id: 'director', label: 'Director identity' },
-] as const;
-export const EMPLOYEE_CHECKS = [
-  { id: 'identity', label: 'Government ID' },
-  { id: 'address', label: 'Address proof' },
-  { id: 'education', label: 'Education certificates' },
-  { id: 'employment', label: 'Previous employment' },
-  { id: 'references', label: 'References' },
 ] as const;
 /**
  * The government IDs an employee uploads for their verification, from the link HR sends. Both are required: PAN is
@@ -265,6 +268,13 @@ export const ID_DOCS = [
   { id: 'pan', label: 'PAN card', hint: 'Needed to show your employment with us.' },
 ] as const;
 export type IdDocKind = (typeof ID_DOCS)[number]['id'];
+/** The Aadhaar and PAN checks are the uploads above, so they share ids: a check knows which file it is about. */
+export const EMPLOYEE_CHECKS = [
+  ...ID_DOCS.map(({ id, label }) => ({ id, label })),
+  { id: 'education', label: 'Education certificates' },
+  { id: 'employment', label: 'Previous employment' },
+  { id: 'references', label: 'References' },
+];
 export const ID_DOC_MAX_MB = 1;
 export const ID_RETENTION_DAYS = 60;
 export interface IdDocument {
@@ -345,15 +355,15 @@ export const SEED_VERIFICATIONS: Verification[] = [
     ],
   },
   {
-    kind: 'employee', id: 'V4', personId: 'EMP8', status: 'pending', done: ['identity', 'address'], note: '', requestedBy: 'Aanya Sharma', requested: '2026-10-10',
+    kind: 'employee', id: 'V4', personId: 'EMP8', status: 'pending', done: ['education', 'references'], note: '', requestedBy: 'Aanya Sharma', requested: '2026-10-10',
     log: [
       { at: '2026-10-10T09:05', by: 'Aanya Sharma', text: 'Opened the request' },
-      { at: '2026-10-12T11:30', by: 'Aanya Sharma', text: 'Checked Government ID' },
-      { at: '2026-10-12T11:34', by: 'Aanya Sharma', text: 'Checked Address proof' },
+      { at: '2026-10-12T11:30', by: 'Aanya Sharma', text: 'Checked Education certificates' },
+      { at: '2026-10-12T11:34', by: 'Aanya Sharma', text: 'Checked References' },
     ],
   },
   {
-    kind: 'employee', id: 'V5', personId: 'EMP7', status: 'verified', done: ['identity', 'address', 'education', 'employment', 'references'], note: '', requestedBy: 'Aanya Sharma', requested: '2026-09-01', decidedBy: 'Aanya Sharma', decided: '2026-09-09',
+    kind: 'employee', id: 'V5', personId: 'EMP7', status: 'verified', done: ['aadhaar', 'pan', 'education', 'employment', 'references'], note: '', requestedBy: 'Aanya Sharma', requested: '2026-09-01', decidedBy: 'Aanya Sharma', decided: '2026-09-09',
     log: [
       { at: '2026-09-01T10:00', by: 'Aanya Sharma', text: 'Opened the request' },
       { at: '2026-09-08T17:10', by: 'Aanya Sharma', text: 'Checked all 5 documents' },
@@ -401,6 +411,32 @@ export const SEED_TASKS: Task[] = [
   { id: 'T3', title: 'Update the sensor fusion notes', assigneeId: 'EMP4', due: '2026-10-12', status: 'done' },
 ];
 
+/* ── Calendar events: added by admins, shown on everyone's calendar ── */
+
+export type EventKind = 'holiday' | 'meeting' | 'training' | 'deadline';
+export const EVENT_KINDS: { id: EventKind; label: string }[] = [
+  { id: 'meeting', label: 'Meeting' },
+  { id: 'training', label: 'Training' },
+  { id: 'deadline', label: 'Deadline' },
+  { id: 'holiday', label: 'Holiday' },
+];
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  kind: EventKind;
+  date: string;
+  /** "HH:MM", or empty for an all-day event. */
+  time: string;
+  addedBy: string;
+}
+// Samples only, so the calendar has something to show until HR adds the real dates.
+export const SEED_EVENTS: CalendarEvent[] = [
+  { id: 'E1', title: 'Team sync (sample)', kind: 'meeting', date: '2026-10-20', time: '10:00', addedBy: 'Aanya Sharma' },
+  { id: 'E2', title: 'Security awareness session (sample)', kind: 'training', date: '2026-10-27', time: '15:00', addedBy: 'Arjun Rao' },
+  { id: 'E3', title: 'Quarterly reports due (sample)', kind: 'deadline', date: '2026-10-30', time: '', addedBy: 'Aanya Sharma' },
+  { id: 'E4', title: 'Office closed (sample)', kind: 'holiday', date: '2026-11-09', time: '', addedBy: 'Aanya Sharma' },
+];
+
 export type PolicyCategory = 'policy' | 'compliance';
 
 export interface PolicyDoc {
@@ -437,6 +473,6 @@ export interface SecurityEvent {
 // Kept here so data.ts stays free of React; the icon component lives in ui.tsx.
 export type PortalIconName =
   | 'grid' | 'users' | 'cap' | 'book' | 'code' | 'transfer' | 'kanban' | 'shield' | 'chat' | 'screen' | 'invoice'
-  | 'award' | 'file' | 'clipboard' | 'spark' | 'pen' | 'layers' | 'plus' | 'search' | 'trash' | 'external'
-  | 'check' | 'clock' | 'target' | 'trend' | 'key' | 'calendar' | 'chevron' | 'menu' | 'close' | 'logout'
-  | 'upload' | 'link' | 'home' | 'alert' | 'eye' | 'download' | 'share' | 'refresh' | 'filter' | 'edit' | 'chart' | 'play' | 'lock' | 'settings' | 'help' | 'bell';
+  | 'award' | 'file' | 'clipboard' | 'spark' | 'pen' | 'layers' | 'plus' | 'search' | 'external'
+  | 'check' | 'clock' | 'target' | 'key' | 'calendar' | 'chevron' | 'close' | 'logout'
+  | 'upload' | 'link' | 'home' | 'alert' | 'eye' | 'download' | 'share' | 'refresh' | 'filter' | 'edit' | 'chart' | 'play' | 'lock' | 'settings' | 'help';

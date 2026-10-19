@@ -8,7 +8,7 @@ import { easeOut, lerp, span } from '../ink';
  * where chapter N brings in a new element and everything before it stays on screen.
  */
 
-export interface WorldFrame {
+interface WorldFrame {
   /** Current chapter, 0–3. */
   act: number;
   /** Progress through the current chapter, 0–1. */
@@ -67,7 +67,7 @@ export function seeded(seed: number) {
  * Both hold for any spin about y, so the framing stays put while a world turns. A world lists a few
  * of these so its bounds hug its shape (a tall phone plus a wide ring of devices, say).
  */
-export interface BoundsShape {
+interface BoundsShape {
   radius: number;
   bottom: number;
   top: number;
@@ -80,7 +80,7 @@ export interface SafeView {
   tanV: number;
 }
 
-export interface Stage {
+interface Stage {
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
   /** The renderer reports the safe area of the reel each frame; `rig` then frames the bounds inside it. */
@@ -228,15 +228,14 @@ const POINTS_FRAG = /* glsl */ `
   }
 `;
 
-export interface PointCloud {
+interface PointCloud {
   points: THREE.Points;
   pos: Float32Array;
   col: Float32Array;
   size: Float32Array;
   alpha: Float32Array;
-  count: number;
-  /** Uploads whatever the world changed this frame. */
-  commit(): void;
+  /** Uploads whatever the world changed this frame; `false` skips positions that never move. */
+  commit(positions?: boolean): void;
 }
 
 /** Round, soft-edged points sized in world units; positions, colours, sizes and alphas are written by the CPU each frame. */
@@ -272,9 +271,9 @@ export function createPointCloud(count: number): PointCloud {
     col,
     size,
     alpha,
-    count,
-    commit() {
-      Object.values(attrs).forEach((attr) => (attr.needsUpdate = true));
+    commit(positions = true) {
+      if (positions) attrs.position.needsUpdate = true;
+      attrs.color.needsUpdate = attrs.aSize.needsUpdate = attrs.aAlpha.needsUpdate = true;
     },
   };
 }
@@ -285,9 +284,15 @@ export function setColor(arr: Float32Array, i: number, c: THREE.Color) {
   arr[i * 3 + 2] = c.b;
 }
 
+export function setXYZ(arr: Float32Array, i: number, x: number, y: number, z: number) {
+  arr[i * 3] = x;
+  arr[i * 3 + 1] = y;
+  arr[i * 3 + 2] = z;
+}
+
 // ── Growing tubes ─────────────────────────────────────────────────────────────
 
-export interface GrowingTube {
+interface GrowingTube {
   mesh: THREE.Mesh;
   curve: THREE.Curve<THREE.Vector3>;
   /** Shows the tube from its start up to `f` (0–1) of its length. */
@@ -360,6 +365,7 @@ export function disposeScene(scene: THREE.Scene) {
   scene.traverse((o) => {
     const mesh = o as THREE.Mesh;
     mesh.geometry?.dispose();
+    if ((o as THREE.InstancedMesh).isInstancedMesh) (o as THREE.InstancedMesh).dispose();
     const mats = mesh.material ? (Array.isArray(mesh.material) ? mesh.material : [mesh.material]) : [];
     mats.forEach((m) => {
       Object.values(m).forEach((v) => v instanceof THREE.Texture && v.dispose());

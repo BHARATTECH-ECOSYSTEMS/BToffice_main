@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { EMAIL, HQ } from '../../content';
-import { STREAM_LABEL, STREAMS, WORK_MODE_LABEL, type ApplicationStage, type InternalJob, type Stream, type WorkMode } from '../data';
+import { EMAIL_SHAPE, STREAM_LABEL, STREAMS, WORK_MODE_LABEL, type ApplicationStage, type InternalJob, type Stream, type WorkMode } from '../data';
 import { formatDate, usePeopleById, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, Modal, PIcon } from '../ui';
 
@@ -9,8 +9,6 @@ const todayIso = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
-
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** A mailto link; the address list may be empty (then the person picks recipients in their mail app). */
 const mailto = ({ to = '', bcc = [] as string[], subject, body }: { to?: string; bcc?: string[]; subject: string; body: string }) =>

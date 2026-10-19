@@ -3,13 +3,11 @@ import { createPortal } from 'react-dom';
 import { encode } from 'uqr';
 import { LogoMark } from '../components/ui';
 import { HQ } from '../content';
-import { STREAM_LABEL, type Person, type PersonRole } from './data';
+import { PERSON_STATUS_LABEL, ROLE_LABEL, STREAM_LABEL, type Person, type PersonRole } from './data';
 import { formatDate } from './store';
 import { initials } from './ui';
 import '../styles/id-card.css';
 
-const ROLE_LABEL: Record<PersonRole, string> = { admin: 'Admin', subadmin: 'Sub Admin', employee: 'Employee', intern: 'Intern' };
-const STATUS_LABEL = { active: 'Active', inactive: 'Inactive', invited: 'Invited' } as const;
 // Assumed until HR says otherwise: a card is good for three years from joining, and is renewed for three more each time.
 const CARD_VALID_YEARS = 3;
 
@@ -43,6 +41,7 @@ function step(s: Spring, dt: number) {
   s.v += (-k * (s.x - s.to) - c * s.v) * dt;
   s.x += s.v * dt;
 }
+const atRest = (s: Spring, eps = 0.01) => Math.abs(s.x - s.to) < eps && Math.abs(s.v) < eps;
 // the further past the reach, the less the card follows: it slows before it stops, it never hits a wall
 const rubberband = (d: number, reach = DRAG_REACH) => {
   const over = Math.abs(d) - reach;
@@ -61,7 +60,12 @@ function cardExpiry(joined: string) {
 }
 // Assumed until HR keeps contract types: interns are interns, everyone else is full-time.
 const employeeType = (role: PersonRole) => (role === 'intern' ? 'Intern' : 'Full-time');
-const monthYear = (iso: string) => new Date(`${iso}T00:00:00`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
+// built once, as in formatDate; the guard keeps toLocaleDateString's "Invalid Date" where format() would throw
+const MONTH_YEAR = new Intl.DateTimeFormat('en-IN', { month: 'short', year: 'numeric' });
+const monthYear = (iso: string) => {
+  const d = new Date(`${iso}T00:00:00`);
+  return Number.isNaN(d.getTime()) ? 'Invalid Date' : MONTH_YEAR.format(d);
+};
 
 /**
  * The person as a MECARD, the short contact format phone cameras offer to save as a contact. It carries only what
@@ -128,6 +132,8 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
     dragging: false,
     closing: false,
   }).current;
+  // starts the frame loop again after it stopped at rest; stays null with reduced motion, where nothing loops
+  const wake = useRef<(() => void) | null>(null);
   const drag = useRef<{ id: number; grabX: number; grabY: number; startX: number; startY: number; t0: number; moved: number; history: { x: number; y: number; t: number }[] } | null>(null);
 
   // the card's resting place and size, from the window
@@ -138,7 +144,9 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
     const restY = Math.max(64, (vh - CARD_H * scale) / 2 - 28);
     return { vw, vh, scale, restX: vw / 2, restY };
   };
-  const offscreenY = () => -(layout().restY + CARD_H + 160);
+  // read once and on resize, not every frame
+  const view = useRef(layout());
+  const offscreenY = () => -(view.current.restY + CARD_H + 160);
 
   // start above the screen, then fall onto the lanyard
   useLayoutEffect(() => {
@@ -164,7 +172,7 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
         step(motion.y, dt);
       }
       // a hanging card lines up with its lanyard, and lags behind the way it's moving
-      const { restX, restY } = layout();
+      const { restX, restY } = view.current;
       const theta = Math.atan2(motion.x.x, restY + motion.y.x - ANCHOR_Y);
       motion.rot.to = clamp((-theta * 180) / Math.PI + motion.x.v * 0.012, -38, 38);
       step(motion.rot, dt);
@@ -172,14 +180,28 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
       step(motion.tiltX, dt);
       step(motion.tiltY, dt);
       paint(restX, restY);
+      // stop once everything has settled, so a still card costs nothing; flip is 0..1 and scaled by 180deg, hence its finer tolerance
+      if (!motion.dragging && atRest(motion.x) && atRest(motion.y) && atRest(motion.rot) && atRest(motion.flip, 0.01 / 180) && atRest(motion.tiltX) && atRest(motion.tiltY)) {
+        raf = 0;
+        return;
+      }
       raf = requestAnimationFrame(frame);
     };
+    wake.current = () => {
+      if (!raf) {
+        last = performance.now();
+        raf = requestAnimationFrame(frame);
+      }
+    };
     raf = requestAnimationFrame(frame);
-    return () => cancelAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(raf);
+      wake.current = null;
+    };
   }, []);
 
-  function paint(restX = layout().restX, restY = layout().restY) {
-    const { scale } = layout();
+  function paint(restX = view.current.restX, restY = view.current.restY) {
+    const { scale } = view.current;
     const cx = restX + motion.x.x;
     const cy = restY + motion.y.x;
     const card = cardRef.current;
@@ -204,7 +226,7 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
     if (reduced) {
       motion.flip.x = motion.flip.to;
       paint();
-    }
+    } else wake.current?.();
   }, [flipped]);
 
   const close = () => {
@@ -217,6 +239,7 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
       motion.y.damping = 1;
       motion.y.to = offscreenY();
       motion.x.to = 0;
+      wake.current?.();
     }
     window.setTimeout(onClose, reduced ? 180 : CLOSE_MS);
   };
@@ -234,7 +257,11 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
         order[(at + (e.shiftKey ? order.length - 1 : 1)) % order.length]?.focus();
       }
     };
-    const relayout = () => reduced && paint();
+    const relayout = () => {
+      view.current = layout();
+      if (reduced) paint();
+      else wake.current?.();
+    };
     document.addEventListener('keydown', key);
     window.addEventListener('resize', relayout);
     return () => {
@@ -247,7 +274,7 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
   const onPointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (reduced || motion.closing || e.button !== 0) return;
     e.currentTarget.setPointerCapture(e.pointerId);
-    const { restX, restY } = layout();
+    const { restX, restY } = view.current;
     // hold the card where it was grabbed, not by its centre
     drag.current = {
       id: e.pointerId,
@@ -267,7 +294,8 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
       // a few pixels of slack first, so a tap with a shaky hand still counts as a tap
       if (d.moved < 6) return;
       motion.dragging = true;
-      const { restX, restY } = layout();
+      wake.current?.();
+      const { restX, restY } = view.current;
       const now = performance.now();
       d.history.push({ x: e.clientX, y: e.clientY, t: now });
       while (d.history.length > 2 && now - d.history[0].t > 90) d.history.shift();
@@ -283,6 +311,7 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
     const ny = clamp(((e.clientY - r.top) / r.height) * 2 - 1, -1, 1);
     motion.tiltY.to = nx * 10;
     motion.tiltX.to = -ny * 8;
+    wake.current?.();
   };
   const onPointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
     const d = drag.current;
@@ -302,11 +331,13 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
     motion.y.v = clamp((lastP.y - first.y) / dt, -4000, 4000);
     motion.x.to = 0;
     motion.y.to = 0;
+    wake.current?.();
   };
   const onPointerLeave = () => {
     if (motion.dragging) return;
     motion.tiltX.to = 0;
     motion.tiltY.to = 0;
+    wake.current?.();
   };
 
   const active = person.status === 'active';
@@ -366,7 +397,7 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
               <p className="idc-role">
                 {ROLE_LABEL[person.role]}, {STREAM_LABEL[person.stream]} stream
               </p>
-              <span className={active ? 'idc-status is-active' : 'idc-status is-inactive'}>{STATUS_LABEL[person.status]}</span>
+              <span className={active ? 'idc-status is-active' : 'idc-status is-inactive'}>{PERSON_STATUS_LABEL[person.status]}</span>
               <dl className="idc-facts">
                 <div>
                   <dt>Employee ID</dt>

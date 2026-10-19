@@ -21,7 +21,7 @@ export function Accordion({ items, tone = 'cobalt', tags, initial = 0 }: { items
                   {tags[i]}
                 </span>
               )}
-              <span className="acc-q">{f.q}</span>
+              <span>{f.q}</span>
               <span className="acc-icon" aria-hidden="true" />
             </button>
           </h3>

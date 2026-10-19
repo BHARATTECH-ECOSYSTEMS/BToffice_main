@@ -17,6 +17,7 @@ import {
   seeded,
   setColor,
   setGroupOpacity,
+  setXYZ,
 } from './kit';
 
 /**
@@ -223,7 +224,7 @@ export function createIotGrid(): DomainWorld {
         }
         roofs.setColorAt(i, colour);
 
-        leds.pos.set([cell.x, h + 0.07, cell.z], i * 3);
+        setXYZ(leds.pos, i, cell.x, h + 0.07, cell.z);
         setColor(leds.col, i, BRAND[Math.max(0, cell.device)]);
         leds.size[i] = 0.06;
         leds.alpha[i] = lit * (0.55 + 0.45 * Math.sin(t * 5 + i * 1.7));
@@ -245,7 +246,7 @@ export function createIotGrid(): DomainWorld {
           const j = i * 5 + k;
           const u = (t * 0.5 + k / 5 + i * 0.13) % 1;
           link.curve.getPoint(u, p);
-          readings.pos.set([p.x, p.y, p.z], j * 3);
+          setXYZ(readings.pos, j, p.x, p.y, p.z);
           setColor(readings.col, j, c);
           readings.size[j] = 0.055;
           readings.alpha[j] = span(fusion, 0.8, 1) * span(u, 0, 0.1) * (1 - span(u, 0.9, 1));
@@ -271,7 +272,7 @@ export function createIotGrid(): DomainWorld {
         for (let tr = 0; tr < TRAIL; tr++) {
           const j = k * TRAIL + tr;
           shuttlePath(k, Math.max(0, u - (tr + 1) * 0.012), p);
-          trails.pos.set([p.x, p.y, p.z], j * 3);
+          setXYZ(trails.pos, j, p.x, p.y, p.z);
           setColor(trails.col, j, BRAND[k % 3]);
           trails.size[j] = 0.06 * (1 - tr / TRAIL);
           trails.alpha[j] = fade * 0.6 * (1 - tr / TRAIL);
@@ -290,7 +291,7 @@ export function createIotGrid(): DomainWorld {
           const j = k * 18 + b;
           const u = b / 17;
           bez.getPoint(u, p);
-          downlinks.pos.set([p.x, p.y, p.z], j * 3);
+          setXYZ(downlinks.pos, j, p.x, p.y, p.z);
           const head = Math.exp(-Math.pow((u - packet) * 12, 2)) * span(smart, 0.8, 1);
           setColor(downlinks.col, j, colour.copy(HUE.violet).lerp(HUE.saffron, head));
           downlinks.size[j] = 0.022 + head * 0.045;

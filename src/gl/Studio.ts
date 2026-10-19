@@ -73,7 +73,7 @@ const NO_ARM = 0;
 const BRIDGE = 2;
 
 /** The camera's orbit: one shot per beat, in degrees round the form. */
-export interface Shot {
+interface Shot {
   yaw: number;
   pitch: number;
 }
@@ -90,7 +90,7 @@ const SHOTS: Shot[] = [
 ];
 
 /** Where the form's centre sits on screen, as fractions of width and height from the top left. */
-export interface Anchor {
+interface Anchor {
   wide: [number, number];
   narrow: [number, number];
 }
@@ -299,7 +299,7 @@ export class Studio {
   private camPos = new THREE.Vector3();
   private tmp = { a: new THREE.Color(), b: new THREE.Color() };
   /** frame-time samples: a GPU that cannot keep up gets fewer pixels rather than fewer frames */
-  private perf = { n: 0, sum: 0, settled: false };
+  private perf = { n: 0, sum: 0 };
 
   /** which forms play, in order, one per beat; the camera's shots; where the form sits on screen */
   private seq: number[];
@@ -423,7 +423,6 @@ export class Studio {
       uB: { value: 0 },
       uMix: { value: 0 },
       uMorph: { value: 0 },
-      uTime: { value: 0 },
       uSteps: { value: lite ? 64 : 100 },
       uBg: { value: this.bgRT.texture },
       uViewProj: { value: new THREE.Matrix4() },
@@ -433,7 +432,6 @@ export class Studio {
       uBackLift: { value: isDark ? 0.7 : 0 },
       uCoreCol: { value: new THREE.Color() },
       uCoreI: { value: 0 },
-      uCore: { value: new THREE.Vector3() },
       uFrost: { value: 0 },
       uThreads: { value: 0 },
       uIrid: { value: 0 },
@@ -457,7 +455,7 @@ export class Studio {
     this.trash.push(box, sm, this.bgRT);
 
     // ── post: bloom only on real light, then grade, vignette and grain
-    this.composer = new EffectComposer(this.renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: lite ? 0 : 4 }));
+    this.composer = new EffectComposer(this.renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType }));
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     if (!lite && !this.bare) {
       this.bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), 0.5, 0.45, 1.6);
@@ -557,7 +555,7 @@ export class Studio {
 
   private adapt(dt: number) {
     const p = this.perf;
-    if (p.settled || dt <= 0) return;
+    if (dt <= 0) return;
     p.n++;
     if (p.n <= 20) return; // let shaders compile and the page settle
     p.sum += dt;
@@ -669,7 +667,6 @@ export class Studio {
     this.su.uA.value = a;
     this.su.uB.value = n;
     this.su.uMix.value = m;
-    this.su.uTime.value = life;
     (this.su.uTint.value as THREE.Color).copy(this.tmp.a.set(A.tint)).lerp(this.tmp.b.set(B.tint), m);
     (this.su.uCoreCol.value as THREE.Color).copy(this.tmp.a.set(A.core)).lerp(this.tmp.b.set(B.core), m);
     this.su.uDensity.value = L('density');
@@ -761,6 +758,8 @@ export class Studio {
     this.stop();
     window.removeEventListener('pointermove', this.onPointer);
     this.trash.forEach((t) => t.dispose());
+    // the composer frees only its own targets, not the passes added to it (bloom holds a chain of render targets)
+    this.composer.passes.forEach((p) => p.dispose());
     this.composer.dispose();
     this.renderer.dispose();
   }

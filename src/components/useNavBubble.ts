@@ -28,14 +28,14 @@ function placeIn(key: HTMLElement, track: HTMLElement) {
 
 /**
  * A liquid glass drop wraps the key under the pointer: every button matching `keys` (on the site's nav and the
- * portal's top bar, all of the bar's buttons; by default only the links marked `data-fx="drop"`). It appears small at the cursor when the pointer reaches a key, swells to wrap it, pulled to the key's centre but
+ * portal's top bar, all of the bar's buttons). It appears small at the cursor when the pointer reaches a key, swells to wrap it, pulled to the key's centre but
  * still leaning a little towards the cursor, glides to the next key, and shrinks away when the pointer leaves the
  * keys. Moving fast stretches it sideways. Springs carry its position and size, so it wobbles as it settles.
  * Positions are read once when the pointer arrives on `track`, never per frame; each frame writes only the drop's
  * own style. The drop must be positioned from `track`'s top left corner. Mouse and trackpad only; reduced motion
  * gets no drop at all.
  */
-export function useNavBubble(track: RefObject<HTMLElement>, drop: RefObject<HTMLElement>, keys = ':scope > [data-fx="drop"]') {
+export function useNavBubble(track: RefObject<HTMLElement>, drop: RefObject<HTMLElement>, keys: string) {
   useEffect(() => {
     const el = track.current;
     const b = drop.current;
@@ -87,7 +87,8 @@ export function useNavBubble(track: RefObject<HTMLElement>, drop: RefObject<HTML
         if (tone) b.style.setProperty('--tone', tone);
         b.toggleAttribute('data-wrap', !!tone);
       }
-      raf = inside || moving > 0.2 ? requestAnimationFrame(frame) : 0;
+      // resting on a key still settles fully, below the 0.1px the values are written at; a pointer move restarts it
+      raf = moving > (inside ? 0.02 : 0.2) ? requestAnimationFrame(frame) : 0;
     };
     const run = () => {
       if (raf) return;

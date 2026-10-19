@@ -7,6 +7,30 @@
    blur is redrawn every frame (it was removed from the Audiences panel for that reason).
    Light theme only; the dark theme keeps its own box styles. Loaded last, from main.tsx. */
 
+/* useGlassMotion writes these on the leaning box on every pointer and spring frame, and only that box reads them.
+   Non-inheriting, so a big box (the FAQ list, a contact sheet) doesn't restyle everything inside it each frame. With
+   no initial value, the var() fallbacks below still apply until a value is written. */
+@property --gm-x {
+  syntax: '*';
+  inherits: false;
+}
+@property --gm-y {
+  syntax: '*';
+  inherits: false;
+}
+@property --gm-ax {
+  syntax: '*';
+  inherits: false;
+}
+@property --gm-ay {
+  syntax: '*';
+  inherits: false;
+}
+@property --gm-a {
+  syntax: '*';
+  inherits: false;
+}
+
 :root {
   --glass-sheen:
     linear-gradient(180deg, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0) 38%),

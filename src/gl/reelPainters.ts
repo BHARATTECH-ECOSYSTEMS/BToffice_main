@@ -9,7 +9,7 @@ import { WORLD_BUILDERS } from './worlds';
  * What a domain reel draws on each frame. The reel owns timing, chapters and controls;
  * a painter only turns a moment of that timeline into pixels on the reel's canvas.
  */
-export interface ReelFrame {
+interface ReelFrame {
   act: number;
   progress: number;
   /** Seconds, for ambient motion. */

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { Arrow, BtnText, Headline, toneStyle } from '../ui';
+import { BtnText, Headline, toneStyle } from '../ui';
 import { useQuiet, useScene } from '../../gl/Scene';
 import { DEPT_TONES, type ROLES } from '../../content';
 import { mountRoleSpiral, type RoleSpiral as Spiral } from '../../gl/careers/roleSpiral';
@@ -62,7 +62,6 @@ export function RoleSpiral({
     const s = spiral.current;
     if (section && pin && s && slot >= 0 && slot < kept) scrollTo(pinnedScrollTop(section, pin, s.progressOf(slot)));
   };
-  const slot = front >= 0 ? (spiral.current?.slotOf(front) ?? -1) : -1;
   const role = front >= 0 ? roles[front] : null;
 
   return (
@@ -91,9 +90,6 @@ export function RoleSpiral({
         <div className="cr-roles__strip wrap" aria-live="polite">
           {role && kept > 0 && (
             <div key={role.title} className="cr-strip" style={toneStyle(DEPT_TONES[role.dept])}>
-              <button type="button" className="cr-strip__step" aria-label="Previous role" disabled={slot <= 0} onClick={() => goToSlot(slot - 1)}>
-                <Arrow dir="left" />
-              </button>
               <div className="cr-strip__text">
                 <b>{role.title}</b>
                 <span>{[role.focus, role.team, role.location].filter((v, k, all) => all.indexOf(v) === k).join(' · ')}</span>
@@ -101,9 +97,6 @@ export function RoleSpiral({
               <a href={applyHref(role)} className="btn btn-primary cr-strip__apply">
                 <BtnText>Apply</BtnText>
               </a>
-              <button type="button" className="cr-strip__step" aria-label="Next role" disabled={slot >= kept - 1} onClick={() => goToSlot(slot + 1)}>
-                <Arrow />
-              </button>
             </div>
           )}
         </div>

@@ -65,11 +65,10 @@
 }
 /* On opening, the form's lines rise in one after another, just behind the circle's edge. Once the visitor
    switches view (data-switched), the whole view slides in instead and the stagger doesn't replay. */
-.login:not([data-switched]) :is(.login-main > .cell-label, .login-back, .login-title, .login-sub, .login-form > *) {
+.login:not([data-switched]) :is(.login-main > .cell-label, .login-title, .login-sub, .login-form > *) {
   animation: login-rise 0.36s var(--ease-expo) both;
 }
 .login-main > .cell-label { animation-delay: 0.12s; }
-.login-back { animation-delay: 0.14s; }
 .login-title { animation-delay: 0.17s; }
 .login-sub { animation-delay: 0.2s; }
 .login-form > :nth-child(1) { animation-delay: 0.23s; }
@@ -385,7 +384,7 @@
    into dots that fly apart in 3D (src/gl/logoBurst.ts, on the canvas beside the button) as "Welcome back" rises in.
    A rare moment, so it may take its time; with reduced motion only the fades remain. */
 .login-submit.is-glass {
-  background: linear-gradient(180deg, #8C79FF 0%, #6E58F5 52%, #5A41E2 100%);
+  background: var(--violet-glass);
   border: 1px solid rgb(255 255 255 / 0.28);
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.6),
@@ -395,7 +394,7 @@
 /* the dark theme turns primary buttons white with !important (base.css); this one stays violet glass */
 [data-theme='dark'] .login-submit.is-glass,
 .dark .login-submit.is-glass {
-  background: linear-gradient(180deg, #8C79FF 0%, #6E58F5 52%, #5A41E2 100%) !important;
+  background: var(--violet-glass) !important;
   color: #fff !important;
   box-shadow:
     inset 0 1px 0 rgb(255 255 255 / 0.6),
@@ -453,7 +452,6 @@
     transform 320ms var(--ease);
 }
 .login-orb-ball svg {
-  display: block;
   border-radius: 50%;
 }
 .login-orb-ball::after {
@@ -612,7 +610,7 @@
   .login::backdrop,
   .login-glow,
   .login[data-switched] .login-view,
-  .login:not([data-switched]) :is(.login-main > .cell-label, .login-back, .login-title, .login-sub, .login-form > *) {
+  .login:not([data-switched]) :is(.login-main > .cell-label, .login-title, .login-sub, .login-form > *) {
     animation: none;
   }
 }

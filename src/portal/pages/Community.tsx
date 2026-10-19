@@ -1,15 +1,19 @@
-import { useState } from 'react';
-import { STREAM_LABEL, STREAMS, type Alumnus, type Stream } from '../data';
-import { useSession } from '../session';
+import { useEffect, useState, type CSSProperties } from 'react';
+import { toneStyle } from '../../components/ui';
+import type { HueName } from '../../gl/palette';
+import { EMAIL_SHAPE, STREAM_LABEL, STREAMS, type Alumnus, type Stream } from '../data';
+import { managesPortal, useSession } from '../session';
 import { formatDate, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, PageHead, PIcon, useListFlip, useNotice } from '../ui';
 import { InternalJobs, PostJob } from './CommunityJobs';
 
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+/** Each stream's colour, for the ring round a member's initials. */
+const STREAM_TONE: Record<Stream, HueName> = { tech: 'violet', operations: 'tangerine', hr: 'saffron', finance: 'violet' };
 
 /**
- * Bharattech Community: everyone who has left, grouped by the stream they worked in, the referrals shared with them,
- * and internal jobs offered back to them. Everyone in the portal can see it; only admins run it: they share
+ * Bharattech Community: everyone who has left, as a wall of member cards filtered by the stream they worked in, with
+ * the referrals shared with them beside it and the internal jobs offered back to them below. Employees see the
+ * members only. Admins and sub admins also see the referrals and the internal jobs; only admins run them: they share
  * referrals, post jobs, handle the applicants, and add the personal email each member is reached on (personal data,
  * so only admins see it). Only former colleagues are members, and nobody is added by hand: marking someone as left on
  * the People page puts them in their stream's community.
@@ -40,8 +44,14 @@ export function Community() {
   const referralsRef = useListFlip<HTMLUListElement>(`${stream}|${referrals.length}`);
   const label = stream ? `${STREAM_LABEL[stream]} community` : 'community';
   const isAdmin = session.role === 'admin';
-  // referrals are for admins and sub admins; employees see the members and the internal jobs
+  // referrals are for admins and sub admins; employees see the members only
   const showReferrals = session.role !== 'employee';
+  // the wall's cards come in one after another on arrival only; later changes slide (useListFlip)
+  const [entering, setEntering] = useState(true);
+  useEffect(() => {
+    const t = window.setTimeout(() => setEntering(false), 1200);
+    return () => window.clearTimeout(t);
+  }, []);
 
   return (
     <>
@@ -75,6 +85,8 @@ export function Community() {
         ))}
       </ol>
 
+      {session.role === 'employee' && <JoinCommunity notify={notify} />}
+
       <div className="p-chips p-comm-streams" role="group" aria-label="Show community">
         {(['', ...STREAMS.map((s) => s.id)] as const).map((s) => (
           <button key={s || 'all'} type="button" aria-pressed={stream === s} onClick={() => setStream(s)}>
@@ -83,12 +95,8 @@ export function Community() {
         ))}
       </div>
 
-      {/* the roles lead, because bringing people back is what the community is for; the people sit beside them.
-          Each group is a head on the page edge, then a card; the heads of both columns share one grid row. */}
-      <div className="p-comm-layout">
-        <InternalJobs stream={stream} notify={notify} isAdmin={isAdmin} />
-
-        <aside className="p-comm-aside" aria-label="Community members and referrals">
+      <div className="p-comm-wall-layout" data-aside={showReferrals || undefined}>
+        <section className="p-comm-wall" aria-labelledby="comm-members">
           <header className="p-comm-head">
             <h2 id="comm-members" className="p-comm-title">
               Members <span className="p-comm-count">{members.length}</span>
@@ -98,89 +106,93 @@ export function Community() {
               {isAdmin ? ', reached on their personal email.' : '.'}
             </p>
           </header>
-          {/* only this first head shares the grid row with the jobs head; everything under it stacks in here */}
-          <div className="p-comm-aside-body">
-            <section className="p-card p-comm-panel" aria-labelledby="comm-members">
-              {members.length ? (
-                <ul className="p-comm-people" ref={membersRef}>
-                  {members.map((a) => (
-                    <li key={a.id} className="p-comm-person" data-flip={a.id}>
-                      <span className="p-avatar is-soft is-small" aria-hidden="true">
-                        {initials(a.name)}
-                      </span>
+          {members.length ? (
+            <ul className="p-comm-grid" ref={membersRef} data-enter={entering || undefined}>
+              {members.map((a, i) => (
+                <li key={a.id} className="p-comm-card" data-flip={a.id} style={toneStyle(STREAM_TONE[a.stream], { '--i': i } as CSSProperties)}>
+                  <span className="p-comm-card-top">
+                    <span className="p-comm-face" aria-hidden="true">
+                      {initials(a.name)}
+                    </span>
+                    <Badge kind="soft">{STREAM_LABEL[a.stream]}</Badge>
+                  </span>
+                  <strong className="p-comm-name">{a.name}</strong>
+                  <small className="p-comm-left">Left {formatDate(a.left)}</small>
+                  {isAdmin && (
+                    <span className="p-comm-card-email">
+                      <PersonalEmail member={a} notify={notify} />
+                    </span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <section className="p-card">
+              <Empty icon="users" title="No members yet">
+                People join when they're marked as left on the People page.
+              </Empty>
+            </section>
+          )}
+        </section>
+
+        {showReferrals && (
+          <aside className="p-comm-refs" aria-labelledby="comm-referrals">
+            <header className="p-comm-head">
+              <h2 id="comm-referrals" className="p-comm-title">
+                Referrals <span className="p-comm-count">{shared.length}</span>
+              </h2>
+              <p className="p-muted">Roles at other companies passed on to the {label}.</p>
+            </header>
+            <section className="p-card p-comm-panel">
+              {shared.length ? (
+                <ul className="p-comm-people" ref={referralsRef}>
+                  {shared.map((r) => (
+                    <li key={r.id} className="p-comm-ref" data-flip={r.id}>
                       <span className="p-comm-main">
-                        <strong>{a.name}</strong>
-                        <small>Left {formatDate(a.left)}</small>
-                        {isAdmin && <PersonalEmail member={a} notify={notify} />}
+                        <strong>{r.title}</strong>
+                        <span>{r.company}</span>
+                        {r.note && <p>{r.note}</p>}
+                        <small>
+                          {STREAM_LABEL[r.stream]}, shared by {r.postedBy} on {formatDate(r.posted)}
+                        </small>
                       </span>
-                      <Badge kind="soft">{STREAM_LABEL[a.stream]}</Badge>
+                      {(r.link || isAdmin) && (
+                        <span className="p-comm-ref-actions">
+                          {r.link && (
+                            <a className={btnClass('ghost', { small: true })} href={r.link} target="_blank" rel="noreferrer">
+                              <BtnLabel icon="external">
+                                Open<span className="sr-only"> {r.title} at {r.company} (opens in a new tab)</span>
+                              </BtnLabel>
+                            </a>
+                          )}
+                          {isAdmin && (
+                            <DeleteButton
+                              small
+                              label="Remove"
+                              srText={r.title}
+                              onDone={() => {
+                                removeReferral(r.id);
+                                notify('The referral was removed.');
+                              }}
+                            />
+                          )}
+                        </span>
+                      )}
                     </li>
                   ))}
                 </ul>
               ) : (
-                <Empty icon="users" title="No members yet">
-                  People join when they're marked as left on the People page.
+                <Empty icon="share" title="No referrals here yet">
+                  Roles passed on to the {label} show up here.
                 </Empty>
               )}
             </section>
-
-            {showReferrals && (
-              <>
-                <header className="p-comm-head">
-                  <h2 id="comm-referrals" className="p-comm-title">
-                    Referrals <span className="p-comm-count">{shared.length}</span>
-                  </h2>
-                  <p className="p-muted">Roles at other companies passed on to the {label}.</p>
-                </header>
-                <section className="p-card p-comm-panel" aria-labelledby="comm-referrals">
-                  {shared.length ? (
-                    <ul className="p-comm-people" ref={referralsRef}>
-                      {shared.map((r) => (
-                        <li key={r.id} className="p-comm-ref" data-flip={r.id}>
-                          <span className="p-comm-main">
-                            <strong>{r.title}</strong>
-                            <span>{r.company}</span>
-                            {r.note && <p>{r.note}</p>}
-                            <small>
-                              {STREAM_LABEL[r.stream]}, shared by {r.postedBy} on {formatDate(r.posted)}
-                            </small>
-                          </span>
-                          {(r.link || isAdmin) && (
-                            <span className="p-comm-ref-actions">
-                              {r.link && (
-                                <a className={btnClass('ghost', { small: true })} href={r.link} target="_blank" rel="noreferrer">
-                                  <BtnLabel icon="external">
-                                    Open<span className="sr-only"> {r.title} at {r.company} (opens in a new tab)</span>
-                                  </BtnLabel>
-                                </a>
-                              )}
-                              {isAdmin && (
-                                <DeleteButton
-                                  small
-                                  label="Remove"
-                                  srText={r.title}
-                                  onDone={() => {
-                                    removeReferral(r.id);
-                                    notify('The referral was removed.');
-                                  }}
-                                />
-                              )}
-                            </span>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <Empty icon="share" title="No referrals here yet">
-                      Roles passed on to the {label} show up here.
-                    </Empty>
-                  )}
-                </section>
-              </>
-            )}
-          </div>
-        </aside>
+          </aside>
+        )}
       </div>
+
+      {/* internal job postings are run by admins and sub admins; employees don't see them */}
+      {managesPortal(session.role) && <InternalJobs stream={stream} notify={notify} isAdmin={isAdmin} />}
 
       {posting && (
         <PostJob
@@ -197,6 +209,114 @@ export function Community() {
 }
 
 /**
+ * An employee joins the community ahead of leaving by giving the personal email it should reach them on. Nothing
+ * changes while they work here; the day they're marked as left, they arrive in their stream's community with that
+ * email already in place. They can change it or take it back at any time.
+ */
+function JoinCommunity({ notify }: { notify: (t: string) => void }) {
+  const { me, people, alumni, joinCommunity } = usePortal();
+  const [editing, setEditing] = useState(false);
+  const [value, setValue] = useState('');
+  const [error, setError] = useState('');
+  const joined = me.personalEmail;
+  const community = `${STREAM_LABEL[me.stream]} community`;
+
+  const save = () => {
+    const email = value.trim().toLowerCase();
+    if (!EMAIL_SHAPE.test(email)) return setError('Enter an email like name@gmail.com.');
+    if (email === me.email.toLowerCase()) return setError('Your work email stops when you leave. Use a personal one.');
+    const taken = [...people, ...alumni].some((p) => p.id !== me.id && p.personalEmail?.toLowerCase() === email);
+    if (taken) return setError('Someone else already uses this email.');
+    joinCommunity(me.id, email);
+    setEditing(false);
+    notify(joined ? 'Your personal email was changed.' : `You've joined the ${community}.`);
+  };
+
+  if (joined && !editing) {
+    return (
+      <section className="p-card p-comm-join is-joined" aria-labelledby="comm-join">
+        <span className="p-comm-join-icon" aria-hidden="true">
+          <PIcon name="check" size={20} />
+        </span>
+        <span className="p-comm-join-text">
+          <h2 id="comm-join">You're in the {community}</h2>
+          <p>
+            When you leave, we'll reach you at <strong className="p-comm-join-email">{joined}</strong>.
+          </p>
+        </span>
+        <span className="p-comm-join-actions">
+          <button type="button" className={btnClass('ghost', { small: true })} onClick={() => (setValue(joined), setError(''), setEditing(true))}>
+            <BtnLabel icon="edit">Change email</BtnLabel>
+          </button>
+          <button
+            type="button"
+            className={btnClass('ghost', { small: true })}
+            onClick={() => {
+              joinCommunity(me.id, '');
+              notify(`You've left the ${community} list.`);
+            }}
+          >
+            <BtnLabel>Leave</BtnLabel>
+          </button>
+        </span>
+      </section>
+    );
+  }
+
+  return (
+    <section className="p-card p-comm-join" aria-labelledby="comm-join">
+      <span className="p-comm-join-icon" aria-hidden="true">
+        <PIcon name="users" size={20} />
+      </span>
+      <span className="p-comm-join-text">
+        <h2 id="comm-join">{joined ? 'Change your personal email' : 'Join the community'}</h2>
+        <p>
+          {joined
+            ? `When you leave, the ${community} will reach you on this email instead.`
+            : `Give us a personal email now. When you leave, you'll join the ${community} on it and hear about roles first.`}
+        </p>
+      </span>
+      <form
+        className="p-comm-join-form"
+        noValidate
+        onSubmit={(e) => {
+          e.preventDefault();
+          save();
+        }}
+      >
+        <label className="sr-only" htmlFor="join-email">
+          Your personal email
+        </label>
+        <input
+          id="join-email"
+          type="email"
+          value={value}
+          onChange={(e) => (setValue(e.target.value), setError(''))}
+          onKeyDown={(e) => e.key === 'Escape' && joined && setEditing(false)}
+          placeholder="name@gmail.com"
+          autoComplete="email"
+          aria-invalid={!!error || undefined}
+          aria-describedby={error ? 'join-email-err' : undefined}
+        />
+        <button type="submit" className={btnClass('primary')}>
+          <BtnLabel icon={joined ? undefined : 'plus'}>{joined ? 'Save' : 'Join'}</BtnLabel>
+        </button>
+        {joined && (
+          <button type="button" className={btnClass('ghost')} onClick={() => setEditing(false)}>
+            <BtnLabel>Cancel</BtnLabel>
+          </button>
+        )}
+        {error && (
+          <small id="join-email-err" className="p-error" role="alert">
+            {error}
+          </small>
+        )}
+      </form>
+    </section>
+  );
+}
+
+/**
  * The personal email a former colleague is reached on, shown under their name; an admin adds or changes it in place.
  * It must look like an email and can't be their old work email, which stopped working when they left.
  */
@@ -209,7 +329,10 @@ function PersonalEmail({ member, notify }: { member: Alumnus; notify: (t: string
   if (!editing) {
     return member.personalEmail ? (
       <span className="p-comm-email">
-        {member.personalEmail}
+        {/* a long address is cut short on a narrow card; the whole of it shows on hover */}
+        <span className="p-comm-email-text" title={member.personalEmail}>
+          {member.personalEmail}
+        </span>
         <button type="button" className="p-text-btn" onClick={() => (setValue(member.personalEmail ?? ''), setEditing(true))}>
           Change<span className="sr-only"> personal email for {member.name}</span>
         </button>

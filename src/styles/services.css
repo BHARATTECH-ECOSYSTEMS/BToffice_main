@@ -48,10 +48,6 @@
   touch-action: pan-y;
   user-select: none;
 }
-/* the cards turn the ring as the mouse moves over them, and open on a click */
-.svc-journey__stage.is-ring .svc-card__face {
-  cursor: pointer;
-}
 .svc-journey__stage.is-dragging,
 .svc-journey__stage.is-dragging .svc-card__face {
   cursor: grabbing;
@@ -218,6 +214,13 @@
 .svc .svc-journey .svc-chapter > * {
   margin-left: calc(-1 * clamp(0px, (100vw - var(--content)) / 2 - 32px, 48px));
 }
+/* desktop: rebuild --col-x from 100cqw (#main's width) so the copy mirrors .svc-side exactly;
+   100vw counts a classic scrollbar and has no gutter floor, so the two sides drifted apart */
+@media (min-width: 901px) {
+  .svc .svc-journey .svc-chapter > * {
+    margin-left: calc(-1 * clamp(0px, max(var(--gutter), (100cqw - var(--content)) / 2) - 32px, 48px));
+  }
+}
 .svc .svc-chapter.is-ring .svc-h2 {
   font-size: clamp(38px, 3.9vw, 60px);
 }
@@ -308,11 +311,7 @@
   letter-spacing: -0.054em;
 }
 .svc .svc-h2 {
-  font-size: clamp(44px, 5vw, 80px);
   letter-spacing: -0.05em;
-}
-.svc .svc-h2 .is-accent {
-  display: block;
 }
 
 /* the focus panel: whichever card is in front, in plain readable type, plus a way into each group */
@@ -451,7 +450,6 @@
 /* The cards. Each is ONE flat surface in the 3D scene: a separate back face doubled the surfaces the browser has to
    depth-sort every frame (with each pair coplanar, the costly case), and that was what dropped frames. */
 .svc-card-host .svc-card__face {
-  opacity: var(--fade, 1);
   /* its own GPU layer, so the scene's fades are composited instead of repainting the card every frame */
   will-change: transform;
 }
@@ -675,7 +673,6 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: currentColor;
 }
 .svc-dialog__kind.is-service::before {
   background: var(--violet);
@@ -686,7 +683,6 @@
 .svc-dialog__kind.is-sector::before {
   background: var(--saffron);
 }
-.svc .svc-dialog__title,
 .svc-dialog__title {
   margin: 0;
   padding-right: 48px;
@@ -814,6 +810,18 @@
   font-size: 18px;
   line-height: 1.55;
   color: var(--ink-soft);
+}
+/* desktop: match the Careers closing block (.cr-close__inner) so both page endings are spaced alike */
+@media (min-width: 901px) {
+  .svc-cta-inner {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    column-gap: var(--split-gap);
+  }
+  .svc-cta-copy p {
+    max-width: 44ch;
+    margin-bottom: 24px;
+    font-size: var(--fs-lede);
+  }
 }
 
 /* ── Reduced motion ────────────────────────────────────────────────────────── */

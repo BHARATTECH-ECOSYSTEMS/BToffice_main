@@ -13,6 +13,7 @@ import {
   lacquer,
   seeded,
   setColor,
+  setXYZ,
 } from './kit';
 
 /**
@@ -250,7 +251,7 @@ export function createDefenseDome(): DomainWorld {
         for (let s = 0; s < TRAIL; s++) {
           const kk = Math.max(0, k - s * 0.012);
           const r = lerp(THREAT_START, R, kk / FLIGHT);
-          sparks.pos.set([dir.x * r, GROUND + dir.y * r, dir.z * r], n * 3);
+          setXYZ(sparks.pos, n, dir.x * r, GROUND + dir.y * r, dir.z * r);
           setColor(sparks.col, n, HUE.orange);
           sparks.size[n] = 0.07 * (1 - s / TRAIL);
           sparks.alpha[n] = flying ? cyber * span(k, 0, 0.12) * (1 - s / TRAIL) : 0;
@@ -268,7 +269,7 @@ export function createDefenseDome(): DomainWorld {
       BLIPS.forEach(([angle, dist]) => {
         const since = (sweep - angle + TAU) % TAU;
         const glow = Math.pow(1 - since / TAU, 3);
-        sparks.pos.set([Math.cos(angle) * dist, GROUND + 0.03, -Math.sin(angle) * dist], n * 3);
+        setXYZ(sparks.pos, n, Math.cos(angle) * dist, GROUND + 0.03, -Math.sin(angle) * dist);
         setColor(sparks.col, n, HUE.violet);
         sparks.size[n] = 0.06 + glow * 0.06;
         sparks.alpha[n] = monitor * (0.2 + 0.8 * glow);

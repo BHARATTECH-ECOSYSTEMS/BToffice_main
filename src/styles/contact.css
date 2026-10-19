@@ -240,6 +240,13 @@
   color: #FAF9F6;
 }
 
+/* desktop: same split gap as the sheet above and every other two-column split */
+@media (min-width: 901px) {
+  .visit {
+    gap: var(--split-gap);
+  }
+}
+
 @media (max-width: 900px) {
   .contact-sheet,
   .visit {

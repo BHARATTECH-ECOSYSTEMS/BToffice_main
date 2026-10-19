@@ -16,6 +16,30 @@ const STEP = 360 / N;
 /** Screens of scroll per capability (cut by a third from 0.32, so the wheel turns without dragging). */
 const PACE = 0.21;
 
+// The ring never changes, so it is built once: React skips the same element on each of the wheel's re-renders.
+const WHEEL_RING = (
+  <svg className="wheel-ring" viewBox="-100 -100 200 200">
+    <circle r="99.5" className="wheel-outer" />
+    {TONES.map((t, i) => (
+      <circle
+        key={t}
+        r="97"
+        className="wheel-arc"
+        pathLength={360}
+        style={{ stroke: `var(--${t})`, strokeDasharray: `${5 * STEP - 3} ${360 - 5 * STEP + 3}`, strokeDashoffset: `${-(i * 5 * STEP - STEP / 2 + 1.5)}` } as CSSProperties}
+      />
+    ))}
+    <g className="wheel-ticks">
+      {Array.from({ length: N * 4 }, (_, k) => {
+        const a = (k / (N * 4)) * Math.PI * 2;
+        const long = k % 4 === 0;
+        return <line key={k} x1={Math.cos(a) * 64} y1={Math.sin(a) * 64} x2={Math.cos(a) * (long ? 58 : 61)} y2={Math.sin(a) * (long ? 58 : 61)} className={long ? 'wheel-tick is-long' : 'wheel-tick'} />;
+      })}
+    </g>
+    <circle r="50" className="wheel-inner" />
+  </svg>
+);
+
 /**
  * Fifteen capabilities on one wheel. Scrolling turns it, and the capability that comes round to the
  * pointer opens in the card beside it. The wheel's three coloured arcs are the three families.
@@ -107,26 +131,7 @@ export function Capabilities() {
         </div>
 
         <div className="wheel" ref={wheel} aria-hidden="true">
-          <svg className="wheel-ring" viewBox="-100 -100 200 200">
-            <circle r="99.5" className="wheel-outer" />
-            {TONES.map((t, i) => (
-              <circle
-                key={t}
-                r="97"
-                className="wheel-arc"
-                pathLength={360}
-                style={{ stroke: `var(--${t})`, strokeDasharray: `${5 * STEP - 3} ${360 - 5 * STEP + 3}`, strokeDashoffset: `${-(i * 5 * STEP - STEP / 2 + 1.5)}` } as CSSProperties}
-              />
-            ))}
-            <g className="wheel-ticks">
-              {Array.from({ length: N * 4 }, (_, k) => {
-                const a = (k / (N * 4)) * Math.PI * 2;
-                const long = k % 4 === 0;
-                return <line key={k} x1={Math.cos(a) * 64} y1={Math.sin(a) * 64} x2={Math.cos(a) * (long ? 58 : 61)} y2={Math.sin(a) * (long ? 58 : 61)} className={long ? 'wheel-tick is-long' : 'wheel-tick'} />;
-              })}
-            </g>
-            <circle r="50" className="wheel-inner" />
-          </svg>
+          {WHEEL_RING}
           {CAPABILITIES.map((c, i) => (
             <span key={c.name} className="wheel-chip" data-on={i === active || undefined} style={{ '--a': `${i * STEP}deg`, '--tone': `var(--${TONES[Math.floor(i / 5)]})` } as CSSProperties}>
               <span>

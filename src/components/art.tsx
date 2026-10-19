@@ -30,7 +30,7 @@ export function SearchArt() {
   const [ref, inView] = useInView<HTMLDivElement>();
   const [typed, setTyped] = useState(false);
   return (
-    <div ref={ref} className="ui-card search-art">
+    <div ref={ref} className="ui-card">
       <div className="ui-bar">
         <span className="ui-dots">
           <i />
@@ -82,7 +82,7 @@ export function WorkflowArt() {
   const [ref, inView] = useInView<HTMLDivElement>();
   const step = useCycle(EDGES.length + 1, 900, inView);
   return (
-    <div ref={ref} className="ui-card flow-art">
+    <div ref={ref} className="ui-card">
       <div className="ui-bar">
         <span className="ui-dots">
           <i />
@@ -170,8 +170,8 @@ export function MetricsArt() {
         <path d={line} className="metrics-line" pathLength={1} vectorEffect="non-scaling-stroke" />
       </svg>
       <ul className="metrics-regions">
-        {regions.map((r, i) => (
-          <li key={r} style={{ '--i': i } as CSSProperties}>
+        {regions.map((r) => (
+          <li key={r}>
             <i />
             {r}
           </li>
@@ -192,7 +192,7 @@ const INDIA_PATH = (() => {
 })();
 
 /** The drawing on each plate's face, in a 300 × 300 square. Lines take the plate's ink colour. */
-export function PlateArt({ i }: { i: number }) {
+function PlateArt({ i }: { i: number }) {
   switch (i) {
     case 0: // Applications: the windows people work in
       return (
@@ -339,7 +339,7 @@ export function PlateArt({ i }: { i: number }) {
             [182, 158],
           ].map(([x, y], k) => (
             <g key={k}>
-              <circle cx={x} cy={y} r="14" className="pl-ring" />
+              <circle cx={x} cy={y} r="14" />
               <circle cx={x} cy={y} r="6" className="pl-solid" />
             </g>
           ))}

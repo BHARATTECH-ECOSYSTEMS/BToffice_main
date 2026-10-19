@@ -83,7 +83,7 @@ function write(session: Session | null, remember?: boolean) {
 }
 
 /** "aanya.k.sharma@…" becomes "Aanya K Sharma": a readable name until the real profile comes from the backend. */
-export function nameFromEmail(email: string) {
+function nameFromEmail(email: string) {
   const local = email.split('@')[0] ?? '';
   const words = local.split(/[._-]+/).filter(Boolean);
   return words.length ? words.map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ') : 'Team member';

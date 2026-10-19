@@ -13,7 +13,7 @@ const CAT_TONE: Record<string, HueName> = { Research: 'violet', Technology: 'saf
  * Column spans for n cards on a 12-column grid, so no row is left with a lone card:
  * a feature pair first (8 + 4), then rows of three, with a row of four or two where the count needs it.
  */
-export function spansFor(n: number): number[] {
+function spansFor(n: number): number[] {
   if (n === 1) return [12];
   const out = [8, 4];
   let m = n - 2;
@@ -66,7 +66,7 @@ export function Blog() {
           </div>
           <div className="bento posts-bento" key={cat}>
             {posts.map((p, i) => {
-              const wide = spans[i] >= 8 || spans[i] === 12;
+              const wide = spans[i] >= 8;
               return (
                 <Reveal
                   key={p.slug}

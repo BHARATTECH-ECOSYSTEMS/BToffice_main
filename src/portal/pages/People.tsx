@@ -1,11 +1,9 @@
 import { useState, type CSSProperties } from 'react';
-import { ID_RETENTION_DAYS, STREAM_LABEL, STREAMS, type Person, type PersonRole, type Stream } from '../data';
+import { EMAIL_SHAPE, ID_RETENTION_DAYS, ROLE_LABEL, STREAM_LABEL, STREAMS, type Person, type PersonRole, type Stream } from '../data';
 import { managesPortal, useSession } from '../session';
 import { usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, Modal, PageHead, PIcon, SearchField, useListFlip, useNotice, usePlayThen } from '../ui';
 
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const ROLE_LABEL: Record<PersonRole, string> = { admin: 'Admin', subadmin: 'Sub Admin', employee: 'Employee', intern: 'Intern' };
 
 export function People() {
   const role = useSession()!.role;
@@ -87,7 +85,7 @@ export function People() {
                     {isManager && (
                       <td>
                         {manageable(p) ? (
-                          <label className="p-select-wrap">
+                          <label>
                             <span className="sr-only">Role for {p.name}</span>
                             <select
                               className="p-select"

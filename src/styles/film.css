@@ -226,12 +226,10 @@
   transform: translate3d(calc(var(--d, 0) * -1 * var(--shift) * (70px + var(--k) * 46px)), calc((1 - var(--v, 1)) * 0.5em), 0);
   will-change: transform;
 }
-.is-hero .beat-line:last-child > span,
 .beat-title .beat-line:last-child > span {
   color: var(--tone);
 }
 .is-hero .beat-line:last-child > span {
-  color: #6E58F5 !important;
   text-shadow: 0 0 32px rgb(110 88 245 / 0.22);
 }
 .beat-body {
@@ -274,10 +272,6 @@
 }
 .is-hero .beat-actions .btn-primary {
   box-shadow: 0 14px 30px -10px rgb(110 88 245 / 0.55);
-  border: 1px solid rgb(110 88 245 / 0.35);
-}
-.is-hero .beat-actions .btn-primary::before {
-  background: linear-gradient(135deg, #7B68EE, #6E58F5);
 }
 
 @media (max-width: 900px) {
@@ -347,7 +341,7 @@
 }
 .wheel-card {
   position: relative;
-  margin-top: 34px;
+  margin-top: 28px;
   padding: 26px 26px 22px;
   border-radius: var(--r-lg);
   background: color-mix(in srgb, var(--tone) 8%, var(--paper));
@@ -356,7 +350,6 @@
 }
 .wheel-card-top {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   font-family: var(--mono);
   font-size: var(--fs-label);
@@ -444,11 +437,6 @@
   border-radius: 50%;
   background: var(--tone);
 }
-.wheel-fams button span {
-  font-family: var(--mono);
-  font-size: 11px;
-  color: var(--muted);
-}
 .wheel-fams [data-on] button {
   background: var(--tone);
   color: #fff;
@@ -457,10 +445,14 @@
 .wheel-fams [data-on] button i {
   background: #fff;
 }
-.wheel-fams [data-on] button span {
-  color: rgb(255 255 255 / 0.75);
-}
 
+/* --turn changes on every frame the wheel turns. Registered as non-inheriting, only the ring and the chips that read
+   it restyle, not every tick and label inside them. */
+@property --turn {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
 /* the wheel itself: mostly off the right edge, its active capability at nine o'clock */
 .wheel {
   --d: min(128vh, 1240px, 150vw);
@@ -471,6 +463,10 @@
   width: var(--d);
   height: var(--d);
   transform: translateY(-50%);
+}
+.wheel-ring,
+.wheel-chip {
+  --turn: inherit;
 }
 /* The wheel is taller than the screen, so as it turns its chips pass the top and bottom edges. Fading the wheel
    out over the last stretch before each edge lets a chip dissolve there instead of being cut in half. The wheel
@@ -544,7 +540,6 @@
   position: absolute;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   padding: 8px 14px 8px 8px;
   border-radius: var(--r-pill);
   background: var(--paper);
@@ -555,25 +550,17 @@
   transform: translate(-50%, -50%) scale(0.92);
   transition: transform 0.45s var(--ease-expo), background 0.35s var(--ease), color 0.35s var(--ease), box-shadow 0.35s var(--ease);
 }
-.wheel-chip b {
-  display: grid;
-  place-items: center;
-  width: 26px;
-  height: 26px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--tone) 14%, var(--paper));
-  font: 600 10.5px var(--mono);
-  color: var(--tone);
-}
 .wheel-chip[data-on] > span {
   background: var(--tone);
   color: #fff;
   box-shadow: 0 18px 36px -16px var(--tone);
   transform: translate(-50%, -50%) scale(1.16);
 }
-.wheel-chip[data-on] b {
-  background: rgb(255 255 255 / 0.22);
-  color: #fff;
+/* the chips are text only now, so the label sits centred in its pill; kept after the base rule so it wins */
+@media (min-width: 901px) {
+  .wheel-chip > span {
+    padding: 8px 14px;
+  }
 }
 
 @media (max-width: 900px) {
@@ -619,8 +606,6 @@
 
 .finale-film {
   position: relative;
-  min-height: clamp(680px, 92svh, 900px);
-  background: var(--bg);
 }
 .finale-pin {
   position: relative;
@@ -686,9 +671,6 @@
 }
 
 @media (max-width: 640px) {
-  .finale-film {
-    min-height: 720px;
-  }
   .finale-pin {
     min-height: 720px;
   }

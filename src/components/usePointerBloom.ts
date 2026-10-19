@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
 
 /**
- * Cards and buttons light up where the cursor is: the element under the pointer gets its position as --mx/--my,
- * which the purple bloom on .btn-primary/.btn-ghost/.btn-light (base.css) and the .cell glow grow from.
+ * Buttons light up where the cursor is: the button under the pointer gets its position as --mx/--my, which the
+ * purple bloom on .btn-primary/.btn-ghost/.btn-light (base.css) grows from.
  * Shared by the site layout and the employee portal, so every button behaves the same.
  */
 export function usePointerBloom() {
@@ -11,7 +11,7 @@ export function usePointerBloom() {
     let last: PointerEvent | null = null;
     const update = () => {
       raf = 0;
-      const t = (last?.target as HTMLElement | null)?.closest?.('.cell, .btn-primary, .btn-ghost, .btn-light, .nav-cta') as HTMLElement | null;
+      const t = (last?.target as HTMLElement | null)?.closest?.('.btn-primary, .btn-ghost, .btn-light') as HTMLElement | null;
       if (!t || !last) return;
       const r = t.getBoundingClientRect();
       t.style.setProperty('--mx', `${last.clientX - r.left}px`);

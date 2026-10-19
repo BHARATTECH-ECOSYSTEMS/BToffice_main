@@ -88,7 +88,7 @@ export const MotionLink = motion.create(Link);
 export const keyAt = (links: HTMLElement | null, index: number) =>
   index < 0 ? null : (links?.querySelectorAll<HTMLElement>(':scope > a, :scope > button')[index] ?? null);
 
-export type KeyHighlight = { x: number; w: number; glide: boolean; tone?: HueName };
+type KeyHighlight = { x: number; w: number; glide: boolean; tone?: HueName };
 
 /**
  * Where the colour pool under the lit key sits (`.nav-hl`). It glides between keys. When it comes back after

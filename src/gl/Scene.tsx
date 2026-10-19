@@ -6,7 +6,7 @@ import { pageScroll, setPageScroll, trackBox, type Box } from '../components/tra
 interface Entry {
   el: HTMLElement;
   target: () => Target;
-  onProgress?: (p: number, active: boolean) => void;
+  onProgress?: (p: number) => void;
 }
 
 /** A registered entry with its cached page position, so picking never forces a layout. */
@@ -41,7 +41,7 @@ function perPx() {
 }
 
 /** The phone/tablet breakpoint, matching the CSS: at this width and below, pinned sections scroll normally. */
-export const PHONE_MAX = 900;
+const PHONE_MAX = 900;
 export const WIDE_QUERY = `(min-width: ${PHONE_MAX + 1}px)`;
 export const isCompact = () => window.innerWidth <= PHONE_MAX;
 
@@ -66,7 +66,7 @@ export function poseAt(x: number, y: number, px: number, size: number, max = 1) 
  * While `ref` holds the centre of the viewport, the scene shows `target`.
  * `onProgress` receives 0…1 as the element scrolls through, every frame.
  */
-export function useFormation(ref: RefObject<HTMLElement>, target: Target | (() => Target), onProgress?: (p: number, active: boolean) => void) {
+export function useFormation(ref: RefObject<HTMLElement>, target: Target | (() => Target), onProgress?: (p: number) => void) {
   const { register } = useScene();
   const targetRef = useRef(target);
   const progressRef = useRef(onProgress);
@@ -77,7 +77,7 @@ export function useFormation(ref: RefObject<HTMLElement>, target: Target | (() =
     return register({
       el: ref.current,
       target: () => (typeof targetRef.current === 'function' ? targetRef.current() : targetRef.current),
-      onProgress: (p, a) => progressRef.current?.(p, a),
+      onProgress: (p) => progressRef.current?.(p),
     });
   }, [ref, register]);
 }
@@ -143,7 +143,7 @@ export function SceneProvider({ children }: { children: ReactNode }) {
         }
         if (e.onProgress) {
           const raw = height > vh * 1.2 ? -top / (height - vh) : (mid - top) / height;
-          e.onProgress(Math.min(1, Math.max(0, raw)), false);
+          e.onProgress(Math.min(1, Math.max(0, raw)));
         }
       });
       const chosen = best as Placed | null;

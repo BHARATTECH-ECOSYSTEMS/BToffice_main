@@ -20,18 +20,14 @@
   --violet-text: var(--violet);
   /* the violet glass of the site's main buttons (login, profile, the portal's delete) */
   --violet-glass: linear-gradient(180deg, #8C79FF 0%, #6E58F5 52%, #5A41E2 100%);
-  --tango-orange: #FF8643;
   --tangerine: #FF8643;  /* Tango Orange */
   --pitch-yellow: #F59E00;
   --saffron: #F59E00;    /* Pitch Yellow */
-  --cultured: #F8F7F3;   /* Warm Paper / Cultured */
 
   /* Generic mapping across legacy semantic tokens to the 3 brand colors */
   --cobalt: var(--violet);
   --emerald: var(--saffron);
   --pink: var(--tangerine);
-  --signal: var(--tangerine);
-  --imperial: var(--violet);
   --tone: var(--violet);
 
   --display: 'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif;
@@ -75,7 +71,6 @@
   --fs-label: 11px; /* mono uppercase labels: 0.1em tracking, weight 500 */
   --fs-label-sm: 10px;
   --fw-head: 640;
-  --fw-strong: 700;
 
   --dur-press: 120ms;
   --dur-hover: 180ms;
@@ -107,17 +102,12 @@ body.dark {
   --violet-text: #A597FF;
   --line: rgba(255, 255, 255, 0.09);
   --line-strong: rgba(255, 255, 255, 0.18);
-  --cultured: #0A0910;
   --shadow-sm: 0 0 0 1px var(--line), 0 2px 8px rgba(0, 0, 0, 0.45);
   --shadow-lg: 0 0 0 1px var(--line), 0 8px 24px -4px rgba(0, 0, 0, 0.7);
 }
 
 [data-theme='dark'] .nav-glass,
 .dark .nav-glass,
-[data-theme='dark'].lite .nav-glass,
-.dark.lite .nav-glass,
-.lite[data-theme='dark'] .nav-glass,
-.lite.dark .nav-glass,
 [data-theme='dark'] .nav[data-compact] .nav-glass,
 .dark .nav[data-compact] .nav-glass {
   background: rgba(18, 17, 28, 0.86);
@@ -256,9 +246,7 @@ body.dark {
 .dark .segmented button:hover {
   color: #FFFFFF;
 }
-[data-theme='dark'] .segmented button[aria-selected='true'],
 [data-theme='dark'] .segmented button[aria-pressed='true'],
-.dark .segmented button[aria-selected='true'],
 .dark .segmented button[aria-pressed='true'] {
   background: #252438;
   color: #FFFFFF;
@@ -385,7 +373,6 @@ main:focus {
   z-index: 40;
   pointer-events: none;
   opacity: 0.045;
-  mix-blend-mode: multiply;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
 }
 .lite .app::after {
@@ -396,6 +383,17 @@ main:focus {
 [data-offscreen] *,
 [data-offscreen] *::before,
 [data-offscreen] *::after {
+  animation-play-state: paused !important;
+}
+
+/* The nav glance and the back-to-top orb sit outside #main, so they get the same pause while they are hidden. */
+.nav-peek:not([data-open]) *,
+.nav-peek:not([data-open]) *::before,
+.nav-peek:not([data-open]) *::after,
+.nav-peek-pane:not([data-on]) *,
+.nav-peek-pane:not([data-on]) *::before,
+.nav-peek-pane:not([data-on]) *::after,
+.to-top:not([data-shown]) * {
   animation-play-state: paused !important;
 }
 
@@ -441,34 +439,15 @@ main:focus {
   max-width: 400px;
   padding-bottom: 6px;
 }
-.section-head.is-center {
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-}
-
-@keyframes pageIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-}
 
 /* ── Type ───────────────────────────────────────────────────────────────── */
 
-.display,
 .h1,
 .h2,
 h3,
 .brand-word {
   font-family: var(--display);
   font-optical-sizing: auto;
-}
-.display {
-  font-size: clamp(50px, 6.4vw, 100px);
-  font-weight: var(--fw-head);
-  line-height: 0.95;
-  letter-spacing: -0.042em;
 }
 .h1 {
   font-size: var(--fs-display);
@@ -586,7 +565,7 @@ h3 {
 }
 /* Everything else that can be clicked gives a little under the press too. The scale property, not transform,
    so cards that already sit on a transform (the fan, the deck, a lifted card) don't jump. */
-:is(.cell:has(.cell-link), .roles a, .careers-role a, .pipe-step, .wheel-fams button, .arch-family button, .fan-card, .peek-tile, .peek-row, .how-paper-step button):active {
+:is(.cell:has(.cell-link), .careers-role a, .pipe-step, .wheel-fams button, .arch-family button, .fan-card, .peek-tile, .peek-row, .how-paper-step button):active {
   scale: 0.98;
 }
 .careers-role a,
@@ -704,12 +683,6 @@ h3 {
   color: var(--ink-2);
   white-space: nowrap;
 }
-.chip i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--tone);
-}
 
 /* Segmented pills (capability families, filters) */
 .segmented {
@@ -747,13 +720,11 @@ h3 {
 .segmented button:hover {
   color: var(--ink);
 }
-.segmented button[aria-selected='true'],
 .segmented button[aria-pressed='true'] {
   background: var(--paper);
   color: var(--ink);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--tone) 25%, transparent), 0 6px 16px -10px var(--tone);
 }
-.segmented button[aria-selected='true'] i,
 .segmented button[aria-pressed='true'] i {
   opacity: 1;
   transform: scale(1.25);
@@ -831,9 +802,6 @@ h3 {
   overflow: hidden;
   border-radius: 50%;
 }
-.to-top-well .faq-mark {
-  display: block;
-}
 /* On click the logo sinks down through the orb and out of its floor, as if going underground, then loops back in
    from the top and settles, while the orb lifts; the page starts gliding as it settles (LOOP_MS / LAUNCH_MS in
    BackToTop.tsx). `translate`, so it never fights the mark's own transforms. */
@@ -856,6 +824,25 @@ h3 {
     translate: 0 0;
   }
 }
+/* useGlassTilt writes these on the key under the pointer on every pointer frame. Non-inheriting, so a big element it
+   writes on (the Architecture frame, the Careers panel) doesn't restyle everything inside it; the pseudo-elements and
+   the child that draw the shine take them with an explicit `inherit`. */
+@property --gx {
+  syntax: '*';
+  inherits: false;
+}
+@property --gy {
+  syntax: '*';
+  inherits: false;
+}
+@property --rx {
+  syntax: '*';
+  inherits: false;
+}
+@property --ry {
+  syntax: '*';
+  inherits: false;
+}
 /* 3D glass over the live mark: a fixed highlight, a bright rim and a shaded lower edge (as on the nav's logo orb),
    plus a shine that follows the cursor. The orb leans towards the cursor on `transform` (useGlassTilt); showing and
    pressing use `translate` and `scale`, so the three never fight. */
@@ -877,6 +864,8 @@ h3 {
   pointer-events: none;
 }
 .to-top::before {
+  --gx: inherit;
+  --gy: inherit;
   content: '';
   position: absolute;
   inset: 0;
@@ -972,7 +961,7 @@ h3 {
   will-change: transform;
   transform: translate3d(0, 0, 0);
   transition: transform 0.28s var(--ease-expo);
-  animation: navIn 0.8s var(--ease-expo) both;
+  animation: navIn 0.8s var(--ease-expo) backwards;
 }
 .nav > *:not(.nav-scrim) {
   pointer-events: auto;
@@ -1005,6 +994,14 @@ h3 {
   transform: translate3d(0, 0, 0);
   transition: height 0.25s var(--ease-expo);
 }
+@media (min-width: 901px) {
+  /* the bar is 12px from the edge below ~1320px while the text column is a gutter in, so the fixed 9px left the
+     logo off the column. 100% is .nav's content box (the width #main measures as 100cqw, less the nav's 24px);
+     from ~1320px this still comes to 9px */
+  .nav-bar {
+    padding-left: max(9px, calc(max(var(--gutter), (100% + 24px - var(--content)) / 2) - max(12px, (100% + 24px - var(--content) - 32px) / 2) - 7px));
+  }
+}
 .nav[data-compact] .nav-bar {
   height: 56px;
 }
@@ -1032,6 +1029,13 @@ h3 {
   -webkit-backdrop-filter: none;
   backdrop-filter: none;
   background: rgb(255 253 249 / 0.96);
+}
+/* the dark glass rules outrank .lite above, so lite machines need their own dark variant to keep the blur off */
+.lite:is([data-theme='dark'], .dark) .nav-glass,
+.lite:is([data-theme='dark'], .dark) .nav[data-compact] .nav-glass {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background: rgb(18 17 28 / 0.96);
 }
 .nav-brand {
   --key-edge: inset 0 1px 0 rgb(255 255 255 / 0.95), inset 0 -1px 2px rgb(40 30 90 / 0.08);
@@ -1067,7 +1071,6 @@ h3 {
     0 4px 10px -3px rgb(53 24 154 / 0.55);
 }
 .nav-orb .faq-mark {
-  display: block;
   width: 34px;
   height: 34px;
   transition: transform 0.7s var(--ease-io);
@@ -1088,13 +1091,6 @@ h3 {
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .nav-brand:hover .nav-orb .faq-mark {
     transform: rotate(360deg);
-  }
-}
-
-@keyframes roll {
-  from {
-    opacity: 0;
-    transform: translateY(110%);
   }
 }
 
@@ -1134,19 +1130,20 @@ h3 {
   font-weight: 550;
   color: var(--ink-2);
   white-space: nowrap;
-  transform: perspective(300px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--lift, 0px));
+  transform: perspective(300px) rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)) translateY(var(--key-lift, 0px));
   transition:
     color 0.25s var(--ease),
     background-color 0.22s var(--ease),
     box-shadow 0.22s var(--ease),
     transform 0.2s var(--ease);
-  animation: navItem 0.8s var(--ease) both;
+  animation: navItem 0.8s var(--ease) backwards;
   /* after the bar's glass has unfolded (the Motion opening in Nav.tsx) */
   animation-delay: calc(850ms + var(--i) * 55ms);
 }
 /* while the liquid drop wraps a key (data-drop on the bar) the drop is the only hover light, so this steps back */
 :where(:not([data-drop])) > .nav-links > [data-lit] {
-  --lift: -1px;
+  /* a nav-local name: the global --lift (-3px, the card hover) would otherwise leave every resting key off centre */
+  --key-lift: -1px;
   background-color: color-mix(in srgb, var(--tone, var(--violet)) 9%, rgb(255 255 255 / 0.62));
   box-shadow:
     var(--key-edge),
@@ -1158,6 +1155,8 @@ h3 {
 .nav-links > a::after,
 .nav-links > button::after,
 .nav-brand::after {
+  --gx: inherit;
+  --gy: inherit;
   content: '';
   position: absolute;
   inset: 0;
@@ -1213,7 +1212,7 @@ h3 {
 }
 /* magnet: the key is drawn a few px towards the cursor, its label a little further (--mg-x/--mg-y, -1..1) */
 .nav-links > [data-fx='magnet'] {
-  transform: translate(calc(var(--mg-x, 0) * 4px), calc(var(--mg-y, 0) * 3px + var(--lift, 0px)));
+  transform: translate(calc(var(--mg-x, 0) * 4px), calc(var(--mg-y, 0) * 3px + var(--key-lift, 0px)));
 }
 .nav-key-label {
   display: inline-block;
@@ -1397,7 +1396,7 @@ h3 {
     color 0.3s var(--ease),
     background-color var(--dur-hover) var(--ease),
     box-shadow 0.3s var(--ease);
-  animation: navItem 0.8s var(--ease) 1150ms both;
+  animation: navItem 0.8s var(--ease) 1150ms backwards;
 }
 @media (hover: hover) and (pointer: fine) {
   .nav-cta:hover {
@@ -1500,7 +1499,6 @@ h3 {
   transform-origin: left;
   /* empty until the nav's scroll handler draws the fill */
   transform: scaleX(0);
-  transition: transform 0.2s linear;
 }
 
 /* Phone and tablet menu */
@@ -1905,6 +1903,13 @@ h3 {
   .nav-links { display: none; }
   .nav-burger { display: block; }
 
+}
+/* The burger can't open the sheet here, but a hidden sheet still adds ~560px to the nav's height, so the tuck
+   (-100%) travelled ~650px and the bar jumped. With it gone the tuck is ~100px; the extra 40px clears the compact
+   bar's drop shadow. */
+@media (min-width: 1025px) {
+  .nav-sheet { display: none; }
+  .nav[data-hidden] { transform: translate3d(0, calc(-100% - 40px), 0); }
 }
 @media (max-width: 900px) {
   :root { --nav-h: 56px; }

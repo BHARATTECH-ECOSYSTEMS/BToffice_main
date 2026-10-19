@@ -41,7 +41,6 @@
   width: 100%;
   height: 100%;
   overflow: hidden;
-  border: 0;
   border-radius: var(--r-md);
   text-align: left;
   color: var(--ink);
@@ -154,9 +153,6 @@
 .cr-team {
   display: flex;
   flex-direction: column;
-  padding: 0;
-  font: inherit;
-  cursor: pointer;
 }
 .cr-team__art {
   display: grid;
@@ -251,6 +247,7 @@
 }
 .cr-values__copy .headline {
   margin: 0;
+  font-size: min(var(--fs-h2), 6.4vh);
 }
 .cr-values__index {
   display: grid;
@@ -262,12 +259,8 @@
   align-items: center;
   gap: 10px;
   padding: 6px 0;
-  border: 0;
-  background: none;
-  font: inherit;
   font-size: 15px;
   color: var(--muted);
-  cursor: pointer;
   transition: color var(--dur-hover) var(--ease);
 }
 .cr-values__index button i {
@@ -367,7 +360,8 @@
 .cr-roles__head {
   position: absolute;
   z-index: 2;
-  top: calc(var(--nav-h) + clamp(24px, 4.5vh, 52px));
+  /* same offset and size cap as the values headline, so the two pinned chapters line up */
+  top: calc(var(--nav-h) + clamp(28px, 5vh, 56px));
   left: 0;
   right: 0;
   display: grid;
@@ -409,7 +403,6 @@
   gap: 8px;
   padding: 24px 26px 22px;
   border-radius: var(--r-lg);
-  text-decoration: none;
 }
 .cr-role__title {
   margin-top: 6px;
@@ -488,37 +481,6 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-.cr-strip__step {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  border-radius: 50%;
-  color: var(--ink);
-  background: var(--bg-2);
-  cursor: pointer;
-  transition:
-    background-color var(--dur-hover) var(--ease),
-    scale var(--dur-press) var(--ease);
-}
-.cr-strip__step:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-.cr-strip__step:not(:disabled):active {
-  scale: 0.94;
-}
-@media (hover: hover) and (pointer: fine) {
-  .cr-strip__step:not(:disabled):hover {
-    background: color-mix(in srgb, var(--tone) 16%, var(--bg-2));
-  }
-}
-.cr-strip__step:focus-visible {
-  outline: 2px solid var(--violet-text);
-  outline-offset: 2px;
-}
 .cr-strip__apply {
   flex: none;
 }
@@ -542,15 +504,10 @@
   color: var(--ink-soft);
 }
 .cr-link {
-  padding: 0;
-  border: 0;
-  background: none;
-  font: inherit;
   font-weight: 600;
   color: var(--violet-text);
   text-decoration: underline;
   text-underline-offset: 3px;
-  cursor: pointer;
 }
 
 /* ── Closing ─────────────────────────────────────────────────────────────────── */

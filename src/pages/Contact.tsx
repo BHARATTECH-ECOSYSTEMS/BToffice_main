@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { PageHero, Quiet } from '../components/PageHero';
 import { OfficeMap } from '../components/OfficeMap';
 import { useScene } from '../gl/Scene';
-import '../styles/contact.css';
 import { Accordion } from '../sections/Faq';
 import { Arrow, Headline, Reveal, toneStyle, BtnText, ThreadMark } from '../components/ui';
 import { CONTACT_FAQ, CONTACT_NEEDS, EMAIL, EMAIL_HREF, HQ, HQ_MAP } from '../content';

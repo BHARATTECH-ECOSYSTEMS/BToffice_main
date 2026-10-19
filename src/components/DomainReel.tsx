@@ -67,7 +67,7 @@ function warmWhenQuiet(run: () => void): () => void {
   };
 }
 
-export interface DomainReelProps {
+interface DomainReelProps {
   index: number;
   /**
    * Whether this reel may animate. The deck stacks cards on top of each other, so a card can
@@ -88,11 +88,9 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
   ).current;
 
   // Under reduced motion the reel holds the finished picture; otherwise it always plays.
-  const isPlaying = !reduced;
   const [activeAct, setActiveAct] = useState(reduced ? CHAPTERS - 1 : 0);
 
   const timeRef = useRef(reduced ? LOOP_SEC - 0.001 : 0);
-  const playingRef = useRef(isPlaying);
   const liveRef = useRef(live);
   const reportedActRef = useRef(activeAct);
   const redrawRef = useRef<() => void>(() => {});
@@ -100,10 +98,9 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
   const domain = DOMAIN_REELS[index] ?? DOMAIN_REELS[0];
 
   useEffect(() => {
-    playingRef.current = isPlaying;
     liveRef.current = live;
     redrawRef.current();
-  }, [isPlaying, live]);
+  }, [live]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -125,7 +122,7 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
     };
 
     const render = (now: number) => {
-      const animating = visible && liveRef.current && playingRef.current && !reduced;
+      const animating = visible && liveRef.current && !reduced;
       const dt = last ? Math.min(0.1, (now - last) / 1000) : 0;
       last = now;
       if (animating) timeRef.current = (timeRef.current + dt) % LOOP_SEC;
@@ -139,7 +136,7 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
         setActiveAct(act);
       }
 
-      const exit = playingRef.current && act === CHAPTERS - 1 ? span(progress, 0.9, 1) : 0;
+      const exit = !reduced && act === CHAPTERS - 1 ? span(progress, 0.9, 1) : 0;
       if (compiled) painter?.paint({ act, progress, exit, pointer, t: reduced ? 0 : now / 1000 });
 
       rafId = animating ? requestAnimationFrame(render) : 0;
@@ -227,7 +224,7 @@ export function DomainReel({ index, live = true }: DomainReelProps) {
   }, [index, reduced]);
 
   return (
-    <div ref={containerRef} className="reel reel--light reel--ink">
+    <div ref={containerRef} className="reel">
       <canvas
         ref={canvasRef}
         className="reel__canvas"
