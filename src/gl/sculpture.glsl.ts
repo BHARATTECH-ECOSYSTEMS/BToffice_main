@@ -33,6 +33,7 @@ uniform int uB;
 uniform float uMix;
 uniform float uMorph;    // how far the field has blended into uB's shape (only the frozen gem is a different shape)
 uniform float uSteps;
+uniform int uNormalTaps; // always 4 (see normalAt)
 uniform sampler2D uBg;
 uniform sampler2D uLogo;  // r: the threads, g: how far along its thread a point is (0 tail, 1 origin)
 uniform mat4 uViewProj;
@@ -130,10 +131,16 @@ float map(vec3 w) {
   return d * uScale;
 }
 
+// Four taps of the field round p. A loop whose count comes from a uniform, so the compiler keeps it as a loop and
+// inlines map() once rather than four times: on Chrome for Windows (Direct3D) that about halves the compile time.
 vec3 normalAt(vec3 p) {
-  const vec2 k = vec2(1.0, -1.0);
-  float h = 0.0025;
-  return normalize(k.xyy * map(p + k.xyy * h) + k.yyx * map(p + k.yyx * h) + k.yxy * map(p + k.yxy * h) + k.xxx * map(p + k.xxx * h));
+  vec3 n = vec3(0.0);
+  for (int i = 0; i < uNormalTaps; i++) {
+    // the tetrahedron's corners (1,-1,-1), (-1,-1,1), (-1,1,-1), (1,1,1)
+    vec3 k = 2.0 * vec3(float(((i + 3) >> 1) & 1), float((i >> 1) & 1), float(i & 1)) - 1.0;
+    n += k * map(p + k * 0.0025);
+  }
+  return normalize(n);
 }
 
 // ── the mark painted on a form ──────────────────────────────────────────────

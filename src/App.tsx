@@ -15,6 +15,7 @@ import { useGlassMotion } from './components/useGlassMotion';
 import './styles/company-about.css';
 import './styles/careers.css';
 import './styles/services.css';
+import './styles/research.css';
 import './styles/contact.css';
 import './styles/portal.css';
 import './styles/id-card.css';
@@ -121,8 +122,8 @@ function Layout() {
     return () => cancelAnimationFrame(raf);
   }, [pathname, state, scrollTo]);
 
-  // Dark mode trigger from URL: ?theme=dark, #/?theme=dark, or #/dark. The Services page is always dark: its journey
-  // is a night scene, and the whole page (nav, closing section, footer) stays with it.
+  // Dark mode trigger from URL: ?theme=dark, #/?theme=dark, or #/dark. The Services and Research pages are always dark:
+  // a night journey and a glowing swarm, and the whole page (nav, closing section, footer) stays with them.
   // A layout effect, so the theme is right before any page's effects run: the hero's 3D scene reads it once when it
   // is built, and coming from Services (always dark) it used to be built while the page was still dark.
   useLayoutEffect(() => {
@@ -130,7 +131,7 @@ function Layout() {
     const searchTheme = searchParams.get('theme');
     const hash = window.location.hash || '';
     const isDark =
-      searchTheme === 'dark' || hash.includes('theme=dark') || hash.includes('/dark') || pathname.startsWith('/dark') || pathname === '/services';
+      searchTheme === 'dark' || hash.includes('theme=dark') || hash.includes('/dark') || pathname.startsWith('/dark') || pathname === '/services' || pathname === '/research';
 
     if (isDark) {
       document.documentElement.setAttribute('data-theme', 'dark');

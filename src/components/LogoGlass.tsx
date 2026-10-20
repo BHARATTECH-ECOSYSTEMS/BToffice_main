@@ -42,10 +42,9 @@ export function LogoGlass({
     const logo = { grow: 0, draw: 0 };
     const sync = () => s.setReveal(logo.grow, logo.draw);
     if (animate) sync();
-    // an entrance plays alongside other motion, so it waits for the shaders to link off the main thread
-    // rather than freezing that motion for its first frame
-    const ready = entrance ? s.warm() : Promise.resolve();
-    let warmed = !entrance;
+    // it waits for the shaders to link off the main thread rather than freezing the page on its first frame
+    const ready = s.warm();
+    let warmed = false;
     let visible = false;
     let dead = false;
     let intro: gsap.core.Timeline | null = null;

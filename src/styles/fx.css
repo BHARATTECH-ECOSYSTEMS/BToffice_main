@@ -70,7 +70,9 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  height: 100%;
+  /* the whole card, padding included: the negative margins pull the link out over the card's padding, so a plain
+     100% fell 2 × padding short and left a dead strip under the card's "Read" line */
+  height: calc(100% + var(--card-pad) * 2);
   margin: calc(var(--card-pad) * -1);
   padding: var(--card-pad);
   border-radius: inherit;
@@ -1655,8 +1657,6 @@
   border-radius: var(--r-sm);
   backface-visibility: hidden;
   will-change: transform, opacity;
-  /* a faint gloss on the floor under each card, which sells the depth (no-op where unsupported) */
-  -webkit-box-reflect: below 6px linear-gradient(transparent 62%, rgb(255 255 255 / 0.09));
 }
 /* the card's display:flex would otherwise override the hidden attribute on cards outside the corridor */
 .svc-corridor__card[hidden] {

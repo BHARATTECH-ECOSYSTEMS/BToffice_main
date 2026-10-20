@@ -42,6 +42,12 @@
   display: block;
   width: 100%;
   height: 100%;
+  /* hidden until its shaders have linked (Story.tsx), then it fades in rather than popping */
+  opacity: 0;
+  transition: opacity var(--dur-reveal) var(--ease);
+}
+.story-canvas[data-ready] {
+  opacity: 1;
 }
 /* The studio's backdrop is warmer than the page. This veil rises over the bottom of the frame during the last
    stretch of "It keeps learning." (Story moves it), so the backdrop has faded into the page's own colour by the

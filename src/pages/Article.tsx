@@ -1,4 +1,4 @@
-import { Link, useParams } from 'react-router';
+import { Link, useLocation, useParams } from 'react-router';
 import { Quiet } from '../components/PageHero';
 import { Arrow, Reveal, toneStyle } from '../components/ui';
 import { EMAIL, POSTS } from '../content';
@@ -7,15 +7,19 @@ import { Cover } from '../components/art';
 
 export function Article() {
   const { slug } = useParams();
+  const { pathname } = useLocation();
   const post = POSTS.find((p) => p.slug === slug);
   if (!post) return <NotFound />;
   const more = POSTS.filter((p) => p.slug !== post.slug).slice(0, 2);
+  // A post opens from the Blog and from the home page's services deck; the way back and the next reads stay in
+  // the section it was opened from (old /publications links belong to the Blog).
+  const [base, baseLabel] = pathname.startsWith('/services/') ? ['/services', 'Services'] : ['/blog', 'Blog'];
   return (
     <>
       <Quiet className="article">
         <div className="wrap article-wrap">
-          <Link to="/services" className="text-link back">
-            <Arrow dir="left" size={12} /> Services
+          <Link to={base} className="text-link back">
+            <Arrow dir="left" size={12} /> {baseLabel}
           </Link>
           <p className="post-meta" style={toneStyle('violet')}>
             <span>{post.category}</span>
@@ -41,7 +45,7 @@ export function Article() {
           <div className="bento posts-bento">
             {more.map((p, i) => (
               <Reveal key={p.slug} className="cell post" delay={i * 70}>
-                <Link to={`/services/${p.slug}`} className="cell-link" style={toneStyle('violet')}>
+                <Link to={`${base}/${p.slug}`} className="cell-link" style={toneStyle('violet')}>
                   <Cover index={POSTS.indexOf(p)} label={p.category} />
                   <p className="post-meta">
                     <span>{p.category}</span>

@@ -10,4 +10,17 @@ import './styles/film.css';
 import './styles/glass.css';
 import App from './App';
 
+// A tab opened before a new build still asks for the old build's page files, which are gone, and the page broke into
+// the router's error screen. Reload once to pick up the new build; the 10 s guard stops a loop if a file is truly missing.
+window.addEventListener('vite:preloadError', () => {
+  const KEY = 'bt-reloaded-for-build';
+  try {
+    if (Date.now() - Number(sessionStorage.getItem(KEY) || 0) < 10_000) return;
+    sessionStorage.setItem(KEY, String(Date.now()));
+  } catch {
+    return; // storage blocked: without the guard a reload could repeat, so show the error instead
+  }
+  window.location.reload();
+});
+
 createRoot(document.getElementById('root')!).render(<App />);

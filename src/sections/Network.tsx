@@ -6,6 +6,7 @@ import { clamp01, smooth01 as smooth } from '../gl/ink';
 import { Headline, Reveal } from '../components/ui';
 import { Icon, type IconName } from '../components/fx';
 import { pageScroll, trackBox } from '../components/trackBox';
+import { warmWhenQuiet } from '../components/warmQueue';
 import { NETWORK } from '../content';
 
 const ICONS: IconName[] = ['shield', 'cloud', 'globe'];
@@ -48,6 +49,8 @@ export function Network({ landOn }: { landOn?: string }) {
   const head = useRef<HTMLElement | null>(null);
   const shown = useRef('');
   const { engine } = useScene();
+  // the globe's light and shaders, built at a quiet moment ahead of the deck's worlds, as the globe arrives first
+  useEffect(() => (engine ? warmWhenQuiet(() => void engine.warm(), true) : undefined), [engine]);
 
   // the real heading stays hidden while the dots are its letters, and takes over as they finish
   const showHeading = (r: Ride | null) => {

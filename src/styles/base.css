@@ -33,6 +33,8 @@
   --display: 'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif;
   --sans: 'Figtree', 'Helvetica Neue', Arial, sans-serif;
   --mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* italic accent words only (Research headlines) */
+  --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -383,6 +385,35 @@ main:focus {
 [data-offscreen] *,
 [data-offscreen] *::before,
 [data-offscreen] *::after {
+  animation-play-state: paused !important;
+}
+
+/* While the page scrolls, the endless decorative loops that repaint every frame hold still (Scene.tsx sets
+   [data-scrolling] until the page has been still for 150 ms). Parts of an SVG and paint properties (dash offsets,
+   shadows) can't be moved by the GPU alone, and together they cost ~2.7 ms of raster per frame on an integrated GPU.
+   One-off reveals (path draw-ins, plates) are left out on purpose: they play during the scroll. */
+[data-scrolling]
+  :is(
+    .faq-mark-thread,
+    .faq-mark-origin,
+    .cover .cv-ping,
+    .ping,
+    .scene-learn .is-ping,
+    .beam-light,
+    .beam-orbit.is-inner,
+    .flow-edge-live,
+    .ui-live i,
+    .art-0 .ring,
+    .art-0 .orbit-dot,
+    .art-1 .route,
+    .art-2 .link,
+    .art-3 .contour,
+    .art-4 .blip,
+    .art-4 .sweep,
+    .art-5 .pin,
+    .art-5 .die
+  ),
+[data-scrolling] .svc-caption__hint::before {
   animation-play-state: paused !important;
 }
 
@@ -1903,6 +1934,14 @@ h3 {
   .nav-links { display: none; }
   .nav-burger { display: block; }
 
+}
+/* The seven keys need ~660px, which below ~1090px runs into the brand and the login button, so there they sit a
+   little closer (the lit link's dot keeps its room on the right). */
+@media (min-width: 1025px) and (max-width: 1099px) {
+  .nav-links { gap: 3px; }
+  .nav-links > a,
+  .nav-links > button { padding: 0 20px 0 11px; }
+  .nav-links i { right: 9px; }
 }
 /* The burger can't open the sheet here, but a hidden sheet still adds ~560px to the nav's height, so the tuck
    (-100%) travelled ~650px and the bar jumped. With it gone the tuck is ~100px; the extra 40px clears the compact

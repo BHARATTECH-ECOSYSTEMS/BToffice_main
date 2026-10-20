@@ -12,6 +12,7 @@ const COLS: { title: string; links: { label: string; to?: string; login?: boolea
       { label: 'About', to: '/about' },
       { label: 'Research', to: '/research' },
       { label: 'Careers', to: '/careers' },
+      { label: 'Blog', to: '/blog' },
       { label: 'Services', to: '/services' },
       { label: 'Contact', to: '/contact' },
     ],

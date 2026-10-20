@@ -30,7 +30,7 @@ function CoverFan() {
   return (
     <div className="cover-fan">
       {POSTS.slice(0, 3).map((p, i) => (
-        <Link key={p.slug} to={`/services/${p.slug}`} className="fan-card" style={{ '--i': i - 1, '--d': i } as CSSProperties}>
+        <Link key={p.slug} to={`/blog/${p.slug}`} className="fan-card" style={{ '--i': i - 1, '--d': i } as CSSProperties}>
           <Cover index={i} label={p.category} />
           <span className="fan-meta">
             {p.date} · {p.read}
@@ -67,6 +67,8 @@ export function Blog() {
           <div className="bento posts-bento" key={cat}>
             {posts.map((p, i) => {
               const wide = spans[i] >= 8;
+              // the lead's partner stands as tall as the lead, so it has room for the full excerpt too
+              const full = wide || i === 1;
               return (
                 <Reveal
                   key={p.slug}
@@ -74,7 +76,7 @@ export function Blog() {
                   style={toneStyle(CAT_TONE[p.category], { gridColumn: `span ${spans[i]}` })}
                   delay={i * 60}
                 >
-                  <Link to={`/services/${p.slug}`} className="cell-link">
+                  <Link to={`/blog/${p.slug}`} className="cell-link">
                     <Cover index={POSTS.indexOf(p)} label={p.category} />
                     <div className="post-body">
                       <p className="post-meta">
@@ -82,7 +84,7 @@ export function Blog() {
                         {p.date} · {p.read}
                       </p>
                       <h3>{p.title}</h3>
-                      <p>{wide ? p.excerpt : p.dek}</p>
+                      <p>{full ? p.excerpt : p.dek}</p>
                       <span className="cell-go">
                         Read <Arrow />
                       </span>

@@ -19,16 +19,23 @@
         } catch (e) {}
       })();
       // Modest machines (≤4 cores or ≤4 GB, or an integrated GPU) get the lighter render path before first paint.
+      // The GPU's answer is remembered: asking opens a WebGL context, which held the first paint back by up to a second.
       (function () {
         try {
           var lite = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
           if (!lite) {
-            var gl = document.createElement('canvas').getContext('webgl');
-            var dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');
-            var gpu = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
-            if (/Intel|Iris|UHD|HD Graphics|Mali|Adreno|PowerVR|SwiftShader|llvmpipe|Basic Render/i.test(gpu)) lite = true;
-            var lose = gl && gl.getExtension('WEBGL_lose_context');
-            if (lose) lose.loseContext();
+            var weak = null;
+            try { weak = localStorage.getItem('bt-weak-gpu'); } catch (e) {}
+            if (weak === null) {
+              var gl = document.createElement('canvas').getContext('webgl');
+              var dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');
+              var gpu = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+              weak = /Intel|Iris|UHD|HD Graphics|Mali|Adreno|PowerVR|SwiftShader|llvmpipe|Basic Render/i.test(gpu) ? '1' : '0';
+              var lose = gl && gl.getExtension('WEBGL_lose_context');
+              if (lose) lose.loseContext();
+              try { localStorage.setItem('bt-weak-gpu', weak); } catch (e) {}
+            }
+            lite = weak === '1';
           }
           if (lite) document.documentElement.classList.add('lite');
         } catch (e) {}
@@ -39,7 +46,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
       rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:wght@400..700&family=Geist+Mono:wght@400;500;600&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:wght@400..700&family=Geist+Mono:wght@400;500;600&family=Instrument+Serif:ital@1&display=swap"
     />
   </head>
   <body>

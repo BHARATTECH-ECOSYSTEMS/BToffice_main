@@ -424,6 +424,7 @@ export class Studio {
       uMix: { value: 0 },
       uMorph: { value: 0 },
       uSteps: { value: lite ? 64 : 100 },
+      uNormalTaps: { value: 4 },
       uBg: { value: this.bgRT.texture },
       uViewProj: { value: new THREE.Matrix4() },
       uTint: { value: new THREE.Color() },
@@ -519,13 +520,19 @@ export class Studio {
   }
 
   /**
-   * Links the shaders in the background, so a studio built mid-animation (the login pop-up) doesn't freeze the
-   * page on its first frame. Resolves once they're ready, after `maxMs` at most (some browsers never report
-   * ready until something draws; the first frame then compiles them as before), or at once if destroyed.
+   * Links the shaders in the background; call it before `start()`. The glass shader takes 1.5–3 s to link on an
+   * integrated GPU under Chrome for Windows, and linking it on the first frame froze the whole page for that long.
+   * Resolves once they're ready, after `maxMs` at most (some browsers never report ready until something draws;
+   * the first frame then compiles them as before), or at once if destroyed.
    * Not three's compileAsync: its polling throws if the renderer is disposed mid-compile, and never gives up.
    */
-  warm(maxMs = 500) {
+  warm(maxMs = 6000) {
+    // Compiled into a render target, as every frame draws the scene (bgRT, then the composer's targets). Compiled
+    // for the screen, three keys the programs with tone mapping and sRGB output, a variant no frame ever uses, and
+    // the real one was still linked on the first frame.
+    this.renderer.setRenderTarget(this.bgRT);
     const pending = this.renderer.compile(this.scene, this.camera);
+    this.renderer.setRenderTarget(null);
     const until = performance.now() + maxMs;
     return new Promise<void>((resolve) => {
       const check = () => {

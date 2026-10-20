@@ -99,13 +99,31 @@ export function Story() {
       studio?.resize();
       onScroll();
     };
-    // only run the film while it is on screen
-    const io = new IntersectionObserver(([e]) => (e.isIntersecting ? studio?.start() : studio?.stop()), { rootMargin: '10% 0px' });
+    // only run the film while it is on screen, and once its shaders have linked off the main thread: linked on the
+    // first frame, the glass froze the page for seconds while the opening played. The canvas fades in when ready.
+    let visible = false;
+    let warmed = false;
+    let dead = false;
+    const io = new IntersectionObserver(
+      ([e]) => {
+        visible = e.isIntersecting;
+        if (!visible) studio?.stop();
+        else if (warmed) studio?.start();
+      },
+      { rootMargin: '10% 0px' }
+    );
     io.observe(cv);
+    void studio?.warm().then(() => {
+      if (dead) return;
+      warmed = true;
+      cv.dataset.ready = '';
+      if (visible) studio?.start();
+    });
     measure();
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize);
     return () => {
+      dead = true;
       io.disconnect();
       release();
       cancelAnimationFrame(raf);

@@ -44,6 +44,8 @@ function perPx() {
 const PHONE_MAX = 900;
 export const WIDE_QUERY = `(min-width: ${PHONE_MAX + 1}px)`;
 export const isCompact = () => window.innerWidth <= PHONE_MAX;
+/** How long the page must be still before it counts as no longer scrolling. */
+const SCROLL_SETTLE_MS = 150;
 
 /**
  * World pose that centres an object of `size` world units in an element's box, as large as it fits
@@ -120,6 +122,8 @@ export function SceneProvider({ children }: { children: ReactNode }) {
     const lenis = reduced || isCompact() ? null : new Lenis({ lerp: 0.11, smoothWheel: true, wheelMultiplier: 1.0, touchMultiplier: 1.2 });
     let raf = 0;
     let lastY = window.scrollY;
+    let lastMoveAt = -Infinity;
+    let flagged = false;
     let lastPickedY = -999999;
 
     // The section holding the middle of the screen decides what the scene shows; the smallest one wins,
@@ -151,16 +155,22 @@ export function SceneProvider({ children }: { children: ReactNode }) {
     };
 
     const loop = (time: number) => {
+      // booked first, so an error in one page's frame (its 3D on engine.onFrame) can't end the loop and freeze the
+      // smooth scroll for the rest of the visit
+      raf = requestAnimationFrame(loop);
       lenis?.raf(time);
       // the position the smooth scroll has just set; reading window.scrollY here forced a page layout each frame
       const y = lenis ? lenis.animatedScroll : pageScroll();
       if (lenis) setPageScroll(y);
       engine?.setVelocity(y - lastY);
+      // [data-scrolling] holds the endless decorative loops still while the page moves (base.css)
+      if (Math.abs(y - lastY) > 0.5) lastMoveAt = time;
+      const moving = time - lastMoveAt < SCROLL_SETTLE_MS;
+      if (moving !== flagged) document.documentElement.toggleAttribute('data-scrolling', (flagged = moving));
       lastY = y;
       // after the smooth scroll has moved the page, so the scene is placed from this frame's scroll
       engine?.tick(time);
       if (!engine) pick();
-      raf = requestAnimationFrame(loop);
     };
     raf = requestAnimationFrame(loop);
     pick(true);
@@ -188,6 +198,7 @@ export function SceneProvider({ children }: { children: ReactNode }) {
     return () => {
       off?.();
       cancelAnimationFrame(raf);
+      document.documentElement.removeAttribute('data-scrolling');
       lenis?.destroy();
       engine?.destroy();
     };

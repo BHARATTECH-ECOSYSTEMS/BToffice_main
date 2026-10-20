@@ -468,7 +468,7 @@ export class Engine {
   private slots: Record<'globe', Slot>;
   private globe: ReturnType<typeof buildGlobe>;
   private dust = buildDust();
-  private env: THREE.Texture;
+  private env: THREE.Texture | null = null;
   private target: Target = { key: 'none' };
   private pointer = new THREE.Vector2();
   private lean = new THREE.Vector2();
@@ -480,7 +480,7 @@ export class Engine {
   private idleFrames = 0;
   /** the canvas is hidden while it has nothing to draw, so the compositor stops blending an empty layer */
   private hidden = false;
-  private warmTask = 0;
+  private warmed = false;
   private destroyed = false;
   private onPointer = (e: PointerEvent) => this.pointer.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
   private onResize = () => this.resize();
@@ -495,8 +495,6 @@ export class Engine {
     this.renderer.toneMappingExposure = 0.95;
     this.renderer.setClearColor(0x000000, 0);
 
-    this.env = studio(this.renderer);
-    this.scene.environment = this.env;
     const key = new THREE.DirectionalLight('#fff4e6', 1.4);
     key.position.set(-4, 5, 6);
     this.scene.add(key, new THREE.HemisphereLight('#ffffff', '#cbbfae', 0.35));
@@ -526,18 +524,25 @@ export class Engine {
     this.resize();
     window.addEventListener('resize', this.onResize);
     window.addEventListener('pointermove', this.onPointer, { passive: true });
-    // once the page has settled, draw the objects off to one side so their first real appearance is free
-    const idle = window.requestIdleCallback ?? ((fn: () => void) => window.setTimeout(fn, 1200));
-    this.warmTask = idle(() => void this.warm(), { timeout: 4000 });
+  }
+
+  /** The studio light the objects reflect, built on first need: its blur shader alone takes 0.5–2 s to link on an integrated GPU. */
+  private light() {
+    if (this.env) return;
+    this.env = studio(this.renderer);
+    this.scene.environment = this.env;
   }
 
   /**
-   * The first time an object is drawn its shaders compile and its geometry and textures upload, which stalled
-   * the page for a few hundred milliseconds when the globe first scrolled into view. Drawing every object once
-   * into a single pixel does that work up front; that pixel is cleared again on the next frame.
+   * Builds the studio light and draws every object once, so their first real appearance is free: the first time an
+   * object is drawn its shaders compile and its geometry and textures upload, which stalled the page when the globe
+   * first scrolled into view. The section that shows the globe calls this at a quiet moment (only the home page has
+   * one), so the other pages, the portal too, never pay for it. The pixel drawn into is cleared on the next frame.
    */
-  private async warm() {
-    if (this.destroyed) return;
+  async warm() {
+    if (this.destroyed || this.warmed) return;
+    this.warmed = true;
+    this.light();
     // Link every program (the hidden dust's too) off the main thread first. Some browsers never report a program
     // ready until it is drawn, so the wait is capped; if the cap wins, the draw below links them as before.
     await Promise.race([
@@ -601,7 +606,10 @@ export class Engine {
   setTarget(t: Target) {
     this.target = t;
     // Keep the outgoing object's appearance: resetting a scroll fade here makes it flash back into view.
-    if (t.key !== 'none') this.slots[t.key].target = t;
+    if (t.key !== 'none') {
+      this.light(); // reached before the quiet moment came: built now, as it always used to be
+      this.slots[t.key].target = t;
+    }
   }
 
   /** Scroll velocity in px per frame: a quick scroll gives the objects a little extra turn. */
@@ -726,7 +734,6 @@ export class Engine {
 
   destroy() {
     this.destroyed = true;
-    (window.cancelIdleCallback ?? window.clearTimeout)(this.warmTask);
     window.removeEventListener('resize', this.onResize);
     window.removeEventListener('pointermove', this.onPointer);
     this.globe.dispose();
@@ -738,7 +745,7 @@ export class Engine {
       m.dispose();
       shadow.geometry.dispose();
     });
-    this.env.dispose();
+    this.env?.dispose();
     this.renderer.dispose();
   }
 }
