@@ -55,6 +55,10 @@ export function Faq() {
               <i />
               <i />
             </span>
+            {/* the cursor's shine, moved by useGlassTilt (story.css) */}
+            <span className="faq-ask-shine" data-shine aria-hidden="true">
+              <i />
+            </span>
             <ThreadMark />
             <div>
               <p className="cell-label">Still curious?</p>

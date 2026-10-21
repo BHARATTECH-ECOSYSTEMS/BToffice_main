@@ -461,6 +461,15 @@
 .btn-ghost {
   backdrop-filter: blur(10px);
 }
+/* On a modest GPU the blur goes, as the nav's does: the hero's and the Research page's ghost buttons sit over WebGL
+   that redraws every frame, so their blur was redone every frame. On light pages a fuller fill keeps the text as
+   readable; the dark pages keep their own faint fill (base.css). */
+.lite .btn-ghost {
+  backdrop-filter: none;
+}
+.lite:not([data-theme='dark']) body:not(.dark) .btn-ghost {
+  background: rgb(255 253 249 / 0.88);
+}
 
 /* ══ Sections ═══════════════════════════════════════════════════════════════ */
 
@@ -1882,6 +1891,9 @@
   inset: 0;
   width: 100%;
   height: 100%;
+  /* Its own layer: the endless pings move parts of the SVG, which can only be repainted, and in the page's layer
+     each ping repainted the page's whole root layer every frame, even with nothing else moving. */
+  will-change: transform;
 }
 
 .cover-tag {

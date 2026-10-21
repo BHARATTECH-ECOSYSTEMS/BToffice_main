@@ -20,6 +20,10 @@ export function Architecture() {
 
   return (
     <Chapter id="architecture" innerRef={ref} n={LAYERS.length} screens={0.28} tone="violet" className="ch-arch">
+      {/* the cursor's shine on the black glass, moved by useGlassTilt (story.css) */}
+      <span className="arch-shine" data-shine aria-hidden="true">
+        <i />
+      </span>
       <div className="wrap arch">
         <div className="arch-side">
           <Headline tone="violet" lines={['An operating system,', 'not an application.']} />

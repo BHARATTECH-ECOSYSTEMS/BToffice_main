@@ -5,6 +5,7 @@ import { BEATS, Studio } from '../gl/Studio';
 import { Arrow, BtnText } from '../components/ui';
 import { StoryOpening } from '../components/StoryOpening';
 import { pageScroll, trackBox } from '../components/trackBox';
+import { holdWarmUntil } from '../components/warmQueue';
 import { PILLARS_PLAIN, PROBLEMS } from '../content';
 
 // screens of scroll per beat (cut by a third from 1: long pins made visitors feel stuck)
@@ -113,12 +114,14 @@ export function Story() {
       { rootMargin: '10% 0px' }
     );
     io.observe(cv);
-    void studio?.warm().then(() => {
+    const warming = studio?.warm().then(() => {
       if (dead) return;
       warmed = true;
       cv.dataset.ready = '';
       if (visible) studio?.start();
     });
+    // the page's other 3D builds wait their turn, so the hero's shaders get the compile threads to themselves
+    if (warming) holdWarmUntil(warming);
     measure();
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', onResize);

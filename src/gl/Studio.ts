@@ -6,6 +6,7 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { SCULPTURE_FS, SCULPTURE_VS } from './sculpture.glsl';
 import { SAMPLED_THREADS } from './threads';
+import { primePrograms, whenLinked } from './shaderWarmup';
 
 /**
  * The home page's film: the logo as one piece of glass in a paper studio, changing as the story is told.
@@ -531,21 +532,10 @@ export class Studio {
     // for the screen, three keys the programs with tone mapping and sRGB output, a variant no frame ever uses, and
     // the real one was still linked on the first frame.
     this.renderer.setRenderTarget(this.bgRT);
-    const pending = this.renderer.compile(this.scene, this.camera);
+    const materials = [...this.renderer.compile(this.scene, this.camera)];
     this.renderer.setRenderTarget(null);
-    const until = performance.now() + maxMs;
-    return new Promise<void>((resolve) => {
-      const check = () => {
-        if (this.destroyed) return resolve();
-        pending.forEach((m) => {
-          const program = (this.renderer.properties.get(m) as { currentProgram?: { isReady(): boolean } }).currentProgram;
-          if (program?.isReady() !== false) pending.delete(m);
-        });
-        if (pending.size === 0 || performance.now() > until) resolve();
-        else window.setTimeout(check, 16);
-      };
-      check();
-    });
+    const gone = () => this.destroyed;
+    return whenLinked(this.renderer, new Set(materials), maxMs, gone).then(() => primePrograms(this.renderer, materials, gone));
   }
 
   start() {

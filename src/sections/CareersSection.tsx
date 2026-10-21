@@ -50,8 +50,13 @@ export function CareersSection() {
             <i />
             <i />
           </div>
-          {/* the cursor's spotlight on the glass and the rim it lights (careers-section.css) */}
-          <div className="careers-light" aria-hidden="true" />
+          {/* the cursor's spotlight on the glass and the rim it lights (careers-section.css), moved by useGlassTilt */}
+          <div className="careers-light" data-shine aria-hidden="true">
+            <i />
+          </div>
+          <div className="careers-rim" data-shine aria-hidden="true">
+            <i />
+          </div>
 
           <div className="careers-intro">
             <p className="careers-count">

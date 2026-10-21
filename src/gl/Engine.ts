@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CONTINENTS, INDIA, INDIA_BBOX, INDIA_HUBS, WORLD, GLOBE_LABELS, inPolygon, lonLatToVec, type LonLat } from './geo';
+import { bakeEnvironment, primePrograms, whenLinked } from './shaderWarmup';
 
 /**
  * The site's 3D layer: a physically lit globe, a ceramic planet with raised dot-matrix continents, India in
@@ -51,8 +52,8 @@ const easeOut = (t: number) => 1 - Math.pow(1 - t, 3);
 
 // ── Studio light ─────────────────────────────────────────────────────────────
 
-/** A product-photography studio built from softboxes and baked into an environment map. */
-function studio(renderer: THREE.WebGLRenderer): THREE.Texture {
+/** A product-photography studio built from softboxes, to be baked into an environment map; `dispose` frees it after. */
+function studioScene() {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#cfc9c0');
   const trash: { dispose(): void }[] = [];
@@ -70,12 +71,11 @@ function studio(renderer: THREE.WebGLRenderer): THREE.Texture {
   panel(1.6, 7, 2.4, [7, 1.5, -1], [0, -Math.PI / 2, 0]); // rim, right
   panel(12, 2.5, 0.8, [0, 0.5, 9], [0, 0, 0], '#fff6ea'); // warm front fill
   panel(40, 40, 0.5, [0, -3, 0], [-Math.PI / 2, 0, 0], '#9a9288'); // floor bounce
-  const pmrem = new THREE.PMREMGenerator(renderer);
-  const tex = pmrem.fromScene(scene, 0.035).texture;
-  pmrem.dispose();
-  trash.forEach((t) => t.dispose());
-  return tex;
+  return { scene, dispose: () => trash.forEach((t) => t.dispose()) };
 }
+
+/** The studio's blur radius, in radians. */
+const STUDIO_SIGMA = 0.035;
 
 /** A soft contact shadow: a radial falloff seen from the front, just below and behind an object. */
 function contactShadow(): THREE.Mesh {
@@ -526,11 +526,33 @@ export class Engine {
     window.addEventListener('pointermove', this.onPointer, { passive: true });
   }
 
-  /** The studio light the objects reflect, built on first need: its blur shader alone takes 0.5–2 s to link on an integrated GPU. */
+  /**
+   * The studio light the objects reflect, baked on the spot. Only for an object wanted before `warm()` has baked
+   * it in the background: here its blur shader links on the main thread, 0.5–1.2 s on an integrated GPU.
+   */
   private light() {
     if (this.env) return;
-    this.env = studio(this.renderer);
-    this.scene.environment = this.env;
+    const studio = studioScene();
+    const pmrem = new THREE.PMREMGenerator(this.renderer);
+    this.useLight(pmrem.fromScene(studio.scene, STUDIO_SIGMA).texture);
+    pmrem.dispose();
+    studio.dispose();
+  }
+
+  /** The studio light, its shaders linked in the background first (see bakeEnvironment). */
+  private async lightSoon() {
+    if (this.env) return;
+    const studio = studioScene();
+    const env = await bakeEnvironment(this.renderer, studio.scene, STUDIO_SIGMA, () => this.destroyed || !!this.env);
+    studio.dispose();
+    // an object may have needed the light while this one baked, and built its own on the spot
+    if (env && !this.env && !this.destroyed) this.useLight(env);
+    else env?.dispose();
+  }
+
+  private useLight(env: THREE.Texture) {
+    this.env = env;
+    this.scene.environment = env;
   }
 
   /**
@@ -542,13 +564,14 @@ export class Engine {
   async warm() {
     if (this.destroyed || this.warmed) return;
     this.warmed = true;
-    this.light();
+    await this.lightSoon();
+    if (this.destroyed) return;
     // Link every program (the hidden dust's too) off the main thread first. Some browsers never report a program
     // ready until it is drawn, so the wait is capped; if the cap wins, the draw below links them as before.
-    await Promise.race([
-      this.renderer.compileAsync(this.scene, this.camera).catch(() => undefined),
-      new Promise((done) => window.setTimeout(done, 1500)),
-    ]);
+    const materials = [...this.renderer.compile(this.scene, this.camera)];
+    const gone = () => this.destroyed;
+    await whenLinked(this.renderer, new Set(materials), 1500, gone);
+    await primePrograms(this.renderer, materials, gone);
     if (this.destroyed) return;
     const slots = Object.values(this.slots);
     const was = slots.map((s) => s.group.visible);

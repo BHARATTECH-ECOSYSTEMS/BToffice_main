@@ -18,6 +18,20 @@ const warmQueue: WarmTask[] = [];
 let warmPumping = false;
 let listening = false;
 let lastScrollAt = 0;
+/** Work that must finish before any build starts (see holdWarmUntil). */
+let held: Promise<unknown> = Promise.resolve();
+/** The longest a hold may keep the builds waiting. */
+const HOLD_MAX_MS = 10000;
+
+/**
+ * Keeps the queued builds waiting until `work` settles (or 10 s at most). The hero's glass shader links in the
+ * background on the browser's few shader-compile threads; the globe's and the deck's builds compiling alongside it
+ * slowed it past its own time limit, and the hero's first frame then froze the page for 1–2 s.
+ */
+export function holdWarmUntil(work: Promise<unknown>) {
+  const cap = new Promise((done) => window.setTimeout(done, HOLD_MAX_MS));
+  held = Promise.all([held, Promise.race([work.catch(() => undefined), cap])]);
+}
 const idle = (fn: () => void) =>
   window.requestIdleCallback ? window.requestIdleCallback(fn) : window.setTimeout(fn, 0);
 
@@ -51,7 +65,7 @@ export function warmWhenQuiet(run: () => void, first = false): () => void {
       listening = true;
       window.addEventListener('scroll', () => (lastScrollAt = performance.now()), { passive: true });
     }
-    window.setTimeout(pumpWarm, openingPlaying() ? WARM_AFTER_MS : WARM_SOON_MS);
+    window.setTimeout(() => void held.then(pumpWarm), openingPlaying() ? WARM_AFTER_MS : WARM_SOON_MS);
   }
   return () => {
     task.cancelled = true;

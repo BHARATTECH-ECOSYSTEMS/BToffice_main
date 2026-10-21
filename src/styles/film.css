@@ -473,6 +473,9 @@
 .wheel-ring,
 .wheel-chip {
   --turn: inherit;
+  /* Turned on every scroll frame: on their own layers the turn is a GPU move under the wheel's fade mask. Without
+     them each frame repainted the masked wheel (scrolling through it: 10.9 ms of raster a frame, against 5.6). */
+  will-change: transform;
 }
 /* The wheel is taller than the screen, so as it turns its chips pass the top and bottom edges. Fading the wheel
    out over the last stretch before each edge lets a chip dissolve there instead of being cut in half. The wheel

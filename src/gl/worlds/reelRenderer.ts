@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { type DomainWorld, type SafeView, pointScale } from './kit';
+import { bakeEnvironment, primePrograms, whenLinked } from '../shaderWarmup';
 
 /**
  * One WebGL renderer shared by all six domain reels. Each reel keeps a plain 2D canvas;
@@ -10,6 +11,8 @@ import { type DomainWorld, type SafeView, pointScale } from './kit';
 
 let renderer: THREE.WebGLRenderer | null | undefined;
 let environment: THREE.Texture | null = null;
+/** The room light's bake, started by the first world that compiles; every world waits for it before compiling. */
+let baking: Promise<void> | null = null;
 const size = new THREE.Vector2();
 
 /** The shared renderer, or null when WebGL isn't available (the reel then falls back to its 2D drawing). */
@@ -23,9 +26,6 @@ export function getReelRenderer(): THREE.WebGLRenderer | null {
     r.setPixelRatio(1);
     r.setClearColor(0x000000, 0);
     r.autoClear = false;
-    const pmrem = new THREE.PMREMGenerator(r);
-    environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
-    pmrem.dispose();
     renderer = r;
   } catch (error) {
     console.warn('Domain reels: WebGL unavailable, using the 2D fallback.', error);
@@ -42,10 +42,27 @@ export function getReelRenderer(): THREE.WebGLRenderer | null {
 export async function compileWorld(world: DomainWorld): Promise<void> {
   const r = getReelRenderer();
   if (!r) return;
+  // The room light the worlds reflect, its shaders linked in the background too. Should the bake fail, the worlds
+  // still draw, only without reflections.
+  baking ??= (async () => {
+    const room = new RoomEnvironment();
+    try {
+      environment = await bakeEnvironment(r, room, 0.04);
+    } catch (error) {
+      console.warn('Domain reels: room light unavailable.', error);
+    } finally {
+      room.dispose();
+    }
+  })();
+  await baking;
+  // the bake has just queued its drawing on the GPU; compiling in the same task would wait for it to finish
+  await new Promise((resolve) => window.setTimeout(resolve, 32));
   const { scene, camera } = world;
   if (!scene.environment) scene.environment = environment;
   // covers objects a later chapter reveals too: the compile walks hidden objects' materials as well
-  await r.compileAsync(scene, camera);
+  const materials = [...r.compile(scene, camera)];
+  await whenLinked(r, new Set(materials), 6000);
+  await primePrograms(r, materials);
 }
 
 /** Insets (device pixels) that the reel's own UI covers, plus breathing room on every side. */

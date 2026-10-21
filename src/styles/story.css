@@ -468,13 +468,30 @@
     0 2px 4px rgb(20 19 15 / 0.08),
     0 46px 90px -40px rgb(0 0 0 / 0.45);
 }
-/* the frost: a pale top and the cursor's shine (--gx/--gy from useGlassTilt), above the black and below the words */
+/* the frost: a pale top, above the black and below the words */
 .ch-arch .chapter-pin::after {
-  --gx: inherit;
-  --gy: inherit;
-  background:
-    radial-gradient(460px circle at var(--gx, 30%) var(--gy, 0%), rgb(255 255 255 / 0.1), rgb(255 255 255 / 0) 65%),
-    linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0) 36%);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0) 36%);
+}
+/* the cursor's shine, a spot useGlassTilt moves by transform inside a window the size of the sheet, so the sheet
+   isn't repainted on every mouse move; between the black and the frost */
+.ch-arch .arch-shine {
+  position: absolute;
+  inset: 10px var(--sheet-x);
+  z-index: -1;
+  border-radius: var(--r-sheet);
+  overflow: hidden;
+  pointer-events: none;
+}
+.ch-arch .arch-shine > i {
+  position: absolute;
+  /* at rest, centred 30% across the top edge */
+  top: -460px;
+  left: calc(30% - 460px);
+  width: 920px;
+  height: 920px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0) 65%);
+  will-change: transform;
 }
 
 .ch-arch .headline .is-accent {
@@ -1900,15 +1917,32 @@
     transform: translate3d(22%, 18%, 0) scale(1.15);
   }
 }
-/* the frost: a pale top half and the cursor's shine, above the drifting light and below the words */
+/* the cursor's shine, a spot useGlassTilt moves by transform so the card isn't repainted on every mouse move;
+   above the drifting light, below the frost */
+.faq-ask-shine {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.faq-ask-shine > i {
+  position: absolute;
+  /* at rest, centred 30% across the top edge */
+  top: -260px;
+  left: calc(30% - 260px);
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0) 65%);
+  will-change: transform;
+}
+/* the frost: a pale top half, above the drifting light and the shine and below the words */
 .faq .faq-ask::after {
-  --gx: inherit;
-  --gy: inherit;
   z-index: -1;
   padding: 0;
-  background:
-    radial-gradient(260px circle at var(--gx, 30%) var(--gy, 0%), rgb(255 255 255 / 0.2), rgb(255 255 255 / 0) 65%),
-    linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0) 42%);
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0) 42%);
   -webkit-mask: none;
   mask: none;
   opacity: 1;
@@ -1925,6 +1959,10 @@
   width: 112px;
   height: 112px;
   overflow: visible;
+  /* Its own layer: the endless thread loop is a paint animation, and in the page's layer it repainted the page's
+     whole root layer every frame (the nav's mark is always on screen): 3.6 ms of raster per idle frame on an
+     integrated GPU, against 0.5 ms like this. */
+  will-change: transform;
 }
 .faq-mark-disc {
   fill: var(--violet);
