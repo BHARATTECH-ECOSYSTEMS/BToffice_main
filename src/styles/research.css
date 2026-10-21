@@ -1,5 +1,5 @@
 /* Research: the type and camera share one continuous scroll through the swarm, on the site's dark stage. Set like a
-   research journal: serif headlines, quiet sans text, hairline rules instead of boxes. */
+   research journal: the site's headlines, quiet sans text, hairline rules instead of boxes. */
 .ra {
   --ra-wall: #0A0910;
   --ra-ink: #F4F2EC;
@@ -7,6 +7,8 @@
   --ra-muted: #8F8A80;
   --ra-rule: rgb(255 255 255 / .12);
   --ra-focus: #A597FF;
+  /* the headlines' accent words: the site's violet, lightened for the dark stage */
+  --ra-accent: #A597FF;
   /* the site's shared content column (base.css .wrap), so this page's copy lines up with every other page's */
   --col-x: max(var(--gutter), (100% - var(--content)) / 2);
   --top: calc(var(--nav-h) + clamp(32px, 4.8vh, 68px));
@@ -64,15 +66,19 @@
 }
 .ra-scene :is(a, button) { pointer-events: auto; }
 
+/* Set in the site's headline font, like the other pages' section headings (.h2), with the accent words in colour.
+   This font runs about 1.235x wider than the serif these headings were sized for, so every size here is the
+   serif's divided by that, and each heading keeps its old line breaks in its column. */
 .ra-title {
   margin: 0;
-  font-family: var(--serif);
-  font-size: clamp(44px, 4.5vw, 78px);
-  font-weight: 400;
-  line-height: .98;
-  letter-spacing: -.03em;
+  font-family: var(--display);
+  font-optical-sizing: auto;
+  font-size: clamp(36px, 3.6vw, 63px);
+  font-weight: var(--fw-head);
+  line-height: 1;
+  letter-spacing: -.045em;
 }
-.ra-title em { font: inherit; font-style: italic; }
+.ra-title em { font: inherit; color: var(--ra-accent); }
 .ra-line { display: block; overflow: hidden; padding-block: .07em .14em; margin-block: -.07em -.14em; }
 .ra-line > span { display: inline-block; translate: 0 112%; transition: translate 350ms var(--ease-io); }
 .ra-scene[data-phase='on'] .ra-line > span {
@@ -168,13 +174,7 @@
   letter-spacing: -.05em;
   text-wrap: balance;
 }
-.ra-title--hero em {
-  font-family: var(--serif);
-  font-weight: 400;
-  font-size: 1.17em;
-  line-height: .9;
-  letter-spacing: -.03em;
-}
+.ra-title--hero em { font: inherit; color: var(--ra-accent); }
 /* As the camera starts into the word, the hero's copy fades and lifts away, leaving the word alone to dive into;
    --hero-out (0 … 1) comes from the scroll (ResearchStory). Its own layer keeps the fade on the compositor: without
    it, coming back from fully faded repainted the whole hero in one frame. Once it has gone, its actions take no
@@ -209,7 +209,7 @@
 /* the side column's first line sits level with the headline's first line */
 .ra-section__side { grid-column: 2; padding-top: .55em; }
 .ra-section__side > .ra-note { max-width: 40ch; }
-.ra-title--statement { font-size: clamp(38px, 3.85vw, 66px); line-height: 1.03; }
+.ra-title--statement { font-size: clamp(31px, 3.12vw, 51px); line-height: 1.03; }
 .ra-statement .ra-note { max-width: 34ch; }
 /* "Our research" stands in an open sky of dots: a soft pool of the wall's dark behind its side column keeps the small
    copy and figures clear of them, and the sky shows everywhere else. It moves with the copy, so it costs no frames. */
@@ -228,13 +228,13 @@
   transition: opacity 500ms ease;
 }
 .ra-statement[data-phase='on'] .ra-section__side::before { opacity: 1; transition: opacity 900ms ease 200ms; }
-.ra-end .ra-title { font-size: clamp(44px, 4.4vw, 74px); }
+.ra-end .ra-title { font-size: clamp(36px, 3.56vw, 60px); }
 .ra-end .ra-note { margin-bottom: 32px; }
 
-/* the figures: each on its own hairline, the number in the serif */
+/* the figures: each on its own hairline, the number in the headline font */
 .ra-proof { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; max-width: 460px; margin: 40px 0 0; padding: 0; list-style: none; }
 .ra-proof li { display: grid; align-content: start; gap: 8px; padding-top: 14px; border-top: 1px solid var(--ra-rule); }
-.ra-proof strong { font-family: var(--serif); font-size: clamp(30px, 2.5vw, 42px); font-weight: 400; line-height: 1; letter-spacing: -.02em; }
+.ra-proof strong { font-family: var(--display); font-size: clamp(30px, 2.5vw, 42px); font-weight: var(--fw-head); line-height: 1; letter-spacing: -.04em; }
 .ra-proof span { font-size: 12px; line-height: 1.4; color: var(--ra-muted); }
 
 /* ── a domain: one column of copy on the side opposite its form */
@@ -297,9 +297,9 @@
 .ra-where__ring circle + circle { stroke: var(--ra-focus); stroke-dashoffset: 1; }
 
 @media (max-width: 1150px) {
-  .ra-title { font-size: 4.8vw; }
+  .ra-title { font-size: 3.9vw; }
   .ra-title--hero { font-size: 4vw; }
-  .ra-title--statement { font-size: 4.1vw; }
+  .ra-title--statement { font-size: 3.32vw; }
   .ra-copy { width: 42vw; }
   .ra-list { column-gap: 20px; }
 }
@@ -311,7 +311,7 @@
   .ra-byline { margin-top: 16px; }
   .ra-proof { margin-top: 28px; }
   .ra-list li { padding-block: 9px 8px; font-size: 13px; }
-  .ra-title--statement { font-size: clamp(36px, 3.7vw, 52px); }
+  .ra-title--statement { font-size: clamp(29px, 3vw, 42px); }
 }
 @media (prefers-reduced-motion: reduce) {
   .ra *, .ra *::before, .ra *::after { animation: none !important; transition: none !important; }

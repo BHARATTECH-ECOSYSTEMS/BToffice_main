@@ -2,10 +2,15 @@
 // The same conversion as three's TTFLoader, run once at build time so the site ships a few kilobytes of outlines
 // instead of the font parser.
 //
-// The Research hero's word uses Instrument Serif Italic (Open Font License 1.1), from
-// https://github.com/google/fonts/tree/main/ofl/instrumentserif:
+// The Research hero's word uses Bricolage Grotesque at weight 640 and optical size 96 (Open Font License 1.1), the
+// site's headline font, as a static instance from the Google Fonts CSS API (css2?family=Bricolage+Grotesque:opsz,wght@96,640):
+//
 //   npm i --prefix <tmp> opentype.js
-//   NODE_PATH=<tmp>/node_modules node scripts/typeface.mjs InstrumentSerif-Italic.ttf src/gl/research/fonts/instrument-serif-italic.json "intelgc "
+//   NODE_PATH=<tmp>/node_modules node scripts/typeface.mjs BricolageGrotesque-640.ttf src/gl/research/fonts/bricolage-grotesque-640.json "intelgc "
+// An instance cut from a variable font keeps its overlapping contours, which TextGeometry can't fill: the "e"'s crossbar
+// ran through its bowl and drew a stray face in 3D. After converting, its outline was redrawn by hand without the
+// overlap (the bar's underside meets the bowl's inner edge; the eye above the bar is its own hole). Redo that if the
+// file is regenerated.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 

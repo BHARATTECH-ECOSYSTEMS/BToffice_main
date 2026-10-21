@@ -33,8 +33,6 @@
   --display: 'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif;
   --sans: 'Figtree', 'Helvetica Neue', Arial, sans-serif;
   --mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  /* italic accent words only (Research headlines) */
-  --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
 
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-expo: cubic-bezier(0.16, 1, 0.3, 1);

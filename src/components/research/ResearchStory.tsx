@@ -22,7 +22,7 @@ const PROOF = [ // PLACEHOLDER: dummy figures until real proof arrives
 /** Which side of the stage a stop's copy takes, so the stage can darken the swarm behind it. */
 const copySide = (stop: number) => (stop === 0 || stop === LAST ? 'none' : stop === 1 || stop === WHERE_WE_WORK ? 'both' : sideOf(stop) > 0 ? 'left' : 'right');
 
-/** Each domain's headline: a line on what it is for, its distinctive words set in the italic serif. */
+/** Each domain's headline: a line on what it is for, its distinctive words in the accent colour. */
 const DOMAIN_LINES: ReactNode[][] = [
   [<>An intelligence</>, <>that keeps <em>learning.</em></>],
   [<>Many systems.</>, <>One <em>intelligence.</em></>],

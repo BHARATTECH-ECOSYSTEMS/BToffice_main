@@ -1,14 +1,14 @@
 import * as THREE from 'three';
 import { FontLoader, type FontData } from 'three/examples/jsm/loaders/FontLoader.js';
 import { TextGeometry } from 'three/examples/jsm/geometries/TextGeometry.js';
-import fontJson from './fonts/instrument-serif-italic.json';
+import fontJson from './fonts/bricolage-grotesque-640.json';
 import { FORMS, FOV, GAP, pairAt, stopEye, storyPath, type FormName } from './path';
 import { armForm, cubeForm, domeForm, fieldForm, globeForm, phoneForm, skyForm, slabForm, surfaceForm } from './forms';
 import { HUE, seeded } from '../worlds/kit';
 
 /**
  * The Research page's one object: a swarm of points that is the intelligence itself. In the hero it is the word
- * "intelligence" in solid 3D serif with a thread of points weaving through its letters; the first scroll flies the
+ * "intelligence" in solid 3D, in the site's headline font, with a thread of points weaving through its letters; the first scroll flies the
  * camera into a letter, the letters come apart into points, and the swarm re-forms as each stop's object further
  * along the way. Every frame is a function of the scroll story value `s`, so scrolling back retraces it exactly.
  */
