@@ -1,0 +1,6 @@
+
+> server@1.0.0 start
+> node server.js
+
+Database connected ✅
+🚀 Server running on port 65535
