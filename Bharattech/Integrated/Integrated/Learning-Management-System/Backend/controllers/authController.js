@@ -668,6 +668,21 @@ const passwordGrantLogin = async (username, password) => {
   };
 };
 
+// BT-0001, bt-0001, BT0001… (IDs are padded to at least four digits).
+const EMPLOYEE_ID_SHAPE = /^bt-?(\d{4,})$/i;
+
+// People may sign in with their Employee ID, which Keycloak doesn't know, so it is swapped for the person's email.
+// An ID nobody has goes to Keycloak unchanged and fails like a wrong password: neither the message nor the reply
+// time shows which IDs exist.
+const loginNameFor = async (typed) => {
+  const match = EMPLOYEE_ID_SHAPE.exec(String(typed).trim());
+  if (!match) return typed;
+  const person = await User.findOne({ employeeId: `BT-${match[1]}`, isDeleted: { $ne: true } })
+    .select("email")
+    .lean();
+  return person?.email || String(typed).trim();
+};
+
 const keycloakLogin = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -677,7 +692,7 @@ const keycloakLogin = async (req, res) => {
         .json({ message: "Username and password are required" });
     }
 
-    const result = await passwordGrantLogin(username, password);
+    const result = await passwordGrantLogin(await loginNameFor(username), password);
 
     if (!result.ok) {
       console.warn(
