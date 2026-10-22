@@ -763,6 +763,15 @@ body:has(.portal) .scene {
 .p-file-facts a {
   color: var(--p-accent-text);
 }
+/* a certificate's PDF inside its window: the page is A4 landscape, so the frame keeps that shape */
+.p-cert-pdf {
+  display: block;
+  width: 100%;
+  aspect-ratio: 297 / 210;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--paper, #fff);
+}
 /* a detail the account doesn't have yet reads quieter than real data */
 .p-file-facts dd.is-unset {
   color: var(--ink-soft);
@@ -1767,6 +1776,15 @@ body:has(.portal) .scene {
   color: var(--p-accent-text);
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+/* a link-looking button (it opens something in the page rather than going to an address) */
+button.p-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
 .p-row {
   display: flex;

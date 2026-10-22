@@ -153,6 +153,44 @@ test('a slow request can be given more time than the usual limit', async () => {
   assert.ok(Date.now() - started >= 140, 'gave up before its own limit');
 });
 
+test('a file (a PDF) comes back as a Blob, asked for with the sign-in token', async () => {
+  const pdf = new Response(new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]), { status: 200, headers: { 'Content-Type': 'application/pdf' } });
+  const net = backend(pdf);
+  const api = createApi({ base: 'http://api.test/api', ...signedIn, request: net.request });
+
+  const file = await api.getFile('/certificates/c1/pdf');
+
+  assert.equal(file.type, 'application/pdf');
+  assert.equal(await file.text(), '%PDF-');
+  assert.equal(new Headers(net.calls[0].init.headers).get('Authorization'), 'Bearer token-123');
+});
+
+test("a refused file comes back as the backend's error, not as a broken file", async () => {
+  const api = createApi({ base: 'http://api.test/api', ...signedIn, request: backend(json(403, { message: 'You can only open your own certificates.' })).request });
+  try {
+    await api.getFile('/certificates/c1/pdf');
+    assert.fail('expected a failure');
+  } catch (e) {
+    assert.equal((e as ApiError).kind, 'forbidden');
+    assert.equal((e as ApiError).message, 'You can only open your own certificates.');
+  }
+});
+
+test('an upload is sent as the form itself, so the browser sets its own file boundary', async () => {
+  const net = backend(json(201, { _id: 'p1' }));
+  const api = createApi({ base: 'http://api.test/api', ...signedIn, request: net.request });
+  const form = new FormData();
+  form.append('name', 'Leave Policy');
+  form.append('pdf', new Blob(['%PDF-'], { type: 'application/pdf' }), 'leave.pdf');
+
+  assert.deepEqual(await api.postForm('/policies', form), { _id: 'p1' });
+  const { init } = net.calls[0];
+  assert.equal(init.method, 'POST');
+  assert.equal(init.body, form);
+  assert.equal(new Headers(init.headers).get('Content-Type'), null);
+  assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer token-123');
+});
+
 test('a backend that never answers gives up after the time limit instead of loading forever', async () => {
   const api = createApi({ base: 'http://api.test/api', ...signedIn, request: backend('hang').request, timeoutMs: 50 });
   const started = Date.now();

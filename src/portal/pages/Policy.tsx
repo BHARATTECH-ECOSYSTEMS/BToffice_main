@@ -1,13 +1,21 @@
 import { useState } from 'react';
-import type { PolicyCategory, PolicyDoc } from '../data';
+import { api } from '../api';
+import type { PolicyCategory } from '../data';
 import { managesPortal, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, Modal, PageHead, PIcon, Stat, useNotice } from '../ui';
+import { ConnectedPolicy } from './PolicyConnected';
 
 const CATEGORY: Record<PolicyCategory, string> = { policy: 'Policy', compliance: 'Compliance' };
+// the backend refuses larger files too (middlewares/uploadPolicy.js)
 const MAX_MB = 20;
 
+/** The backend's documents when it is connected; the demo documents otherwise. */
 export function Policy() {
+  return api ? <ConnectedPolicy /> : <DemoPolicy />;
+}
+
+function DemoPolicy() {
   const role = useSession()!.role;
   const isManager = managesPortal(role);
   const { policies, acceptances, me, acceptPolicy, addPolicy, removePolicy } = usePortal();
@@ -160,9 +168,9 @@ export function Policy() {
       {uploading && (
         <UploadModal
           onClose={() => setUploading(false)}
-          onAdd={(doc) => {
-            addPolicy(doc);
-            notify(`${doc.name} was published. It's kept only until this page reloads.`);
+          onAdd={({ name, category, pages, file }) => {
+            addPolicy({ name, category, pages, fileName: file.name, fileUrl: URL.createObjectURL(file) });
+            notify(`${name} was published. It's kept only until this page reloads.`);
           }}
         />
       )}
@@ -170,18 +178,31 @@ export function Policy() {
   );
 }
 
-function UploadModal({ onClose, onAdd }: { onClose: () => void; onAdd: (doc: Omit<PolicyDoc, 'id'>) => void }) {
+export interface PolicyDraft {
+  name: string;
+  category: PolicyCategory;
+  pages: number;
+  file: File;
+}
+
+/**
+ * Adds a document. `onAdd` may be a backend upload: the window waits while it runs, and if it fails the reason shows
+ * and what was entered is kept. It closes once the document is added.
+ */
+export function UploadModal({ onClose, onAdd }: { onClose: () => void; onAdd: (draft: PolicyDraft) => unknown }) {
   const [name, setName] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [pages, setPages] = useState('');
   const [category, setCategory] = useState<PolicyCategory | ''>('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   return (
     <Modal
       title="Add document"
       icon="upload"
       onClose={onClose}
-      onSubmit={() => {
+      onSubmit={async () => {
+        if (busy) return;
         const n = Number(pages);
         if (!name.trim()) return setError('Give the document a name.');
         if (!file) return setError('Choose a PDF to upload.');
@@ -190,16 +211,23 @@ function UploadModal({ onClose, onAdd }: { onClose: () => void; onAdd: (doc: Omi
         if (file.size > MAX_MB * 1024 * 1024) return setError(`The file is over ${MAX_MB} MB.`);
         if (!Number.isInteger(n) || n < 1 || n > 2000) return setError('Enter the number of pages (a whole number).');
         if (!category) return setError('Pick a category.');
-        onAdd({ name: name.trim(), category, pages: n, fileName: file.name, fileUrl: URL.createObjectURL(file) });
-        onClose();
+        setBusy(true);
+        try {
+          await onAdd({ name: name.trim(), category, pages: n, file });
+          onClose();
+        } catch (e) {
+          setError(e instanceof Error && e.message ? e.message : 'The document couldn’t be added. Please try again.');
+        } finally {
+          setBusy(false);
+        }
       }}
       footer={
         <>
           <button type="button" className={btnClass('ghost')} onClick={onClose}>
             <BtnLabel>Cancel</BtnLabel>
           </button>
-          <button type="submit" className={btnClass('primary')}>
-            <BtnLabel>Add</BtnLabel>
+          <button type="submit" className={btnClass('primary')} disabled={busy}>
+            <BtnLabel>{busy ? 'Uploading…' : 'Add'}</BtnLabel>
           </button>
         </>
       }

@@ -35,12 +35,15 @@ interface ApiOptions {
 }
 
 export function createApi({ base, token, signedIn, request = (input, init) => fetch(input, init), timeoutMs = TIMEOUT_MS }: ApiOptions) {
-  async function send<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, payload?: unknown, limitMs = timeoutMs): Promise<T> {
+  /** `file`: a successful answer comes back as a Blob (a PDF, say) instead of JSON; errors are still JSON. */
+  async function send<T>(method: 'GET' | 'POST' | 'PATCH' | 'DELETE', path: string, payload?: unknown, limitMs = timeoutMs, file = false): Promise<T> {
     const access = await token();
     // still signed in but no token means Keycloak couldn't renew it just now
     if (!access) throw new ApiError(signedIn() ? 'unavailable' : 'signed-out');
-    const headers: Record<string, string> = { Authorization: `Bearer ${access}`, Accept: 'application/json' };
-    if (payload !== undefined) headers['Content-Type'] = 'application/json';
+    const headers: Record<string, string> = { Authorization: `Bearer ${access}`, Accept: file ? '*/*' : 'application/json' };
+    // a form (a file upload) goes as it is: the browser writes its Content-Type with the part boundary
+    const isForm = payload instanceof FormData;
+    if (payload !== undefined && !isForm) headers['Content-Type'] = 'application/json';
     const abort = new AbortController();
     const timer = setTimeout(() => abort.abort(), limitMs);
     let res: Response;
@@ -49,9 +52,10 @@ export function createApi({ base, token, signedIn, request = (input, init) => fe
       res = await request(`${base}${path}`, {
         method,
         headers,
-        body: payload === undefined ? undefined : JSON.stringify(payload),
+        body: payload === undefined ? undefined : isForm ? payload : JSON.stringify(payload),
         signal: abort.signal,
       });
+      if (file && res.ok) return (await res.blob()) as T;
       body = await res.json().catch(() => undefined);
     } catch {
       throw new ApiError('unavailable');
@@ -66,8 +70,12 @@ export function createApi({ base, token, signedIn, request = (input, init) => fe
 
   return {
     get: <T>(path: string) => send<T>('GET', path),
+    /** A file the backend makes (a certificate PDF): needs the sign-in token, so it can't be a plain link. */
+    getFile: (path: string) => send<Blob>('GET', path, undefined, timeoutMs, true),
     /** `timeoutMs` gives a slow request (one that sends an email, say) longer than the usual limit. */
     post: <T>(path: string, record: object, { timeoutMs: limitMs }: { timeoutMs?: number } = {}) => send<T>('POST', path, record, limitMs),
+    /** A file upload: the fields and the file in one form. */
+    postForm: <T>(path: string, form: FormData, { timeoutMs: limitMs }: { timeoutMs?: number } = {}) => send<T>('POST', path, form, limitMs),
     patch: <T>(path: string, changes: object) => send<T>('PATCH', path, changes),
     del: <T>(path: string) => send<T>('DELETE', path),
   };

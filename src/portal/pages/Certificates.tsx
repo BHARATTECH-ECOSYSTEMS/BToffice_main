@@ -1,16 +1,23 @@
 import { useState } from 'react';
+import { api } from '../api';
 import { CERTIFICATE_TYPES, type Certificate, type CertificateType } from '../data';
 import { managesPortal, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
 import { btnClass, BtnLabel, DeleteButton, Empty, Modal, PageHead, PIcon, SearchField, Stat, useNotice } from '../ui';
 import type { PortalIconName } from '../data';
+import { ConnectedCertificates } from './CertificatesConnected';
 
 const TYPE_ICON: Record<CertificateType, PortalIconName> = { bonafide: 'file', character: 'shield', transfer: 'cap', completion: 'book' };
 const typeOf = (id: CertificateType) => CERTIFICATE_TYPES.find((t) => t.id === id)!;
 
+/** The backend's certificates when it is connected; the demo certificates otherwise. */
 export function Certificates() {
+  return api ? <ConnectedCertificates /> : <DemoCertificates />;
+}
+
+function DemoCertificates() {
   const isManager = managesPortal(useSession()!.role);
-  const { certificates } = usePortal();
+  const { certificates, people, issueCertificate } = usePortal();
   const [tab, setTab] = useState<'issue' | 'history'>(isManager ? 'issue' : 'history');
   const [notice, notify] = useNotice();
 
@@ -29,6 +36,8 @@ export function Certificates() {
       )}
       {isManager && tab === 'issue' ? (
         <IssueWizard
+          people={people}
+          issue={issueCertificate}
           onIssued={(name, type) => {
             notify(`${typeOf(type).name} generated for ${name}. It's now in the history.`);
             setTab('history');
@@ -42,9 +51,23 @@ export function Certificates() {
   );
 }
 
-function IssueWizard({ onIssued }: { onIssued: (name: string, type: CertificateType) => void }) {
-  const { people, issueCertificate } = usePortal();
+/**
+ * Issue a certificate in three steps: type, person, review. `issue` may be a backend call; while it runs the
+ * Generate button waits, and if it fails the reason shows and the choices are kept.
+ */
+export function IssueWizard({
+  people,
+  issue,
+  onIssued,
+}: {
+  people: { id: string; name: string; email: string }[];
+  /** Whatever it returns is ignored; a promise is waited for. */
+  issue: (type: CertificateType, personId: string) => unknown;
+  onIssued: (name: string, type: CertificateType) => void;
+}) {
   const [step, setStep] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const [type, setType] = useState<CertificateType | null>(null);
   const [personId, setPersonId] = useState<string | null>(null);
   const [q, setQ] = useState('');
@@ -136,11 +159,16 @@ function IssueWizard({ onIssued }: { onIssued: (name: string, type: CertificateT
             </div>
           </dl>
           <p className="p-hint">Check the details first. Once generated, the certificate appears in the history, where it can be viewed.</p>
+          {error && (
+            <p className="p-error" role="alert">
+              {error}
+            </p>
+          )}
         </div>
       )}
 
       <div className="p-wizard-foot">
-        <button type="button" className={btnClass('ghost')} onClick={() => setStep((s) => s - 1)} disabled={step === 0}>
+        <button type="button" className={btnClass('ghost')} onClick={() => (setStep((s) => s - 1), setError(''))} disabled={step === 0 || busy}>
           <BtnLabel arrow="left">Back</BtnLabel>
         </button>
         {step < 2 ? (
@@ -151,12 +179,21 @@ function IssueWizard({ onIssued }: { onIssued: (name: string, type: CertificateT
           <button
             type="button"
             className={btnClass('primary')}
-            onClick={() => {
-              issueCertificate(type!, person!.id);
-              onIssued(person!.name, type!);
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError('');
+              try {
+                await issue(type!, person!.id);
+                onIssued(person!.name, type!);
+              } catch (e) {
+                setError(e instanceof Error && e.message ? e.message : 'The certificate couldn’t be generated. Please try again.');
+              } finally {
+                setBusy(false);
+              }
             }}
           >
-            <BtnLabel icon="award">Generate certificate</BtnLabel>
+            <BtnLabel icon="award">{busy ? 'Generating…' : 'Generate certificate'}</BtnLabel>
           </button>
         )}
       </div>
