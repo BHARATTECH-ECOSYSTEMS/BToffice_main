@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAuth, loginRedirect, portalRole, type AuthConfig } from '../../src/portal/auth';
+import { createAuth, isEmployeeId, loginRedirect, portalRole, type AuthConfig } from '../../src/portal/auth';
 
 const CONFIG: AuthConfig = { api: 'http://api.test/api', keycloak: 'http://kc.test', realm: 'bharattech', clientId: 'lms-client' };
 const LOGIN_URL = 'http://api.test/api/auth/keycloak-login';
@@ -54,6 +54,16 @@ test('each account role opens the matching portal view, and interns see the empl
 test('an unknown role gets the least-privileged view', () => {
   assert.equal(portalRole('SOMETHING-NEW'), 'employee');
   assert.equal(portalRole(''), 'employee');
+});
+
+test('Employee IDs are recognised the way the backend accepts them', () => {
+  for (const typed of ['BT-0001', 'bt-0001', 'BT0001', ' BT-0042 ', 'BT-12345']) assert.equal(isEmployeeId(typed), true, typed);
+});
+
+test('anything else is not an Employee ID', () => {
+  for (const typed of ['', 'BT-', 'BT-01', 'BT-00A1', 'XY-0001', '0001', 'BT--0001', 'name@bt-0001.com']) {
+    assert.equal(isEmployeeId(typed), false, typed);
+  }
 });
 
 test('signing in sends the email and password to the backend login route and returns the account', async () => {

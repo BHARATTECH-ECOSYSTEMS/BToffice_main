@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useScene } from '../gl/Scene';
-import { auth, type SignInResult } from '../portal/auth';
+import { auth, isEmployeeId, type SignInResult } from '../portal/auth';
 import { getSession, startSession } from '../portal/session';
 import { LogoGlass } from './LogoGlass';
 import { Arrow, Brand, BtnText, ThreadMark } from './ui';
@@ -55,7 +55,7 @@ const USERNAME_SHAPE = /^[a-zA-Z0-9._-]{3,32}$/;
 const NEW_PASSWORD_MIN = 8;
 const RESET_NOT_CONNECTED = 'Password reset isn’t connected yet, so no email was sent. Please ask your administrator for now.';
 const SIGN_IN_FAILED: Record<Exclude<SignInResult, { ok: true }>['reason'], string> = {
-  credentials: 'That email and password don’t match. Check them and try again.',
+  credentials: 'Those details don’t match. Check your email or Employee ID and password, and try again.',
   'set-password': 'Your account still needs a new password before you can sign in. Please ask your administrator to help you finish setting it.',
   unavailable: 'We couldn’t reach the sign-in service. Check your connection and try again in a moment.',
 };
@@ -132,6 +132,8 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
   const [suggestedName, setSuggestedName] = useState('');
   const [closing, setClosing] = useState(false);
   const [view, setView] = useState<View>('signin');
+  // only the real sign-in knows Employee IDs; the demo and the reset form stay email-only
+  const idAllowed = view === 'signin' && !!auth;
   // which way the new view slides in; unset until the first switch, so the opening stagger plays only once
   const [dir, setDir] = useState<'next' | 'back' | undefined>();
   // kept across views, so switching to reset doesn't make anyone type their email twice
@@ -201,8 +203,10 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
     const password = String(f.get('password') ?? '');
     const mail = email.trim();
     const next: typeof errors = {};
-    if (!mail) next.email = 'Enter your work email.';
-    else if (!EMAIL_SHAPE.test(mail)) next.email = 'That doesn’t look like an email address.';
+    if (!mail) next.email = idAllowed ? 'Enter your work email or Employee ID.' : 'Enter your work email.';
+    else if (!EMAIL_SHAPE.test(mail) && !(idAllowed && isEmployeeId(mail))) {
+      next.email = idAllowed ? 'Enter a work email, or an Employee ID like BT-0001.' : 'That doesn’t look like an email address.';
+    }
     if (view === 'signin' && !password) next.password = 'Enter your password.';
     setErrors(next);
     const first = (['email', 'password'] as Field[]).find((k) => next[k]);
@@ -439,10 +443,13 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
               {view === 'setup' && setupFields}
               {view !== 'setup' && (
               <label className="login-field">
-                <span>Work email</span>
+                <span>{idAllowed ? 'Work email or Employee ID' : 'Work email'}</span>
                 <input
                   name="email"
-                  type="email"
+                  // a text field, because the browser's email check would refuse BT-0001
+                  type={idAllowed ? 'text' : 'email'}
+                  autoCapitalize="none"
+                  spellCheck={false}
                   // the browser's saved logins stay out of the demo sign-in, which checks no password
                   autoComplete={auth ? 'username' : 'off'}
                   placeholder="name@bharattechorigin.com"

@@ -64,6 +64,10 @@ interface LoginReply {
  */
 export const loginRedirect = (pathname: string) => (/^\/login\/?$/i.test(pathname) ? '/#/portal' : null);
 
+// The shapes the backend's keycloakLogin swaps for the person's email: BT-0001, bt-0001, BT0001.
+const EMPLOYEE_ID_SHAPE = /^bt-?\d{4,}$/i;
+export const isEmployeeId = (typed: string) => EMPLOYEE_ID_SHAPE.test(typed.trim());
+
 interface Tokens {
   access: string;
   refresh: string;
