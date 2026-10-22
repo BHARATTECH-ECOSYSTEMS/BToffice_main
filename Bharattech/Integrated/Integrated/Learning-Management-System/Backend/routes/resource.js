@@ -1,6 +1,7 @@
 const express = require("express");
 const mongoose = require("mongoose");
 const Resource = require("../models/Resource");
+const User = require("../models/User");
 
 const router = express.Router();
 
@@ -15,6 +16,28 @@ const getValidObjectIds = (...values) =>
     .filter(Boolean)
     .map((value) => String(value))
     .filter((value) => mongoose.Types.ObjectId.isValid(value));
+
+const TITLE_MAX = 120;
+const LINK_MAX = 2048;
+
+const readTitle = (value) => {
+  const title = typeof value === "string" ? value.trim() : "";
+  return title && title.length <= TITLE_MAX ? title : null;
+};
+
+// Only web addresses: links are opened with window.open / <a href>, where a javascript: or data: address would run code.
+const readLink = (value) => {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text || text.length > LINK_MAX) return null;
+  try {
+    const url = new URL(text);
+    return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
+  } catch {
+    return null;
+  }
+};
+
+const isObjectId = (value) => typeof value === "string" && mongoose.Types.ObjectId.isValid(value);
 
 console.log("✅ RESOURCE ROUTE LOADED");
 /**
@@ -59,9 +82,15 @@ router.post("/", async (req, res) => {
     return res.status(403).json({ message: "Admin access required" });
   }
 
-  const { title, link } = req.body;
-  if (!title || !link) {
-    return res.status(400).json({ message: "Missing fields" });
+  const title = readTitle(req.body.title);
+  if (!title) {
+    return res.status(400).json({ message: `Give the resource a name (up to ${TITLE_MAX} characters).` });
+  }
+  const link = readLink(req.body.link);
+  if (!link) {
+    return res
+      .status(400)
+      .json({ message: `Enter a full web address starting with http:// or https:// (up to ${LINK_MAX} characters).` });
   }
 
   try {
@@ -93,6 +122,13 @@ router.post("/:resourceId/assign", async (req, res) => {
     if (!userId) {
       return res.status(400).json({ message: "userId is required" });
     }
+    if (!isObjectId(userId) || !isObjectId(resourceId)) {
+      return res.status(400).json({ message: "Invalid resource or user id" });
+    }
+    // only a current account: an unknown or deleted id would leave a name nobody can resolve
+    if (!(await User.exists({ _id: userId, isDeleted: { $ne: true } }))) {
+      return res.status(404).json({ message: "Person not found" });
+    }
 
     const resource = await Resource.findByIdAndUpdate(
       resourceId,
@@ -115,6 +151,37 @@ router.post("/:resourceId/assign", async (req, res) => {
 });
 
 /**
+ * REMOVE a person from a resource (Admin only). Works for deleted accounts too, so stale names can be cleared.
+ */
+router.delete("/:resourceId/assign/:userId", async (req, res) => {
+  if (!hasAdminAccess(req.user.role)) {
+    return res.status(403).json({ message: "Admin access required" });
+  }
+
+  try {
+    const { resourceId, userId } = req.params;
+    if (!isObjectId(resourceId) || !isObjectId(userId)) {
+      return res.status(400).json({ message: "Invalid resource or user id" });
+    }
+
+    const resource = await Resource.findByIdAndUpdate(
+      resourceId,
+      { $pull: { assignedTo: userId } },
+      { new: true }
+    );
+
+    if (!resource) {
+      return res.status(404).json({ message: "Resource not found" });
+    }
+
+    return res.json({ message: "Removed from resource", resource });
+  } catch (err) {
+    console.error("UNASSIGN resource error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+});
+
+/**
  * DELETE resource (Admin only)
  */
 router.delete("/delete/:id", async (req, res) => {
@@ -124,6 +191,9 @@ router.delete("/delete/:id", async (req, res) => {
 
   try {
     const { id } = req.params;
+    if (!isObjectId(id)) {
+      return res.status(400).json({ message: "Invalid resource id" });
+    }
 
     const resource = await Resource.findByIdAndDelete(id);
 
