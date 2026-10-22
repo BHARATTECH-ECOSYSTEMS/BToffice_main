@@ -1,0 +1,279 @@
+import type { Role } from './session';
+
+/**
+ * The real sign-in, through the company backend and its Keycloak.
+ *
+ * It is switched on only when the site is built with VITE_API_BASE_URL, VITE_KEYCLOAK_URL, VITE_KEYCLOAK_REALM and
+ * VITE_KEYCLOAK_CLIENT_ID set (.env.local, never committed). Without them `auth` is null and the portal keeps its demo
+ * sign-in.
+ *
+ * - Sign in: the backend's POST /auth/keycloak-login swaps the email and password for Keycloak tokens. The password
+ *   goes only there and is never stored.
+ * - Requests: `accessToken()` hands out the access token, renewing it with Keycloak's token endpoint just before it
+ *   expires (Keycloak's default lifetime is 5 minutes).
+ * - Sign out: the tokens are forgotten at once, then Keycloak is asked to end the session.
+ *
+ * The tokens live where the portal session lives: this tab only, or this browser with "Remember me". Either way the
+ * sign-in lasts no longer than the Keycloak session (its idle and maximum limits). The role kept in the browser only
+ * picks which pages to show; the backend checks the token's role on every request.
+ */
+
+export interface AuthConfig {
+  /** The backend's API root, e.g. http://localhost:5000/api */
+  api: string;
+  keycloak: string;
+  realm: string;
+  clientId: string;
+}
+
+export interface Account {
+  name: string;
+  email: string;
+  role: Role;
+}
+
+export type SignInResult = { ok: true; account: Account } | { ok: false; reason: 'credentials' | 'set-password' | 'unavailable' };
+
+export interface InviteSetup {
+  /** What they signed in with: their email (or the username from the invite). */
+  username: string;
+  temporaryPassword: string;
+  newPassword: string;
+  /** The username they choose; the backend allows 3–32 letters, numbers, dots, dashes or underscores. */
+  newUsername: string;
+}
+
+export type InviteSetupResult =
+  | { ok: true; account: Account }
+  | { ok: false; reason: 'credentials' | 'username-taken' | 'unavailable' }
+  | { ok: false; reason: 'invalid'; message: string };
+
+/** What the backend's sign-in routes answer (controllers/authController.js passwordGrantLogin). */
+interface LoginReply {
+  requiresPasswordChange?: boolean;
+  message?: string;
+  access_token?: string;
+  refresh_token?: string;
+  id_token?: string;
+  user?: { fullName?: string; username?: string; email?: string; role?: string };
+}
+
+/**
+ * Invite emails from the backend link to <site>/login, the address of the company's own frontend. This site's login is
+ * the pop-up the portal opens for a signed-out visitor, so that address goes to the portal.
+ */
+export const loginRedirect = (pathname: string) => (/^\/login\/?$/i.test(pathname) ? '/#/portal' : null);
+
+interface Tokens {
+  access: string;
+  refresh: string;
+  id?: string;
+}
+
+/** The backend's account roles (SUPERADMIN, ADMIN, SUBADMIN, EMPLOYEE, INTERN) shown as the portal's three views. */
+export function portalRole(accountRole: string): Role {
+  switch (accountRole) {
+    case 'SUPERADMIN':
+    case 'ADMIN':
+      return 'admin';
+    case 'SUBADMIN':
+      return 'subadmin';
+    default:
+      // interns, and any role added later, get the view with the least access
+      return 'employee';
+  }
+}
+
+/** When a token stops working, in ms since 1970; 0 if it can't be read, so a broken token counts as expired. */
+function expiresAt(jwt: string) {
+  try {
+    const payload = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const exp = (JSON.parse(atob(payload)) as { exp?: unknown }).exp;
+    return typeof exp === 'number' ? exp * 1000 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+// renew a little early, so a token never expires while a request is on its way
+const RENEW_EARLY_MS = 30_000;
+const KEY = 'bt-portal-auth';
+
+const stores = (): Storage[] => {
+  try {
+    return [window.sessionStorage, window.localStorage];
+  } catch {
+    return [];
+  }
+};
+
+function loadTokens(): { tokens: Tokens | null; remember: boolean } {
+  for (const [i, store] of stores().entries()) {
+    try {
+      const saved = JSON.parse(store.getItem(KEY) ?? 'null') as Partial<Tokens> | null;
+      if (typeof saved?.access === 'string' && typeof saved.refresh === 'string') {
+        return { tokens: { access: saved.access, refresh: saved.refresh, id: saved.id }, remember: i === 1 };
+      }
+    } catch {
+      // a malformed entry is treated as signed out
+    }
+  }
+  return { tokens: null, remember: false };
+}
+
+function saveTokens(tokens: Tokens | null, remember: boolean) {
+  const [tab, device] = stores();
+  try {
+    tab?.removeItem(KEY);
+    device?.removeItem(KEY);
+    if (tokens) (remember ? device : tab)?.setItem(KEY, JSON.stringify(tokens));
+  } catch {
+    // storage can be blocked (private windows); the sign-in then lasts only while this page is open
+  }
+}
+
+const FORM = { 'Content-Type': 'application/x-www-form-urlencoded' };
+
+export function createAuth(config: AuthConfig, request: typeof fetch = (input, init) => fetch(input, init)) {
+  const oidc = `${config.keycloak}/realms/${config.realm}/protocol/openid-connect`;
+  let { tokens, remember } = loadTokens();
+  let renewing: Promise<string | null> | null = null;
+  const expireListeners = new Set<() => void>();
+
+  const keep = (next: Tokens | null) => {
+    tokens = next;
+    saveTokens(next, remember);
+  };
+
+  const expire = () => {
+    keep(null);
+    expireListeners.forEach((l) => l());
+  };
+
+  const signedIn = () => !!tokens && expiresAt(tokens.refresh) > Date.now();
+
+  /** POSTs to one of the backend's sign-in routes; null when it can't be reached. */
+  async function post(path: string, payload: object): Promise<{ status: number; ok: boolean; body: LoginReply | null } | null> {
+    try {
+      const res = await request(`${config.api}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      return { status: res.status, ok: res.ok, body: (await res.json().catch(() => null)) as LoginReply | null };
+    } catch {
+      return null;
+    }
+  }
+
+  /** Keeps the tokens of a successful sign-in; null when the answer doesn't carry them. */
+  function begin(body: LoginReply | null, rememberMe: boolean, typed: string): Account | null {
+    if (!body?.access_token || !body.refresh_token || !body.user) return null;
+    remember = rememberMe;
+    keep({ access: body.access_token, refresh: body.refresh_token, id: body.id_token });
+    const { fullName, username: accountName, email, role } = body.user;
+    return { name: fullName || accountName || typed, email: (email || typed).toLowerCase(), role: portalRole(role ?? '') };
+  }
+
+  async function signIn(username: string, password: string, rememberMe: boolean): Promise<SignInResult> {
+    const reply = await post('/auth/keycloak-login', { username, password });
+    if (!reply) return { ok: false, reason: 'unavailable' };
+    if (reply.status === 403 && reply.body?.requiresPasswordChange) return { ok: false, reason: 'set-password' };
+    if (reply.status === 400 || reply.status === 401) return { ok: false, reason: 'credentials' };
+    const account = reply.ok ? begin(reply.body, rememberMe, username) : null;
+    return account ? { ok: true, account } : { ok: false, reason: 'unavailable' };
+  }
+
+  /**
+   * An invited person's first sign-in: their temporary password, the password they choose, and the username the
+   * backend asks them to pick. On success they are signed in, as with signIn.
+   */
+  async function acceptInvite(setup: InviteSetup, rememberMe: boolean): Promise<InviteSetupResult> {
+    const reply = await post('/auth/accept-invite', setup);
+    if (!reply) return { ok: false, reason: 'unavailable' };
+    if (reply.status === 401) return { ok: false, reason: 'credentials' };
+    if (reply.status === 409) return { ok: false, reason: 'username-taken' };
+    if (reply.status === 400) return { ok: false, reason: 'invalid', message: reply.body?.message ?? '' };
+    const account = reply.ok ? begin(reply.body, rememberMe, setup.username) : null;
+    return account ? { ok: true, account } : { ok: false, reason: 'unavailable' };
+  }
+
+  async function renew(current: Tokens): Promise<string | null> {
+    let res: Response;
+    try {
+      res = await request(`${oidc}/token`, {
+        method: 'POST',
+        headers: FORM,
+        body: new URLSearchParams({ grant_type: 'refresh_token', client_id: config.clientId, refresh_token: current.refresh }),
+      });
+    } catch {
+      // offline or Keycloak down: stay signed in, the next request tries again
+      return null;
+    }
+    const body = (await res.json().catch(() => null)) as { access_token?: string; refresh_token?: string; id_token?: string } | null;
+    // signed out while this was on its way: don't bring the tokens back
+    if (tokens !== current) return null;
+    if (!res.ok || !body?.access_token) {
+      // Keycloak answered but refused (the session ended or was revoked): this sign-in is over
+      if (res.status >= 400 && res.status < 500) expire();
+      return null;
+    }
+    keep({ access: body.access_token, refresh: body.refresh_token ?? current.refresh, id: body.id_token ?? current.id });
+    return body.access_token;
+  }
+
+  /** The token to send as `Authorization: Bearer …`, or null when signed out or Keycloak can't be reached. */
+  async function accessToken(): Promise<string | null> {
+    if (!tokens) return null;
+    if (!signedIn()) {
+      expire();
+      return null;
+    }
+    if (expiresAt(tokens.access) - Date.now() > RENEW_EARLY_MS) return tokens.access;
+    // several requests at once share one renewal, so Keycloak sees each refresh token only once
+    renewing ??= renew(tokens).finally(() => (renewing = null));
+    return renewing;
+  }
+
+  async function signOut() {
+    const current = tokens;
+    keep(null);
+    if (!current) return;
+    try {
+      await request(`${oidc}/logout`, {
+        method: 'POST',
+        headers: FORM,
+        body: new URLSearchParams({ client_id: config.clientId, refresh_token: current.refresh }),
+      });
+    } catch {
+      // the tokens are already gone here; Keycloak ends its side at the session's idle limit
+    }
+  }
+
+  /** Called when the sign-in ends by itself (an expired or revoked session), not when the person signs out. */
+  const onExpire = (listener: () => void) => {
+    expireListeners.add(listener);
+    return () => expireListeners.delete(listener);
+  };
+
+  return { signIn, acceptInvite, signOut, accessToken, signedIn, onExpire };
+}
+
+function configFromEnv(): AuthConfig | null {
+  const env = import.meta.env as Record<string, string | undefined> | undefined;
+  const values = {
+    api: env?.VITE_API_BASE_URL,
+    keycloak: env?.VITE_KEYCLOAK_URL,
+    realm: env?.VITE_KEYCLOAK_REALM,
+    clientId: env?.VITE_KEYCLOAK_CLIENT_ID,
+  };
+  const set = Object.values(values).filter(Boolean).length;
+  if (set === 0) return null;
+  if (set < 4) {
+    console.warn('Portal sign-in: some VITE_API_BASE_URL / VITE_KEYCLOAK_* settings are missing, so the demo sign-in is used.');
+    return null;
+  }
+  return values as AuthConfig;
+}
+
+/** The backend and Keycloak addresses, or null while the site runs with the demo sign-in. */
+export const authConfig = configFromEnv();
+
+/** The real sign-in, or null while the site runs with the demo sign-in. */
+export const auth = authConfig ? createAuth(authConfig) : null;

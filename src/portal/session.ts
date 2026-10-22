@@ -1,12 +1,13 @@
 import { useSyncExternalStore } from 'react';
+import { auth } from './auth';
 
 /**
  * The employee portal's sign-in state.
  *
- * There is no login backend yet, so this is a DEMO session: signing in with any well-formed email opens the
- * portal, and no password is checked. It is not access control: anyone can open #/portal by setting the same
- * storage key. When the real sign-in (the company Keycloak) is connected, replace `startSession` with the token
- * exchange and keep the rest of the portal as it is.
+ * With the real sign-in connected (`auth`, src/portal/auth.ts), the name, email and role come from the person's
+ * account, and the session lasts only while their Keycloak sign-in does. Without it this is a DEMO session: signing
+ * in with any well-formed email opens the portal and no password is checked. Neither is access control on its own:
+ * the role here only picks which pages to show, and the backend checks every request.
  *
  * Stored: the name, email, role, and the person's own photo and notification choices. The password is never kept.
  */
@@ -50,6 +51,8 @@ const stores = (): Storage[] => {
 };
 
 function read(): Session | null {
+  // a demo session left in storage, or one whose Keycloak sign-in has ended, doesn't open the connected portal
+  if (auth && !auth.signedIn()) return null;
   for (const store of stores()) {
     try {
       const raw = store.getItem(KEY);
@@ -82,14 +85,13 @@ function write(session: Session | null, remember?: boolean) {
   listeners.forEach((l) => l());
 }
 
-/** "aanya.k.sharma@…" becomes "Aanya K Sharma": a readable name until the real profile comes from the backend. */
+/** "aanya.k.sharma@…" becomes "Aanya K Sharma": the demo sign-in's stand-in for the account's name. */
 function nameFromEmail(email: string) {
   const local = email.split('@')[0] ?? '';
   const words = local.split(/[._-]+/).filter(Boolean);
   return words.length ? words.map((w) => w[0].toUpperCase() + w.slice(1).toLowerCase()).join(' ') : 'Team member';
 }
 
-/** The role is picked on the login form for now; the real sign-in will take it from the account instead. */
 // The dashboard's arrival plays once per sign-in; this tab-only flag remembers it has played.
 const ARRIVED = 'bt-portal-arrived';
 const forgetArrival = () => {
@@ -114,10 +116,11 @@ export function markArrived() {
   }
 }
 
-export function startSession(email: string, role: Role, remember = false) {
+/** `name` is the account's name from the real sign-in; the demo sign-in makes one from the email. */
+export function startSession(email: string, role: Role, remember = false, name?: string) {
   signedOutAt = 0;
   forgetArrival();
-  write({ name: nameFromEmail(email), email: email.trim().toLowerCase(), role }, remember);
+  write({ name: name || nameFromEmail(email), email: email.trim().toLowerCase(), role }, remember);
 }
 
 // Keeps a "Remember me" session in the store it was saved to.
@@ -150,7 +153,15 @@ export function endSession() {
   signedOutAt = Date.now();
   forgetArrival();
   write(null);
+  // the portal is closed already; ending the Keycloak session doesn't hold up the redirect
+  void auth?.signOut();
 }
+
+// An expired or revoked sign-in closes the portal like a signed-out visit, so the login opens again.
+auth?.onExpire(() => {
+  forgetArrival();
+  write(null);
+});
 
 export function getSession(): Session | null {
   if (cached === undefined) cached = read();

@@ -763,6 +763,10 @@ body:has(.portal) .scene {
 .p-file-facts a {
   color: var(--p-accent-text);
 }
+/* a detail the account doesn't have yet reads quieter than real data */
+.p-file-facts dd.is-unset {
+  color: var(--ink-soft);
+}
 .p-file-body {
   display: grid;
   /* the checklist carries the file names of uploaded IDs, so it gets the wider share */

@@ -7,6 +7,7 @@ import { useGlassTilt } from '../components/useGlassTilt';
 import { useNavBubble } from '../components/useNavBubble';
 import { usePointerBloom } from '../components/usePointerBloom';
 import type { HueName } from '../gl/palette';
+import { auth } from './auth';
 import { CERTIFICATE_TYPES, TOOLS, type PortalIconName } from './data';
 import { didSignOut, endSession, managesPortal, NOTIFICATION_KINDS, ROLE_NAME, setMutedNotifications, setRole, useSession, type NotificationKind, type Role } from './session';
 import { HelpModal } from './Help';
@@ -176,7 +177,8 @@ export function PortalLayout() {
             </div>
           </main>
         </div>
-        <RoleSwitch role={session.role} />
+        {/* with the real sign-in, people only see the role their account has */}
+        {!auth && <RoleSwitch role={session.role} />}
       </div>
     </PortalDataProvider>
   );
@@ -344,10 +346,7 @@ function PillMenu({
   );
 }
 
-/**
- * Demo only, while the pages are being built: switches between the admin, sub admin and employee versions.
- * Remove it once roles come from the real sign-in, so people only see the role they logged in with.
- */
+/** Demo sign-in only: switches between the admin, sub admin and employee versions while the pages are being built. */
 function RoleSwitch({ role }: { role: Role }) {
   return (
     <div className="p-role" role="group" aria-label="Demo: view the portal as">

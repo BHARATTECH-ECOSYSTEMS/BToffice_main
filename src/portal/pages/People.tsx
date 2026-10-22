@@ -1,11 +1,17 @@
 import { useState, type CSSProperties } from 'react';
+import { api } from '../api';
 import { EMAIL_SHAPE, ID_RETENTION_DAYS, ROLE_LABEL, STREAM_LABEL, STREAMS, type Person, type PersonRole, type Stream } from '../data';
 import { managesPortal, useSession } from '../session';
 import { usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, Modal, PageHead, PIcon, SearchField, useListFlip, useNotice, usePlayThen } from '../ui';
+import { ConnectedPeople } from './PeopleConnected';
 
-
+/** The real directory when the backend is connected; the demo directory otherwise. */
 export function People() {
+  return api ? <ConnectedPeople /> : <DemoPeople />;
+}
+
+function DemoPeople() {
   const role = useSession()!.role;
   const isManager = managesPortal(role);
   const isAdmin = role === 'admin';

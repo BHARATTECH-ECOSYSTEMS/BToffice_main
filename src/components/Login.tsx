@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useScene } from '../gl/Scene';
+import { auth, type SignInResult } from '../portal/auth';
 import { getSession, startSession } from '../portal/session';
 import { LogoGlass } from './LogoGlass';
 import { Arrow, Brand, BtnText, ThreadMark } from './ui';
@@ -10,9 +11,10 @@ import '../styles/login.css';
  * Employee login, as a pop-up over whatever page is open (the nav, the phone menu and the footer all open it).
  * Two views share the form side: sign in and password reset. Accounts are made by an administrator, so
  * there is no sign-up.
- * There is no login backend yet. Sign in opens the employee portal as a DEMO session (src/portal/session.ts):
- * any well-formed email gets in and no password is checked, and the form says so. Password reset still only
- * says it isn't connected. Nothing typed here is sent anywhere, and the password is never stored.
+ * With the real sign-in connected (src/portal/auth.ts), the email and password go to the company backend, and the
+ * portal opens with the account's own name and role. Without it, sign in opens the portal as a DEMO session: any
+ * well-formed email gets in, no password is checked, nothing is sent anywhere, and the form says so.
+ * Password reset isn't connected either way (the backend has no reset route). The password is never stored.
  */
 
 const LoginContext = createContext<() => void>(() => {});
@@ -42,15 +44,35 @@ export function LoginProvider({ children }: { children: ReactNode }) {
   );
 }
 
-type View = 'signin' | 'forgot';
-type Field = 'email' | 'password';
+// setup: an invited person's first sign-in, where they choose their username and password (real sign-in only)
+type View = 'signin' | 'forgot' | 'setup';
+type Field = 'email' | 'password' | 'username' | 'newPassword' | 'confirm';
 type Status = { kind: 'idle' } | { kind: 'loading' } | { kind: 'notice'; text: string } | { kind: 'entering' } | { kind: 'welcome' };
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// the backend's rule for chosen usernames (controllers/authController.js acceptInvite)
+const USERNAME_SHAPE = /^[a-zA-Z0-9._-]{3,32}$/;
+const NEW_PASSWORD_MIN = 8;
 const RESET_NOT_CONNECTED = 'Password reset isn’t connected yet, so no email was sent. Please ask your administrator for now.';
+const SIGN_IN_FAILED: Record<Exclude<SignInResult, { ok: true }>['reason'], string> = {
+  credentials: 'That email and password don’t match. Check them and try again.',
+  'set-password': 'Your account still needs a new password before you can sign in. Please ask your administrator to help you finish setting it.',
+  unavailable: 'We couldn’t reach the sign-in service. Check your connection and try again in a moment.',
+};
+const SETUP_FAILED = {
+  credentials: 'Your temporary password didn’t work any more. Go back and sign in again with the one from your invite email.',
+  unavailable: 'We couldn’t finish setting up your account. Check your connection and try again in a moment.',
+};
 const COPY: Record<View, { title: string; sub: string; submit: string; busy: string }> = {
   signin: { title: 'Welcome back', sub: 'Sign in to your workspace.', submit: 'Sign in', busy: 'Signing in…' },
   forgot: { title: 'Reset your password', sub: 'Enter your work email and we’ll send you a reset link.', submit: 'Send reset link', busy: 'Sending…' },
+  setup: { title: 'Set up your account', sub: 'Choose a username and your own password.', submit: 'Finish setup', busy: 'Saving…' },
+};
+
+/** A username suggestion from the email ("neha.k@…" → "neha.k"), or nothing when it wouldn't pass the backend's rule. */
+const suggestUsername = (email: string) => {
+  const name = (email.split('@')[0] ?? '').replace(/[^a-zA-Z0-9._-]/g, '').slice(0, 32);
+  return USERNAME_SHAPE.test(name) ? name : '';
 };
 // matches the closing animation in login.css
 const CLOSE_MS = 220;
@@ -63,8 +85,8 @@ const ORB_RADIUS = 17;
 
 /**
  * A soft two-note "ting" for the welcome, made in the browser so there's no audio file to load. Browsers only let
- * sound start from a click, so this runs inside the sign-in click and schedules the notes for later. If audio isn't
- * available it simply stays quiet.
+ * sound start once the page has been clicked, so this runs from the sign-in click (with the real sign-in, as soon as
+ * the backend answers it) and schedules the notes for later. If audio isn't allowed or available it stays quiet.
  */
 function scheduleChime(delaySec: number) {
   if (typeof AudioContext === 'undefined') return;
@@ -103,6 +125,11 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
   const walk = useRef<number[]>([]);
   const burstCanvas = useRef<HTMLCanvasElement>(null);
   const stopBurst = useRef<() => void>(() => {});
+  // false once the pop-up has closed, so a sign-in answer that arrives later doesn't animate or navigate
+  const alive = useRef(true);
+  // an invited person between signing in with their temporary password and choosing their own; never stored
+  const invite = useRef<{ email: string; temporaryPassword: string; remember: boolean } | null>(null);
+  const [suggestedName, setSuggestedName] = useState('');
   const [closing, setClosing] = useState(false);
   const [view, setView] = useState<View>('signin');
   // which way the new view slides in; unset until the first switch, so the opening stagger plays only once
@@ -121,6 +148,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
   // a modal <dialog> brings Esc, a focus trap and an inert page; the page behind also stops scrolling
   useEffect(() => {
     const d = dialog.current!;
+    alive.current = true;
     // the button that opened it gets focus back on close, so keyboard users keep their place
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     // the card grows out of that button: its offset from the screen centre, where the dialog sits
@@ -136,6 +164,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
     const overflow = root.style.overflow;
     root.style.overflow = 'hidden';
     return () => {
+      alive.current = false;
       window.clearTimeout(timer.current);
       walk.current.forEach((t) => window.clearTimeout(t));
       stopBurst.current();
@@ -156,7 +185,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
   const switchTo = (next: View) => {
     if (next === view) return;
     window.clearTimeout(timer.current);
-    setDir(next === 'forgot' ? 'next' : 'back');
+    setDir(next === 'signin' ? 'back' : 'next');
     setView(next);
     setErrors({});
     setStatus({ kind: 'idle' });
@@ -167,6 +196,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
 
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (view === 'setup') return finishSetup(e.currentTarget);
     const f = new FormData(e.currentTarget);
     const password = String(f.get('password') ?? '');
     const mail = email.trim();
@@ -181,39 +211,107 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
       return;
     }
     if (view === 'signin') {
-      if (status.kind === 'entering' || status.kind === 'welcome') return;
+      if (status.kind === 'loading' || status.kind === 'entering' || status.kind === 'welcome') return;
       const remember = f.get('remember') === 'on';
-      // Everyone signs in as an employee for now; the portal's demo "View as" switch shows the other roles.
-      // Leaving the site's layout unmounts this pop-up, whose cleanup restores scrolling and focus.
-      const enter = () => {
-        startSession(mail, 'employee', remember);
-        navigate('/portal');
-      };
-      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        // no roll and no dots, but the sound isn't motion, so the ting still marks the welcome
-        setStatus({ kind: 'welcome' });
-        scheduleChime(0.05);
-        walk.current.push(window.setTimeout(enter, 400));
+      if (!auth) {
+        // Demo: everyone signs in as an employee; the portal's "View as" switch shows the other roles.
+        welcome(() => startSession(mail, 'employee', remember));
         return;
       }
-      // load the dot burst now, so it's ready by the time the roll ends
-      const burst = import('../gl/logoBurst');
-      scheduleChime(ROLL_MS / 1000);
-      setStatus({ kind: 'entering' });
-      walk.current.push(
-        window.setTimeout(() => {
-          setStatus({ kind: 'welcome' });
-          void burst.then(({ playLogoBurst }) => {
-            if (burstCanvas.current) stopBurst.current = playLogoBurst(burstCanvas.current, { radius: ORB_RADIUS, duration: BURST_MS });
-          });
-        }, ROLL_MS),
-        window.setTimeout(enter, ROLL_MS + BURST_MS),
-      );
+      setStatus({ kind: 'loading' });
+      void auth.signIn(mail, password, remember).then((result) => {
+        // signed in even if the pop-up was closed meanwhile, so the next "Employee login" opens the portal
+        if (result.ok) startSession(result.account.email, result.account.role, remember, result.account.name);
+        if (!alive.current) return;
+        if (result.ok) return welcome();
+        if (result.reason === 'credentials') {
+          setStatus({ kind: 'idle' });
+          setErrors({ password: SIGN_IN_FAILED.credentials });
+          form.current?.querySelector<HTMLInputElement>('[name="password"]')?.focus();
+          return;
+        }
+        if (result.reason === 'set-password') {
+          // the temporary password from the invite worked; keep it (in memory only) for the setup step
+          invite.current = { email: mail, temporaryPassword: password, remember };
+          setSuggestedName(suggestUsername(mail));
+          return switchTo('setup');
+        }
+        setStatus({ kind: 'notice', text: SIGN_IN_FAILED[result.reason] });
+      });
       return;
     }
     setStatus({ kind: 'loading' });
     window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => setStatus({ kind: 'notice', text: RESET_NOT_CONNECTED }), 900);
+  };
+
+  const finishSetup = (formEl: HTMLFormElement) => {
+    const pending = invite.current;
+    if (!auth || !pending || status.kind === 'loading' || status.kind === 'entering' || status.kind === 'welcome') return;
+    const f = new FormData(formEl);
+    const newUsername = String(f.get('username') ?? '').trim();
+    const newPassword = String(f.get('newPassword') ?? '');
+    const confirm = String(f.get('confirm') ?? '');
+    const next: typeof errors = {};
+    if (!USERNAME_SHAPE.test(newUsername)) next.username = 'Use 3 to 32 letters, numbers, dots, dashes or underscores.';
+    if (newPassword.length < NEW_PASSWORD_MIN) next.newPassword = `Use at least ${NEW_PASSWORD_MIN} characters.`;
+    else if (newPassword === pending.temporaryPassword) next.newPassword = 'Choose a password that isn’t the temporary one.';
+    if (confirm !== newPassword) next.confirm = 'The two passwords don’t match.';
+    setErrors(next);
+    const first = (['username', 'newPassword', 'confirm'] as Field[]).find((k) => next[k]);
+    if (first) {
+      formEl.querySelector<HTMLInputElement>(`[name="${first}"]`)?.focus();
+      return;
+    }
+    setStatus({ kind: 'loading' });
+    void auth.acceptInvite({ username: pending.email, temporaryPassword: pending.temporaryPassword, newPassword, newUsername }, pending.remember).then((result) => {
+      if (result.ok) {
+        invite.current = null;
+        startSession(result.account.email, result.account.role, pending.remember, result.account.name);
+      }
+      if (!alive.current) return;
+      if (result.ok) {
+        // back on the sign-in view, so the welcome plays on its button as it does for every sign-in
+        switchTo('signin');
+        return welcome();
+      }
+      setStatus({ kind: 'idle' });
+      if (result.reason === 'username-taken' || result.reason === 'invalid') {
+        setErrors({ username: result.reason === 'invalid' && result.message ? result.message : 'That username is taken. Try another.' });
+        formEl.querySelector<HTMLInputElement>('[name="username"]')?.focus();
+        return;
+      }
+      setStatus({ kind: 'notice', text: SETUP_FAILED[result.reason] });
+    });
+  };
+
+  /** The sign-in moment, then the portal. `begin` runs as the portal opens. */
+  const welcome = (begin?: () => void) => {
+    // Leaving the site's layout unmounts this pop-up, whose cleanup restores scrolling and focus.
+    const enter = () => {
+      begin?.();
+      navigate('/portal');
+    };
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      // no roll and no dots, but the sound isn't motion, so the ting still marks the welcome
+      setStatus({ kind: 'welcome' });
+      scheduleChime(0.05);
+      walk.current.push(window.setTimeout(enter, 400));
+      return;
+    }
+    // load the dot burst now, so it's ready by the time the roll ends
+    const burst = import('../gl/logoBurst');
+    scheduleChime(ROLL_MS / 1000);
+    setStatus({ kind: 'entering' });
+    walk.current.push(
+      window.setTimeout(() => {
+        setStatus({ kind: 'welcome' });
+        void burst.then(({ playLogoBurst }) => {
+          if (burstCanvas.current) stopBurst.current = playLogoBurst(burstCanvas.current, { radius: ORB_RADIUS, duration: BURST_MS });
+        });
+      }, ROLL_MS),
+      window.setTimeout(enter, ROLL_MS + BURST_MS),
+    );
   };
 
   const clearError = (k: Field) => errors[k] && setErrors((x) => ({ ...x, [k]: undefined }));
@@ -242,8 +340,8 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
         <input
           name="password"
           type={showPassword ? 'text' : 'password'}
-          // browsers ignore "off" on passwords; "new-password" is the one hint that stops them filling a saved login
-          autoComplete="new-password"
+          // demo: browsers ignore "off" on passwords; "new-password" is the one hint that stops them filling a saved login
+          autoComplete={auth ? 'current-password' : 'new-password'}
           {...errorProps('password')}
           onInput={() => clearError('password')}
         />
@@ -253,6 +351,33 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
       </span>
       {error('password')}
     </label>
+  );
+
+  const newPasswordInput = (name: 'newPassword' | 'confirm', label: string) => (
+    <label className="login-field">
+      <span>{label}</span>
+      <span className="login-password">
+        <input name={name} type={showPassword ? 'text' : 'password'} autoComplete="new-password" {...errorProps(name)} onInput={() => clearError(name)} />
+        {name === 'newPassword' && (
+          <button type="button" className="login-reveal" onClick={() => setShowPassword((s) => !s)} aria-pressed={showPassword} aria-label={showPassword ? 'Hide passwords' : 'Show passwords'}>
+            {showPassword ? 'Hide' : 'Show'}
+          </button>
+        )}
+      </span>
+      {error(name)}
+    </label>
+  );
+
+  const setupFields = (
+    <>
+      <label className="login-field">
+        <span>Username</span>
+        <input name="username" autoComplete="username" defaultValue={suggestedName} {...errorProps('username')} onInput={() => clearError('username')} />
+        {error('username')}
+      </label>
+      {newPasswordInput('newPassword', 'New password')}
+      {newPasswordInput('confirm', 'New password again')}
+    </>
   );
 
   return (
@@ -290,8 +415,15 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
           </button>
           <p className="cell-label">Employee login</p>
 
-          {view === 'forgot' && (
-            <button type="button" className="login-back" onClick={() => switchTo('signin')}>
+          {view !== 'signin' && (
+            <button
+              type="button"
+              className="login-back"
+              onClick={() => {
+                invite.current = null;
+                switchTo('signin');
+              }}
+            >
               <Arrow dir="left" /> Back to sign in
             </button>
           )}
@@ -303,15 +435,16 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
             </h2>
             <p className="login-sub">{copy.sub}</p>
 
-            <form ref={form} className="login-form" onSubmit={submit} noValidate autoComplete="off">
+            <form ref={form} className="login-form" onSubmit={submit} noValidate autoComplete={auth ? 'on' : 'off'}>
+              {view === 'setup' && setupFields}
+              {view !== 'setup' && (
               <label className="login-field">
                 <span>Work email</span>
                 <input
                   name="email"
                   type="email"
-                  // the browser's saved logins stay out until sign-in is connected; restore username / email /
-                  // current-password / new-password hints then
-                  autoComplete="off"
+                  // the browser's saved logins stay out of the demo sign-in, which checks no password
+                  autoComplete={auth ? 'username' : 'off'}
                   placeholder="name@bharattechorigin.com"
                   value={email}
                   onChange={(e) => {
@@ -322,7 +455,8 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
                 />
                 {error('email')}
               </label>
-              {view !== 'forgot' && passwordField}
+              )}
+              {view === 'signin' && passwordField}
               {view === 'signin' && (
                 <div className="login-row">
                   <label className="login-check">
@@ -341,10 +475,16 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
                     type="submit"
                     className="btn btn-primary login-submit is-glass"
                     data-phase={status.kind === 'entering' || status.kind === 'welcome' ? status.kind : undefined}
-                    aria-disabled={status.kind === 'entering' || status.kind === 'welcome' || undefined}
+                    aria-disabled={status.kind === 'loading' || status.kind === 'entering' || status.kind === 'welcome' || undefined}
                   >
                     <span className="login-submit-label">
-                      <BtnText>{copy.submit}</BtnText>
+                      {status.kind === 'loading' ? (
+                        <>
+                          <i className="login-spinner" aria-hidden="true" /> <BtnText>{copy.busy}</BtnText>
+                        </>
+                      ) : (
+                        <BtnText>{copy.submit}</BtnText>
+                      )}
                     </span>
                     {/* the logo as a glass orb: it rolls a full turn inside a ring, then breaks into dots (the canvas
                         below). Decoration only; the status line under the form says what is happening */}
@@ -376,9 +516,9 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
                   )}
                 </button>
               )}
-              {view === 'signin' && <p className="login-demo">Demo: sign-in isn’t connected yet. Any work email opens the portal as an employee, and no password is checked.</p>}
+              {view === 'signin' && !auth && <p className="login-demo">Demo: sign-in isn’t connected yet. Any work email opens the portal as an employee, and no password is checked.</p>}
               <p className="login-notice" role="status" aria-live="polite">
-                {status.kind === 'notice' ? status.text : status.kind === 'entering' ? 'Signing you in…' : status.kind === 'welcome' ? 'Welcome back!' : ''}
+                {status.kind === 'notice' ? status.text : status.kind === 'loading' || status.kind === 'entering' ? 'Signing you in…' : status.kind === 'welcome' ? 'Welcome back!' : ''}
               </p>
             </form>
           </div>

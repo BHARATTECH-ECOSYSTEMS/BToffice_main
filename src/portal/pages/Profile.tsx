@@ -1,18 +1,32 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { ID_DOC_MAX_MB, ID_DOCS, ID_RETENTION_DAYS, PERSON_STATUS_LABEL, ROLE_LABEL, STREAM_LABEL, type IdDocument } from '../data';
+import type { ApiErrorKind } from '../api';
+import { ID_DOC_MAX_MB, ID_DOCS, ID_RETENTION_DAYS, PERSON_STATUS_LABEL, ROLE_LABEL, STREAM_LABEL, type IdDocument, type PersonRole } from '../data';
+import { useAccountProfile, type ProfileState } from '../profile';
 import { useSession } from '../session';
 import { formatDate, formatSize, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, Empty, initials, PageHead, PIcon, useNotice } from '../ui';
 
+const LOAD_FAILED: Record<ApiErrorKind, string> = {
+  'signed-out': 'Your sign-in has ended. Sign out and sign in again to see your details.',
+  forbidden: 'Your account isn’t allowed to see these details. Please ask your administrator.',
+  'not-found': 'Your account isn’t in the employee records yet. Please ask your administrator.',
+  conflict: 'We couldn’t load your details. Please try again.',
+  'bad-request': 'We couldn’t load your details. Please try again.',
+  unavailable: 'We couldn’t reach the employee records. Check your connection and try again.',
+};
+const NOT_SET = 'Not set yet';
 
 /**
- * The signed-in person's own profile, opened from their name in the top bar. Its documents section is where the
- * upload link from an employee verification lands (?docs=1): the employee uploads their Aadhaar and PAN here, and
- * only admins see them in HR OPS. The details come from the directory; name and photo are changed in Settings.
+ * The signed-in person's own profile, opened from their name in the top bar. With the real sign-in, the details come
+ * from the backend's account record (src/portal/profile.ts); with the demo sign-in, from the demo directory. Its
+ * documents section is where the upload link from an employee verification lands (?docs=1): the employee uploads
+ * their Aadhaar and PAN here, and only admins see them in HR OPS. That part has no backend yet, so it stays a demo.
+ * Name and photo are changed in Settings.
  */
 export function Profile() {
   const photo = useSession()!.photo;
+  const [account, retry] = useAccountProfile();
   const { me, verifications, documents, uploadDocument } = usePortal();
   const [params] = useSearchParams();
   const docsRef = useRef<HTMLElement>(null);
@@ -25,15 +39,6 @@ export function Profile() {
     if (params.get('docs')) docsRef.current?.scrollIntoView({ block: 'start' });
   }, [params]);
 
-  const facts: [string, string][] = [
-    ['Employee ID', me.id],
-    ['Email', me.email],
-    ['Role', ROLE_LABEL[me.role]],
-    ['Stream', STREAM_LABEL[me.stream]],
-    ['Team', me.team],
-    ['Status', PERSON_STATUS_LABEL[me.status]],
-  ];
-
   return (
     <>
       <PageHead title="My profile" sub="Your details as the portal has them.">
@@ -43,29 +48,41 @@ export function Profile() {
       </PageHead>
       {notice}
       <div className="p-split">
-        <section className="p-card" aria-label="Your details">
-          <div className="p-me-head">
-            {photo ? (
-              <img className="p-avatar is-large" src={photo} alt="" />
-            ) : (
-              <span className="p-avatar is-large" aria-hidden="true">
-                {initials(me.name)}
-              </span>
-            )}
-            <div>
-              <h2 className="p-card-title">{me.name}</h2>
-              <Badge kind={me.role}>{ROLE_LABEL[me.role]}</Badge>
-            </div>
-          </div>
-          <dl className="p-file-facts">
-            {facts.map(([k, v]) => (
-              <div key={k}>
-                <dt>{k}</dt>
-                <dd title={v}>{v}</dd>
-              </div>
-            ))}
-          </dl>
-        </section>
+        {account.kind === 'off' ? (
+          <DetailsCard
+            name={me.name}
+            badge={me.role}
+            photo={photo}
+            facts={[
+              ['Employee ID', me.id],
+              ['Email', me.email],
+              ['Role', ROLE_LABEL[me.role]],
+              ['Stream', STREAM_LABEL[me.stream]],
+              ['Team', me.team],
+              ['Status', PERSON_STATUS_LABEL[me.status]],
+            ]}
+          />
+        ) : account.kind === 'ready' ? (
+          <DetailsCard
+            name={account.profile.name}
+            badge={account.profile.role}
+            badgeLabel={account.profile.roleLabel}
+            // a photo picked in Settings (kept in this browser) comes first
+            photo={photo ?? account.profile.photo}
+            facts={[
+              ['Employee ID', account.profile.employeeId],
+              ['Email', account.profile.email],
+              ['Role', account.profile.roleLabel],
+              ['Stream', account.profile.stream && STREAM_LABEL[account.profile.stream]],
+              ['Team', account.profile.team],
+              ['Status', PERSON_STATUS_LABEL[account.profile.status]],
+              ['Phone', account.profile.phone],
+              ['Work phone', account.profile.workPhone],
+            ]}
+          />
+        ) : (
+          <AccountPending state={account} onRetry={retry} />
+        )}
 
         <section className="p-card" ref={docsRef} aria-labelledby="me-docs">
           <div className="p-card-head is-start">
@@ -108,6 +125,66 @@ export function Profile() {
         </section>
       </div>
     </>
+  );
+}
+
+function DetailsCard({ name, badge, badgeLabel, photo, facts }: { name: string; badge: PersonRole; badgeLabel?: string; photo?: string; facts: [string, string | undefined][] }) {
+  return (
+    <section className="p-card" aria-label="Your details">
+      <div className="p-me-head">
+        {photo ? (
+          <img className="p-avatar is-large" src={photo} alt="" />
+        ) : (
+          <span className="p-avatar is-large" aria-hidden="true">
+            {initials(name)}
+          </span>
+        )}
+        <div>
+          <h2 className="p-card-title">{name}</h2>
+          <Badge kind={badge}>{badgeLabel ?? ROLE_LABEL[badge]}</Badge>
+        </div>
+      </div>
+      <dl className="p-file-facts">
+        {facts.map(([k, v]) => (
+          <div key={k}>
+            <dt>{k}</dt>
+            <dd title={v ?? NOT_SET} className={v ? undefined : 'is-unset'}>
+              {v ?? NOT_SET}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+/** The details card while the account record loads, or when it couldn't be loaded. */
+function AccountPending({ state, onRetry }: { state: Exclude<ProfileState, { kind: 'off' } | { kind: 'ready' }>; onRetry: () => void }) {
+  let body: ReactNode;
+  if (state.kind === 'loading') {
+    body = (
+      <p className="p-muted" role="status">
+        Loading your details…
+      </p>
+    );
+  } else {
+    body = (
+      <div role="alert">
+        <Empty icon="alert" title="Your details didn’t load">
+          {LOAD_FAILED[state.error.kind]}
+        </Empty>
+        {state.error.kind !== 'signed-out' && (
+          <button type="button" className={btnClass('light', { small: true })} onClick={onRetry}>
+            <BtnLabel icon="refresh">Try again</BtnLabel>
+          </button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <section className="p-card" aria-label="Your details" aria-busy={state.kind === 'loading' || undefined}>
+      {body}
+    </section>
   );
 }
 
