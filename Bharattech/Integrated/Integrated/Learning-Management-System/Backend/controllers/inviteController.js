@@ -185,7 +185,10 @@ const createInviteTransporter = () => {
 const generateTemporaryPassword = () => {
   // No fixed prefix/suffix — every character is freshly randomized so the
   // result doesn't look like a templated/reused password.
-  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*";
+  // No "$" or "&": the request sanitizers in server.js (mongoSanitize, xss)
+  // change them in the password typed at sign-in, so it would never match the
+  // one set in Keycloak.
+  const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#%*";
   const bytes = randomBytes(16);
   let password = "";
   for (let i = 0; i < bytes.length; i += 1) {
@@ -625,4 +628,5 @@ module.exports = {
   ensureKeycloakUser,
   syncKeycloakRealmRole,
   setTemporaryPassword,
+  generateTemporaryPassword,
 };

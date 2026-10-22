@@ -9,7 +9,8 @@ const {
   updateUser,
   partialUpdateUser,
   deleteUser,
-  updateCurrentUser
+  updateCurrentUser,
+  getDirectory
 } = require("../controllers/userController");
 const { keycloakAuth, requireAdmin } = require("../middlewares/keycloakAuth");
 const { uploadSingle } = require("../middlewares/multerConfig");
@@ -25,6 +26,9 @@ router.post("/add-user", keycloakAuth, requireAdmin, createUser);
 
 // Get all users (authenticated users can view; mutations stay admin-only)
 router.get("/", keycloakAuth, getUsers);
+
+// People directory with only the fields colleagues may see (any signed-in role) — must be before /:id
+router.get("/directory", keycloakAuth, getDirectory);
 
 // Fetch users directly from Keycloak (no MongoDB intermediary) — must be before /:id
 router.get("/keycloak-users", keycloakAuth, getKeycloakUsers);

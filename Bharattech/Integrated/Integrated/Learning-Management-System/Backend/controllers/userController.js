@@ -2,6 +2,7 @@ const bcrypt = require("bcryptjs");
 const { randomUUID } = require("crypto");
 const KcAdminClient = require("keycloak-admin").default;
 const User = require("../models/User");
+const { createKeycloakAdminSession } = require("../utils/keycloakAdminSession");
 
 const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL || "http://localhost:8080";
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
@@ -39,14 +40,12 @@ const kcAdmin = new KcAdminClient({
   realmName: KEYCLOAK_ADMIN_REALM,
 });
 
-const authKeycloakAdmin = async () => {
-  await kcAdmin.auth({
-    username: KEYCLOAK_ADMIN_USERNAME,
-    password: KEYCLOAK_ADMIN_PASSWORD,
-    grantType: "password",
-    clientId: "admin-cli",
-  });
-};
+const authKeycloakAdmin = createKeycloakAdminSession(kcAdmin, {
+  username: KEYCLOAK_ADMIN_USERNAME,
+  password: KEYCLOAK_ADMIN_PASSWORD,
+  grantType: "password",
+  clientId: "admin-cli",
+});
 
 const normalizeRole = (role) => {
   return ROLE_ALIASES[String(role || "").trim().toLowerCase()] || "Employee";
@@ -346,6 +345,41 @@ exports.getUsers = async (req, res) => {
   }
 };
 
+// Only what a colleague may see. Everything else on the user record (password hash, sessions, Keycloak ID) stays here.
+const DIRECTORY_FIELDS = "employeeId fullName username email role phone phoneNumber workPhone stream team isBanned privacySettings";
+
+const toDirectoryEntry = (user) => {
+  const showPhone = user.privacySettings?.showPhone !== false;
+  return {
+    id: String(user._id),
+    employeeId: user.employeeId,
+    name: user.fullName || user.username || user.email,
+    email: user.email,
+    role: user.role,
+    phone: showPhone ? user.phone || user.phoneNumber || undefined : undefined,
+    workPhone: showPhone ? user.workPhone || undefined : undefined,
+    stream: user.stream,
+    team: user.team,
+    status: user.isBanned ? "inactive" : "active",
+  };
+};
+
+// The people directory for every signed-in person. It reads the local copy only, so it stays fast however many
+// people there are; GET /api/user syncs from Keycloak instead, but returns whole records to anyone signed in.
+exports.getDirectory = async (req, res) => {
+  try {
+    const users = await User.find({ isDeleted: { $ne: true } })
+      .select(DIRECTORY_FIELDS)
+      .collation({ locale: "en", strength: 2 })
+      .sort({ fullName: 1, username: 1 })
+      .lean();
+    res.json(users.map(toDirectoryEntry));
+  } catch (error) {
+    console.error("Get directory error:", error);
+    res.status(500).json({ message: "Failed to load the people directory" });
+  }
+};
+
 exports.getKeycloakUsers = async (req, res) => {
   try {
     await authKeycloakAdmin();
@@ -495,6 +529,9 @@ exports.createUser = async (req, res) => {
 exports.updateUser = async (req, res) => {
   try {
     const updates = { ...req.body };
+    // An employee ID is permanent. Dropped rather than refused, so a client that sends the whole user back
+    // unchanged still saves its other edits.
+    delete updates.employeeId;
     const requestedRole = updates.role ? normalizeRole(updates.role) : null;
     const user = await User.findOne({
       _id: req.params.id,
@@ -524,6 +561,10 @@ exports.updateUser = async (req, res) => {
 
     res.json(user);
   } catch (error) {
+    // bad input (e.g. a stream that doesn't exist) is the caller's to fix, not a server failure
+    if (error.name === "ValidationError") {
+      return res.status(400).json({ message: Object.values(error.errors).map((e) => e.message).join(" ") });
+    }
     console.error("Update user error:", error);
     res.status(500).json({
       message: "Failed to update user",

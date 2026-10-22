@@ -21,6 +21,8 @@ const corsOptions = {
     "x-demo-role",
     "X-Demo-Role",
   ],
+  // browsers may reuse a preflight answer for 10 minutes instead of asking before every request
+  maxAge: 600,
 };
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));

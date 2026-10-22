@@ -1,4 +1,7 @@
 const mongoose = require("mongoose");
+const Counter = require("./Counter");
+
+const STREAMS = ["tech", "operations", "hr", "finance"];
 
 const UserSchema = new mongoose.Schema({
     fullName: { type: String, required: false },
@@ -26,6 +29,11 @@ const UserSchema = new mongoose.Schema({
   default: "local"
 }
 ,
+
+    // Employee record. employeeId is handed out automatically (see the pre-save hook) and never changes.
+    employeeId: { type: String, unique: true, sparse: true },
+    stream: { type: String, enum: STREAMS },
+    team: { type: String, trim: true, maxlength: 80 },
 
     // Common fields
     phoneNumber: { type: String },
@@ -96,5 +104,17 @@ const UserSchema = new mongoose.Schema({
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date },
 });
+
+const formatEmployeeId = (n) => `BT-${String(n).padStart(4, "0")}`;
+
+// Every way a person is created or re-synced ends in save(), so this one hook covers them all. People from before
+// employee IDs existed get theirs on their next save, or from scripts/assignEmployeeIds.js. A save that then fails
+// (e.g. a duplicate email) leaves a gap in the numbers, which is fine: IDs only need to be unique.
+UserSchema.pre("save", async function () {
+  if (!this.employeeId) this.employeeId = formatEmployeeId(await Counter.next("employeeId"));
+});
+
+UserSchema.statics.STREAMS = STREAMS;
+UserSchema.statics.formatEmployeeId = formatEmployeeId;
 
 module.exports = mongoose.model("User", UserSchema);

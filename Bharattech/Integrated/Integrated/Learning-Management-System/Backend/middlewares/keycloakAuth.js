@@ -116,6 +116,15 @@ const getOrCreateUser = async (keycloakUser, keycloakUserId = null) => {
 
     if (!user && email) {
       user = await User.findOne({ email });
+      // Found by email but not by login: someone deleted and invited again (a new Keycloak account), or a record
+      // made under an older login. Bring the record back and link it to this login, so lookups by keycloakId and
+      // lists that skip deleted people find them. They keep their employee ID.
+      if (user) {
+        user.keycloakId = keycloakId;
+        user.isDeleted = false;
+        user.deletedAt = null;
+        await user.save();
+      }
     }
 
     if (!user) {
