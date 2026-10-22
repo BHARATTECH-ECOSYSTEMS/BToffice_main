@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
+    "test": "node --test --test-concurrency=1 --test-timeout=60000 \"tests/**/*.test.js\"",
     "dev": "node --watch server.js"
   },
   "keywords": [],

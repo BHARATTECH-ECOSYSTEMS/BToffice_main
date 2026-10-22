@@ -1,6 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 const Policy = require("../models/Policy");
+const { savePolicyFile, findPolicyFile, openPolicyFile, deletePolicyFiles } = require("../utils/policyFiles");
+
+// every PDF starts with these bytes; the browser-reported type alone is easy to fake or get wrong
+const PDF_SIGNATURE = Buffer.from("%PDF-");
 
 const getRequestOrigin = (req) => {
   const configuredOrigin =
@@ -36,7 +40,21 @@ const isPolicyAdmin = (user) => {
 const getPolicyFilePath = (storedFileName) =>
   path.join(__dirname, "..", "uploads", "policies", storedFileName);
 
-const streamPolicyFile = (res, storedFileName, displayName = storedFileName) => {
+// PDFs live in MongoDB (utils/policyFiles.js); documents uploaded before that are still read from the disk.
+const streamPolicyFile = async (res, storedFileName, displayName = storedFileName) => {
+  const stored = await findPolicyFile(storedFileName);
+  if (stored) {
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `inline; filename="${encodeURIComponent(displayName)}"`);
+    return openPolicyFile(stored._id)
+      .once("error", (error) => {
+        console.error("Stream stored policy PDF error:", error);
+        if (!res.headersSent) res.status(500).send("Failed to load PDF");
+        else res.end();
+      })
+      .pipe(res);
+  }
+
   const filePath = getPolicyFilePath(storedFileName);
 
   if (!fs.existsSync(filePath)) {
@@ -82,19 +100,33 @@ exports.createPolicy = async (req, res) => {
       return res.status(400).json({ message: "Missing required fields" });
     }
 
-    const newPolicy = await Policy.create({
-      name: name.trim(),
-      pages: Number(pages),
-      category: category.trim(),
-      pdfName: req.file.originalname,
-      storedFileName: req.file.filename,
-      pdfUrl: buildPolicyPath(req.file.filename),
-      uploadedBy:
-        req.user?.decoded?.preferred_username ||
-        req.user?.fullName ||
-        req.user?.email ||
-        "Admin",
-    });
+    if (!req.file.buffer.subarray(0, PDF_SIGNATURE.length).equals(PDF_SIGNATURE)) {
+      return res.status(400).json({ message: "That file isn't a real PDF." });
+    }
+
+    const storedFileName = `${Date.now()}-${path.basename(req.file.originalname).replace(/\s+/g, "-")}`;
+    await savePolicyFile(storedFileName, req.file.buffer);
+
+    let newPolicy;
+    try {
+      newPolicy = await Policy.create({
+        name: name.trim(),
+        pages: Number(pages),
+        category: category.trim(),
+        pdfName: req.file.originalname,
+        storedFileName,
+        pdfUrl: buildPolicyPath(storedFileName),
+        uploadedBy:
+          req.user?.decoded?.preferred_username ||
+          req.user?.fullName ||
+          req.user?.email ||
+          "Admin",
+      });
+    } catch (error) {
+      // no document, so no stored file left behind
+      await deletePolicyFiles(storedFileName);
+      throw error;
+    }
 
     res.status(201).json(normalizePolicy(newPolicy, req));
   } catch (error) {
@@ -166,7 +198,7 @@ exports.streamPolicyPdf = async (req, res) => {
       return res.status(404).send("Policy not found");
     }
 
-    return streamPolicyFile(res, policy.storedFileName, policy.pdfName);
+    return await streamPolicyFile(res, policy.storedFileName, policy.pdfName);
   } catch (error) {
     console.error("Stream policy PDF error:", error);
     res.status(500).send("Failed to load PDF");
@@ -183,7 +215,7 @@ exports.streamPolicyPdfFile = async (req, res) => {
       return res.status(400).send("PDF filename required");
     }
 
-    return streamPolicyFile(res, storedFileName);
+    return await streamPolicyFile(res, storedFileName);
   } catch (error) {
     console.error("Stream policy PDF file error:", error);
     res.status(500).send("Failed to load PDF");
@@ -197,6 +229,8 @@ exports.deletePolicy = async (req, res) => {
     if (!policy) {
       return res.status(404).json({ message: "Policy not found" });
     }
+
+    await deletePolicyFiles(policy.storedFileName);
 
     const filePath = path.join(
       __dirname,

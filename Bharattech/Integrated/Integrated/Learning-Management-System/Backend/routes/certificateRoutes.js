@@ -10,11 +10,11 @@ const router = express.Router();
 const {
   keycloakAuth,
   requireAdmin,
-  getOrCreateUser,
 } = require("../middlewares/keycloakAuth");
 const Certificate = require("../models/Certificate");
 const generateCertificate = require("../utils/generateCertifcate");
 const User = require("../models/User");
+const { myCertificates, certificatePdf } = require("../controllers/certificateAccessController");
 
 const resolveIssuerUser = async (req) => {
   if (mongoose.Types.ObjectId.isValid(req.user?.id)) {
@@ -138,77 +138,11 @@ router.get("/", keycloakAuth, requireAdmin, async (req, res) => {
   }
 });
 
-router.get("/my", keycloakAuth, async (req, res) => {
-  try {
-    const user = await getOrCreateUser(req.user.decoded);
-    const decoded = req.user?.decoded || {};
-    const emailCandidates = [
-      req.user?.email,
-      decoded.email,
-      user?.email,
-    ]
-      .filter(Boolean)
-      .map((email) => String(email).toLowerCase().trim());
-    const usernameCandidates = [
-      decoded.preferred_username,
-      user?.username,
-      req.user?.fullName,
-      decoded.name,
-    ]
-      .filter(Boolean)
-      .map((value) => String(value).trim());
+// The signed-in person's own certificates (matched by account, never by name)
+router.get("/my", keycloakAuth, myCertificates);
 
-    const userLookup = [];
-
-    if (mongoose.Types.ObjectId.isValid(req.user?.id)) {
-      userLookup.push({ _id: req.user.id });
-    }
-
-    if (mongoose.Types.ObjectId.isValid(user?._id)) {
-      userLookup.push({ _id: user._id });
-    }
-
-    [req.user?.keycloakId, decoded.sub, user?.keycloakId]
-      .filter(Boolean)
-      .forEach((keycloakId) => userLookup.push({ keycloakId }));
-
-    if (emailCandidates.length) {
-      userLookup.push({ email: { $in: [...new Set(emailCandidates)] } });
-    }
-
-    if (usernameCandidates.length) {
-      userLookup.push({ username: { $in: [...new Set(usernameCandidates)] } });
-      userLookup.push({ fullName: { $in: [...new Set(usernameCandidates)] } });
-    }
-
-    const matchingUsers = userLookup.length
-      ? await User.find({ $or: userLookup }).select("_id")
-      : [user];
-
-    const userIds = [
-      ...new Set(
-        matchingUsers
-          .map((item) => item?._id?.toString())
-          .filter(Boolean)
-      ),
-    ];
-
-    const certificates = await Certificate.find({
-      userId: { $in: userIds },
-    })
-      .populate("issuedBy", "fullName email role")
-      .populate("userId", "fullName email username role")
-      .sort({ issuedAt: -1 });
-
-    res.json({
-      count: certificates.length,
-      certificates,
-    });
-  } catch (err) {
-    console.error("My certificates error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
-});
+// A certificate as a PDF, built fresh each time; for its owner, admins and superadmins
+router.get("/:id/pdf", keycloakAuth, certificatePdf);
 
 router.delete("/:id", keycloakAuth, requireAdmin, async (req, res) => {
   try {

@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const uploadPolicy = require("../middlewares/uploadPolicy");
+const { uploadPolicyPdf } = require("../middlewares/uploadPolicy");
 const {
   createPolicy,
   getPolicies,
@@ -25,7 +25,7 @@ router.post(
   "/",
   keycloakAuth,
   requireAdmin,
-  uploadPolicy.single("pdf"),
+  uploadPolicyPdf,
   createPolicy
 );
 

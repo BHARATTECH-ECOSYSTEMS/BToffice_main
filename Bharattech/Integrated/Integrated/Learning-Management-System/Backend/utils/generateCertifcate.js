@@ -126,13 +126,24 @@ const getCertificateMeta = ({ title, name, role, organizationName }) => {
   );
 };
 
-const generateCertificate = async ({
+const issueDateText = (date) =>
+  new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+    timeZone: "Asia/Kolkata",
+  }).format(date);
+
+// Builds the certificate PDF in memory. `issuedAt` is printed as the issue date, so a certificate made again later
+// (GET /api/certificates/:id/pdf) shows the day it was really issued.
+const buildCertificatePdf = async ({
   name,
   title,
   certificateNumber,
   role,
   email,
   username,
+  issuedAt = new Date(),
 }) => {
   const pdfDoc = await PDFDocument.create();
   pdfDoc.registerFontkit(fontkit);
@@ -309,11 +320,7 @@ const generateCertificate = async ({
     });
   }
 
-  const issueDate = new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(new Date());
+  const issueDate = issueDateText(issuedAt);
 
   page.drawRectangle({
     x: 70,
@@ -406,7 +413,14 @@ const generateCertificate = async ({
     color: colors.muted,
   });
 
-  const finalPdf = await pdfDoc.save();
+  return pdfDoc.save();
+};
+
+// Saves the PDF under /certificates and returns its path, for clients that open the stored file. Files there don't
+// survive a redeploy on hosts with a temporary disk (Render); GET /api/certificates/:id/pdf doesn't depend on them.
+const generateCertificate = async (details) => {
+  const finalPdf = await buildCertificatePdf(details);
+  const cleanName = formatLabel(details.name) || "User";
 
   const certDir = path.join(__dirname, "../certificates");
   if (!fs.existsSync(certDir)) {
@@ -422,3 +436,5 @@ const generateCertificate = async ({
 };
 
 module.exports = generateCertificate;
+module.exports.buildCertificatePdf = buildCertificatePdf;
+module.exports.issueDateText = issueDateText;
