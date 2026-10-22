@@ -163,3 +163,12 @@ test("a certificate opened months later still prints the day it was issued", asy
   assert.match(text, /CERT-TEST-1/);
   assert.doesNotMatch(text, new RegExp(issueDateText(new Date())));
 });
+
+test("a name with & prints on the certificate as typed", async () => {
+  const { buildCertificatePdf } = require("../utils/generateCertifcate");
+  const pdf = await buildCertificatePdf({ name: "Lal & Sons", title: "Bonafide Certificate", certificateNumber: "CERT-TEST-2", role: "Employee", email: "lal@example.test", issuedAt: new Date("2026-03-05T10:00:00Z") });
+  const text = pdfText(pdf);
+
+  assert.match(text, /Lal & Sons/);
+  assert.doesNotMatch(text, /&amp;/);
+});

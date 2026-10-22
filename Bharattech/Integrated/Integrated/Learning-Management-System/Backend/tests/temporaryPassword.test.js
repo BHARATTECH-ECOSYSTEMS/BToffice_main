@@ -1,21 +1,26 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
-const mongoSanitize = require("@exortek/express-mongo-sanitize");
-const { xss } = require("express-xss-sanitizer");
+const { applyRequestSanitizers } = require("../middlewares/requestSanitizers");
 const { generateTemporaryPassword } = require("../controllers/inviteController");
+
+const sanitizers = [];
+applyRequestSanitizers({ use: (middleware) => sanitizers.push(middleware) });
 
 /** Runs a sign-in body through the same sanitizers server.js puts in front of every route. */
 const afterServerSanitizers = async (password) => {
-  const req = { body: { username: "someone@example.test", password }, query: {}, params: {}, headers: {} };
-  for (const middleware of [mongoSanitize(), xss()]) {
+  const req = { body: { username: "someone@example.test", password }, query: {}, params: {}, headers: {}, method: "POST", get: () => "application/json", is: () => "json" };
+  for (const middleware of sanitizers) {
     await new Promise((resolve, reject) => middleware(req, {}, (err) => (err ? reject(err) : resolve())));
   }
   return req.body.password;
 };
 
-test("the sanitizers really do change $ and &, which is why temporary passwords must avoid them", async () => {
+test("the database cleaner really does change $, which is why temporary passwords must avoid it", async () => {
   assert.notEqual(await afterServerSanitizers("abc$def"), "abc$def");
-  assert.notEqual(await afterServerSanitizers("abc&def"), "abc&def");
+});
+
+test("& now reaches sign-in unchanged (the HTML cleaner that rewrote it is gone)", async () => {
+  assert.equal(await afterServerSanitizers("abc&def"), "abc&def");
 });
 
 test("a temporary password reaches Keycloak at sign-in exactly as it was emailed", async () => {

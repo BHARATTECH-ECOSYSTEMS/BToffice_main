@@ -629,4 +629,5 @@ module.exports = {
   syncKeycloakRealmRole,
   setTemporaryPassword,
   generateTemporaryPassword,
+  sendBackendInviteEmail,
 };

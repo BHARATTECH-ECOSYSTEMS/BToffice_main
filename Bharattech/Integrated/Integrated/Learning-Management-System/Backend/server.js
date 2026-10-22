@@ -58,17 +58,9 @@ const { keycloakAuth } = require("./middlewares/keycloakAuth");
 app.use(express.json());
 
 /* ------------------ INPUT SANITIZATION ------------------ */
-// npm install @exortek/express-mongo-sanitize express-xss-sanitizer hpp
-// Using the maintained Express-5-compatible forks — the original
-// express-mongo-sanitize / xss-clean packages throw on req.query in
-// Express 5, which is what caused your earlier CORS symptom.
-const mongoSanitize = require("@exortek/express-mongo-sanitize");
-const { xss } = require("express-xss-sanitizer");
-const hpp = require("hpp");
+const { applyRequestSanitizers } = require("./middlewares/requestSanitizers");
 
-app.use(mongoSanitize());
-app.use(xss());
-app.use(hpp());
+applyRequestSanitizers(app);
 
 /* ------------------ RATE LIMITING ------------------ */
 // Registered before routes so it actually applies to real requests.
