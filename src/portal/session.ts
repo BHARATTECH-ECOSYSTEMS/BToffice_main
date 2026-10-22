@@ -157,11 +157,13 @@ export function endSession() {
   void auth?.signOut();
 }
 
-// An expired or revoked sign-in closes the portal like a signed-out visit, so the login opens again.
-auth?.onExpire(() => {
+/** Closes the portal like a signed-out visit, so the login opens again: after an expired sign-in or a password change. */
+export function endSessionForNewSignIn() {
   forgetArrival();
   write(null);
-});
+}
+
+auth?.onExpire(endSessionForNewSignIn);
 
 export function getSession(): Session | null {
   if (cached === undefined) cached = read();

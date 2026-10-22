@@ -1,7 +1,8 @@
 import { useRef, useState, type ChangeEvent, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { PortalIconName } from '../data';
-import { ROLE_NAME, setDisplayName, setPhoto, useSession } from '../session';
+import { auth, passwordHasBlockedCharacter } from '../auth';
+import { endSessionForNewSignIn, ROLE_NAME, setDisplayName, setPhoto, useSession } from '../session';
 import { Badge, btnClass, BtnLabel, initials, PageHead, PIcon, useNotice } from '../ui';
 
 const MIN_PASSWORD = 8;
@@ -202,27 +203,57 @@ function ProfilePanel() {
   );
 }
 
+const CHANGE_FAILED: Record<'wrong-current' | 'signed-out' | 'unavailable', string> = {
+  'wrong-current': 'Your current password is incorrect. After 5 wrong tries your account is locked for a minute or more.',
+  'signed-out': 'Your sign-in has ended. Sign out and sign in again, then try once more.',
+  unavailable: "We couldn't reach the server, so your password wasn't changed. Try again in a moment.",
+};
+// long enough to read the confirmation before the portal closes for the new sign-in
+const SIGN_IN_AGAIN_MS = 3000;
+
 function PasswordPanel() {
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [busy, setBusy] = useState(false);
   const [notice, notify] = useNotice();
   // checked live, so the list explains what's missing before anyone presses the button
   const checks = [
     { label: `At least ${MIN_PASSWORD} characters`, ok: next.length >= MIN_PASSWORD },
     { label: 'Different from your current password', ok: !!next && next !== current },
     { label: 'Both new passwords match', ok: !!next && next === confirm },
+    // the backend would silently drop it (auth.ts passwordHasBlockedCharacter)
+    { label: 'No $ sign (not supported yet)', ok: !!next && !passwordHasBlockedCharacter(next) },
   ];
-  const ready = !!current && checks.every((c) => c.ok);
+  const ready = !!current && checks.every((c) => c.ok) && !busy;
 
-  const submit = (e: FormEvent) => {
-    e.preventDefault();
-    if (!ready) return;
-    // No sign-in server is connected yet, so nothing can actually change: say so instead of pretending it worked.
+  const clear = () => {
     setCurrent('');
     setNext('');
     setConfirm('');
-    notify("Password changes aren't connected yet, so your password wasn't changed.");
+  };
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!ready) return;
+    if (!auth) {
+      // the demo sign-in has no password to change: say so instead of pretending it worked
+      clear();
+      notify("Password changes aren't connected yet, so your password wasn't changed.");
+      return;
+    }
+    setBusy(true);
+    const result = await auth.changePassword(current, next);
+    setBusy(false);
+    if (result.ok) {
+      clear();
+      // every session was ended, this one included, so the portal closes and the login opens for the new password
+      notify('Password changed. You were signed out everywhere: sign in again with your new password.');
+      window.setTimeout(endSessionForNewSignIn, SIGN_IN_AGAIN_MS);
+      return;
+    }
+    setCurrent('');
+    notify(result.reason === 'refused' ? result.message || "That password isn't allowed. Try a longer one." : CHANGE_FAILED[result.reason]);
   };
 
   const field = (id: string, value: string, set: (v: string) => void, autoComplete: string) => (
@@ -240,7 +271,7 @@ function PasswordPanel() {
           {notice}
           <span className="p-set-foot-actions">
             <button type="submit" className={btnClass('primary')} disabled={!ready}>
-              <BtnLabel icon="lock">Change password</BtnLabel>
+              <BtnLabel icon="lock">{busy ? 'Changing…' : 'Change password'}</BtnLabel>
             </button>
           </span>
         </>

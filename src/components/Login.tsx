@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useScene } from '../gl/Scene';
-import { auth, isEmployeeId, type SignInResult } from '../portal/auth';
+import { auth, isEmployeeId, passwordHasBlockedCharacter, type SignInResult } from '../portal/auth';
 import { getSession, startSession } from '../portal/session';
 import { LogoGlass } from './LogoGlass';
 import { Arrow, Brand, BtnText, ThreadMark } from './ui';
@@ -260,6 +260,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
     if (!USERNAME_SHAPE.test(newUsername)) next.username = 'Use 3 to 32 letters, numbers, dots, dashes or underscores.';
     if (newPassword.length < NEW_PASSWORD_MIN) next.newPassword = `Use at least ${NEW_PASSWORD_MIN} characters.`;
     else if (newPassword === pending.temporaryPassword) next.newPassword = 'Choose a password that isn’t the temporary one.';
+    else if (passwordHasBlockedCharacter(newPassword)) next.newPassword = 'Passwords can’t contain a $ sign yet. Please choose another.';
     if (confirm !== newPassword) next.confirm = 'The two passwords don’t match.';
     setErrors(next);
     const first = (['username', 'newPassword', 'confirm'] as Field[]).find((k) => next[k]);

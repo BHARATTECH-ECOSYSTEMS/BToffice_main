@@ -43,6 +43,18 @@ export interface InviteSetup {
   newUsername: string;
 }
 
+export type ChangePasswordResult =
+  | { ok: true }
+  | { ok: false; reason: 'wrong-current' | 'signed-out' | 'unavailable' }
+  | { ok: false; reason: 'refused'; message: string };
+
+/**
+ * The backend's database cleaner (mongoSanitize) deletes `$` from everything it receives, passwords included, so a
+ * new password with `$` would be saved without it and fail on Keycloak's own login page. Until that is fixed in the
+ * backend, new passwords may not contain it.
+ */
+export const passwordHasBlockedCharacter = (password: string) => password.includes('$');
+
 export type InviteSetupResult =
   | { ok: true; account: Account }
   | { ok: false; reason: 'credentials' | 'username-taken' | 'unavailable' }
@@ -250,13 +262,41 @@ export function createAuth(config: AuthConfig, request: typeof fetch = (input, i
     }
   }
 
+  /**
+   * Changes the signed-in person's password. On success the backend has ended all their sessions, so the sign-in here
+   * ends too and they sign in again with the new password.
+   */
+  async function changePassword(currentPassword: string, newPassword: string): Promise<ChangePasswordResult> {
+    const token = await accessToken();
+    if (!token) return { ok: false, reason: 'signed-out' };
+    let res: Response;
+    try {
+      res = await request(`${config.api}/auth/keycloak-change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+    } catch {
+      return { ok: false, reason: 'unavailable' };
+    }
+    const body = (await res.json().catch(() => null)) as { message?: string } | null;
+    if (res.ok) {
+      keep(null);
+      return { ok: true };
+    }
+    // the backend answers a wrong current password with 401 too; only its message tells it from an ended sign-in
+    if (res.status === 401) return { ok: false, reason: body?.message === 'Current password is incorrect' ? 'wrong-current' : 'signed-out' };
+    if (res.status === 400) return { ok: false, reason: 'refused', message: body?.message ?? '' };
+    return { ok: false, reason: 'unavailable' };
+  }
+
   /** Called when the sign-in ends by itself (an expired or revoked session), not when the person signs out. */
   const onExpire = (listener: () => void) => {
     expireListeners.add(listener);
     return () => expireListeners.delete(listener);
   };
 
-  return { signIn, acceptInvite, signOut, accessToken, signedIn, onExpire };
+  return { signIn, acceptInvite, changePassword, signOut, accessToken, signedIn, onExpire };
 }
 
 function configFromEnv(): AuthConfig | null {

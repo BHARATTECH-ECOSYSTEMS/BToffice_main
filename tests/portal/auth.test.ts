@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAuth, isEmployeeId, loginRedirect, portalRole, type AuthConfig } from '../../src/portal/auth';
+import { createAuth, isEmployeeId, loginRedirect, passwordHasBlockedCharacter, portalRole, type AuthConfig } from '../../src/portal/auth';
 
 const CONFIG: AuthConfig = { api: 'http://api.test/api', keycloak: 'http://kc.test', realm: 'bharattech', clientId: 'lms-client' };
 const LOGIN_URL = 'http://api.test/api/auth/keycloak-login';
@@ -264,4 +264,70 @@ test('a renewal that finishes after sign-out does not sign the person back in', 
 
   assert.equal(await pending, null);
   assert.equal(auth.signedIn(), false);
+});
+
+// --- changing the password ---
+
+const CHANGE_URL = 'http://api.test/api/auth/keycloak-change-password';
+
+/** Signed in as test.employee, with the replies for what comes after the sign-in queued behind it. */
+async function signedInWith(...replies: (Response | Error)[]) {
+  const net = network(loginOk(), ...replies);
+  const auth = createAuth(CONFIG, net.request);
+  await auth.signIn('test.employee@example.test', 'Old-Password-1', false);
+  return { auth, calls: net.calls };
+}
+
+test('changing the password sends both passwords with the sign-in token, then ends the sign-in here', async () => {
+  const { auth, calls } = await signedInWith(json(200, { success: true, signedOutEverywhere: true }));
+
+  const result = await auth.changePassword('Old-Password-1', 'New-Password-2');
+
+  assert.deepEqual(result, { ok: true });
+  assert.equal(calls[1].url, CHANGE_URL);
+  assert.equal(calls[1].init.method, 'POST');
+  assert.match(String((calls[1].init.headers as Record<string, string>).Authorization), /^Bearer /);
+  assert.deepEqual(JSON.parse(String(calls[1].init.body)), { currentPassword: 'Old-Password-1', newPassword: 'New-Password-2' });
+  // the backend ended every session, so this one is over too
+  assert.equal(auth.signedIn(), false);
+});
+
+test('a wrong current password is told apart from an ended sign-in, and keeps the person signed in', async () => {
+  const { auth } = await signedInWith(json(401, { message: 'Current password is incorrect' }));
+
+  assert.deepEqual(await auth.changePassword('not-it', 'New-Password-2'), { ok: false, reason: 'wrong-current' });
+  assert.equal(auth.signedIn(), true);
+});
+
+test('a 401 for any other reason means the sign-in has ended', async () => {
+  const { auth } = await signedInWith(json(401, { message: 'Auth failed' }));
+  assert.deepEqual(await auth.changePassword('Old-Password-1', 'New-Password-2'), { ok: false, reason: 'signed-out' });
+});
+
+test("a new password the server refuses comes back with the server's reason", async () => {
+  const { auth } = await signedInWith(json(400, { message: 'Invalid password: minimum length 12.' }));
+
+  assert.deepEqual(await auth.changePassword('Old-Password-1', 'short-pw'), { ok: false, reason: 'refused', message: 'Invalid password: minimum length 12.' });
+  assert.equal(auth.signedIn(), true);
+});
+
+test('a server that is down or failing reads as unavailable, and nothing changes here', async () => {
+  for (const reply of [new TypeError('Failed to fetch'), json(500, { message: 'Failed to change password' }), json(429, {})]) {
+    const { auth } = await signedInWith(reply);
+    assert.deepEqual(await auth.changePassword('Old-Password-1', 'New-Password-2'), { ok: false, reason: 'unavailable' });
+    assert.equal(auth.signedIn(), true);
+  }
+});
+
+test('someone signed out cannot change a password and no request is sent', async () => {
+  const net = network();
+  const auth = createAuth(CONFIG, net.request);
+
+  assert.deepEqual(await auth.changePassword('a', 'b'), { ok: false, reason: 'signed-out' });
+  assert.equal(net.calls.length, 0);
+});
+
+test('a $ in a new password is caught, because the server would silently drop it', () => {
+  assert.equal(passwordHasBlockedCharacter('Pa$$word-123'), true);
+  assert.equal(passwordHasBlockedCharacter('Pa55word-&<>"!@#%^*()'), false);
 });
