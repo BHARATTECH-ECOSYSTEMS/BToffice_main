@@ -1,20 +1,31 @@
 import { useState } from 'react';
 import { useParams } from 'react-router';
+import { api } from '../api';
 import { TOOLS, toolById, type LinkResource, type Tool } from '../data';
-import { managesPortal, useSession } from '../session';
+import { managesPortal, useSession, type Role } from '../session';
 import { usePeopleById, usePortal } from '../store';
 import { btnClass, BtnLabel, DeleteButton, Empty, Modal, NotConnected, PageHead, PIcon, PortalNotFound, ToolButton, useNotice } from '../ui';
+import { ConnectedResources } from './ResourcesConnected';
 
 // The cards keep the old portal's order, which differs from the sidebar's.
 const CARD_ORDER = ['coder', 'huly', 'librechat', 'chatwoot', 'invoice', 'plane', 'securo', 'screego', 'excalidraw', 'lobehub'];
 
+/** The tool cards a role sees; they are part of the website, not the backend. */
+export const visibleTools = (role: Role) =>
+  TOOLS.filter((t) => t.id !== 'hrms' && !t.navOnly && (!t.adminOnly || role === 'admin')).sort((a, b) => CARD_ORDER.indexOf(a.id) - CARD_ORDER.indexOf(b.id));
+
+/** The backend's shared links when it is connected; the demo links otherwise. The tool cards are the same in both. */
 export function Resources() {
+  return api ? <ConnectedResources /> : <DemoResources />;
+}
+
+function DemoResources() {
   const role = useSession()!.role;
   const isManager = managesPortal(role);
   const { links, me, addLink } = usePortal();
   const [adding, setAdding] = useState(false);
   const [notice, notify] = useNotice();
-  const tools = TOOLS.filter((t) => t.id !== 'hrms' && !t.navOnly && (!t.adminOnly || role === 'admin')).sort((a, b) => CARD_ORDER.indexOf(a.id) - CARD_ORDER.indexOf(b.id));
+  const tools = visibleTools(role);
   // Employees see shared links that were assigned to them; admins see them all.
   const visibleLinks = isManager ? links : links.filter((l) => l.assignedTo.includes(me.id));
 
@@ -49,7 +60,7 @@ export function Resources() {
   );
 }
 
-function ToolCard({ tool }: { tool: Tool }) {
+export function ToolCard({ tool }: { tool: Tool }) {
   return (
     <article className="p-card p-resource">
       <span className="p-tile-icon">
@@ -131,17 +142,22 @@ function LinkCard({ link, isManager, canDelete, notify }: { link: LinkResource; 
   );
 }
 
-function AddLink({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string, url: string) => void }) {
+/** `onAdd` may save to the backend: the form then waits, and shows the reason if it fails (thrown as an Error). */
+export function AddLink({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string, url: string) => void | Promise<void> }) {
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   return (
     <Modal
       title="Add resource"
       icon="link"
       onClose={onClose}
-      onSubmit={() => {
+      onSubmit={async () => {
+        if (busy) return;
         if (!name.trim()) return setError('Give the resource a name.');
+        // the backend's limit
+        if (name.trim().length > 120) return setError('Keep the name to 120 characters or fewer.');
         let parsed: URL;
         try {
           parsed = new URL(url.trim());
@@ -150,16 +166,22 @@ function AddLink({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string
         }
         // only web links: a javascript: or data: address would run code when someone clicks Open
         if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return setError('Only http and https addresses can be added.');
-        onAdd(name.trim(), parsed.href);
-        onClose();
+        setBusy(true);
+        try {
+          await onAdd(name.trim(), parsed.href);
+          onClose();
+        } catch (e) {
+          setError((e as Error).message);
+          setBusy(false);
+        }
       }}
       footer={
         <>
           <button type="button" className={btnClass('ghost')} onClick={onClose}>
             <BtnLabel>Cancel</BtnLabel>
           </button>
-          <button type="submit" className={btnClass('primary')}>
-            <BtnLabel>Add resource</BtnLabel>
+          <button type="submit" className={btnClass('primary')} disabled={busy}>
+            <BtnLabel>{busy ? 'Adding…' : 'Add resource'}</BtnLabel>
           </button>
         </>
       }

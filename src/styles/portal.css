@@ -2555,6 +2555,50 @@ a.p-cal-item-title {
   width: 100%;
   min-width: 0;
 }
+/* the people a shared link is assigned to, each with a button that takes them off it */
+.p-access {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.p-access li {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 4px 3px 9px;
+  border-radius: var(--r-pill);
+  background: var(--bg);
+}
+.p-access button {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: inherit;
+  cursor: pointer;
+}
+.p-access button:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 1px;
+}
+.p-access button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+@media (hover: hover) and (pointer: fine) {
+  .p-access button:not(:disabled):hover {
+    background: var(--line);
+    color: var(--ink);
+  }
+}
 .p-tool {
   align-items: flex-start;
   max-width: 560px;
