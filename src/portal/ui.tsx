@@ -218,12 +218,14 @@ export function ToolButton({
   wide?: boolean;
 }) {
   if (url) {
+    // a web address opens in a new tab; an app link (bharattech://) only asks the computer to open the app
+    const web = /^https?:/i.test(url);
     return (
-      <a className={btnClass(variant, { wide })} href={url} target="_blank" rel="noreferrer">
+      <a className={btnClass(variant, { wide })} href={url} {...(web && { target: '_blank', rel: 'noreferrer' })}>
         <BtnLabel icon={icon} arrow={icon ? undefined : 'up-right'}>
           {label}
         </BtnLabel>
-        <span className="sr-only">{name} (opens in a new tab)</span>
+        <span className="sr-only">{web ? `${name} (opens in a new tab)` : `${name} (opens the installed app)`}</span>
       </a>
     );
   }
