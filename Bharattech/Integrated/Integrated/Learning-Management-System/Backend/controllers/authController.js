@@ -880,18 +880,33 @@ const keycloakChangePassword = async (req, res) => {
       clientId: "admin-cli",
     });
 
-    await kcAdmin.users.resetPassword({
-      realm: KEYCLOAK_REALM,
-      id: req.user.keycloakId,
-      credential: { type: "password", value: newPassword, temporary: false },
-    });
+    try {
+      await kcAdmin.users.resetPassword({
+        realm: KEYCLOAK_REALM,
+        id: req.user.keycloakId,
+        credential: { type: "password", value: newPassword, temporary: false },
+      });
+    } catch (error) {
+      // Keycloak refuses a password that breaks the realm's rules with a 400 and a readable reason
+      const reason = error?.response?.status === 400 && error.response.data?.error_description;
+      if (reason) return res.status(400).json({ message: reason });
+      throw error;
+    }
 
-    res.json({ success: true, message: "Password changed successfully" });
+    // Ending every session means a stolen sign-in stops working too. The password is already changed, so a
+    // failure here is reported but doesn't undo it.
+    let signedOutEverywhere = true;
+    try {
+      await kcAdmin.users.logout({ realm: KEYCLOAK_REALM, id: req.user.keycloakId });
+    } catch (error) {
+      signedOutEverywhere = false;
+      console.error("keycloakChangePassword: ending sessions failed:", error.message);
+    }
+
+    res.json({ success: true, signedOutEverywhere, message: "Password changed successfully" });
   } catch (error) {
     console.error("keycloakChangePassword error:", error);
-    res
-      .status(500)
-      .json({ message: "Failed to change password", error: error.message });
+    res.status(500).json({ message: "Failed to change password" });
   }
 };
 
