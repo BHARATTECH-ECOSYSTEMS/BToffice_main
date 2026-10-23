@@ -1,4 +1,4 @@
-import { CERTIFICATE_TYPES, ROLE_LABEL, SEED_EVENTS, STREAM_LABEL, type CalendarEvent, type PersonRole, type PersonStatus, type PortalIconName, type Stream } from './data';
+import { CERTIFICATE_TYPES, ROLE_LABEL, STREAM_LABEL, type PersonRole, type PersonStatus, type PortalIconName, type Stream } from './data';
 import { ACCOUNT_ROLES, roleLabel, type DirectoryPerson } from './people';
 import type { AccountProfile } from './profile';
 import type { IssuedCertificate } from './certificates';
@@ -98,12 +98,6 @@ export function managerFigures(
     { label: 'Inactive accounts', icon: 'lock', value: people?.filter((p) => p.status === 'inactive').length },
   ];
 }
-
-/**
- * The calendar's events on the backend's records: the demo's sample events go, ones added in this browser stay. The
- * store keeps the seed objects themselves, so they're told apart by identity rather than by id.
- */
-export const ownEvents = (events: CalendarEvent[]) => events.filter((e) => !SEED_EVENTS.includes(e));
 
 export type BreakdownRow = { label: string; value: number };
 

@@ -142,7 +142,7 @@ const CONNECTED_HELP: HelpGroup[] = [
     title: 'Good to know',
     icon: 'alert',
     topics: [
-      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” and calendar events last only until you reload. e-Office check-ins stay in this browser for now.' },
+      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload. e-Office check-ins stay in this browser for now.' },
     ],
   },
 ];

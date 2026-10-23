@@ -6,8 +6,8 @@ import { plural } from './lmsData';
 import { managesPortal, useSession } from './session';
 import { usePeopleById, usePortal } from './store';
 import { btnClass, BtnLabel, Modal, PIcon } from './ui';
-import { api } from './api';
-import { ownEvents } from './dashboard';
+import { api, ApiError } from './api';
+import { eventFailedMessage, useEvents, type EventDraft } from './events';
 
 /**
  * The dashboard calendar: the month on the left, the picked day's agenda and what comes next on the right.
@@ -26,8 +26,8 @@ interface CalItem {
   time?: string;
   /** Where the item is dealt with, for follow-ups. */
   to?: string;
-  /** Set on events, so an admin can remove them from here. */
-  eventId?: string;
+  /** Set on events, with what's needed to change or cancel them from here when this person may. */
+  event?: { id: string; draft: EventDraft; canChange: boolean };
 }
 
 const KIND_ORDER: ItemKind[] = ['event', 'task', 'followup', 'people'];
@@ -70,6 +70,8 @@ export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text:
   const [dir, setDir] = useState<'prev' | 'next' | undefined>();
   const [picked, setPicked] = useState(today);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<CalItem | null>(null);
+  const [cancelling, setCancelling] = useState<CalItem | null>(null);
 
   const now = new Date();
   const month = new Date(now.getFullYear(), now.getMonth() + offset, 1);
@@ -77,6 +79,17 @@ export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text:
   const iso = (d: number) => localDay(new Date(month.getFullYear(), month.getMonth(), d).getTime());
   const monthStart = iso(1);
   const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+  // connected, the month's events and everything "Coming up" can reach from any of its days, in one request per month
+  const remote = useEvents(monthStart, addDays(iso(lastDay), AHEAD_DAYS));
+  const shownEvents = useMemo(
+    () =>
+      api
+        ? remote.state.kind === 'ready'
+          ? remote.state.events
+          : []
+        : events.map((e) => ({ ...e, canChange: manager })),
+    [remote.state, events, manager],
+  );
 
   // Moving a month picks today in the current month, else that month's first day, so the agenda always matches it.
   const goTo = (to: number) => {
@@ -96,8 +109,10 @@ export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text:
       const who = manager ? `${t.assigneeName ?? byId.get(t.assigneeId)?.name ?? 'Removed user'} · ` : '';
       out.push({ id: `t-${t.id}`, date: t.due, kind: 'task', title: t.title, meta: `Task · ${who}${STATUS_LABEL[t.status]}` });
     }
-    for (const e of SAMPLE_RECORDS ? events : ownEvents(events)) {
-      if (inRange(e.date)) out.push({ id: `e-${e.id}`, date: e.date, kind: 'event', title: e.title, meta: EVENT_LABEL[e.kind], time: e.time || undefined, eventId: e.id });
+    for (const e of shownEvents) {
+      if (!inRange(e.date)) continue;
+      const event = { id: e.id, draft: { title: e.title, kind: e.kind, date: e.date, time: e.time }, canChange: e.canChange };
+      out.push({ id: `e-${e.id}`, date: e.date, kind: 'event', title: e.title, meta: EVENT_LABEL[e.kind], time: e.time || undefined, event });
     }
     // work anniversaries, and the first day of anyone joining in this stretch; invited people haven't joined yet
     const years = [Number(monthStart.slice(0, 4)), Number(rangeEnd.slice(0, 4))];
@@ -129,7 +144,7 @@ export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text:
     }
     // timed events first, by time; then by kind, so a day always reads in the same order
     return out.sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '99').localeCompare(b.time ?? '99') || KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
-  }, [tasks, events, people, jobs, verifications, byId, manager, role, monthStart, rangeEnd]);
+  }, [tasks, shownEvents, people, jobs, verifications, byId, manager, role, monthStart, rangeEnd]);
 
   const byDate = useMemo(() => {
     const map = new Map<string, CalItem[]>();
@@ -145,9 +160,39 @@ export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text:
   const prevDays = new Date(month.getFullYear(), month.getMonth(), 0).getDate();
   const trail = (7 - ((lead + lastDay) % 7)) % 7;
 
+  // the demo removes at once; connected, a cancel tells everyone, so it asks first (the window below)
   const remove = (it: CalItem) => {
-    removeEvent(it.eventId!);
+    if (api) return setCancelling(it);
+    removeEvent(it.event!.id);
     notify(`Removed “${it.title}” from everyone’s calendar.`);
+  };
+
+  /** Shows a saved event: jumps to its month and day. */
+  const showDay = (date: string) => {
+    const target = dateOf(date);
+    const to = (target.getFullYear() - now.getFullYear()) * 12 + target.getMonth() - now.getMonth();
+    if (to !== offset) {
+      setDir(to < offset ? 'prev' : 'next');
+      setOffset(to);
+    }
+    setPicked(date);
+  };
+
+  const save = async (draft: EventDraft, it: CalItem | null) => {
+    if (!api) {
+      // the demo has no changing; it adds to this browser's calendar
+      addEvent(draft);
+    } else if (it) {
+      await remote.change(it.event!.id, draft);
+    } else {
+      await remote.add(draft);
+    }
+    showDay(draft.date);
+    notify(
+      api
+        ? `“${draft.title}” is ${it ? 'changed' : 'on everyone’s calendar'} now. Everyone is told in their bell and by email.`
+        : `“${draft.title}” is on everyone’s calendar now.`,
+    );
   };
 
   return (
@@ -240,11 +285,24 @@ export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text:
               {dayItems.length ? (
                 <ul className="p-cal-items">
                   {dayItems.map((it) => (
-                    <AgendaItem key={it.id} item={it} onRemove={manager && it.eventId ? () => remove(it) : undefined} />
+                    <AgendaItem
+                      key={it.id}
+                      item={it}
+                      onRemove={it.event?.canChange ? () => remove(it) : undefined}
+                      onEdit={api && it.event?.canChange ? () => setEditing(it) : undefined}
+                    />
                   ))}
                 </ul>
               ) : (
                 <p className="p-cal-empty">Nothing on this day.</p>
+              )}
+              {remote.state.kind === 'error' && (
+                <p className="p-cal-empty" role="alert">
+                  The events didn’t load.{' '}
+                  <button type="button" className="p-text-btn" onClick={remote.retry}>
+                    Try again
+                  </button>
+                </p>
               )}
             </div>
           </section>
@@ -265,21 +323,22 @@ export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text:
         </div>
       </div>
 
-      {adding && (
-        <AddEvent
-          date={picked}
-          onClose={() => setAdding(false)}
-          onAdd={(draft) => {
-            addEvent(draft);
-            // show the new event: jump to its month and day
-            const target = dateOf(draft.date);
-            const to = (target.getFullYear() - now.getFullYear()) * 12 + target.getMonth() - now.getMonth();
-            if (to !== offset) {
-              setDir(to < offset ? 'prev' : 'next');
-              setOffset(to);
-            }
-            setPicked(draft.date);
-            notify(`“${draft.title}” is on everyone’s calendar now.`);
+      {(adding || editing) && (
+        <EventWindow
+          initial={editing?.event?.draft ?? { title: '', kind: 'meeting', date: picked < today && api ? today : picked, time: '' }}
+          changing={!!editing}
+          earliest={api ? today : undefined}
+          onClose={() => (setAdding(false), setEditing(null))}
+          onSave={(draft) => save(draft, editing)}
+        />
+      )}
+      {cancelling && (
+        <CancelEvent
+          title={cancelling.title}
+          onClose={() => setCancelling(null)}
+          onConfirm={async () => {
+            await remote.cancel(cancelling.event!.id);
+            notify(`“${cancelling.title}” was cancelled. Everyone is told in their bell and by email.`);
           }}
         />
       )}
@@ -287,7 +346,7 @@ export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text:
   );
 }
 
-function AgendaItem({ item, showDate = false, onRemove }: { item: CalItem; showDate?: boolean; onRemove?: () => void }) {
+function AgendaItem({ item, showDate = false, onRemove, onEdit }: { item: CalItem; showDate?: boolean; onRemove?: () => void; onEdit?: () => void }) {
   return (
     <li className="p-cal-item" data-kind={item.kind}>
       {showDate && (
@@ -311,8 +370,13 @@ function AgendaItem({ item, showDate = false, onRemove }: { item: CalItem; showD
         <small>{showDate && item.time ? `${item.meta} · ${item.time}` : item.meta}</small>
       </span>
       {item.time && !showDate && <span className="p-cal-item-time">{item.time}</span>}
+      {onEdit && (
+        <button type="button" className="p-icon-btn" onClick={onEdit} aria-label={`Change ${item.title}`}>
+          <PIcon name="edit" size={14} />
+        </button>
+      )}
       {onRemove && (
-        <button type="button" className="p-icon-btn is-danger" onClick={onRemove} aria-label={`Remove ${item.title}`}>
+        <button type="button" className="p-icon-btn is-danger" onClick={onRemove} aria-label={`${api ? 'Cancel' : 'Remove'} ${item.title}`}>
           <PIcon name="close" size={14} />
         </button>
       )}
@@ -320,32 +384,55 @@ function AgendaItem({ item, showDate = false, onRemove }: { item: CalItem; showD
   );
 }
 
-function AddEvent({ date, onClose, onAdd }: { date: string; onClose: () => void; onAdd: (draft: { title: string; kind: EventKind; date: string; time: string }) => void }) {
-  const [title, setTitle] = useState('');
-  const [kind, setKind] = useState<EventKind>('meeting');
-  const [day, setDay] = useState(date);
-  const [time, setTime] = useState('');
+/**
+ * Adding an event, or changing one (`changing`, with its details filled in). The window stays open until the save has
+ * worked, so a refusal (a date that has passed, say) is shown here and nothing typed is lost.
+ */
+function EventWindow({
+  initial,
+  changing,
+  earliest,
+  onClose,
+  onSave,
+}: {
+  initial: EventDraft;
+  changing: boolean;
+  /** yyyy-mm-dd: the first day that may be picked (connected: today) */
+  earliest?: string;
+  onClose: () => void;
+  onSave: (draft: EventDraft) => Promise<void>;
+}) {
+  const [title, setTitle] = useState(initial.title);
+  const [kind, setKind] = useState<EventKind>(initial.kind);
+  const [day, setDay] = useState(initial.date);
+  const [time, setTime] = useState(initial.time);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
   return (
     <Modal
-      title="Add an event"
+      title={changing ? 'Change the event' : 'Add an event'}
       icon="calendar"
       onClose={onClose}
       onSubmit={() => {
+        if (busy) return;
         const name = title.trim();
         if (!name) return setError('Give the event a name.');
         if (name.length > TITLE_MAX) return setError(`Keep the name under ${TITLE_MAX} characters.`);
         if (!day) return setError('Pick the date.');
-        onAdd({ title: name, kind, date: day, time });
-        onClose();
+        if (earliest && day < earliest) return setError('That day has already passed. Pick today or a later day.');
+        setBusy(true);
+        onSave({ title: name, kind, date: day, time }).then(onClose, (e: unknown) => {
+          setBusy(false);
+          setError(eventFailedMessage(e instanceof ApiError ? e : new ApiError('unavailable')));
+        });
       }}
       footer={
         <>
           <button type="button" className={btnClass('ghost')} onClick={onClose}>
-            <BtnLabel>Cancel</BtnLabel>
+            <BtnLabel>{changing ? 'Keep as it was' : 'Cancel'}</BtnLabel>
           </button>
-          <button type="submit" className={btnClass('primary')}>
-            <BtnLabel>Add event</BtnLabel>
+          <button type="submit" className={btnClass('primary')} disabled={busy}>
+            <BtnLabel>{busy ? 'Saving…' : changing ? 'Save changes' : 'Add event'}</BtnLabel>
           </button>
         </>
       }
@@ -367,14 +454,58 @@ function AddEvent({ date, onClose, onAdd }: { date: string; onClose: () => void;
       <div className="p-form-row">
         <label className="p-field">
           <span>Date</span>
-          <input type="date" value={day} onChange={(e) => (setDay(e.target.value), setError(''))} />
+          <input type="date" value={day} min={earliest} onChange={(e) => (setDay(e.target.value), setError(''))} />
         </label>
         <label className="p-field">
           <span>Time (optional)</span>
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} />
         </label>
       </div>
-      <p className="p-field-hint">Everyone in the portal sees it on their calendar. Nobody is emailed.</p>
+      <p className="p-field-hint">
+        {api
+          ? `Everyone sees it on their calendar and is told in their bell and by email${changing ? ' that it changed' : ''}.`
+          : 'Everyone in the portal sees it on their calendar. Nobody is emailed.'}
+      </p>
+      {error && (
+        <p className="p-error" role="alert">
+          {error}
+        </p>
+      )}
+    </Modal>
+  );
+}
+
+/** Cancelling tells everyone, so it is asked once more. */
+function CancelEvent({ title, onClose, onConfirm }: { title: string; onClose: () => void; onConfirm: () => Promise<void> }) {
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  return (
+    <Modal
+      title="Cancel this event for everyone?"
+      icon="calendar"
+      onClose={onClose}
+      onSubmit={() => {
+        if (busy) return;
+        setBusy(true);
+        onConfirm().then(onClose, (e: unknown) => {
+          setBusy(false);
+          setError(eventFailedMessage(e instanceof ApiError ? e : new ApiError('unavailable')));
+        });
+      }}
+      footer={
+        <>
+          <button type="button" className={btnClass('ghost')} onClick={onClose}>
+            <BtnLabel>Keep it</BtnLabel>
+          </button>
+          <button type="submit" className={btnClass('primary')} disabled={busy}>
+            <BtnLabel>{busy ? 'Cancelling…' : 'Cancel the event'}</BtnLabel>
+          </button>
+        </>
+      }
+    >
+      <p>
+        <strong>{title}</strong> comes off everyone’s calendar, and everyone is told in their bell and by email.
+      </p>
       {error && (
         <p className="p-error" role="alert">
           {error}

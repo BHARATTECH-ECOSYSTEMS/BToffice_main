@@ -1,7 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cardRoleLine, certificatesByType, contactCard, issuedInLastDays, managerFigures, ownEvents, peopleByRole, toCardPerson } from '../../src/portal/dashboard';
-import { SEED_EVENTS, type CalendarEvent } from '../../src/portal/data';
+import { cardRoleLine, certificatesByType, contactCard, issuedInLastDays, managerFigures, peopleByRole, toCardPerson } from '../../src/portal/dashboard';
 import type { AccountProfile } from '../../src/portal/profile';
 import type { DirectoryPerson } from '../../src/portal/people';
 import type { IssuedCertificate } from '../../src/portal/certificates';
@@ -127,9 +126,4 @@ test('certificates by type count by the title the backend stores', () => {
     rows.reduce((n, r) => n + r.value, 0),
     2,
   );
-});
-
-test("the connected calendar leaves out the demo's sample events but keeps ones added in this browser", () => {
-  const added: CalendarEvent = { id: 'E101', title: 'Team sync', kind: 'meeting', date: '2026-10-28', time: '10:00', addedBy: 'Test Admin' };
-  assert.deepEqual(ownEvents([...SEED_EVENTS, added]), [added]);
 });

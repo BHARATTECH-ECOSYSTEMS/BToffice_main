@@ -67,6 +67,6 @@ test('times read as "just now", minutes, hours, days, then the date', () => {
 test('the email switches leave out course updates until Learning is connected', () => {
   assert.deepEqual(
     EMAIL_KINDS.map((k) => k.id),
-    ['tasks', 'certificates', 'policies'],
+    ['tasks', 'certificates', 'policies', 'events'],
   );
 });

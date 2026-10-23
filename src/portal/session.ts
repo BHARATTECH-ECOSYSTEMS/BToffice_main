@@ -24,6 +24,7 @@ export const NOTIFICATION_KINDS = [
   { id: 'certificates', label: 'Certificate issued', hint: 'When a certificate is issued to you.' },
   { id: 'policies', label: 'New policy to review', hint: 'When a policy you need to accept is published.' },
   { id: 'courses', label: 'Course updates', hint: 'New lectures in courses you are enrolled in.' },
+  { id: 'events', label: 'Calendar events', hint: 'When an event is added, changed or cancelled.' },
 ] as const;
 export type NotificationKind = (typeof NOTIFICATION_KINDS)[number]['id'];
 
