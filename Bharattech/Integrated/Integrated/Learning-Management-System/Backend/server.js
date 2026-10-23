@@ -11,19 +11,11 @@ const app = express();
 app.set("trust proxy", 1);
 
 /* ------------------ CORS (must be registered FIRST) ------------------ */
-const corsOptions = {
-  origin: true,
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "x-demo-role",
-    "X-Demo-Role",
-  ],
-  // browsers may reuse a preflight answer for 10 minutes instead of asking before every request
-  maxAge: 600,
-};
+// Only the sites we name may call the API from a browser in production; any site in development (middlewares/corsOptions.js).
+const { corsOptions } = require("./middlewares/corsOptions");
+// Refuse to start on dangerous production settings (demo mode, or guessable secrets).
+const { assertAuthConfig } = require("./middlewares/keycloakAuth");
+assertAuthConfig();
 app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions));
 

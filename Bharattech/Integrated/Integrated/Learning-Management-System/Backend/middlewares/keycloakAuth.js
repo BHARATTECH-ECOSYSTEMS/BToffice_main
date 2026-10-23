@@ -8,7 +8,35 @@ const KEYCLOAK_BASE_URL =
   process.env.KEYCLOAK_BASE_URL ||
   process.env.KEYCLOAK_URL ||
   "http://localhost:8080";
-const DEMO_AUTH_ENABLED = process.env.AUTH_MODE === "demo";
+// Read at call time (not module load) so configuration and tests take effect without re-importing.
+const demoAuthEnabled = () => process.env.AUTH_MODE === "demo";
+const isProduction = () => process.env.NODE_ENV === "production";
+const keycloakClientId = () => process.env.KEYCLOAK_CLIENT_ID;
+const OLD_FALLBACK_SECRET = "fallback-secret-for-encryption-1234567890";
+
+/** A token is accepted only when it was issued for this app's Keycloak client (its azp/aud). Skipped, so it can't
+ *  lock people out, when no client is configured. */
+const audienceAllowed = (decoded) => {
+  const clientId = keycloakClientId();
+  if (!clientId) return true;
+  if (decoded.azp === clientId) return true;
+  const aud = decoded.aud;
+  return Array.isArray(aud) ? aud.includes(clientId) : aud === clientId;
+};
+
+/** Why a loaded account may not use the API; null when it may. Shared by the Keycloak and local sign-in paths. */
+const inactiveReason = (user) =>
+  user?.isDeleted ? "This account has been removed." : user?.isBanned ? "This account has been blocked." : null;
+
+/** Refuses dangerous settings at boot (called from server.js), so production never runs on demo mode or guessable secrets. */
+const assertAuthConfig = () => {
+  if (demoAuthEnabled() && isProduction()) throw new Error("AUTH_MODE=demo must never be used in production.");
+  if (!isProduction()) return;
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret === OLD_FALLBACK_SECRET) throw new Error("JWT_SECRET must be set to a real secret in production.");
+  const adminPassword = process.env.KEYCLOAK_ADMIN_PASSWORD;
+  if (!adminPassword || adminPassword === "admin") throw new Error("KEYCLOAK_ADMIN_PASSWORD must be set to a real password in production.");
+};
 
 const KEYCLOAK_ADMIN_REALM = process.env.KEYCLOAK_ADMIN_REALM || "master";
 const KEYCLOAK_ADMIN_USERNAME = process.env.KEYCLOAK_ADMIN_USERNAME || "admin";
@@ -168,7 +196,7 @@ const getOrCreateUser = async (keycloakUser, keycloakUserId = null) => {
 const keycloakAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    if (DEMO_AUTH_ENABLED && !authHeader?.startsWith("Bearer ")) {
+    if (demoAuthEnabled() && !authHeader?.startsWith("Bearer ")) {
       req.user = buildDemoUser(req);
       return next();
     }
@@ -179,7 +207,7 @@ const keycloakAuth = async (req, res, next) => {
 
     const token = authHeader.split(" ")[1];
 
-    if (DEMO_AUTH_ENABLED && token === "demo-token") {
+    if (demoAuthEnabled() && token === "demo-token") {
       req.user = buildDemoUser(req);
       return next();
     }
@@ -204,7 +232,14 @@ const keycloakAuth = async (req, res, next) => {
         );
       });
 
+      // only tokens issued for this app's Keycloak client are accepted (a token for another app is refused)
+      if (!audienceAllowed(decoded)) {
+        return res.status(401).json({ message: "This token was not issued for this application." });
+      }
+
       const user = await getOrCreateUser(decoded);
+      const reason = inactiveReason(user);
+      if (reason) return res.status(403).json({ message: reason });
 
       req.user = {
         id: user._id.toString(),
@@ -217,49 +252,35 @@ const keycloakAuth = async (req, res, next) => {
 
       next();
     } catch (keycloakErr) {
-      console.warn(
-        "Keycloak token verification failed, trying local JWT secret fallback:",
-        keycloakErr.message,
-      );
+      // The local JWT path: tokens this backend's own /api/auth/login issues, signed with JWT_SECRET. No hardcoded
+      // fallback secret and off entirely unless JWT_SECRET is set, so a forged token can't get in. The demo/mock
+      // tokens are no longer accepted here — demo mode has its own guarded path above.
+      const localSecret = process.env.JWT_SECRET;
+      if (localSecret) {
+        try {
+          const localDecoded = jwt.verify(token, localSecret, { algorithms: ["HS256"] });
 
-      if (token === "mock-token" || token === "demo-token") {
-        req.user = buildDemoUser(req);
-        return next();
-      }
+          const localUser = await User.findById(localDecoded.id);
+          if (!localUser) throw new Error("User not found in local database");
+          const reason = inactiveReason(localUser);
+          if (reason) return res.status(403).json({ message: reason });
 
-      try {
-        const localDecoded = jwt.verify(
-          token,
-          process.env.JWT_SECRET || "fallback-secret-for-encryption-1234567890",
-          {
-            algorithms: ["HS256"],
-          },
-        );
+          req.user = {
+            id: localUser._id.toString(),
+            keycloakId: localUser.keycloakId || localUser._id.toString(),
+            email: localUser.email,
+            role: localUser.role,
+            fullName: localUser.fullName,
+            decoded: localDecoded,
+          };
 
-        const localUser = await User.findById(localDecoded.id);
-        if (!localUser) {
-          throw new Error("User not found in local database");
+          return next();
+        } catch (localErr) {
+          console.error("Local token verification failed:", localErr.message);
         }
-
-        req.user = {
-          id: localUser._id.toString(),
-          keycloakId: localUser.keycloakId || localUser._id.toString(),
-          email: localUser.email,
-          role: localUser.role,
-          fullName: localUser.fullName,
-          decoded: localDecoded,
-        };
-
-        next();
-      } catch (localErr) {
-        console.error(
-          "Local token verification also failed:",
-          localErr.message,
-        );
-        res
-          .status(401)
-          .json({ message: "Auth failed", error: keycloakErr.message });
       }
+      // no internal error text leaks to the caller
+      return res.status(401).json({ message: "Auth failed" });
     }
   } catch (error) {
     console.error("keycloakAuth middleware error:", error);
@@ -291,4 +312,7 @@ module.exports = {
   requireSuperAdmin,
   getOrCreateUser,
   checkActiveAdminSession,
+  audienceAllowed,
+  inactiveReason,
+  assertAuthConfig,
 };
