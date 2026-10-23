@@ -1,8 +1,10 @@
 const bcrypt = require("bcryptjs");
 const { randomUUID } = require("crypto");
+const mongoose = require("mongoose");
 const KcAdminClient = require("keycloak-admin").default;
 const User = require("../models/User");
 const { createKeycloakAdminSession } = require("../utils/keycloakAdminSession");
+const { photoType, saveUserPhoto, findUserPhoto, openUserPhoto, deleteUserPhoto } = require("../utils/userPhotos");
 
 const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL || "http://localhost:8080";
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
@@ -198,6 +200,65 @@ const canAssignRole = (actorRole, targetRole, nextRole) => {
   }
 
   return false;
+};
+
+/** Who may change someone's details through the admin edit route: a Superadmin anyone, an Admin only those below. */
+const canEditUser = (actorRole, targetRole) => {
+  const actor = normalizeRole(actorRole);
+  if (actor === "Superadmin") return true;
+  return actor === "Admin" && ["Subadmin", "Employee", "Intern"].includes(normalizeRole(targetRole));
+};
+
+const NAME_MIN = 2;
+const NAME_MAX = 60;
+const NAME_PROBLEM = `Enter a name of ${NAME_MIN} to ${NAME_MAX} characters.`;
+
+/** The name as stored: trimmed and single-spaced; null when it's too short, too long or holds control characters. */
+const readFullName = (value) => {
+  if (typeof value !== "string") return null;
+  const name = value.replace(/[\t\n\r]+/g, " ").replace(/\s+/g, " ").trim();
+  if (/[\u0000-\u001f\u007f]/.test(name)) return null;
+  return name.length >= NAME_MIN && name.length <= NAME_MAX ? name : null;
+};
+
+/** Keycloak keeps a first and a last name: the first word, then the rest. */
+const keycloakNames = (fullName) => {
+  const [firstName, ...rest] = fullName.split(" ");
+  return { firstName, lastName: rest.join(" ") };
+};
+
+// The sign-in reply and the Keycloak sync (upsertLocalUserFromKeycloak) both take the name from Keycloak, so a name
+// changed only here would come back at the next sign-in. The rest of the Keycloak account is sent back unchanged.
+const syncKeycloakName = async (keycloakId, fullName) => {
+  await authKeycloakAdmin();
+  const kcUser = await kcAdmin.users.findOne({ realm: KEYCLOAK_REALM, id: keycloakId });
+  if (!kcUser) throw new Error("Keycloak user not found");
+  await kcAdmin.users.update(
+    { realm: KEYCLOAK_REALM, id: keycloakId },
+    {
+      username: kcUser.username,
+      email: kcUser.email,
+      emailVerified: kcUser.emailVerified,
+      enabled: kcUser.enabled,
+      attributes: kcUser.attributes,
+      ...keycloakNames(fullName),
+    }
+  );
+};
+
+const PHOTO_PROBLEM = "Choose a PNG, JPG or WebP image.";
+
+/**
+ * Stores an uploaded photo (already checked with photoType) and points `user` at it, without saving `user`. Returns
+ * the old photo's id, to delete only once the record is saved, so a failed save never leaves it pointing at nothing.
+ */
+const storePhoto = async (user, file) => {
+  const oldFileId = user.photoFileId;
+  const fileId = await saveUserPhoto(file.buffer, { contentType: photoType(file.buffer), userId: user._id });
+  user.photoFileId = fileId;
+  // the version in the address makes browsers fetch the new photo instead of showing a cached old one
+  user.profilePicture = `/api/user/${user._id}/photo?v=${fileId}`;
+  return oldFileId;
 };
 
 const fetchKeycloakUsers = async () => {
@@ -399,10 +460,11 @@ const publicUser = (user) => {
 
 // The only fields the admin edit route (PUT/PATCH /:id) may change. Everything else in the body is ignored, so
 // password, tokens, keycloakId, isDeleted and the employee ID can never be set this way. The role is additionally
-// checked by canAssignRole; isBanned is how an admin blocks or unblocks an account.
+// checked by canAssignRole; isBanned is how an admin blocks or unblocks an account. The photo only comes as an
+// uploaded file (storePhoto), never as an address in the body.
 const EDITABLE_USER_FIELDS = [
   "fullName", "username", "email", "role", "phone", "phoneNumber", "workPhone",
-  "stream", "team", "profilePicture", "privacySettings", "gender", "dateOfBirth",
+  "stream", "team", "privacySettings", "gender", "dateOfBirth",
   "qualification", "degree", "profession", "organization", "interests",
   "socialLinks", "professionalTitle", "totalExperience", "careerDescription", "isBanned",
 ];
@@ -426,6 +488,9 @@ exports.publicUser = publicUser;
 exports.stripSensitive = stripSensitive;
 exports.pickEditableFields = pickEditableFields;
 exports.canCreateRole = canCreateRole;
+exports.canEditUser = canEditUser;
+exports.readFullName = readFullName;
+exports.keycloakNames = keycloakNames;
 
 // The people directory for every signed-in person. It reads the local copy only, so it stays fast however many
 // people there are; GET /api/user syncs from Keycloak instead, but returns whole records to anyone signed in.
@@ -607,6 +672,15 @@ exports.updateUser = async (req, res) => {
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
+    // requireAdmin only says who is asking; an Admin may still not change anyone at or above their own level
+    if (!canEditUser(req.user?.role, user.role)) {
+      return res.status(403).json({ message: "You can only change the details of sub admins, employees and interns." });
+    }
+    // a Super Admin can't be locked out through this route, even by another Super Admin
+    if (normalizeRole(user.role) === "Superadmin" && "isBanned" in updates && Boolean(updates.isBanned) !== Boolean(user.isBanned)) {
+      return res.status(403).json({ message: "A Super Admin account can't be blocked." });
+    }
+
     if (requestedRole && !canAssignRole(req.user?.role, user.role, requestedRole)) {
       return res.status(403).json({
         message:
@@ -617,10 +691,33 @@ exports.updateUser = async (req, res) => {
     }
 
     if (requestedRole) updates.role = requestedRole;
-    if (req.file) updates.profilePicture = `/uploads/${req.file.filename}`;
 
+    // the company app sends the whole form, so an unchanged name (however it was first written) is left alone
+    const renaming = "fullName" in updates && updates.fullName !== user.fullName;
+    if (renaming) {
+      const fullName = readFullName(updates.fullName);
+      if (!fullName) return res.status(400).json({ message: NAME_PROBLEM });
+      updates.fullName = fullName;
+    } else {
+      delete updates.fullName;
+    }
+
+    if (req.file && !photoType(req.file.buffer)) return res.status(400).json({ message: PHOTO_PROBLEM });
+
+    // Keycloak first: if it refuses, nothing is saved here either, so the two never disagree about the name
+    if (renaming && updates.fullName !== user.fullName && user.keycloakId && user.authProvider === "keycloak") {
+      try {
+        await syncKeycloakName(user.keycloakId, updates.fullName);
+      } catch (keycloakError) {
+        console.error("Keycloak name sync error:", keycloakError?.response?.status || keycloakError?.message);
+        return res.status(502).json({ message: "The new name couldn't be saved to the sign-in system, so nothing was changed. Try again in a moment." });
+      }
+    }
+
+    const oldPhotoId = req.file ? await storePhoto(user, req.file) : null;
     Object.assign(user, updates);
     await user.save();
+    await deleteUserPhoto(oldPhotoId);
 
     if (requestedRole && user.keycloakId && user.authProvider === "keycloak") {
       await syncKeycloakRealmRole(user.keycloakId, requestedRole);
@@ -715,5 +812,67 @@ exports.updateCurrentUser = async (req, res) => {
   } catch (error) {
     console.error("Update current user error:", error);
     res.status(500).json({ message: "Failed to update profile" });
+  }
+};
+
+const findMe = (req) => User.findOne({ keycloakId: req.user?.keycloakId, isDeleted: { $ne: true } });
+
+// PUT /api/user/me/photo: the signed-in person's own photo (form field "photo"), replacing any earlier one
+exports.setMyPhoto = async (req, res) => {
+  try {
+    if (!req.file?.buffer?.length) return res.status(400).json({ message: "Choose a photo to upload." });
+    if (!photoType(req.file.buffer)) return res.status(400).json({ message: PHOTO_PROBLEM });
+    const user = await findMe(req);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const oldFileId = await storePhoto(user, req.file);
+    await user.save();
+    await deleteUserPhoto(oldFileId);
+    res.json(stripSensitive(user));
+  } catch (error) {
+    console.error("Set photo error:", error.message);
+    res.status(500).json({ message: "The photo couldn't be saved. Try again in a moment." });
+  }
+};
+
+// DELETE /api/user/me/photo
+exports.removeMyPhoto = async (req, res) => {
+  try {
+    const user = await findMe(req);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    const oldFileId = user.photoFileId;
+    user.photoFileId = undefined;
+    user.profilePicture = "";
+    await user.save();
+    await deleteUserPhoto(oldFileId);
+    res.json(stripSensitive(user));
+  } catch (error) {
+    console.error("Remove photo error:", error.message);
+    res.status(500).json({ message: "The photo couldn't be removed. Try again in a moment." });
+  }
+};
+
+// GET /api/user/:id/photo: anyone signed in, like the directory. Always an image, never run as a page.
+exports.getUserPhoto = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: "No photo" });
+    const user = await User.findOne({ _id: req.params.id, isDeleted: { $ne: true } }).select("photoFileId").lean();
+    const file = user?.photoFileId ? await findUserPhoto(user.photoFileId) : null;
+    if (!file) return res.status(404).json({ message: "No photo" });
+
+    res.setHeader("Content-Type", file.metadata?.contentType || "application/octet-stream");
+    res.setHeader("Content-Length", String(file.length));
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    // each photo has its own address (?v=), so a browser may keep it; "private" keeps shared caches out
+    res.setHeader("Cache-Control", "private, max-age=86400");
+    return openUserPhoto(file._id)
+      .once("error", (error) => {
+        console.error("Stream photo error:", error.message);
+        if (!res.headersSent) res.status(404).json({ message: "No photo" });
+        else res.end();
+      })
+      .pipe(res);
+  } catch (error) {
+    console.error("Get photo error:", error.message);
+    res.status(500).json({ message: "The photo couldn't be loaded." });
   }
 };

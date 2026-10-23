@@ -22,6 +22,8 @@ const UserSchema = new mongoose.Schema({
         required: true 
     },
     profilePicture: { type: String, default: "" },
+    // the photo stored in GridFS (utils/userPhotos.js); profilePicture holds the address it's served from
+    photoFileId: { type: mongoose.Schema.Types.ObjectId },
     tokens: [{ token: String, createdAt: { type: Date, default: Date.now } }], // ✅ Store JWT token here
     authProvider: {
   type: String,
