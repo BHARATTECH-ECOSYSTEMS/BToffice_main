@@ -5,7 +5,7 @@ import { ID_DOC_MAX_MB, ID_DOCS, ID_RETENTION_DAYS, PERSON_STATUS_LABEL, ROLE_LA
 import { useAccountProfile, type ProfileState } from '../profile';
 import { useSession } from '../session';
 import { formatDate, formatSize, usePortal } from '../store';
-import { Badge, btnClass, BtnLabel, Empty, initials, PageHead, PIcon, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, Empty, initials, PageHead, PIcon, SampleDataBar, useNotice } from '../ui';
 
 const LOAD_FAILED: Record<ApiErrorKind, string> = {
   'signed-out': 'Your sign-in has ended. Sign out and sign in again to see your details.',
@@ -96,6 +96,7 @@ export function Profile() {
               <p className="p-muted">{request ? 'HR has asked for your documents. Upload both to finish your verification.' : 'Documents HR asks for appear here.'}</p>
             </div>
           </div>
+          <SampleDataBar>this part isn’t connected to the company system yet, so uploads stay in this browser tab and are gone after a reload.</SampleDataBar>
           {request || mine.length ? (
             <fieldset className="p-docs" disabled={!request}>
               <legend>Government ID</legend>
@@ -121,7 +122,7 @@ export function Profile() {
           <p className="p-field-hint">
             Only admins can open these files. They're deleted automatically {ID_RETENTION_DAYS} days after your last working day; we keep only your name, dates and role.
           </p>
-          <p className="p-field-hint">Demo: there's no server yet, so files stay in this browser tab only and are gone after a reload.</p>
+          {account.kind === 'off' && <p className="p-field-hint">Demo: there's no server yet, so files stay in this browser tab only and are gone after a reload.</p>}
         </section>
       </div>
     </>

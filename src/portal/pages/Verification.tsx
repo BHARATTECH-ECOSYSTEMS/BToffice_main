@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router';
 import { COMPANY_CHECKS, EMAIL_SHAPE, EMPLOYEE_CHECKS, EMPLOYMENT_CHECKS, ID_DOCS, ID_RETENTION_DAYS, ROLE_LABEL, VERIFICATION_STALE_DAYS, type Verification, type VerificationKind, type VerificationStatus } from '../data';
 import { useSession } from '../session';
 import { documentsDeleteOn, formatDate, formatSize, usePeopleById, usePortal } from '../store';
-import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PageHead, PIcon, PortalNotFound, SearchField, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PageHead, PIcon, PortalNotFound, SampleDataBar, SearchField, useNotice } from '../ui';
 
 const STATUS_LABEL: Record<VerificationStatus, string> = { pending: 'Pending', verified: 'Verified', rejected: 'Rejected' };
 // status badges reuse the portal's existing colours: amber waiting, green done, red stopped
@@ -86,6 +86,7 @@ function VerificationPage({ kind }: { kind: VerificationKind }) {
           </button>
         )}
       </PageHead>
+      <SampleDataBar />
       {notice}
       {mine.length ? (
         <div className="p-desk">

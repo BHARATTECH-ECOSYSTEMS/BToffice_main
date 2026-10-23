@@ -2,6 +2,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties
 import { Link } from 'react-router';
 import { SearchPill } from '../components/SearchPill';
 import { Arrow, BtnText, LogoMark } from '../components/ui';
+import { api } from './api';
 import type { PortalIconName } from './data';
 
 const PATHS: Record<PortalIconName, string> = {
@@ -244,6 +245,23 @@ export function NotConnected() {
   return (
     <p className="p-not-connected" aria-hidden="true">
       <PIcon name="alert" size={14} /> Not connected yet
+    </p>
+  );
+}
+
+/**
+ * Marks a page that still runs on the demo's made-up records while the rest of the portal is on the company backend.
+ * Shows nothing in the demo, where every page is sample data. Each one goes when its page is connected.
+ */
+export function SampleDataBar({ children }: { children?: ReactNode }) {
+  if (!api) return null;
+  return (
+    <p className="p-sample" role="note">
+      <PIcon name="alert" size={16} />
+      <span>
+        <strong>Sample data:</strong>{' '}
+        {children ?? 'this page isn’t connected to the company system yet. The people and records here are made up, and changes are lost on reload.'}
+      </span>
     </p>
   );
 }

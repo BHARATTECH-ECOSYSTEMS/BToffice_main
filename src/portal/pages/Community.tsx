@@ -4,7 +4,7 @@ import type { HueName } from '../../gl/palette';
 import { EMAIL_SHAPE, STREAM_LABEL, STREAMS, type Alumnus, type Stream } from '../data';
 import { managesPortal, useSession } from '../session';
 import { formatDate, usePortal } from '../store';
-import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, PageHead, PIcon, useListFlip, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, PageHead, PIcon, SampleDataBar, useListFlip, useNotice } from '../ui';
 import { InternalJobs, PostJob } from './CommunityJobs';
 
 /** Each stream's colour, for the ring round a member's initials. */
@@ -69,6 +69,7 @@ export function Community() {
           </button>
         )}
       </PageHead>
+      <SampleDataBar />
       {notice}
 
       <ol className="p-comm-steps" aria-label="How the community works">

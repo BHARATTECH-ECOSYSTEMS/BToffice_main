@@ -4,7 +4,7 @@ import type { PortalIconName } from '../../data';
 import { allLectures, finalPrice, formatMinutes, formatPrice, plural, totalMinutes, type Chapter, type Course, type Lecture } from '../../lmsData';
 import { managesPortal, useSession } from '../../session';
 import { usePeopleById, usePortal } from '../../store';
-import { btnClass, BtnLabel, PIcon } from '../../ui';
+import { btnClass, BtnLabel, PIcon, SampleDataBar } from '../../ui';
 
 const STUDENT_TABS: [string, string, PortalIconName][] = [
   ['/portal/lms', 'Home', 'home'],
@@ -35,6 +35,7 @@ export function LmsShell() {
   const educator = pathname.startsWith('/portal/lms/educator');
   return (
     <>
+      <SampleDataBar />
       <div className="p-lms-bar">
         <nav className="p-lms-nav" aria-label={educator ? 'Educator pages' : 'Learning platform'}>
           {(educator ? EDUCATOR_TABS : STUDENT_TABS).map(([to, label, icon]) => (

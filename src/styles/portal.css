@@ -2362,6 +2362,28 @@ a.p-cal-item-title {
 .p-notice:not([data-on]) {
   display: none;
 }
+/* a page still on the demo's made-up records (SampleDataBar); saffron, so it never reads as a success notice.
+   It arrives with the page's own rise, so it has no motion of its own. */
+.p-sample {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--saffron) 14%, var(--paper));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--saffron) 40%, transparent);
+}
+.p-sample > svg {
+  flex: none;
+  margin-top: 1px;
+}
+.p-sample strong {
+  color: var(--ink);
+}
 
 /* ── Badges ── */
 
