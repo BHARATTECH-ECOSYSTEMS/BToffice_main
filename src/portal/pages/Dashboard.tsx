@@ -8,6 +8,12 @@ import { useOfficeDay } from '../eoffice';
 import { IdCardDialog } from '../IdCard';
 import { InviteModal } from './People';
 import { CalendarCard } from '../Calendar';
+import { api } from '../api';
+import { useDirectory } from '../people';
+import { useCertificates } from '../certificates';
+import { useAccountProfile, type ProfileState } from '../profile';
+import { certificatesByType, managerFigures, peopleByRole, toCardPerson, type CardPerson, type Figure } from '../dashboard';
+import { ConnectedCertificatesPanel, ConnectedTeamPanel } from './DashboardConnected';
 
 const STATUS_LABEL: Record<TaskStatus, string> = { todo: 'To do', doing: 'In progress', done: 'Done' };
 const certName = (id: string) => CERTIFICATE_TYPES.find((c) => c.id === id)?.name ?? id;
@@ -24,7 +30,9 @@ export function Dashboard() {
   useEffect(() => {
     if (arrive) markArrived();
   }, [arrive]);
-  return managesPortal(session.role) ? <AdminDashboard arrive={arrive} /> : <EmployeeDashboard arrive={arrive} />;
+  // with the backend connected, the panels show its records; the parts it can't fill yet (tasks) are left out
+  if (managesPortal(session.role)) return api ? <ConnectedManagerDashboard arrive={arrive} /> : <AdminDashboard arrive={arrive} />;
+  return api ? <ConnectedEmployeeDashboard arrive={arrive} /> : <EmployeeDashboard arrive={arrive} />;
 }
 
 /** The header's shared actions: the Huly workspace, and copying this page's link. */
@@ -80,7 +88,7 @@ function Hello({
   /** The supporting line, figures and task bar are optional: the employee view drops them, since its task board
    * already shows the same counts. */
   sub?: string;
-  figures?: { label: string; icon: PortalIconName; value: number }[];
+  figures?: Figure[];
   segments?: Segment[];
   meterLabel?: string;
   arrive: boolean;
@@ -103,7 +111,8 @@ function Hello({
           <dl className="p-figures">
             {figures.map((f) => (
               <div key={f.label}>
-                <dd>{f.value}</dd>
+                {/* a figure that hasn't loaded shows a dash, never a made-up 0 */}
+                <dd>{f.value ?? '-'}</dd>
                 <dt>
                   <PIcon name={f.icon} size={14} /> {f.label}
                 </dt>
@@ -134,7 +143,7 @@ function EmployeeDashboard({ arrive }: { arrive: boolean }) {
       <Hello arrive={arrive} />
       {notice}
       <div className="p-bento">
-        <ProfileCard>
+        <ProfileCard person={me}>
           <div className="p-seg is-status is-glass" role="group" aria-label="My status">
             {(['active', 'inactive'] as const).map((s) => (
               <button
@@ -168,8 +177,8 @@ function EmployeeDashboard({ arrive }: { arrive: boolean }) {
 }
 
 function AdminDashboard({ arrive }: { arrive: boolean }) {
-  const { people, certificates, tasks } = usePortal();
-  const [view, setView] = useState<'management' | 'analytics'>('management');
+  const { people, certificates, tasks, me } = usePortal();
+  const [view, setView] = useState<DashboardView>('management');
   const [notice, notify] = useNotice();
   const recent = certificates.filter((c) => Date.now() - new Date(c.date).getTime() < 30 * 864e5).length;
   const done = tasks.filter((t) => t.status === 'done').length;
@@ -187,24 +196,13 @@ function AdminDashboard({ arrive }: { arrive: boolean }) {
           { label: 'Reset links', icon: 'key', value: 0 },
         ]}
       >
-        <div className="p-seg" role="group" aria-label="Dashboard view">
-          {(
-            [
-              ['management', 'Management', 'grid'],
-              ['analytics', 'Analytics', 'chart'],
-            ] as const
-          ).map(([id, label, icon]) => (
-            <button key={id} type="button" aria-pressed={view === id} onClick={() => setView(id)}>
-              <PIcon name={icon} size={15} /> {label}
-            </button>
-          ))}
-        </div>
+        <ViewSwitch view={view} onChange={setView} />
       </Hello>
       {notice}
       {view === 'management' ? (
         <>
           <div className="p-bento">
-            <ProfileCard />
+            <ProfileCard person={me} />
             <ProgressCard title="Team progress" done={done} total={tasks.length} empty="No tasks created yet." delay={arrive ? ARRIVAL_LEAD : 0} />
             <NextDueCard list={tasks} />
             <TaskBoard title="Team tasks" list={tasks} />
@@ -220,6 +218,128 @@ function AdminDashboard({ arrive }: { arrive: boolean }) {
         <AnalyticsView />
       )}
     </>
+  );
+}
+
+type DashboardView = 'management' | 'analytics';
+
+function ViewSwitch({ view, onChange }: { view: DashboardView; onChange: (view: DashboardView) => void }) {
+  return (
+    <div className="p-seg" role="group" aria-label="Dashboard view">
+      {(
+        [
+          ['management', 'Management', 'grid'],
+          ['analytics', 'Analytics', 'chart'],
+        ] as const
+      ).map(([id, label, icon]) => (
+        <button key={id} type="button" aria-pressed={view === id} onClick={() => onChange(id)}>
+          <PIcon name={icon} size={15} /> {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The employee's dashboard on the backend's records: their real profile and ID card, with the status the backend
+ * keeps (only admins can block an account, so there's no switch). Tasks aren't connected yet, so their parts are
+ * replaced by one card saying so, and the calendar shows no task dates.
+ */
+function ConnectedEmployeeDashboard({ arrive }: { arrive: boolean }) {
+  const [notice, notify] = useNotice();
+  const [profile] = useAccountProfile();
+  return (
+    <>
+      <Hello arrive={arrive} />
+      {notice}
+      <div className="p-bento is-tasks-off">
+        <ConnectedProfileCard profile={profile} />
+        <NextDueCard />
+        <div className="p-board-col">
+          <EOfficeCard notify={notify} />
+          <TasksComingCard title="My tasks" />
+        </div>
+        <WorkspaceCard notify={notify} />
+        <CalendarCard notify={notify} />
+      </div>
+    </>
+  );
+}
+
+/** Admins and superadmins may list everyone's certificates; a sub admin's dashboard never asks for them. */
+function ConnectedManagerDashboard({ arrive }: { arrive: boolean }) {
+  return useSession()!.role === 'admin' ? <ManagerWithCertificates arrive={arrive} /> : <ConnectedManaging arrive={arrive} />;
+}
+
+function ManagerWithCertificates({ arrive }: { arrive: boolean }) {
+  const certificates = useCertificates('all');
+  return <ConnectedManaging arrive={arrive} certificates={certificates} />;
+}
+
+/** The managing dashboard on the backend's records: the team, the certificates (admins only) and real figures. */
+function ConnectedManaging({ arrive, certificates }: { arrive: boolean; certificates?: ReturnType<typeof useCertificates> }) {
+  const directory = useDirectory();
+  const [profile] = useAccountProfile();
+  const [view, setView] = useState<DashboardView>('management');
+  const [notice, notify] = useNotice();
+  const people = directory.state.kind === 'ready' ? directory.state.people : undefined;
+  const issued = certificates?.state.kind === 'ready' ? certificates.state.certificates : undefined;
+  return (
+    <>
+      <Hello
+        sub={certificates ? 'Your team and certificates at a glance.' : 'Your team at a glance.'}
+        arrive={arrive}
+        figures={managerFigures({ people, certificates: issued, showCertificates: !!certificates })}
+      >
+        <ViewSwitch view={view} onChange={setView} />
+      </Hello>
+      {notice}
+      {view === 'management' ? (
+        <>
+          <div className="p-bento is-tasks-off">
+            <ConnectedProfileCard profile={profile} />
+            <NextDueCard />
+            <TasksComingCard title="Team tasks" />
+            <WorkspaceCard notify={notify} />
+            <CalendarCard notify={notify} />
+          </div>
+          {certificates && <ConnectedCertificatesPanel certificates={certificates} />}
+          <ConnectedTeamPanel directory={directory} />
+          <SecurityPanel />
+        </>
+      ) : (
+        <div className="p-analytics">
+          {people ? (
+            <Breakdown title="People by role" icon="users" total={people.length} rows={peopleByRole(people)} />
+          ) : (
+            <p className="p-muted" role="status">
+              {directory.state.kind === 'error' ? 'The figures didn’t load. Try again from Management.' : 'Loading the figures…'}
+            </p>
+          )}
+          {issued && <Breakdown title="Certificates by type" icon="award" total={issued.length} rows={certificatesByType(issued)} />}
+        </div>
+      )}
+    </>
+  );
+}
+
+/** The profile card on the signed-in person's real record; until it loads there's no ID card to show. */
+function ConnectedProfileCard({ profile }: { profile: ProfileState }) {
+  const card = profile.kind === 'ready' ? toCardPerson(profile.profile) : null;
+  return <ProfileCard person={card}>{card ? undefined : <span className="p-profile-tag">{profile.kind === 'error' ? 'Details didn’t load' : 'Loading…'}</span>}</ProfileCard>;
+}
+
+/** Stands where the task board goes until tasks come from the backend, so no sample task passes for a real one. */
+function TasksComingCard({ title }: { title: string }) {
+  return (
+    <section className="p-card p-board" aria-labelledby="board-title">
+      <div className="p-board-head">
+        <h2 id="board-title" className="p-card-title">
+          {title}
+        </h2>
+      </div>
+      <p className="p-board-empty">Tasks are being connected next. They’ll show up here once they are.</p>
+    </section>
   );
 }
 
@@ -258,39 +378,44 @@ function Meter({ label, segments }: { label: string; segments: Segment[] }) {
 
 /**
  * The signed-in person: their photo (or initials) filling the card, with name and role over it. Clicking anywhere
- * on it except the status switch brings out their company ID card.
+ * on it except the status switch brings out their company ID card. `person` is null while the real record loads (or
+ * when it couldn't load): the card then shows the session's name and role, and has no ID card to bring out.
  */
-function ProfileCard({ children }: { children?: ReactNode }) {
-  const { me } = usePortal();
-  const photo = useSession()!.photo;
+function ProfileCard({ person, children }: { person: CardPerson | null; children?: ReactNode }) {
+  const session = useSession()!;
+  const photo = session.photo;
   const [showId, setShowId] = useState(false);
+  const name = person?.name ?? session.name;
+  const roleLine = person ? [person.roleLabel ?? ROLE_LABEL[person.role], person.team].filter(Boolean).join(' · ') : ROLE_LABEL[session.role];
   return (
     <section className="p-card p-profile" aria-label="Your profile">
-      {/* the card's click target, under the name and the switch; the foot lets clicks through to it */}
-      <button type="button" className="p-profile-open" aria-haspopup="dialog" onClick={() => setShowId(true)}>
-        <span className="sr-only">Show my company ID card</span>
-      </button>
-      <span className="p-profile-hint" aria-hidden="true">
-        <PIcon name="eye" size={14} />
-        ID card
-      </span>
+      {person && (
+        <>
+          {/* the card's click target, under the name and the switch; the foot lets clicks through to it */}
+          <button type="button" className="p-profile-open" aria-haspopup="dialog" onClick={() => setShowId(true)}>
+            <span className="sr-only">Show my company ID card</span>
+          </button>
+          <span className="p-profile-hint" aria-hidden="true">
+            <PIcon name="eye" size={14} />
+            ID card
+          </span>
+        </>
+      )}
       {photo ? (
         <img className="p-profile-photo" src={photo} alt="" />
       ) : (
         <span className="p-profile-initials" aria-hidden="true">
-          {initials(me.name)}
+          {initials(name)}
         </span>
       )}
       <div className="p-profile-foot">
         <div>
-          <p className="p-profile-name">{me.name}</p>
-          <p className="p-profile-role">
-            {ROLE_LABEL[me.role]} · {me.team}
-          </p>
+          <p className="p-profile-name">{name}</p>
+          <p className="p-profile-role">{roleLine}</p>
         </div>
-        {children ?? <span className="p-profile-tag">{PERSON_STATUS_LABEL[me.status]}</span>}
+        {children ?? (person && <span className="p-profile-tag">{PERSON_STATUS_LABEL[person.status]}</span>)}
       </div>
-      {showId && <IdCardDialog person={me} photo={photo} onClose={() => setShowId(false)} />}
+      {showId && person && <IdCardDialog person={person} photo={photo} onClose={() => setShowId(false)} />}
     </section>
   );
 }
@@ -427,11 +552,11 @@ function ProgressCard({ title, done, total, empty, delay = 0 }: { title: string;
 
 const daysUntil = (iso: string) => Math.round((new Date(`${iso}T00:00`).getTime() - new Date().setHours(0, 0, 0, 0)) / 864e5);
 
-/** Today's date, and the open task due soonest. */
-function NextDueCard({ list }: { list: Task[] }) {
+/** Today's date, and the open task due soonest. Without a task list (tasks aren't connected yet) just the date. */
+function NextDueCard({ list }: { list?: Task[] }) {
   const byId = usePeopleById();
   const now = new Date();
-  const next = list.filter((t) => t.status !== 'done').sort((a, b) => a.due.localeCompare(b.due))[0];
+  const next = list?.filter((t) => t.status !== 'done').sort((a, b) => a.due.localeCompare(b.due))[0];
   const days = next ? daysUntil(next.due) : 0;
   return (
     <section className="p-card" aria-labelledby="today-title">
@@ -443,20 +568,22 @@ function NextDueCard({ list }: { list: Task[] }) {
         <span>{now.toLocaleDateString('en-IN', { month: 'short' })}</span>
       </p>
       <p className="p-today-day">{now.toLocaleDateString('en-IN', { weekday: 'long' })}</p>
-      <div className="p-today-next">
-        <p className="p-menu-label">Next due</p>
-        {next ? (
-          <>
-            <p className="p-today-task">{next.title}</p>
-            <p className={`p-today-when${days < 0 ? ' is-late' : ''}`}>
-              {formatDate(next.due)} · {days < 0 ? `${-days} ${-days === 1 ? 'day' : 'days'} late` : days === 0 ? 'today' : `in ${days} ${days === 1 ? 'day' : 'days'}`}
-              {list.some((t) => t.assigneeId !== next.assigneeId) && ` · ${byId.get(next.assigneeId)?.name ?? 'Removed user'}`}
-            </p>
-          </>
-        ) : (
-          <p className="p-today-task is-none">Nothing due</p>
-        )}
-      </div>
+      {list && (
+        <div className="p-today-next">
+          <p className="p-menu-label">Next due</p>
+          {next ? (
+            <>
+              <p className="p-today-task">{next.title}</p>
+              <p className={`p-today-when${days < 0 ? ' is-late' : ''}`}>
+                {formatDate(next.due)} · {days < 0 ? `${-days} ${-days === 1 ? 'day' : 'days'} late` : days === 0 ? 'today' : `in ${days} ${days === 1 ? 'day' : 'days'}`}
+                {list.some((t) => t.assigneeId !== next.assigneeId) && ` · ${byId.get(next.assigneeId)?.name ?? 'Removed user'}`}
+              </p>
+            </>
+          ) : (
+            <p className="p-today-task is-none">Nothing due</p>
+          )}
+        </div>
+      )}
     </section>
   );
 }

@@ -4295,6 +4295,11 @@ a.p-cal-item-title {
 .p-bento > .p-cal {
   grid-column: 2 / span 2;
 }
+/* on the backend's records there's no progress ring yet (tasks come next), so the workspace moves up beside the
+   date and the calendar takes the whole second row */
+.p-bento.is-tasks-off > .p-cal {
+  grid-column: 1 / span 3;
+}
 /* the employee's task column: the e-Office check-in on top, the board taking the rest of the height */
 .p-board-col {
   display: flex;
@@ -4769,8 +4774,12 @@ a.p-cal-item-title {
   .p-bento > .p-board-col {
     grid-column: 3;
   }
-  .p-bento > .p-cal {
+  .p-bento > .p-cal,
+  .p-bento.is-tasks-off > .p-cal {
     grid-column: 1 / -1;
+  }
+  .p-bento.is-tasks-off > .p-fold {
+    grid-column: span 2;
   }
 }
 @media (max-width: 1100px) {

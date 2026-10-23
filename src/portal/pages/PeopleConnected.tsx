@@ -29,6 +29,9 @@ const SAVE_FAILED: Record<ApiError['kind'], string> = {
   'bad-request': 'That change wasn’t accepted.',
   unavailable: 'We couldn’t reach the employee records, so nothing was changed. Try again in a moment.',
 };
+/** What to tell someone when a change was refused; the backend's own words for refused input are more useful. */
+export const saveFailedMessage = (e: ApiError) => (e.kind === 'bad-request' && e.message !== e.kind ? e.message : SAVE_FAILED[e.kind]);
+
 const LOAD_FAILED: Record<ApiError['kind'], string> = {
   'signed-out': 'Your sign-in has ended. Sign out and sign in again to see the directory.',
   forbidden: 'Your account isn’t allowed to see the directory.',
@@ -69,9 +72,7 @@ export function ConnectedPeople() {
       await change();
       notify(done);
     } catch (error) {
-      const e = error as ApiError;
-      // the backend's own words for refused input are more useful than a generic line
-      notify(e.kind === 'bad-request' && e.message !== e.kind ? e.message : SAVE_FAILED[e.kind]);
+      notify(saveFailedMessage(error as ApiError));
     } finally {
       setSaving(null);
     }
@@ -239,33 +240,44 @@ export function ConnectedPeople() {
         />
       )}
       {deleting && (
-        <Modal
-          title={`Delete ${deleting.name}’s account?`}
-          icon="alert"
+        <DeleteAccountModal
+          person={deleting}
           onClose={() => setDeleting(null)}
-          onSubmit={() => {
+          onConfirm={() => {
             const person = deleting;
             setDeleting(null);
             void save(person, () => directory.remove(person.id), `${person.name}’s account was deleted.`);
           }}
-          footer={
-            <>
-              <button type="button" className={btnClass('ghost')} onClick={() => setDeleting(null)}>
-                <BtnLabel>Cancel</BtnLabel>
-              </button>
-              <button type="submit" className={btnClass('primary')}>
-                <BtnLabel>Delete account</BtnLabel>
-              </button>
-            </>
-          }
-        >
-          <p>
-            {deleting.name} ({deleting.email}) won’t be able to sign in any more. Their login is removed straight away, and this can’t be undone
-            from the portal.
-          </p>
-        </Modal>
+        />
       )}
     </>
+  );
+}
+
+/** Asks before deleting an account, since the login goes at once and the portal can't bring it back. */
+export function DeleteAccountModal({ person, onClose, onConfirm }: { person: DirectoryPerson; onClose: () => void; onConfirm: () => void }) {
+  return (
+    <Modal
+      title={`Delete ${person.name}’s account?`}
+      icon="alert"
+      onClose={onClose}
+      onSubmit={onConfirm}
+      footer={
+        <>
+          <button type="button" className={btnClass('ghost')} onClick={onClose}>
+            <BtnLabel>Cancel</BtnLabel>
+          </button>
+          <button type="submit" className={btnClass('primary')}>
+            <BtnLabel>Delete account</BtnLabel>
+          </button>
+        </>
+      }
+    >
+      <p>
+        {person.name} ({person.email}) won’t be able to sign in any more. Their login is removed straight away, and this can’t be undone from the
+        portal.
+      </p>
+    </Modal>
   );
 }
 
@@ -282,7 +294,7 @@ const INVITE_FAILED: Record<ApiError['kind'], string> = {
  * Invites someone: the backend makes their login with a temporary password and emails it. The window stays open
  * while it sends, and keeps what was typed if something goes wrong.
  */
-function InviteModal({
+export function InviteModal({
   roles,
   listed,
   invite,

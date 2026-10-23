@@ -3,7 +3,8 @@ import { createPortal } from 'react-dom';
 import { encode } from 'uqr';
 import { LogoMark } from '../components/ui';
 import { HQ } from '../content';
-import { PERSON_STATUS_LABEL, ROLE_LABEL, STREAM_LABEL, type Person, type PersonRole } from './data';
+import { PERSON_STATUS_LABEL, type PersonRole } from './data';
+import { cardRoleLine, contactCard, type CardPerson } from './dashboard';
 import { formatDate } from './store';
 import { initials } from './ui';
 import '../styles/id-card.css';
@@ -67,25 +68,6 @@ const monthYear = (iso: string) => {
   return Number.isNaN(d.getTime()) ? 'Invalid Date' : MONTH_YEAR.format(d);
 };
 
-/**
- * The person as a MECARD, the short contact format phone cameras offer to save as a contact. It carries only what
- * the card already shows in print, and leaves out the office (the same for everyone): less data means fewer, larger
- * QR squares that a camera reads more easily. Once there is a public verification page, point the QR at that.
- */
-function contactCard(person: Person) {
-  // MECARD reserves these characters; a backslash before one keeps it as text
-  const esc = (v: string) => v.replace(/([\\;,:"])/g, '\\$1');
-  const fields = [
-    `N:${esc(person.name)}`,
-    'ORG:Bharattech Origin',
-    `TITLE:${esc(ROLE_LABEL[person.role])}`,
-    `EMAIL:${esc(person.email)}`,
-    person.phone && `TEL:${esc(person.phone)}`,
-    `NOTE:${esc(`Employee ID ${person.id}`)}`,
-  ];
-  return `MECARD:${fields.filter(Boolean).join(';')};;`;
-}
-
 /** A real, scannable QR code drawn as one SVG path, one square per dark module, on a white tile with a quiet zone. */
 function QrCode({ text }: { text: string }) {
   const { d, size } = useMemo(() => {
@@ -110,7 +92,7 @@ function QrCode({ text }: { text: string }) {
  * over. Closing lifts it back up the way it came. All motion is springs written straight to the elements each
  * frame, so React doesn't re-render. With reduced motion it simply fades in, still, and the flip is a cross-fade.
  */
-export function IdCardDialog({ person, photo, onClose }: { person: Person; photo?: string; onClose: () => void }) {
+export function IdCardDialog({ person, photo, onClose }: { person: CardPerson; photo?: string; onClose: () => void }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const flipRef = useRef<HTMLDivElement>(null);
   const strapRef = useRef<SVGPathElement>(null);
@@ -344,6 +326,8 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
   const office = person.office ?? HQ;
   const officeShort = office.split(',')[0];
   const expiry = person.joined ? cardExpiry(person.joined) : undefined;
+  // someone still invited joins later; anyone else without a date simply has none on file (the backend keeps none)
+  const noDate = person.status === 'invited' ? { joined: 'Not yet', valid: 'On joining' } : { joined: 'Not on file', valid: 'Not on file' };
   // the name set in two lines, first name over the rest; a long one drops a size so it stays on the card
   const [first, ...others] = person.name.trim().split(/\s+/);
   const rest = others.join(' ');
@@ -394,18 +378,16 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
                 <span>{first}</span>
                 {rest && <span>{rest}</span>}
               </h2>
-              <p className="idc-role">
-                {ROLE_LABEL[person.role]}, {STREAM_LABEL[person.stream]} stream
-              </p>
+              <p className="idc-role">{cardRoleLine(person)}</p>
               <span className={active ? 'idc-status is-active' : 'idc-status is-inactive'}>{PERSON_STATUS_LABEL[person.status]}</span>
               <dl className="idc-facts">
                 <div>
                   <dt>Employee ID</dt>
-                  <dd className="is-code">{person.id}</dd>
+                  <dd className="is-code">{person.id ?? 'Not on file'}</dd>
                 </div>
                 <div>
                   <dt>Joined</dt>
-                  <dd>{person.joined ? monthYear(person.joined) : 'Not yet'}</dd>
+                  <dd>{person.joined ? monthYear(person.joined) : noDate.joined}</dd>
                 </div>
                 <div>
                   <dt>Employee type</dt>
@@ -413,7 +395,7 @@ export function IdCardDialog({ person, photo, onClose }: { person: Person; photo
                 </div>
                 <div>
                   <dt>Valid until</dt>
-                  <dd>{expiry ? formatDate(expiry) : 'On joining'}</dd>
+                  <dd>{expiry ? formatDate(expiry) : noDate.valid}</dd>
                 </div>
               </dl>
             </div>

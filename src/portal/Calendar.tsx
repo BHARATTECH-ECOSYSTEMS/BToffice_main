@@ -6,6 +6,8 @@ import { plural } from './lmsData';
 import { managesPortal, useSession } from './session';
 import { usePeopleById, usePortal } from './store';
 import { btnClass, BtnLabel, Modal, PIcon } from './ui';
+import { api } from './api';
+import { ownEvents } from './dashboard';
 
 /**
  * The dashboard calendar: the month on the left, the picked day's agenda and what comes next on the right.
@@ -52,7 +54,12 @@ const DAY_NUMBER = new Intl.DateTimeFormat('en-IN', { day: 'numeric' });
 const MONTH_SHORT = new Intl.DateTimeFormat('en-IN', { month: 'short' });
 const dayLabel = (iso: string, f: Intl.DateTimeFormat) => f.format(dateOf(iso));
 
-export function CalendarCard({ tasks, notify }: { tasks: Task[]; notify: (text: string) => void }) {
+// With the backend connected, the directory, job board and verification desk here are still the demo's samples, so
+// their dates (anniversaries, first days, follow-ups) stay off the calendar until those records come from the backend.
+const SAMPLE_RECORDS = !api;
+
+/** Without `tasks` (they aren't connected to the backend yet) the calendar has no task dates and no "Task" in its legend. */
+export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text: string) => void }) {
   const role = useSession()!.role;
   const manager = managesPortal(role);
   const { events, people, jobs, verifications, addEvent, removeEvent } = usePortal();
@@ -84,17 +91,17 @@ export function CalendarCard({ tasks, notify }: { tasks: Task[]; notify: (text: 
   const items = useMemo(() => {
     const out: CalItem[] = [];
     const inRange = (d: string) => d >= monthStart && d <= rangeEnd;
-    for (const t of tasks) {
+    for (const t of tasks ?? []) {
       if (!inRange(t.due)) continue;
       const who = manager ? `${byId.get(t.assigneeId)?.name ?? 'Removed user'} · ` : '';
       out.push({ id: `t-${t.id}`, date: t.due, kind: 'task', title: t.title, meta: `Task · ${who}${STATUS_LABEL[t.status]}` });
     }
-    for (const e of events) {
+    for (const e of SAMPLE_RECORDS ? events : ownEvents(events)) {
       if (inRange(e.date)) out.push({ id: `e-${e.id}`, date: e.date, kind: 'event', title: e.title, meta: EVENT_LABEL[e.kind], time: e.time || undefined, eventId: e.id });
     }
     // work anniversaries, and the first day of anyone joining in this stretch; invited people haven't joined yet
     const years = [Number(monthStart.slice(0, 4)), Number(rangeEnd.slice(0, 4))];
-    for (const p of people) {
+    for (const p of SAMPLE_RECORDS ? people : []) {
       if (p.status === 'invited' || !p.joined) continue;
       for (let y = years[0]; y <= years[1]; y++) {
         const date = `${y}${p.joined.slice(4)}`;
@@ -104,13 +111,13 @@ export function CalendarCard({ tasks, notify }: { tasks: Task[]; notify: (text: 
         out.push({ id: `p-${p.id}-${y}`, date, kind: 'people', title: p.name, meta: served === 0 ? 'First day' : `Work anniversary · ${plural(served, 'year')}` });
       }
     }
-    if (manager) {
+    if (manager && SAMPLE_RECORDS) {
       for (const j of jobs) {
         if (j.open && j.closes && inRange(j.closes)) out.push({ id: `j-${j.id}`, date: j.closes, kind: 'followup', title: j.title, meta: 'Applications close', to: '/portal/community' });
       }
     }
     // the verification desk is admin-only, so its follow-ups are too
-    if (role === 'admin') {
+    if (role === 'admin' && SAMPLE_RECORDS) {
       for (const v of verifications) {
         if (v.status !== 'pending') continue;
         const date = addDays(v.requested, VERIFICATION_STALE_DAYS);
@@ -131,7 +138,7 @@ export function CalendarCard({ tasks, notify }: { tasks: Task[]; notify: (text: 
   }, [items]);
   const dayItems = byDate.get(picked) ?? [];
   const ahead = items.filter((it) => it.date > picked).slice(0, AHEAD_MAX);
-  const kinds = KIND_ORDER.filter((k) => k !== 'followup' || manager);
+  const kinds = KIND_ORDER.filter((k) => (k !== 'followup' || (manager && SAMPLE_RECORDS)) && (k !== 'people' || SAMPLE_RECORDS) && (k !== 'task' || tasks));
 
   // Weeks start on Sunday; the grid is filled out to whole weeks with the neighbouring months' days, greyed out.
   const lead = month.getDay();
