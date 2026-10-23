@@ -60,9 +60,28 @@ export type InviteSetupResult =
   | { ok: false; reason: 'credentials' | 'username-taken' | 'unavailable' }
   | { ok: false; reason: 'invalid'; message: string };
 
+export type ResetRequestResult = { ok: true; message: string } | { ok: false; reason: 'unavailable' };
+
+export type ResetPasswordResult =
+  | { ok: true }
+  | { ok: false; reason: 'link-gone' | 'unavailable' }
+  | { ok: false; reason: 'refused'; message: string };
+
+// the token in a reset email's link: <site>/#/reset-password?token=… (controllers/passwordResetController.js)
+const RESET_TOKEN_SHAPE = /^[A-Za-z0-9_-]{20,200}$/;
+
+/** The reset token when the site was opened from a reset email (its route and query), else null. */
+export function resetTokenFrom(pathname: string, search: string) {
+  if (!/^\/reset-password\/?$/.test(pathname)) return null;
+  const token = new URLSearchParams(search).get('token');
+  return token && RESET_TOKEN_SHAPE.test(token) ? token : null;
+}
+
 /** What the backend's sign-in routes answer (controllers/authController.js passwordGrantLogin). */
 interface LoginReply {
   requiresPasswordChange?: boolean;
+  /** Set on a refused reset link, to tell it from a refused password (both are 400s). */
+  code?: string;
   message?: string;
   access_token?: string;
   refresh_token?: string;
@@ -290,13 +309,30 @@ export function createAuth(config: AuthConfig, request: typeof fetch = (input, i
     return { ok: false, reason: 'unavailable' };
   }
 
+  /**
+   * "Forgot password?": asks the backend to email a reset link to the account behind an email or Employee ID. The
+   * backend gives the same answer whether or not the account exists, so this can't tell either.
+   */
+  async function requestPasswordReset(login: string): Promise<ResetRequestResult> {
+    const reply = await post('/auth/forgot-password', { login });
+    return reply?.ok && reply.body?.message ? { ok: true, message: reply.body.message } : { ok: false, reason: 'unavailable' };
+  }
+
+  /** Sets a new password with the token from a reset email. Every sign-in the person had is ended by the backend. */
+  async function resetPassword(token: string, newPassword: string): Promise<ResetPasswordResult> {
+    const reply = await post('/auth/reset-password', { token, newPassword });
+    if (reply?.ok) return { ok: true };
+    if (reply?.status === 400) return reply.body?.code === 'link-gone' ? { ok: false, reason: 'link-gone' } : { ok: false, reason: 'refused', message: reply.body?.message ?? '' };
+    return { ok: false, reason: 'unavailable' };
+  }
+
   /** Called when the sign-in ends by itself (an expired or revoked session), not when the person signs out. */
   const onExpire = (listener: () => void) => {
     expireListeners.add(listener);
     return () => expireListeners.delete(listener);
   };
 
-  return { signIn, acceptInvite, changePassword, signOut, accessToken, signedIn, onExpire };
+  return { signIn, acceptInvite, changePassword, requestPasswordReset, resetPassword, signOut, accessToken, signedIn, onExpire };
 }
 
 function configFromEnv(): AuthConfig | null {

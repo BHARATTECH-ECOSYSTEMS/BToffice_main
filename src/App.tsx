@@ -182,6 +182,8 @@ const router = createHashRouter([
     children: [
       { index: true, Component: Home },
       { path: 'dark', Component: Home },
+      // a reset email's link: the home page, with the login opened on "Choose a new password" (LoginProvider)
+      { path: 'reset-password', Component: Home },
       { path: 'about', lazy: page(loadAbout, 'About') },
       { path: 'research', lazy: page(loadResearch, 'Research') },
       { path: 'careers', lazy: page(loadCareers, 'Careers') },

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAuth, isEmployeeId, loginRedirect, passwordHasBlockedCharacter, portalRole, type AuthConfig } from '../../src/portal/auth';
+import { createAuth, isEmployeeId, loginRedirect, passwordHasBlockedCharacter, portalRole, resetTokenFrom, type AuthConfig } from '../../src/portal/auth';
 
 const CONFIG: AuthConfig = { api: 'http://api.test/api', keycloak: 'http://kc.test', realm: 'bharattech', clientId: 'lms-client' };
 const LOGIN_URL = 'http://api.test/api/auth/keycloak-login';
@@ -330,4 +330,55 @@ test('someone signed out cannot change a password and no request is sent', async
 test('a $ in a new password is caught, because the server would silently drop it', () => {
   assert.equal(passwordHasBlockedCharacter('Pa$$word-123'), true);
   assert.equal(passwordHasBlockedCharacter('Pa55word-&<>"!@#%^*()'), false);
+});
+
+// --- "Forgot password?" (controllers/passwordResetController.js); neither call needs a sign-in ---
+
+const FORGOT_URL = 'http://api.test/api/auth/forgot-password';
+const RESET_URL = 'http://api.test/api/auth/reset-password';
+const SAME = "If that account exists, we've sent a reset link to its email. The link works once, for 30 minutes.";
+
+test("asking for a reset link sends what was typed and shows the backend's one reply", async () => {
+  const net = network(json(200, { message: SAME }));
+  const auth = createAuth(CONFIG, net.request);
+
+  assert.deepEqual(await auth.requestPasswordReset('BT-0001'), { ok: true, message: SAME });
+  assert.equal(net.calls[0].url, FORGOT_URL);
+  assert.equal(net.calls[0].init.method, 'POST');
+  assert.deepEqual(JSON.parse(String(net.calls[0].init.body)), { login: 'BT-0001' });
+  assert.equal(new Headers(net.calls[0].init.headers).get('Authorization'), null);
+});
+
+test('a backend that is down or failing means no link was asked for', async () => {
+  for (const reply of [new TypeError('Failed to fetch'), json(500, {}), json(500, { message: 'Server Error' }), json(429, { message: 'Too many requests' })]) {
+    const auth = createAuth(CONFIG, network(reply).request);
+    assert.deepEqual(await auth.requestPasswordReset('asha@example.test'), { ok: false, reason: 'unavailable' });
+  }
+});
+
+test('a link sets the new password; the backend says when the link is dead or the password refused', async () => {
+  const ok = network(json(200, { success: true, signedOutEverywhere: true }));
+  assert.deepEqual(await createAuth(CONFIG, ok.request).resetPassword('tok', 'Brand-New-Pass-1'), { ok: true });
+  assert.equal(ok.calls[0].url, RESET_URL);
+  assert.deepEqual(JSON.parse(String(ok.calls[0].init.body)), { token: 'tok', newPassword: 'Brand-New-Pass-1' });
+
+  const gone = createAuth(CONFIG, network(json(400, { code: 'link-gone', message: 'This link has expired or was already used.' })).request);
+  assert.deepEqual(await gone.resetPassword('tok', 'Brand-New-Pass-1'), { ok: false, reason: 'link-gone' });
+
+  const refused = createAuth(CONFIG, network(json(400, { message: 'Invalid password: minimum length 12.' })).request);
+  assert.deepEqual(await refused.resetPassword('tok', 'short-pw-1'), { ok: false, reason: 'refused', message: 'Invalid password: minimum length 12.' });
+
+  for (const reply of [new TypeError('Failed to fetch'), json(502, { message: "We couldn't reach the sign-in service" }), json(500, {})]) {
+    assert.deepEqual(await createAuth(CONFIG, network(reply).request).resetPassword('tok', 'Brand-New-Pass-1'), { ok: false, reason: 'unavailable' });
+  }
+});
+
+test('the reset link in the email is read from the site address, and only there', () => {
+  const TOKEN = 'AbC-12_xyzAbC-12_xyzAbC-12_xyzAbC-12_xyz123';
+  assert.equal(resetTokenFrom('/reset-password', `?token=${TOKEN}`), TOKEN);
+  assert.equal(resetTokenFrom('/reset-password/', `?token=${TOKEN}&x=1`), TOKEN);
+  assert.equal(resetTokenFrom('/reset-password', ''), null);
+  assert.equal(resetTokenFrom('/reset-password', '?token=<script>'), null);
+  assert.equal(resetTokenFrom('/reset-password', '?token=short'), null);
+  assert.equal(resetTokenFrom('/portal', `?token=${TOKEN}`), null);
 });

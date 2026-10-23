@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useScene } from '../gl/Scene';
-import { auth, isEmployeeId, passwordHasBlockedCharacter, type SignInResult } from '../portal/auth';
+import { auth, isEmployeeId, passwordHasBlockedCharacter, resetTokenFrom, type SignInResult } from '../portal/auth';
 import { getSession, startSession } from '../portal/session';
 import { LogoGlass } from './LogoGlass';
 import { Arrow, Brand, BtnText, ThreadMark } from './ui';
@@ -14,7 +14,9 @@ import '../styles/login.css';
  * With the real sign-in connected (src/portal/auth.ts), the email and password go to the company backend, and the
  * portal opens with the account's own name and role. Without it, sign in opens the portal as a DEMO session: any
  * well-formed email gets in, no password is checked, nothing is sent anywhere, and the form says so.
- * Password reset isn't connected either way (the backend has no reset route). The password is never stored.
+ * Password reset: with the real sign-in, "Forgot password?" asks the backend to email a single-use link, and the link
+ * (<site>/#/reset-password?token=…) opens this pop-up to choose the new password. The demo only says it isn't
+ * connected. The password is never stored.
  */
 
 const LoginContext = createContext<() => void>(() => {});
@@ -24,28 +26,44 @@ export const useOpenLogin = () => useContext(LoginContext);
 
 export function LoginProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  // a reset email's link opens the pop-up on "Choose a new password" (or on a new request, if the link is broken);
+  // `n` counts the links opened, so each one starts a fresh pop-up even when one is already open
+  const [reset, setReset] = useState<{ token: string | null; n: number } | null>(null);
   const navigate = useNavigate();
-  const { state } = useLocation();
+  const { state, pathname, search } = useLocation();
   // someone already signed in goes straight to the portal instead of seeing the form again
   const openLogin = useCallback(() => (getSession() ? navigate('/portal') : setOpen(true)), [navigate]);
-  const close = useCallback(() => setOpen(false), []);
+  const linksOpened = useRef(0);
+  const close = useCallback(() => (setOpen(false), setReset(null)), []);
 
   // the portal sends signed-out visitors here with the login open
   const asked = (state as { openLogin?: boolean } | null)?.openLogin;
   useEffect(() => {
     if (asked) setOpen(true);
   }, [asked]);
+
+  useEffect(() => {
+    if (!RESET_PATH.test(pathname)) return;
+    const token = resetTokenFrom(pathname, search);
+    setReset({ token, n: ++linksOpened.current });
+    setOpen(true);
+    // the token is kept in memory only: off the address bar, so it isn't left in the history or shared by copying it
+    navigate('/', { replace: true });
+  }, [pathname, search, navigate]);
   return (
     <LoginContext.Provider value={openLogin}>
       {children}
       {/* mounted only while open, so the 3D logo is built on open and torn down on close */}
-      {open && <LoginDialog onClose={close} />}
+      {open && <LoginDialog key={reset?.n ?? 0} onClose={close} reset={reset} />}
     </LoginContext.Provider>
   );
 }
 
+const RESET_PATH = /^\/reset-password\/?$/;
+
 // setup: an invited person's first sign-in, where they choose their username and password (real sign-in only)
-type View = 'signin' | 'forgot' | 'setup';
+// reset: choosing a new password from a reset email's link (real sign-in only)
+type View = 'signin' | 'forgot' | 'setup' | 'reset';
 type Field = 'email' | 'password' | 'username' | 'newPassword' | 'confirm';
 type Status = { kind: 'idle' } | { kind: 'loading' } | { kind: 'notice'; text: string } | { kind: 'entering' } | { kind: 'welcome' };
 
@@ -54,6 +72,11 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const USERNAME_SHAPE = /^[a-zA-Z0-9._-]{3,32}$/;
 const NEW_PASSWORD_MIN = 8;
 const RESET_NOT_CONNECTED = 'Password reset isn’t connected yet, so no email was sent. Please ask your administrator for now.';
+const RESET_UNAVAILABLE = 'We couldn’t reach the sign-in service, so no email was sent. Try again in a moment.';
+const RESET_LINK_GONE = 'That reset link has expired or was already used. Ask for a new one here.';
+const RESET_LINK_BROKEN = 'That reset link isn’t complete. Ask for a new one here.';
+const RESET_SAVE_FAILED = 'We couldn’t reach the sign-in service, so your password wasn’t changed. Try again in a moment.';
+const RESET_DONE = 'Your password was changed, and you were signed out everywhere else. Sign in with the new one.';
 const SIGN_IN_FAILED: Record<Exclude<SignInResult, { ok: true }>['reason'], string> = {
   credentials: 'Those details don’t match. Check your email or Employee ID and password, and try again.',
   'set-password': 'Your account still needs a new password before you can sign in. Please ask your administrator to help you finish setting it.',
@@ -65,8 +88,14 @@ const SETUP_FAILED = {
 };
 const COPY: Record<View, { title: string; sub: string; submit: string; busy: string }> = {
   signin: { title: 'Welcome back', sub: 'Sign in to your workspace.', submit: 'Sign in', busy: 'Signing in…' },
-  forgot: { title: 'Reset your password', sub: 'Enter your work email and we’ll send you a reset link.', submit: 'Send reset link', busy: 'Sending…' },
+  forgot: {
+    title: 'Reset your password',
+    sub: auth ? 'Enter your work email or Employee ID and we’ll email you a reset link.' : 'Enter your work email and we’ll send you a reset link.',
+    submit: 'Send reset link',
+    busy: 'Sending…',
+  },
   setup: { title: 'Set up your account', sub: 'Choose a username and your own password.', submit: 'Finish setup', busy: 'Saving…' },
+  reset: { title: 'Choose a new password', sub: 'Your reset link worked. Choose the password you’ll sign in with.', submit: 'Save new password', busy: 'Saving…' },
 };
 
 /** A username suggestion from the email ("neha.k@…" → "neha.k"), or nothing when it wouldn't pass the backend's rule. */
@@ -117,7 +146,7 @@ function scheduleChime(delaySec: number) {
 }
 
 
-function LoginDialog({ onClose }: { onClose: () => void }) {
+function LoginDialog({ onClose, reset }: { onClose: () => void; reset: { token: string | null } | null }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const art = useRef<HTMLDivElement>(null);
   const form = useRef<HTMLFormElement>(null);
@@ -130,17 +159,22 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
   // an invited person between signing in with their temporary password and choosing their own; never stored
   const invite = useRef<{ email: string; temporaryPassword: string; remember: boolean } | null>(null);
   const [suggestedName, setSuggestedName] = useState('');
+  // the token from a reset email's link, in memory only; dropped once it has been used
+  const resetToken = useRef(auth ? (reset?.token ?? null) : null);
   const [closing, setClosing] = useState(false);
-  const [view, setView] = useState<View>('signin');
-  // only the real sign-in knows Employee IDs; the demo and the reset form stay email-only
-  const idAllowed = view === 'signin' && !!auth;
+  // a reset link opens on its own view; a broken one (or any in the demo) on a fresh request
+  const [view, setView] = useState<View>(reset ? (resetToken.current ? 'reset' : 'forgot') : 'signin');
+  // only the real sign-in knows Employee IDs; the demo stays email-only
+  const idAllowed = (view === 'signin' || view === 'forgot') && !!auth;
   // which way the new view slides in; unset until the first switch, so the opening stagger plays only once
   const [dir, setDir] = useState<'next' | 'back' | undefined>();
   // kept across views, so switching to reset doesn't make anyone type their email twice
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
-  const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  const [status, setStatus] = useState<Status>(
+    reset && !resetToken.current ? { kind: 'notice', text: auth ? RESET_LINK_BROKEN : RESET_NOT_CONNECTED } : { kind: 'idle' },
+  );
   const { lenis } = useScene();
   const navigate = useNavigate();
   const ids = useId();
@@ -199,6 +233,7 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
   const submit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (view === 'setup') return finishSetup(e.currentTarget);
+    if (view === 'reset') return finishReset(e.currentTarget);
     const f = new FormData(e.currentTarget);
     const password = String(f.get('password') ?? '');
     const mail = email.trim();
@@ -244,9 +279,54 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
       });
       return;
     }
+    if (status.kind === 'loading') return;
     setStatus({ kind: 'loading' });
     window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setStatus({ kind: 'notice', text: RESET_NOT_CONNECTED }), 900);
+    if (!auth) {
+      timer.current = window.setTimeout(() => setStatus({ kind: 'notice', text: RESET_NOT_CONNECTED }), 900);
+      return;
+    }
+    void auth.requestPasswordReset(mail).then((result) => {
+      if (alive.current) setStatus({ kind: 'notice', text: result.ok ? result.message : RESET_UNAVAILABLE });
+    });
+  };
+
+  const finishReset = (formEl: HTMLFormElement) => {
+    const token = resetToken.current;
+    if (!auth || !token || status.kind === 'loading') return;
+    const f = new FormData(formEl);
+    const newPassword = String(f.get('newPassword') ?? '');
+    const confirm = String(f.get('confirm') ?? '');
+    const next: typeof errors = {};
+    if (newPassword.length < NEW_PASSWORD_MIN) next.newPassword = `Use at least ${NEW_PASSWORD_MIN} characters.`;
+    else if (passwordHasBlockedCharacter(newPassword)) next.newPassword = 'Passwords can’t contain a $ sign yet. Please choose another.';
+    if (confirm !== newPassword) next.confirm = 'The two passwords don’t match.';
+    setErrors(next);
+    const first = (['newPassword', 'confirm'] as Field[]).find((k) => next[k]);
+    if (first) {
+      formEl.querySelector<HTMLInputElement>(`[name="${first}"]`)?.focus();
+      return;
+    }
+    setStatus({ kind: 'loading' });
+    void auth.resetPassword(token, newPassword).then((result) => {
+      if (result.ok || result.reason === 'link-gone') resetToken.current = null;
+      if (!alive.current) return;
+      if (result.ok) {
+        switchTo('signin');
+        return setStatus({ kind: 'notice', text: RESET_DONE });
+      }
+      if (result.reason === 'link-gone') {
+        switchTo('forgot');
+        return setStatus({ kind: 'notice', text: RESET_LINK_GONE });
+      }
+      setStatus({ kind: 'idle' });
+      if (result.reason === 'refused') {
+        setErrors({ newPassword: result.message || 'That password wasn’t accepted. Please choose another.' });
+        formEl.querySelector<HTMLInputElement>('[name="newPassword"]')?.focus();
+        return;
+      }
+      setStatus({ kind: 'notice', text: RESET_SAVE_FAILED });
+    });
   };
 
   const finishSetup = (formEl: HTMLFormElement) => {
@@ -442,7 +522,13 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
 
             <form ref={form} className="login-form" onSubmit={submit} noValidate autoComplete={auth ? 'on' : 'off'}>
               {view === 'setup' && setupFields}
-              {view !== 'setup' && (
+              {view === 'reset' && (
+                <>
+                  {newPasswordInput('newPassword', 'New password')}
+                  {newPasswordInput('confirm', 'New password again')}
+                </>
+              )}
+              {(view === 'signin' || view === 'forgot') && (
               <label className="login-field">
                 <span>{idAllowed ? 'Work email or Employee ID' : 'Work email'}</span>
                 <input
@@ -526,7 +612,15 @@ function LoginDialog({ onClose }: { onClose: () => void }) {
               )}
               {view === 'signin' && !auth && <p className="login-demo">Demo: sign-in isn’t connected yet. Any work email opens the portal as an employee, and no password is checked.</p>}
               <p className="login-notice" role="status" aria-live="polite">
-                {status.kind === 'notice' ? status.text : status.kind === 'loading' || status.kind === 'entering' ? 'Signing you in…' : status.kind === 'welcome' ? 'Welcome back!' : ''}
+                {status.kind === 'notice'
+                  ? status.text
+                  : status.kind === 'loading' && view !== 'signin'
+                    ? copy.busy
+                    : status.kind === 'loading' || status.kind === 'entering'
+                      ? 'Signing you in…'
+                      : status.kind === 'welcome'
+                        ? 'Welcome back!'
+                        : ''}
               </p>
             </form>
           </div>
