@@ -35,6 +35,7 @@ test("the directory lists everyone with only the details a colleague may see", a
       role: "Subadmin",
       stream: "hr",
       team: "People Ops",
+      joinedOn: "2024-03-01",
       phone: "+91 98765 00001",
       workPhone: "+91 80 4000 0001",
       password: "a-bcrypt-hash",
@@ -56,6 +57,7 @@ test("the directory lists everyone with only the details a colleague may see", a
       workPhone: "+91 80 4000 0001",
       stream: "hr",
       team: "People Ops",
+      joinedOn: "2024-03-01",
       status: "active",
     },
   ]);

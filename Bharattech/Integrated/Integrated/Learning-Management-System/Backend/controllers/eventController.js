@@ -1,6 +1,7 @@
 const CalendarEvent = require("../models/CalendarEvent");
 const { KINDS, TITLE_MAX } = require("../models/CalendarEvent");
 const { noteEvent } = require("../utils/notify");
+const { todayInIndia, readDay } = require("../utils/days");
 
 /*
  * The portal calendar's events (GET/POST /api/events, PATCH/DELETE /api/events/:id; server.js signs everyone in).
@@ -22,9 +23,6 @@ const isManager = (user) => isAdmin(user) || roleKey(user.role) === "subadmin";
 const isObjectId = (value) => /^[0-9a-f]{24}$/i.test(String(value ?? ""));
 const canChange = (event, user) => isAdmin(user) || (isManager(user) && String(event.createdBy?._id ?? event.createdBy) === String(user.id));
 
-/** Today's date in India, "YYYY-MM-DD": the day the calendar's people live in, whatever the server's clock says. */
-const todayInIndia = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-
 class Refusal extends Error {
   constructor(status, message) {
     super(message);
@@ -36,14 +34,6 @@ const answerError = (res, error, what) => {
   if (error instanceof Refusal) return res.status(error.status).json({ message: error.message });
   console.error(`${what} error:`, error.message);
   return res.status(500).json({ message: "Server Error" });
-};
-
-/** A real calendar day written "YYYY-MM-DD" (so "2026-02-30" is refused), or null. */
-const readDay = (value) => {
-  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
-  const [y, m, d] = value.split("-").map(Number);
-  const parsed = new Date(Date.UTC(y, m - 1, d));
-  return parsed.getUTCFullYear() === y && parsed.getUTCMonth() === m - 1 && parsed.getUTCDate() === d ? value : null;
 };
 
 /** The event as the request would leave it: `current` with the request's changes, all checked. */

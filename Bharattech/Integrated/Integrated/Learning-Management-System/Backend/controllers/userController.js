@@ -407,7 +407,7 @@ exports.getUsers = async (req, res) => {
 };
 
 // Only what a colleague may see. Everything else on the user record (password hash, sessions, Keycloak ID) stays here.
-const DIRECTORY_FIELDS = "employeeId fullName username email role phone phoneNumber workPhone stream team isBanned privacySettings";
+const DIRECTORY_FIELDS = "employeeId fullName username email role phone phoneNumber workPhone stream team joinedOn isBanned privacySettings";
 
 const toDirectoryEntry = (user) => {
   const showPhone = user.privacySettings?.showPhone !== false;
@@ -421,6 +421,7 @@ const toDirectoryEntry = (user) => {
     workPhone: showPhone ? user.workPhone || undefined : undefined,
     stream: user.stream,
     team: user.team,
+    joinedOn: user.joinedOn || undefined,
     status: user.isBanned ? "inactive" : "active",
   };
 };
@@ -452,6 +453,7 @@ const publicUser = (user) => {
     workPhone: showPhone ? user.workPhone || "" : "",
     stream: user.stream,
     team: user.team,
+    joinedOn: user.joinedOn || undefined,
     isBanned: !!user.isBanned,
     status: user.isBanned ? "inactive" : "active",
     createdAt: user.createdAt,
@@ -464,7 +466,7 @@ const publicUser = (user) => {
 // uploaded file (storePhoto), never as an address in the body.
 const EDITABLE_USER_FIELDS = [
   "fullName", "username", "email", "role", "phone", "phoneNumber", "workPhone",
-  "stream", "team", "privacySettings", "gender", "dateOfBirth",
+  "stream", "team", "joinedOn", "privacySettings", "gender", "dateOfBirth",
   "qualification", "degree", "profession", "organization", "interests",
   "socialLinks", "professionalTitle", "totalExperience", "careerDescription", "isBanned",
 ];
@@ -691,6 +693,8 @@ exports.updateUser = async (req, res) => {
     }
 
     if (requestedRole) updates.role = requestedRole;
+    // an emptied date field clears a wrong join date (the model checks any date that is sent)
+    if (updates.joinedOn === "" || updates.joinedOn === null) updates.joinedOn = undefined;
 
     // the company app sends the whole form, so an unchanged name (however it was first written) is left alone
     const renaming = "fullName" in updates && updates.fullName !== user.fullName;

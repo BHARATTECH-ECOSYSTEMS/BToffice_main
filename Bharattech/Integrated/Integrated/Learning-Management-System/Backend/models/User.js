@@ -1,7 +1,17 @@
 const mongoose = require("mongoose");
 const Counter = require("./Counter");
+const { readDay, todayInIndia } = require("../utils/days");
 
 const STREAMS = ["tech", "operations", "hr", "finance"];
+const JOINED_EARLIEST = "1990-01-01";
+
+// A join date before 1990 or over a year ahead is a typo; a start date up to a year away is someone set up early.
+const isJoinDate = (value) => {
+  if (value == null) return true;
+  const today = todayInIndia();
+  const latest = `${Number(today.slice(0, 4)) + 1}${today.slice(4)}`;
+  return readDay(value) !== null && value >= JOINED_EARLIEST && value <= latest;
+};
 
 const UserSchema = new mongoose.Schema({
     fullName: { type: String, required: false },
@@ -36,6 +46,12 @@ const UserSchema = new mongoose.Schema({
     employeeId: { type: String, unique: true, sparse: true },
     stream: { type: String, enum: STREAMS },
     team: { type: String, trim: true, maxlength: 80 },
+    // The first working day, "YYYY-MM-DD" as an admin typed it (not a moment in time, so it never shifts a day).
+    // It drives the ID card and the calendar's work anniversaries; nobody has one until an admin sets it.
+    joinedOn: {
+      type: String,
+      validate: { validator: isJoinDate, message: "Give a real join date (YYYY-MM-DD), from 1990 up to a year from today." },
+    },
 
     // Common fields
     phoneNumber: { type: String },
@@ -110,7 +126,7 @@ const UserSchema = new mongoose.Schema({
     // Soft Delete (for deactivation)
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date },
-});
+}, { timestamps: true }); // createdAt/updatedAt from now on; records made before this have none
 
 const formatEmployeeId = (n) => `BT-${String(n).padStart(4, "0")}`;
 
