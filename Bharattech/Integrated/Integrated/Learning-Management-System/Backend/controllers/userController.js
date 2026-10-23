@@ -325,14 +325,14 @@ exports.getUsers = async (req, res) => {
       users = await listLocalUsers();
     }
 
-    res.json(users);
+    res.json(users.map(publicUser));
   } catch (error) {
     console.error("Get users error:", error?.response?.data || error);
 
     if (DEMO_AUTH_ENABLED) {
       try {
         const users = await listLocalUsers();
-        return res.json(users);
+        return res.json(users.map(publicUser));
       } catch (fallbackError) {
         console.error("Demo fallback users error:", fallbackError);
       }
@@ -363,6 +363,69 @@ const toDirectoryEntry = (user) => {
     status: user.isBanned ? "inactive" : "active",
   };
 };
+
+// Fields never sent to any client: login secrets and internal bookkeeping.
+const SENSITIVE_FIELDS = ["password", "tokens", "resetToken", "resetTokenExpiry", "keycloakId", "__v"];
+
+/** Your own record for /me: everything except the secret fields, so the profile pages keep every field they read. */
+const stripSensitive = (user) => {
+  const obj = user?.toObject ? user.toObject() : { ...(user || {}) };
+  for (const field of SENSITIVE_FIELDS) delete obj[field];
+  return obj;
+};
+
+/** A colleague's record for anyone signed in: the same safe shape as the directory, plus the photo. Never secrets. */
+const publicUser = (user) => {
+  const showPhone = user.privacySettings?.showPhone !== false;
+  return {
+    id: String(user._id),
+    _id: String(user._id),
+    employeeId: user.employeeId,
+    fullName: user.fullName || user.username || user.email,
+    name: user.fullName || user.username || user.email,
+    username: user.username,
+    email: user.email,
+    role: user.role,
+    profilePicture: user.profilePicture || "",
+    phone: showPhone ? user.phone || user.phoneNumber || "" : "",
+    workPhone: showPhone ? user.workPhone || "" : "",
+    stream: user.stream,
+    team: user.team,
+    isBanned: !!user.isBanned,
+    status: user.isBanned ? "inactive" : "active",
+    createdAt: user.createdAt,
+  };
+};
+
+// The only fields the admin edit route (PUT/PATCH /:id) may change. Everything else in the body is ignored, so
+// password, tokens, keycloakId, isDeleted and the employee ID can never be set this way. The role is additionally
+// checked by canAssignRole; isBanned is how an admin blocks or unblocks an account.
+const EDITABLE_USER_FIELDS = [
+  "fullName", "username", "email", "role", "phone", "phoneNumber", "workPhone",
+  "stream", "team", "profilePicture", "privacySettings", "gender", "dateOfBirth",
+  "qualification", "degree", "profession", "organization", "interests",
+  "socialLinks", "professionalTitle", "totalExperience", "careerDescription", "isBanned",
+];
+const pickEditableFields = (body = {}) => {
+  const out = {};
+  for (const field of EDITABLE_USER_FIELDS) if (field in body) out[field] = body[field];
+  return out;
+};
+
+/** Which roles an actor may create via add-user: a Superadmin any, an Admin only below Admin. */
+const canCreateRole = (actorRole, newRole) => {
+  const actor = normalizeRole(actorRole);
+  const target = normalizeRole(newRole);
+  if (actor === "Superadmin") return VALID_ROLES.includes(target);
+  if (actor === "Admin") return ["Subadmin", "Employee", "Intern"].includes(target);
+  return false;
+};
+
+// exported for unit tests (tests/userDataLeaks.test.js)
+exports.publicUser = publicUser;
+exports.stripSensitive = stripSensitive;
+exports.pickEditableFields = pickEditableFields;
+exports.canCreateRole = canCreateRole;
 
 // The people directory for every signed-in person. It reads the local copy only, so it stays fast however many
 // people there are; GET /api/user syncs from Keycloak instead, but returns whole records to anyone signed in.
@@ -441,7 +504,7 @@ exports.getUserById = async (req, res) => {
     });
 
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(user);
+    res.json(publicUser(user));
   } catch (error) {
     console.error("Get user by id error:", error);
     res.status(500).json({ message: "Failed to fetch user" });
@@ -485,7 +548,7 @@ exports.getCurrentUser = async (req, res) => {
       }
     }
 
-    res.json(profile);
+    res.json(stripSensitive(profile));
   } catch (error) {
     console.error("Get current user error:", error);
     res.status(500).json({ message: "Failed to fetch profile" });
@@ -509,6 +572,11 @@ exports.createUser = async (req, res) => {
       return res.status(409).json({ message: "User already exists" });
     }
 
+    // an Admin can't mint an Admin or Superadmin; only a Superadmin can
+    if (!canCreateRole(req.user?.role, role)) {
+      return res.status(403).json({ message: "You can't create a user with that role." });
+    }
+
     const user = await User.create({
       fullName: fullName || username,
       username,
@@ -519,7 +587,7 @@ exports.createUser = async (req, res) => {
       authProvider: "local",
     });
 
-    res.status(201).json(user);
+    res.status(201).json(publicUser(user));
   } catch (error) {
     console.error("Create user error:", error);
     res.status(500).json({ message: "Failed to create user" });
@@ -528,10 +596,9 @@ exports.createUser = async (req, res) => {
 
 exports.updateUser = async (req, res) => {
   try {
-    const updates = { ...req.body };
-    // An employee ID is permanent. Dropped rather than refused, so a client that sends the whole user back
-    // unchanged still saves its other edits.
-    delete updates.employeeId;
+    // Only a fixed set of fields may be changed (pickEditableFields): password, tokens, keycloakId, isDeleted and the
+    // permanent employee ID can never be set here, however the request is shaped.
+    const updates = pickEditableFields(req.body);
     const requestedRole = updates.role ? normalizeRole(updates.role) : null;
     const user = await User.findOne({
       _id: req.params.id,
@@ -559,7 +626,7 @@ exports.updateUser = async (req, res) => {
       await syncKeycloakRealmRole(user.keycloakId, requestedRole);
     }
 
-    res.json(user);
+    res.json(publicUser(user));
   } catch (error) {
     // bad input (e.g. a stream that doesn't exist) is the caller's to fix, not a server failure
     if (error.name === "ValidationError") {
@@ -644,7 +711,7 @@ exports.updateCurrentUser = async (req, res) => {
       }
     }
 
-    res.json(user);
+    res.json(stripSensitive(user));
   } catch (error) {
     console.error("Update current user error:", error);
     res.status(500).json({ message: "Failed to update profile" });
