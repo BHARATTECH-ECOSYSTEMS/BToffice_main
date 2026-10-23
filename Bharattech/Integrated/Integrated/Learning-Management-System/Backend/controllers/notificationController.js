@@ -10,7 +10,7 @@ const User = require("../models/User");
  */
 
 const LIST_LIMIT = 50;
-const EMAIL_SWITCHES = ["tasks", "certificates", "policies", "courses"];
+const EMAIL_SWITCHES = ["tasks", "certificates", "policies", "courses", "events"];
 
 const isObjectId = (value) => /^[0-9a-f]{24}$/i.test(String(value ?? ""));
 const roleKey = (role) => String(role || "").toLowerCase().replace(/[-_\s]/g, "");

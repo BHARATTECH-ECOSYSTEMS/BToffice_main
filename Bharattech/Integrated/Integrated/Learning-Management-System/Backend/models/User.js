@@ -102,7 +102,7 @@ const UserSchema = new mongoose.Schema({
     },
     // Notification emails this person switched off (the bell still shows them); see utils/notify.js
     mutedNotifications: {
-        type: [{ type: String, enum: ["tasks", "certificates", "policies", "courses"] }],
+        type: [{ type: String, enum: ["tasks", "certificates", "policies", "courses", "events"] }],
         default: [],
     },
     // ✅ Ban/Unban Feature

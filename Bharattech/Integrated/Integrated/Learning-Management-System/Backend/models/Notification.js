@@ -1,8 +1,9 @@
 const mongoose = require("mongoose");
 
-// One note in someone's notification bell: a task given or changed, work handed in, a certificate issued, or a
-// policy still to accept. Made by utils/notify.js when the thing happens (policy notes when the bell first asks).
-const KINDS = ["task", "task-update", "work-handed-in", "certificate", "policy"];
+// One note in someone's notification bell: a task given or changed, work handed in, a certificate issued, a
+// policy still to accept, or a calendar event added, changed or cancelled. Made by utils/notify.js when the thing
+// happens (policy notes when the bell first asks).
+const KINDS = ["task", "task-update", "work-handed-in", "certificate", "policy", "event"];
 const RETENTION_SECONDS = 90 * 24 * 60 * 60;
 
 const NotificationSchema = new mongoose.Schema({

@@ -8,7 +8,7 @@ const { createMailTransporter, escapeHtml, portalUrl, EMAIL_FROM } = require("./
  */
 
 // which email switch (User.mutedNotifications) covers each kind of note
-const SWITCH_FOR_KIND = { task: "tasks", "task-update": "tasks", "work-handed-in": "tasks", certificate: "certificates", policy: "policies" };
+const SWITCH_FOR_KIND = { task: "tasks", "task-update": "tasks", "work-handed-in": "tasks", certificate: "certificates", policy: "policies", event: "events" };
 const PEOPLE_FIELDS = "email fullName mutedNotifications isBanned isDeleted";
 
 /** Emails one person about a note, unless they can't sign in or switched this kind off. Resolves true when sent. */
@@ -94,8 +94,30 @@ async function notifyPolicyPublished(policy) {
   }
 }
 
+const EVENT_HEADLINE = { added: "New event", changed: "Event changed", cancelled: "Event cancelled" };
+
+/**
+ * A calendar event was added, changed or cancelled: everyone who can sign in, except whoever did it, gets one note
+ * about it, replacing any earlier note about the same event, so the bell always shows its latest state. The notes are
+ * saved now; the returned function sends the emails, so the caller can answer first and email afterwards.
+ */
+async function noteEvent({ event, action, detail, actorId }) {
+  try {
+    const people = await User.find({ _id: { $ne: actorId }, isDeleted: { $ne: true }, isBanned: { $ne: true } }).select(PEOPLE_FIELDS);
+    const note = { kind: "event", title: `${EVENT_HEADLINE[action]}: ${event.title}`, detail, link: "/portal" };
+    const refId = String(event._id);
+    await Notification.deleteMany({ refId });
+    await Notification.insertMany(people.map((person) => ({ userId: person._id, ...note, refId })));
+    return () => Promise.allSettled(people.map((person) => emailAbout(person, note)));
+  } catch (error) {
+    console.error("Event notification failed:", error.message);
+    return async () => {};
+  }
+}
+
 module.exports = {
   notify,
+  noteEvent,
   forgetNotesAbout,
   notifyTaskGiven,
   notifyTaskChanged,
