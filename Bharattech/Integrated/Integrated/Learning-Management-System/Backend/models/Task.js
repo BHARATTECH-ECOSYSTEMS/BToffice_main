@@ -19,19 +19,26 @@ const TaskSchema = new mongoose.Schema({
         default: "Normal"
     },
     dueDate: { type: Date },
-    // Project document (uploaded by subadmin when creating task)
+    // Project document (uploaded by subadmin when creating task). Either a web link (url) or a file kept in MongoDB
+    // (fileId, in the "taskFiles" GridFS bucket: utils/taskFiles.js).
     projectFile: {
         url: { type: String },
         fileName: { type: String },
-        uploadedAt: { type: Date }
+        uploadedAt: { type: Date },
+        fileId: { type: mongoose.Schema.Types.ObjectId },
+        contentType: { type: String },
+        size: { type: Number }
     },
-    // Submissions (uploaded by employee/intern)
+    // Submissions (uploaded by employee/intern): a web link (fileUrl) or a stored file (fileId), as above
     submissions: [{
-        fileUrl: { type: String, required: true },
+        fileUrl: { type: String },
         fileName: { type: String },
         submittedAt: { type: Date, default: Date.now },
         submittedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-        notes: { type: String }
+        notes: { type: String },
+        fileId: { type: mongoose.Schema.Types.ObjectId },
+        contentType: { type: String },
+        size: { type: Number }
     }],
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
