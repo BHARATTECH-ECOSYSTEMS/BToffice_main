@@ -8,6 +8,8 @@ import { useNavBubble } from '../components/useNavBubble';
 import { usePointerBloom } from '../components/usePointerBloom';
 import type { HueName } from '../gl/palette';
 import { auth } from './auth';
+import { api } from './api';
+import { EMAIL_KINDS, timeAgo, useEmailSwitches, useNotifications } from './notifications';
 import { CERTIFICATE_TYPES, TOOLS, type PortalIconName } from './data';
 import { didSignOut, endSession, managesPortal, NOTIFICATION_KINDS, ROLE_NAME, setMutedNotifications, setRole, useSession, type NotificationKind, type Role } from './session';
 import { HelpModal } from './Help';
@@ -466,11 +468,66 @@ function useMyNotes(): PortalNote[] {
   );
 }
 
+interface BellData {
+  notes: (PortalNote & { read: boolean; at?: string })[];
+  unread: number;
+  /** The last check for notes didn't work; it tries again on the next. */
+  failed: boolean;
+  markRead: (ids: string[]) => void;
+  markAllRead: () => void;
+}
+
+/** The demo's bell: worked out from its sample records; what's been read is kept until the page reloads. */
+function useDemoBell(): BellData {
+  const notes = useMyNotes();
+  const [read, setRead] = useState<ReadonlySet<string>>(() => new Set());
+  const markRead = (ids: string[]) => setRead((r) => new Set([...r, ...ids]));
+  return {
+    notes: notes.map((n) => ({ ...n, read: read.has(n.id) })),
+    unread: notes.filter((n) => !read.has(n.id)).length,
+    failed: false,
+    markRead,
+    markAllRead: () => markRead(notes.map((n) => n.id)),
+  };
+}
+
+/** The connected bell: the person's own notes from the backend, read state kept there (src/portal/notifications.ts). */
+function useConnectedBell(): BellData {
+  const { notes, unread, failed, markRead, markAllRead } = useNotifications();
+  return { notes, unread, failed, markRead, markAllRead };
+}
+
+interface EmailSwitches {
+  kinds: readonly (typeof NOTIFICATION_KINDS)[number][];
+  muted: NotificationKind[];
+  toggle: (kind: NotificationKind, on: boolean) => void;
+  /** Why the last change or load didn't work; '' when fine. */
+  problem: string;
+  foot: string;
+}
+
+const useDemoSwitches = (muted: NotificationKind[]): EmailSwitches => ({
+  kinds: NOTIFICATION_KINDS,
+  muted,
+  toggle: (kind, on) => setMutedNotifications(on ? muted.filter((k) => k !== kind) : [...muted, kind]),
+  problem: '',
+  foot: "Saved in this browser. Emails aren't connected yet, so none are sent for now.",
+});
+
+function useConnectedSwitches(): EmailSwitches {
+  const { muted, toggle, problem } = useEmailSwitches();
+  return { kinds: EMAIL_KINDS, muted, toggle, problem, foot: 'Saved to your account. The bell shows everything either way; these choose only the emails.' };
+}
+
+// `api` is fixed for the page's whole life, so the bell always calls the same hooks
+const useBell = api ? useConnectedBell : useDemoBell;
+const useSwitches: (muted: NotificationKind[]) => EmailSwitches = api ? () => useConnectedSwitches() : useDemoSwitches;
+
 /**
  * The bell after the profile button. A badge counts what's unread; when something new arrives the badge pops and the
- * bell rings. Its menu lists the notifications (opening one marks it read) and, behind the gear, the email switches,
- * saved with the session in this browser. What's been read is kept until the page reloads, like the rest of the
- * sample data.
+ * bell rings. Its menu lists the notifications (opening one marks it read) and, behind the gear, the email switches.
+ * Connected to the backend, the notes, their read state and the switches are the person's own, kept on their account;
+ * in the demo they come from its sample records and this browser.
  */
 function NotifyMenu({ muted }: { muted: NotificationKind[] }) {
   const [open, setOpen] = useState(false);
@@ -478,12 +535,12 @@ function NotifyMenu({ muted }: { muted: NotificationKind[] }) {
   // set once the view has been switched while open, so the new rows animate in (see .p-top-menu[data-swapped])
   const [swapped, setSwapped] = useState(false);
   const show = (next: 'inbox' | 'email') => (setView(next), setSwapped(true));
-  const [read, setRead] = useState<ReadonlySet<string>>(() => new Set());
   const ref = useRef<HTMLDivElement>(null);
   const hover = useHoverOpen(setOpen);
   useCloseOnOutside(ref, open, setOpen);
-  const notes = useMyNotes();
-  const unread = notes.filter((n) => !read.has(n.id)).length;
+  const bell = useBell();
+  const switches = useSwitches(muted);
+  const { notes, unread } = bell;
 
   // a rise in the unread count is an arrival: bump `arrivals` to replay the badge pop and the ring
   const [arrivals, setArrivals] = useState(0);
@@ -498,9 +555,6 @@ function NotifyMenu({ muted }: { muted: NotificationKind[] }) {
     setView('inbox');
     setSwapped(false);
   }, [open]);
-
-  const markRead = (ids: string[]) => setRead((r) => new Set([...r, ...ids]));
-  const toggle = (kind: NotificationKind, on: boolean) => setMutedNotifications(on ? muted.filter((k) => k !== kind) : [...muted, kind]);
 
   return (
     <div className="p-notify" ref={ref} {...hover}>
@@ -538,7 +592,7 @@ function NotifyMenu({ muted }: { muted: NotificationKind[] }) {
               </span>
               <span className="p-notify-actions">
                 {unread > 0 && (
-                  <button type="button" className="p-text-btn" onClick={() => markRead(notes.map((n) => n.id))}>
+                  <button type="button" className="p-text-btn" onClick={bell.markAllRead}>
                     Mark all read
                   </button>
                 )}
@@ -549,15 +603,15 @@ function NotifyMenu({ muted }: { muted: NotificationKind[] }) {
             </div>
             {notes.length ? (
               notes.map((n) => (
-                <Link key={n.id} to={n.to} className="p-note" data-unread={!read.has(n.id) || undefined} onClick={() => (markRead([n.id]), setOpen(false))}>
+                <Link key={n.id} to={n.to} className="p-note" data-unread={!n.read || undefined} onClick={() => (bell.markRead([n.id]), setOpen(false))}>
                   <span className="p-note-icon">
                     <PIcon name={n.icon} size={16} />
                   </span>
                   <span className="p-note-text">
                     <strong>{n.title}</strong>
-                    <small>{n.detail}</small>
+                    <small>{[n.detail, n.at && timeAgo(n.at)].filter(Boolean).join(' · ')}</small>
                   </span>
-                  {!read.has(n.id) && (
+                  {!n.read && (
                     <span className="p-note-dot">
                       <span className="sr-only">Unread</span>
                     </span>
@@ -566,8 +620,17 @@ function NotifyMenu({ muted }: { muted: NotificationKind[] }) {
               ))
             ) : (
               <p key="empty" className="p-notify-empty">
-                <strong>Nothing new</strong>
-                Tasks, certificates and policies sent to you show up here.
+                {bell.failed ? (
+                  <>
+                    <strong>Notifications didn’t load</strong>
+                    The bell tries again in a minute.
+                  </>
+                ) : (
+                  <>
+                    <strong>Nothing new</strong>
+                    Tasks, certificates and policies sent to you show up here.
+                  </>
+                )}
               </p>
             )}
           </>
@@ -582,17 +645,22 @@ function NotifyMenu({ muted }: { muted: NotificationKind[] }) {
                 <Arrow dir="left" />
               </button>
             </div>
-            {NOTIFICATION_KINDS.map((k) => (
+            {switches.kinds.map((k) => (
               <label key={k.id} className="p-notify-row">
                 <span>
                   <strong>{k.label}</strong>
                   <small>{k.hint}</small>
                 </span>
-                <input type="checkbox" role="switch" className="p-switch" checked={!muted.includes(k.id)} onChange={(e) => toggle(k.id, e.target.checked)} />
+                <input type="checkbox" role="switch" className="p-switch" checked={!switches.muted.includes(k.id)} onChange={(e) => switches.toggle(k.id, e.target.checked)} />
               </label>
             ))}
+            {switches.problem && (
+              <p key="email-problem" className="p-error" role="alert">
+                {switches.problem}
+              </p>
+            )}
             <p key="email-foot" className="p-notify-foot">
-              Saved in this browser. Emails aren't connected yet, so none are sent for now.
+              {switches.foot}
             </p>
           </>
         )}
