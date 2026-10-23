@@ -14,6 +14,7 @@ const {
 const Certificate = require("../models/Certificate");
 const generateCertificate = require("../utils/generateCertifcate");
 const User = require("../models/User");
+const { notifyCertificateIssued, forgetNotesAbout } = require("../utils/notify");
 const { myCertificates, certificatePdf } = require("../controllers/certificateAccessController");
 
 const resolveIssuerUser = async (req) => {
@@ -109,6 +110,7 @@ router.post("/generate", keycloakAuth, requireAdmin, async (req, res) => {
     });
 
     await cert.save();
+    await notifyCertificateIssued({ certificate: cert, recipient: user, issuer });
 
     res.status(201).json({
       message: "Certificate generated successfully",
@@ -159,6 +161,7 @@ router.delete("/:id", keycloakAuth, requireAdmin, async (req, res) => {
     }
 
     await Certificate.deleteOne({ _id: id });
+    await forgetNotesAbout(id);
 
     if (certificate.filePath) {
       const certificatesDir = path.resolve(__dirname, "../certificates");

@@ -1,6 +1,7 @@
 const Task = require("../models/Task");
 const User = require("../models/User");
 const { taskFileType, cleanFileName, saveTaskFile, openTaskFile, deleteTaskFiles } = require("../utils/taskFiles");
+const { notifyTaskGiven, notifyTaskChanged, notifyWorkHandedIn, forgetNotesAbout } = require("../utils/notify");
 
 /*
  * Who may do what with tasks:
@@ -203,6 +204,7 @@ exports.createTask = async (req, res) => {
       dueDate,
       projectFile,
     });
+    await notifyTaskGiven(task, req.user.fullName);
     return reply(res, 201, task._id);
   } catch (error) {
     return answerError(res, error, "Create task");
@@ -244,15 +246,16 @@ exports.getTaskById = async (req, res) => {
   }
 };
 
-/** Keeps a web link the person doing the task handed in (the company app sends it with the status). */
+/** Keeps a web link the person doing the task handed in (the company app sends it with the status); true when one was. */
 const addLinkedSubmission = (task, body, user) => {
-  if (body.fileUrl === undefined || body.fileUrl === null || body.fileUrl === "") return;
+  if (body.fileUrl === undefined || body.fileUrl === null || body.fileUrl === "") return false;
   task.submissions.push({
     fileUrl: readLink(body.fileUrl),
     fileName: readText(body.fileName, 200, "file name") || "Submitted work",
     submittedBy: user.id,
     submittedAt: new Date(),
   });
+  return true;
 };
 
 // UPDATE TASK STATUS (the person doing the task)
@@ -261,8 +264,9 @@ exports.updateTaskStatus = async (req, res) => {
     const task = await findTask(req.params.id, req.user);
     if (!doesTask(task, req.user)) throw new Refusal(403, "Only the person doing a task changes its status here.");
     task.status = readStatus(req.body?.status);
-    addLinkedSubmission(task, req.body || {}, req.user);
+    const handedIn = addLinkedSubmission(task, req.body || {}, req.user);
     await task.save();
+    if (handedIn) await notifyWorkHandedIn(task, req.user.fullName);
     return reply(res, 200, task._id);
   } catch (error) {
     return answerError(res, error, "Update task status");
@@ -283,11 +287,13 @@ exports.updateTask = async (req, res) => {
       if (body.status !== undefined) task.status = readStatus(body.status);
       if (body.dueDate !== undefined) task.dueDate = readDueDate(body.dueDate);
       if (body.priority !== undefined) task.priority = readPriority(body.priority);
+      let handedOver = false;
       if (body.assignedTo !== undefined && String(body.assignedTo) !== idOf(task.assignedTo)) {
         const assignee = await readAssignee(body.assignedTo);
         task.assignedTo = assignee._id;
         task.assignedEmail = assignee.email;
         task.assignedRole = assignee.role;
+        handedOver = true;
       }
       let replaced = [];
       if (body.fileUrl !== undefined && body.fileUrl !== null && body.fileUrl !== "") {
@@ -296,13 +302,17 @@ exports.updateTask = async (req, res) => {
       }
       await task.save();
       await deleteTaskFiles(replaced);
+      // the person now doing it hears about it: as a new task when it was handed to them, else as a change
+      if (handedOver) await notifyTaskGiven(task, req.user.fullName);
+      else await notifyTaskChanged(task, req.user.fullName);
     } else if (doesTask(task, req.user)) {
       if (DETAIL_FIELDS.some((f) => body[f] !== undefined) || body.status === undefined) {
         throw new Refusal(403, "You can only change the status of your task.");
       }
       task.status = readStatus(body.status);
-      addLinkedSubmission(task, body, req.user);
+      const handedIn = addLinkedSubmission(task, body, req.user);
       await task.save();
+      if (handedIn) await notifyWorkHandedIn(task, req.user.fullName);
     } else {
       throw new Refusal(403, "You can only change tasks you gave.");
     }
@@ -326,6 +336,7 @@ exports.uploadProjectDocument = async (req, res) => {
       : { url: readLink(req.body.fileUrl), fileName: readText(req.body.fileName, 200, "file name") || "Project document", uploadedAt: new Date() };
     await task.save();
     await deleteTaskFiles(replaced);
+    await notifyTaskChanged(task, req.user.fullName);
     return reply(res, 200, task._id);
   } catch (error) {
     return answerError(res, error, "Attach task document");
@@ -347,6 +358,7 @@ exports.submitTask = async (req, res) => {
     task.submissions.push({ ...stored, notes, submittedBy: req.user.id, submittedAt: new Date() });
     task.status = "completed";
     await task.save();
+    await notifyWorkHandedIn(task, req.user.fullName);
     return reply(res, 200, task._id);
   } catch (error) {
     return answerError(res, error, "Submit task");
@@ -393,6 +405,7 @@ exports.deleteTask = async (req, res) => {
     if (!canChange(task, req.user)) throw new Refusal(403, "You can only delete tasks you gave.");
     await Task.findByIdAndDelete(task._id);
     await deleteTaskFiles(storedFileIds(task));
+    await forgetNotesAbout(task._id);
     return res.status(200).json({ message: "Task deleted successfully" });
   } catch (error) {
     return answerError(res, error, "Delete task");

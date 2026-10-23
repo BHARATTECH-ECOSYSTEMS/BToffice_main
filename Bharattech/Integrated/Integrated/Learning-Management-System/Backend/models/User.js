@@ -98,6 +98,11 @@ const UserSchema = new mongoose.Schema({
         showPhone: { type: Boolean, default: true },
         showProfession: { type: Boolean, default: true },
     },
+    // Notification emails this person switched off (the bell still shows them); see utils/notify.js
+    mutedNotifications: {
+        type: [{ type: String, enum: ["tasks", "certificates", "policies", "courses"] }],
+        default: [],
+    },
     // ✅ Ban/Unban Feature
     isBanned: { type: Boolean, default: false }, // ✅ Banned users can't access the system
     // Soft Delete (for deactivation)

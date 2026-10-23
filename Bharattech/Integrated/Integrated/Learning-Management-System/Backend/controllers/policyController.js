@@ -2,6 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const Policy = require("../models/Policy");
 const { savePolicyFile, findPolicyFile, openPolicyFile, deletePolicyFiles } = require("../utils/policyFiles");
+const { notifyPolicyPublished, forgetNotesAbout } = require("../utils/notify");
 
 // every PDF starts with these bytes; the browser-reported type alone is easy to fake or get wrong
 const PDF_SIGNATURE = Buffer.from("%PDF-");
@@ -128,6 +129,8 @@ exports.createPolicy = async (req, res) => {
       throw error;
     }
 
+    // employees and interns are emailed; their bell note comes from the live to-do list
+    await notifyPolicyPublished(newPolicy);
     res.status(201).json(normalizePolicy(newPolicy, req));
   } catch (error) {
     console.error("Create policy error:", error);
@@ -231,6 +234,7 @@ exports.deletePolicy = async (req, res) => {
     }
 
     await deletePolicyFiles(policy.storedFileName);
+    await forgetNotesAbout(policy._id);
 
     const filePath = path.join(
       __dirname,
