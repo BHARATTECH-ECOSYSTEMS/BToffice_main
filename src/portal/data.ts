@@ -404,6 +404,8 @@ export interface Task {
   id: string;
   title: string;
   assigneeId: string;
+  /** The person's name when it comes with the task (from the backend); the demo looks it up by assigneeId. */
+  assigneeName?: string;
   due: string;
   status: TaskStatus;
 }

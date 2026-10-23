@@ -4295,11 +4295,6 @@ a.p-cal-item-title {
 .p-bento > .p-cal {
   grid-column: 2 / span 2;
 }
-/* on the backend's records there's no progress ring yet (tasks come next), so the workspace moves up beside the
-   date and the calendar takes the whole second row */
-.p-bento.is-tasks-off > .p-cal {
-  grid-column: 1 / span 3;
-}
 /* the employee's task column: the e-Office check-in on top, the board taking the rest of the height */
 .p-board-col {
   display: flex;
@@ -4679,6 +4674,84 @@ a.p-cal-item-title {
   font-weight: 600;
   overflow-wrap: anywhere;
 }
+/* a task that opens its window: the title itself is the button, so it reads as text until pointed at */
+.p-board-title.is-link,
+.p-link-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.p-link-btn {
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-underline-offset: 3px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .p-board-title.is-link:hover,
+  .p-link-btn:hover {
+    text-decoration: underline;
+    text-decoration-color: currentColor;
+    text-underline-offset: 3px;
+  }
+}
+.p-board-title.is-link:focus-visible,
+.p-link-btn:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+/* the task window (TasksConnected.tsx): its facts in even columns (names need the room), the description, then the
+   brief and the work handed in */
+.p-file-facts.p-task-facts {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.p-task-text {
+  margin: 14px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.p-task-part {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.p-task-part > .p-menu-label {
+  margin: 0;
+}
+.p-task-upload {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+.p-task-upload > button {
+  justify-self: start;
+}
+.p-task-subs {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.p-task-subs > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.p-task-subs .p-task-text {
+  flex-basis: 100%;
+  margin: 0;
+}
 .p-board-item.is-done .p-board-title {
   text-decoration: line-through;
   color: rgb(255 255 255 / 0.5);
@@ -4774,12 +4847,8 @@ a.p-cal-item-title {
   .p-bento > .p-board-col {
     grid-column: 3;
   }
-  .p-bento > .p-cal,
-  .p-bento.is-tasks-off > .p-cal {
+  .p-bento > .p-cal {
     grid-column: 1 / -1;
-  }
-  .p-bento.is-tasks-off > .p-fold {
-    grid-column: span 2;
   }
 }
 @media (max-width: 1100px) {

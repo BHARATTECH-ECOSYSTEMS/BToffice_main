@@ -93,7 +93,7 @@ export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text:
     const inRange = (d: string) => d >= monthStart && d <= rangeEnd;
     for (const t of tasks ?? []) {
       if (!inRange(t.due)) continue;
-      const who = manager ? `${byId.get(t.assigneeId)?.name ?? 'Removed user'} · ` : '';
+      const who = manager ? `${t.assigneeName ?? byId.get(t.assigneeId)?.name ?? 'Removed user'} · ` : '';
       out.push({ id: `t-${t.id}`, date: t.due, kind: 'task', title: t.title, meta: `Task · ${who}${STATUS_LABEL[t.status]}` });
     }
     for (const e of SAMPLE_RECORDS ? events : ownEvents(events)) {

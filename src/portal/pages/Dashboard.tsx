@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { CERTIFICATE_TYPES, PERSON_STATUS_LABEL, ROLE_LABEL, toolById, type Person, type PersonRole, type PortalIconName, type SecurityEvent, type Task, type TaskStatus } from '../data';
 import { hasArrived, managesPortal, markArrived, useSession } from '../session';
@@ -14,6 +14,10 @@ import { useCertificates } from '../certificates';
 import { useAccountProfile, type ProfileState } from '../profile';
 import { certificatesByType, managerFigures, peopleByRole, toCardPerson, type CardPerson, type Figure } from '../dashboard';
 import { ConnectedCertificatesPanel, ConnectedTeamPanel } from './DashboardConnected';
+import { useTasks, type PortalTask, type TasksApi } from '../tasks';
+import { ConnectedTasksPanel, STATUS_LABEL as TASK_STATUS_LABEL, taskFailedMessage, TaskWindow, type TaskViewer } from './TasksConnected';
+import type { ApiError } from '../api';
+import type { DirectoryPerson } from '../people';
 
 const STATUS_LABEL: Record<TaskStatus, string> = { todo: 'To do', doing: 'In progress', done: 'Done' };
 const certName = (id: string) => CERTIFICATE_TYPES.find((c) => c.id === id)?.name ?? id;
@@ -240,28 +244,75 @@ function ViewSwitch({ view, onChange }: { view: DashboardView; onChange: (view: 
   );
 }
 
+/** What a task list shows while it loads or when it couldn't load; undefined once it's there. */
+function tasksNote(tasks: TasksApi, loading: string) {
+  if (tasks.state.kind === 'loading') return loading;
+  if (tasks.state.kind !== 'error') return undefined;
+  return (
+    <>
+      The tasks didn’t load. {taskFailedMessage(tasks.state.error)}{' '}
+      {tasks.state.error.kind !== 'signed-out' && (
+        <button type="button" className="p-link-btn" onClick={tasks.retry}>
+          Try again
+        </button>
+      )}
+    </>
+  );
+}
+
+/**
+ * The open task's window. It follows the task by id, so it shows each saved change, and closes once the task is gone
+ * (deleted here or elsewhere).
+ */
+function OpenTask({ id, tasks, viewer, people, onClose, notify }: { id: string | null; tasks: TasksApi; viewer: TaskViewer; people?: DirectoryPerson[]; onClose: () => void; notify: (t: string) => void }) {
+  const task = id && tasks.state.kind === 'ready' ? tasks.state.tasks.find((t) => t.id === id) : undefined;
+  useEffect(() => {
+    if (id && tasks.state.kind === 'ready' && !task) onClose();
+  }, [id, task, tasks.state.kind, onClose]);
+  return task ? <TaskWindow task={task} tasks={tasks} viewer={viewer} people={people} onClose={onClose} notify={notify} /> : null;
+}
+
 /**
  * The employee's dashboard on the backend's records: their real profile and ID card, with the status the backend
- * keeps (only admins can block an account, so there's no switch). Tasks aren't connected yet, so their parts are
- * replaced by one card saying so, and the calendar shows no task dates.
+ * keeps (only admins can block an account, so there's no switch), and the tasks given to them. Changing a task's
+ * status here saves it; a task opens in its window to see the brief and hand in work.
  */
 function ConnectedEmployeeDashboard({ arrive }: { arrive: boolean }) {
+  const email = useSession()!.email;
   const [notice, notify] = useNotice();
   const [profile] = useAccountProfile();
+  const tasks = useTasks('mine');
+  const [openId, setOpenId] = useState<string | null>(null);
+  const close = useCallback(() => setOpenId(null), []);
+  const list: PortalTask[] = tasks.state.kind === 'ready' ? tasks.state.tasks : [];
+  const note = tasksNote(tasks, 'Loading your tasks…');
+  const changeStatus = (id: string, status: TaskStatus) =>
+    tasks.setStatus(id, status).then(
+      () => notify(`Marked ${TASK_STATUS_LABEL[status].toLowerCase()}.`),
+      (e: ApiError) => notify(taskFailedMessage(e)),
+    );
   return (
     <>
       <Hello arrive={arrive} />
       {notice}
-      <div className="p-bento is-tasks-off">
+      <div className="p-bento">
         <ConnectedProfileCard profile={profile} />
-        <NextDueCard />
+        <ProgressCard
+          title="Progress"
+          done={list.filter((t) => t.status === 'done').length}
+          total={list.length}
+          empty={tasks.state.kind === 'ready' ? 'No tasks assigned yet.' : tasks.state.kind === 'error' ? 'Your tasks didn’t load.' : 'Loading your tasks…'}
+          delay={arrive ? ARRIVAL_LEAD : 0}
+        />
+        <NextDueCard list={list} />
         <div className="p-board-col">
           <EOfficeCard notify={notify} />
-          <TasksComingCard title="My tasks" />
+          <TaskBoard title="My tasks" list={list} editable onStatus={(id, s) => void changeStatus(id, s)} onOpen={(t) => setOpenId(t.id)} note={note} />
         </div>
         <WorkspaceCard notify={notify} />
-        <CalendarCard notify={notify} />
+        <CalendarCard tasks={list.filter((t) => t.status !== 'done')} notify={notify} />
       </div>
+      <OpenTask id={openId} tasks={tasks} viewer={{ accountRole: 'Employee', email }} onClose={close} notify={notify} />
     </>
   );
 }
@@ -276,19 +327,28 @@ function ManagerWithCertificates({ arrive }: { arrive: boolean }) {
   return <ConnectedManaging arrive={arrive} certificates={certificates} />;
 }
 
-/** The managing dashboard on the backend's records: the team, the certificates (admins only) and real figures. */
+/** The managing dashboard on the backend's records: the team, every task, the certificates (admins only) and real figures. */
 function ConnectedManaging({ arrive, certificates }: { arrive: boolean; certificates?: ReturnType<typeof useCertificates> }) {
+  const email = useSession()!.email;
   const directory = useDirectory();
+  const tasks = useTasks('team');
   const [profile] = useAccountProfile();
   const [view, setView] = useState<DashboardView>('management');
   const [notice, notify] = useNotice();
+  const [openId, setOpenId] = useState<string | null>(null);
+  const close = useCallback(() => setOpenId(null), []);
   const people = directory.state.kind === 'ready' ? directory.state.people : undefined;
   const issued = certificates?.state.kind === 'ready' ? certificates.state.certificates : undefined;
+  const list: PortalTask[] = tasks.state.kind === 'ready' ? tasks.state.tasks : [];
+  // as on People: the directory says what this account may change; until it loads, nothing
+  const viewer: TaskViewer = { accountRole: people?.find((p) => p.email.toLowerCase() === email.toLowerCase())?.accountRole ?? 'Employee', email };
   return (
     <>
       <Hello
-        sub={certificates ? 'Your team and certificates at a glance.' : 'Your team at a glance.'}
+        sub={certificates ? 'Your team, tasks and certificates at a glance.' : 'Your team and tasks at a glance.'}
         arrive={arrive}
+        meterLabel="Team tasks"
+        segments={tasks.state.kind === 'ready' ? taskSegments(list) : undefined}
         figures={managerFigures({ people, certificates: issued, showCertificates: !!certificates })}
       >
         <ViewSwitch view={view} onChange={setView} />
@@ -296,15 +356,23 @@ function ConnectedManaging({ arrive, certificates }: { arrive: boolean; certific
       {notice}
       {view === 'management' ? (
         <>
-          <div className="p-bento is-tasks-off">
+          <div className="p-bento">
             <ConnectedProfileCard profile={profile} />
-            <NextDueCard />
-            <TasksComingCard title="Team tasks" />
+            <ProgressCard
+              title="Team progress"
+              done={list.filter((t) => t.status === 'done').length}
+              total={list.length}
+              empty={tasks.state.kind === 'ready' ? 'No tasks created yet.' : tasks.state.kind === 'error' ? 'The tasks didn’t load.' : 'Loading the tasks…'}
+              delay={arrive ? ARRIVAL_LEAD : 0}
+            />
+            <NextDueCard list={list} />
+            <TaskBoard title="Team tasks" list={list} onOpen={(t) => setOpenId(t.id)} note={tasksNote(tasks, 'Loading the tasks…')} />
             <WorkspaceCard notify={notify} />
-            <CalendarCard notify={notify} />
+            <CalendarCard tasks={list.filter((t) => t.status !== 'done')} notify={notify} />
           </div>
           {certificates && <ConnectedCertificatesPanel certificates={certificates} />}
           <ConnectedTeamPanel directory={directory} />
+          <ConnectedTasksPanel tasks={tasks} people={people} onOpen={(t) => setOpenId(t.id)} notify={notify} />
           <SecurityPanel />
         </>
       ) : (
@@ -317,8 +385,17 @@ function ConnectedManaging({ arrive, certificates }: { arrive: boolean; certific
             </p>
           )}
           {issued && <Breakdown title="Certificates by type" icon="award" total={issued.length} rows={certificatesByType(issued)} />}
+          {tasks.state.kind === 'ready' && (
+            <Breakdown
+              title="Tasks by status"
+              icon="clipboard"
+              total={list.length}
+              rows={Object.entries(TASK_STATUS_LABEL).map(([status, label]) => ({ label, value: list.filter((t) => t.status === status).length }))}
+            />
+          )}
         </div>
       )}
+      <OpenTask id={openId} tasks={tasks} viewer={viewer} people={people} onClose={close} notify={notify} />
     </>
   );
 }
@@ -327,20 +404,6 @@ function ConnectedManaging({ arrive, certificates }: { arrive: boolean; certific
 function ConnectedProfileCard({ profile }: { profile: ProfileState }) {
   const card = profile.kind === 'ready' ? toCardPerson(profile.profile) : null;
   return <ProfileCard person={card}>{card ? undefined : <span className="p-profile-tag">{profile.kind === 'error' ? 'Details didn’t load' : 'Loading…'}</span>}</ProfileCard>;
-}
-
-/** Stands where the task board goes until tasks come from the backend, so no sample task passes for a real one. */
-function TasksComingCard({ title }: { title: string }) {
-  return (
-    <section className="p-card p-board" aria-labelledby="board-title">
-      <div className="p-board-head">
-        <h2 id="board-title" className="p-card-title">
-          {title}
-        </h2>
-      </div>
-      <p className="p-board-empty">Tasks are being connected next. They’ll show up here once they are.</p>
-    </section>
-  );
 }
 
 type Segment = { label: string; value: number; tone: 'ink' | 'violet' | 'hatch' };
@@ -556,7 +619,8 @@ const daysUntil = (iso: string) => Math.round((new Date(`${iso}T00:00`).getTime(
 function NextDueCard({ list }: { list?: Task[] }) {
   const byId = usePeopleById();
   const now = new Date();
-  const next = list?.filter((t) => t.status !== 'done').sort((a, b) => a.due.localeCompare(b.due))[0];
+  // a task without a due date (allowed by the backend) is never "next due"
+  const next = list?.filter((t) => t.status !== 'done' && t.due).sort((a, b) => a.due.localeCompare(b.due))[0];
   const days = next ? daysUntil(next.due) : 0;
   return (
     <section className="p-card" aria-labelledby="today-title">
@@ -576,7 +640,7 @@ function NextDueCard({ list }: { list?: Task[] }) {
               <p className="p-today-task">{next.title}</p>
               <p className={`p-today-when${days < 0 ? ' is-late' : ''}`}>
                 {formatDate(next.due)} · {days < 0 ? `${-days} ${-days === 1 ? 'day' : 'days'} late` : days === 0 ? 'today' : `in ${days} ${days === 1 ? 'day' : 'days'}`}
-                {list.some((t) => t.assigneeId !== next.assigneeId) && ` · ${byId.get(next.assigneeId)?.name ?? 'Removed user'}`}
+                {list.some((t) => t.assigneeId !== next.assigneeId) && ` · ${next.assigneeName ?? byId.get(next.assigneeId)?.name ?? 'Removed user'}`}
               </p>
             </>
           ) : (
@@ -670,11 +734,30 @@ function EOfficeCard({ notify }: { notify: (t: string) => void }) {
   );
 }
 
-function TaskBoard({ title, list, editable = false }: { title: string; list: Task[]; editable?: boolean }) {
+function TaskBoard({
+  title,
+  list,
+  editable = false,
+  onStatus,
+  onOpen,
+  note,
+}: {
+  title: string;
+  list: Task[];
+  editable?: boolean;
+  /** Saves a status change; the demo's own store when unset. */
+  onStatus?: (id: string, status: TaskStatus) => void;
+  /** Opens a task's details; when set, each title is a button. */
+  onOpen?: (task: Task) => void;
+  /** Shown instead of the list while it loads or when it couldn't load. */
+  note?: ReactNode;
+}) {
   const { setTaskStatus } = usePortal();
+  const changeStatus = onStatus ?? setTaskStatus;
   const byId = usePeopleById();
   const done = list.filter((t) => t.status === 'done').length;
-  const sorted = [...list].sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done') || a.due.localeCompare(b.due));
+  // open tasks first, soonest due first; tasks with no due date after the dated ones
+  const sorted = [...list].sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done') || (a.due || '~').localeCompare(b.due || '~'));
   const listRef = useListFlip<HTMLUListElement>(sorted.map((t) => `${t.id}:${t.status}`).join());
   return (
     <section className="p-card p-board" aria-labelledby="board-title" data-lenis-prevent>
@@ -686,7 +769,9 @@ function TaskBoard({ title, list, editable = false }: { title: string; list: Tas
           {done}/{list.length}
         </p>
       </div>
-      {sorted.length ? (
+      {note ? (
+        <div className="p-board-empty">{note}</div>
+      ) : sorted.length ? (
         <ul className="p-board-list" ref={listRef}>
           {sorted.map((t) => (
             <li key={t.id} data-flip={t.id} className={`p-board-item is-${t.status}`}>
@@ -695,12 +780,18 @@ function TaskBoard({ title, list, editable = false }: { title: string; list: Tas
                 <PIcon key={t.status} name={t.status === 'done' ? 'check' : t.status === 'doing' ? 'clock' : 'target'} size={15} />
               </span>
               <div className="p-board-text">
-                <p className="p-board-title">{t.title}</p>
+                {onOpen ? (
+                  <button type="button" className="p-board-title is-link" aria-haspopup="dialog" onClick={() => onOpen(t)}>
+                    {t.title}
+                  </button>
+                ) : (
+                  <p className="p-board-title">{t.title}</p>
+                )}
                 <div className="p-board-meta">
                   {editable ? (
                     <label className="p-board-status">
                       <span className="sr-only">Status of {t.title}</span>
-                      <select value={t.status} onChange={(e) => setTaskStatus(t.id, e.target.value as TaskStatus)}>
+                      <select value={t.status} onChange={(e) => changeStatus(t.id, e.target.value as TaskStatus)}>
                         {Object.entries(STATUS_LABEL).map(([k, v]) => (
                           <option key={k} value={k}>
                             {v}
@@ -712,8 +803,8 @@ function TaskBoard({ title, list, editable = false }: { title: string; list: Tas
                     <span className={`p-board-tag is-${t.status}`}>{STATUS_LABEL[t.status]}</span>
                   )}
                   <span>
-                    {formatDate(t.due)}
-                    {!editable && ` · ${byId.get(t.assigneeId)?.name ?? 'Removed user'}`}
+                    {t.due ? formatDate(t.due) : 'No due date'}
+                    {!editable && ` · ${t.assigneeName ?? byId.get(t.assigneeId)?.name ?? 'Removed user'}`}
                   </span>
                 </div>
               </div>
