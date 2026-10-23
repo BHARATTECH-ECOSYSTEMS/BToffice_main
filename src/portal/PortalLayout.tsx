@@ -13,6 +13,7 @@ import { EMAIL_KINDS, timeAgo, useEmailSwitches, useNotifications } from './noti
 import { CERTIFICATE_TYPES, TOOLS, type PortalIconName } from './data';
 import { didSignOut, endSession, managesPortal, NOTIFICATION_KINDS, ROLE_NAME, setMutedNotifications, setRole, useSession, type NotificationKind, type Role } from './session';
 import { HelpModal } from './Help';
+import { useMyPhoto } from './myPhoto';
 import { formatDate, PortalDataProvider, usePortal } from './store';
 import { initials, PIcon } from './ui';
 import '../styles/portal.css';
@@ -121,6 +122,7 @@ function activeKey(items: TopItem[], pathname: string) {
  */
 export function PortalLayout() {
   const session = useSession();
+  const photo = useMyPhoto();
   const { pathname } = useLocation();
   const [helpOpen, setHelpOpen] = useState(false);
   const signOut = useSignOut();
@@ -167,7 +169,7 @@ export function PortalLayout() {
             </MotionLink>
             <TopNav items={items} active={activeKey(items, pathname)} />
             <div className="p-top-end">
-              <UserMenu name={session.name} email={session.email} role={session.role} photo={session.photo} onHelp={() => setHelpOpen(true)} onSignOut={signOut} />
+              <UserMenu name={session.name} email={session.email} role={session.role} photo={photo} onHelp={() => setHelpOpen(true)} onSignOut={signOut} />
               <NotifyMenu muted={session.mutedNotifications ?? []} />
             </div>
           </motion.header>

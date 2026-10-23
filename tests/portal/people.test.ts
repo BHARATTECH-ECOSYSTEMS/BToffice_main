@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canDelete, canEditDetails, inviteChoices, inviteEmailFailed, readAccountRole, roleChoices, toDirectory, type AccountRole } from '../../src/portal/people';
+import { canDelete, canEditDetails, canEditPerson, cleanName, inviteChoices, inviteEmailFailed, readAccountRole, roleChoices, toDirectory, type AccountRole } from '../../src/portal/people';
 import { ApiError } from '../../src/portal/api';
 
 // GET /api/user/directory, as the local backend returns it
@@ -107,5 +107,21 @@ test('an invite whose login was made but whose email failed is told apart from o
 });
 
 test('only admins and superadmins edit stream and team', () => {
-  assert.deepEqual(ROLES.filter(canEditDetails), ['Superadmin', 'Admin']);
+  assert.deepEqual(ROLES.filter((r) => canEditDetails(r)), ['Superadmin', 'Admin']);
+});
+
+test("whose details (name, stream, team) each role may change, as the backend's canEditUser allows", () => {
+  const allowed = (actor: AccountRole) => ROLES.filter((target) => canEditPerson(actor, target));
+  assert.deepEqual(allowed('Superadmin'), ROLES);
+  assert.deepEqual(allowed('Admin'), ['Subadmin', 'Employee', 'Intern']);
+  for (const actor of ['Subadmin', 'Employee', 'Intern'] as AccountRole[]) assert.deepEqual(allowed(actor), [], actor);
+});
+
+test('a name is checked the way the backend checks it', () => {
+  assert.equal(cleanName('  Asha   Rao '), 'Asha Rao');
+  assert.equal(cleanName('आशा राव'), 'आशा राव');
+  assert.equal(cleanName('A'), null);
+  assert.equal(cleanName('x'.repeat(60)), 'x'.repeat(60));
+  assert.equal(cleanName('x'.repeat(61)), null);
+  assert.equal(cleanName('Bad\u0007Name'), null);
 });

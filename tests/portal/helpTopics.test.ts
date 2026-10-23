@@ -61,6 +61,12 @@ test('the sub admin answer keeps to what the backend lets a sub admin do', () =>
   assert.doesNotMatch(can, /issue certificates|publish policies|add people|add resources|change roles/i);
 });
 
+test('connected, your photo is saved to the account and only an admin renames you', () => {
+  const a = answers(true, 'employee').join(' ');
+  assert.match(a, /only an admin can change it/i);
+  assert.doesNotMatch(a, /photo shows only in this browser|name or photo from Settings/i);
+});
+
 test('the demo keeps its own answers', () => {
   assert.ok(questions(false, 'employee').includes('Why did my changes disappear?'));
   assert.ok(!questions(true, 'employee').includes('Why did my changes disappear?'));

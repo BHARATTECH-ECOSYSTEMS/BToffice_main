@@ -12,6 +12,7 @@ import { api } from '../api';
 import { useDirectory } from '../people';
 import { useCertificates } from '../certificates';
 import { useAccountProfile, type ProfileState } from '../profile';
+import { useMyPhoto } from '../myPhoto';
 import { certificatesByType, managerFigures, peopleByRole, toCardPerson, type CardPerson, type Figure } from '../dashboard';
 import { ConnectedCertificatesPanel, ConnectedTeamPanel } from './DashboardConnected';
 import { useTasks, type PortalTask, type TasksApi } from '../tasks';
@@ -446,7 +447,7 @@ function Meter({ label, segments }: { label: string; segments: Segment[] }) {
  */
 function ProfileCard({ person, children }: { person: CardPerson | null; children?: ReactNode }) {
   const session = useSession()!;
-  const photo = session.photo;
+  const photo = useMyPhoto();
   const [showId, setShowId] = useState(false);
   const name = person?.name ?? session.name;
   const roleLine = person ? [person.roleLabel ?? ROLE_LABEL[person.role], person.team].filter(Boolean).join(' · ') : ROLE_LABEL[session.role];

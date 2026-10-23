@@ -2,8 +2,8 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { ApiErrorKind } from '../api';
 import { ID_DOC_MAX_MB, ID_DOCS, ID_RETENTION_DAYS, PERSON_STATUS_LABEL, ROLE_LABEL, STREAM_LABEL, type IdDocument, type PersonRole } from '../data';
+import { useMyPhoto } from '../myPhoto';
 import { useAccountProfile, type ProfileState } from '../profile';
-import { useSession } from '../session';
 import { formatDate, formatSize, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, Empty, initials, PageHead, PIcon, SampleDataBar, useNotice } from '../ui';
 
@@ -25,7 +25,7 @@ const NOT_SET = 'Not set yet';
  * Name and photo are changed in Settings.
  */
 export function Profile() {
-  const photo = useSession()!.photo;
+  const photo = useMyPhoto();
   const [account, retry] = useAccountProfile();
   const { me, verifications, documents, uploadDocument } = usePortal();
   const [params] = useSearchParams();
@@ -67,8 +67,7 @@ export function Profile() {
             name={account.profile.name}
             badge={account.profile.role}
             badgeLabel={account.profile.roleLabel}
-            // a photo picked in Settings (kept in this browser) comes first
-            photo={photo ?? account.profile.photo}
+            photo={photo}
             facts={[
               ['Employee ID', account.profile.employeeId],
               ['Email', account.profile.email],

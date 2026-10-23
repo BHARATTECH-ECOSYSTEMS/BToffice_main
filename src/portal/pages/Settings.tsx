@@ -1,7 +1,9 @@
 import { useRef, useState, type ChangeEvent, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { PortalIconName } from '../data';
+import { api, ApiError } from '../api';
 import { auth, passwordHasBlockedCharacter } from '../auth';
+import { removeMyPhoto, saveMyPhoto, useMyPhoto } from '../myPhoto';
 import { endSessionForNewSignIn, ROLE_NAME, setDisplayName, setPhoto, useSession } from '../session';
 import { Badge, btnClass, BtnLabel, initials, PageHead, PIcon, useNotice } from '../ui';
 
@@ -77,8 +79,8 @@ function Row({ label, hint, htmlFor, children }: { label: string; hint?: string;
   );
 }
 
-/** Crops the middle square of the picked image and scales it down to a JPEG data: address. */
-function toSquarePhoto(file: File): Promise<string> {
+/** Crops the middle square of the picked image and scales it down. */
+function toSquare(file: File): Promise<HTMLCanvasElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
@@ -88,40 +90,75 @@ function toSquarePhoto(file: File): Promise<string> {
       canvas.width = canvas.height = PHOTO_SIZE;
       canvas.getContext('2d')!.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, PHOTO_SIZE, PHOTO_SIZE);
       URL.revokeObjectURL(url);
-      resolve(canvas.toDataURL('image/jpeg', 0.85));
+      resolve(canvas);
     };
     img.onerror = () => (URL.revokeObjectURL(url), reject(new Error('unreadable image')));
     img.src = url;
   });
 }
 
+const toJpeg = (canvas: HTMLCanvasElement) =>
+  new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('unreadable image'))), 'image/jpeg', 0.85));
+
+const PHOTO_FAILED: Record<ApiError['kind'], string> = {
+  'signed-out': 'Your sign-in has ended. Sign out and sign in again, then try once more.',
+  forbidden: 'Your account isn’t allowed to change its photo.',
+  'not-found': 'Your account isn’t in the employee records yet. Please ask your administrator.',
+  conflict: 'The photo wasn’t saved. Please try again.',
+  'bad-request': 'That photo wasn’t accepted.',
+  unavailable: 'We couldn’t reach the server, so your photo wasn’t changed. Try again in a moment.',
+};
+const photoFailed = (e: ApiError) => (e.kind === 'bad-request' && e.message !== e.kind ? e.message : PHOTO_FAILED[e.kind]);
+
 function ProfilePanel() {
   const session = useSession()!;
+  // connected, the photo is saved to the account and only an admin changes the name (People → Details)
+  const connected = !!api;
+  const photo = useMyPhoto();
   const input = useRef<HTMLInputElement>(null);
   const [name, setName] = useState(session.name);
   const [error, setError] = useState('');
   const [photoError, setPhotoError] = useState('');
+  const [busy, setBusy] = useState(false);
   const [notice, notify] = useNotice();
   const trimmed = name.trim().replace(/\s+/g, ' ');
-  const dirty = trimmed !== session.name;
+  const dirty = !connected && trimmed !== session.name;
 
-  const pick = async (e: ChangeEvent<HTMLInputElement>) => {
+  const changePhoto = async (change: () => Promise<void>, done: string) => {
+    setBusy(true);
+    try {
+      await change();
+      setPhotoError('');
+      notify(done);
+    } catch (e) {
+      setPhotoError(e instanceof ApiError ? photoFailed(e) : "That image couldn't be read. Try another file.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pick = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
     if (!PHOTO_TYPES.includes(file.type)) return setPhotoError('Choose a PNG, JPG or WebP image.');
     if (file.size > PHOTO_MAX_MB * 1024 * 1024) return setPhotoError(`Choose an image under ${PHOTO_MAX_MB} MB.`);
-    try {
-      setPhoto(await toSquarePhoto(file));
-      setPhotoError('');
-      notify('Your photo was updated.');
-    } catch {
-      setPhotoError("That image couldn't be read. Try another file.");
-    }
+    void changePhoto(
+      async () => {
+        const square = await toSquare(file);
+        if (connected) await saveMyPhoto(await toJpeg(square));
+        else setPhoto(square.toDataURL('image/jpeg', 0.85));
+      },
+      connected ? 'Your photo was saved to your account.' : 'Your photo was updated.',
+    );
   };
+
+  const remove = () =>
+    void changePhoto(async () => (connected ? removeMyPhoto() : setPhoto(undefined)), connected ? 'Your photo was removed from your account.' : 'Your photo was removed.');
 
   const save = (e: FormEvent) => {
     e.preventDefault();
+    if (connected) return;
     if (trimmed.length < 2) return setError('Enter a name of at least 2 characters.');
     if (trimmed.length > 60) return setError('Keep the name under 60 characters.');
     setDisplayName(trimmed);
@@ -138,29 +175,31 @@ function ProfilePanel() {
       footer={
         <>
           {notice}
-          <span className="p-set-foot-actions">
-            {dirty && (
-              <button type="button" className={btnClass('ghost')} onClick={() => (setName(session.name), setError(''))}>
-                <BtnLabel>Reset</BtnLabel>
+          {!connected && (
+            <span className="p-set-foot-actions">
+              {dirty && (
+                <button type="button" className={btnClass('ghost')} onClick={() => (setName(session.name), setError(''))}>
+                  <BtnLabel>Reset</BtnLabel>
+                </button>
+              )}
+              <button type="submit" className={btnClass('primary')} disabled={!dirty}>
+                <BtnLabel>Save changes</BtnLabel>
               </button>
-            )}
-            <button type="submit" className={btnClass('primary')} disabled={!dirty}>
-              <BtnLabel>Save changes</BtnLabel>
-            </button>
-          </span>
+            </span>
+          )}
         </>
       }
     >
-      <Row label="Photo" hint={`PNG, JPG or WebP, up to ${PHOTO_MAX_MB} MB.`}>
-        <div className="p-set-photo">
+      <Row label="Photo" hint={`PNG, JPG or WebP, up to ${PHOTO_MAX_MB} MB.${connected ? ' Saved to your account, so it shows on any device.' : ''}`}>
+        <div className="p-set-photo" aria-busy={busy || undefined}>
           <span className="p-avatar is-large" aria-hidden="true">
-            {session.photo ? <img src={session.photo} alt="" /> : initials(session.name)}
+            {photo ? <img src={photo} alt="" /> : initials(session.name)}
           </span>
-          <button type="button" className={btnClass('ghost', { small: true })} onClick={() => input.current?.click()}>
-            <BtnLabel icon="upload">{session.photo ? 'Change' : 'Upload'}</BtnLabel>
+          <button type="button" className={btnClass('ghost', { small: true })} disabled={busy} onClick={() => input.current?.click()}>
+            <BtnLabel icon="upload">{busy ? 'Saving…' : photo ? 'Change' : 'Upload'}</BtnLabel>
           </button>
-          {session.photo && (
-            <button type="button" className="p-text-btn is-danger" onClick={() => (setPhoto(undefined), notify('Your photo was removed.'))}>
+          {photo && (
+            <button type="button" className="p-text-btn is-danger" disabled={busy} onClick={remove}>
               Remove
             </button>
           )}
@@ -172,22 +211,31 @@ function ProfilePanel() {
           </p>
         )}
       </Row>
-      <Row label="Username" hint="Shown on your profile, tasks and certificates." htmlFor="settings-name">
-        <input
-          id="settings-name"
-          className="p-set-input"
-          value={name}
-          onChange={(e) => (setName(e.target.value), setError(''))}
-          autoComplete="name"
-          aria-invalid={!!error || undefined}
-          aria-describedby={error ? 'settings-name-err' : undefined}
-        />
-        {error && (
-          <p id="settings-name-err" className="p-error" role="alert">
-            {error}
+      {connected ? (
+        <Row label="Name" hint="Shown on your profile, tasks and certificates. Only an admin can change it, on the People page.">
+          <p className="p-set-value">
+            {session.name}
+            <PIcon name="lock" size={14} />
           </p>
-        )}
-      </Row>
+        </Row>
+      ) : (
+        <Row label="Username" hint="Shown on your profile, tasks and certificates." htmlFor="settings-name">
+          <input
+            id="settings-name"
+            className="p-set-input"
+            value={name}
+            onChange={(e) => (setName(e.target.value), setError(''))}
+            autoComplete="name"
+            aria-invalid={!!error || undefined}
+            aria-describedby={error ? 'settings-name-err' : undefined}
+          />
+          {error && (
+            <p id="settings-name-err" className="p-error" role="alert">
+              {error}
+            </p>
+          )}
+        </Row>
+      )}
       <Row label="Work email" hint="Comes from your company account.">
         <p className="p-set-value">
           {session.email}

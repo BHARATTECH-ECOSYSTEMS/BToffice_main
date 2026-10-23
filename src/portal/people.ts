@@ -52,6 +52,19 @@ export function inviteChoices(actor: AccountRole): AccountRole[] {
 /** Stream and team go through the backend's admin-only edit route. */
 export const canEditDetails = (actor: AccountRole) => actor === 'Superadmin' || actor === 'Admin';
 
+/** Whose name, stream and team `actor` may change (the backend's canEditUser): a superadmin anyone, an admin those below. */
+export const canEditPerson = (actor: AccountRole, target: AccountRole) => actor === 'Superadmin' || (actor === 'Admin' && MANAGED_BY_ADMIN.includes(target));
+
+export const NAME_MIN = 2;
+export const NAME_MAX = 60;
+
+/** A name as the backend stores it (its readFullName): trimmed and single-spaced; null when it would be refused. */
+export function cleanName(value: string) {
+  const name = value.replace(/\s+/g, ' ').trim();
+  if (/[\u0000-\u001f\u007f]/.test(name)) return null;
+  return name.length >= NAME_MIN && name.length <= NAME_MAX ? name : null;
+}
+
 export interface DirectoryPerson {
   /** The backend's id for the person, used by the admin actions. */
   id: string;
@@ -141,7 +154,7 @@ export function useDirectory() {
     state,
     retry: () => void load(),
     changeRole: (id: string, role: AccountRole) => act(() => api!.patch(`/user/${id}`, { role })),
-    saveDetails: (id: string, details: { stream: Stream | null; team: string }) => act(() => api!.patch(`/user/${id}`, details)),
+    saveDetails: (id: string, details: { fullName?: string; stream: Stream | null; team: string }) => act(() => api!.patch(`/user/${id}`, details)),
     remove: (id: string) => act(() => api!.del(`/user/${id}`)),
     /**
      * Creates the person's login with a temporary password and emails it to them. They join the directory at their

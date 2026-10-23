@@ -4,7 +4,11 @@ import type { ApiError } from '../api';
 import {
   canDelete,
   canEditDetails,
+  canEditPerson,
+  cleanName,
   inviteChoices,
+  NAME_MAX,
+  NAME_MIN,
   inviteEmailFailed,
   roleChoices,
   roleLabel,
@@ -138,6 +142,7 @@ export function ConnectedPeople() {
                   // nobody changes their own role or deletes themselves here, even where the backend would let them
                   const choices = self ? [] : roleChoices(actor, p.accountRole);
                   const deletable = !self && canDelete(actor, p.accountRole);
+                  const editable = canEditPerson(actor, p.accountRole);
                   const busy = saving === p.id;
                   return (
                     <tr key={p.id} data-flip={p.id}>
@@ -193,7 +198,13 @@ export function ConnectedPeople() {
                       )}
                       {manages && (
                         <td className="is-end p-row-actions">
-                          <button type="button" className={btnClass('ghost', { small: true })} disabled={busy} onClick={() => setEditing(p)}>
+                          <button
+                            type="button"
+                            className={btnClass('ghost', { small: true })}
+                            disabled={busy || !editable}
+                            title={editable ? undefined : 'Your role can’t change this person’s details'}
+                            onClick={() => setEditing(p)}
+                          >
                             <BtnLabel icon="edit">
                               Details<span className="sr-only"> for {p.name}</span>
                             </BtnLabel>
@@ -236,7 +247,7 @@ export function ConnectedPeople() {
         <DetailsModal
           person={editing}
           onClose={() => setEditing(null)}
-          onSave={(details) => void save(editing, () => directory.saveDetails(editing.id, details), `${editing.name}’s details were saved.`)}
+          onSave={(details) => void save(editing, () => directory.saveDetails(editing.id, details), `${details.fullName ?? editing.name}’s details were saved.`)}
         />
       )}
       {deleting && (
@@ -388,7 +399,18 @@ export function InviteModal({
 
 const TEAM_MAX = 80;
 
-function DetailsModal({ person, onClose, onSave }: { person: DirectoryPerson; onClose: () => void; onSave: (details: { stream: Stream | null; team: string }) => void }) {
+/** Name, stream and team. The name is sent only when it changed, and the backend also changes it in Keycloak. */
+function DetailsModal({
+  person,
+  onClose,
+  onSave,
+}: {
+  person: DirectoryPerson;
+  onClose: () => void;
+  onSave: (details: { fullName?: string; stream: Stream | null; team: string }) => void;
+}) {
+  const [name, setName] = useState(person.name);
+  const [nameError, setNameError] = useState('');
   const [stream, setStream] = useState<Stream | ''>(person.stream ?? '');
   const [team, setTeam] = useState(person.team ?? '');
   return (
@@ -397,7 +419,9 @@ function DetailsModal({ person, onClose, onSave }: { person: DirectoryPerson; on
       icon="users"
       onClose={onClose}
       onSubmit={() => {
-        onSave({ stream: stream || null, team: team.trim() });
+        const fullName = cleanName(name);
+        if (!fullName) return setNameError(`Enter a name of ${NAME_MIN} to ${NAME_MAX} characters.`);
+        onSave({ ...(fullName !== person.name && { fullName }), stream: stream || null, team: team.trim() });
         onClose();
       }}
       footer={
@@ -412,8 +436,25 @@ function DetailsModal({ person, onClose, onSave }: { person: DirectoryPerson; on
       }
     >
       <label className="p-field">
+        <span>Name</span>
+        <input
+          value={name}
+          maxLength={NAME_MAX + 20}
+          onChange={(e) => (setName(e.target.value), setNameError(''))}
+          autoComplete="off"
+          aria-invalid={!!nameError || undefined}
+          aria-describedby={nameError ? 'details-name-err' : undefined}
+          autoFocus
+        />
+        {nameError && (
+          <span id="details-name-err" className="p-error" role="alert">
+            {nameError}
+          </span>
+        )}
+      </label>
+      <label className="p-field">
         <span>Stream</span>
-        <select className="p-select" value={stream} onChange={(e) => setStream(e.target.value as Stream | '')} autoFocus>
+        <select className="p-select" value={stream} onChange={(e) => setStream(e.target.value as Stream | '')}>
           <option value="">Not set</option>
           {STREAMS.map((s) => (
             <option key={s.id} value={s.id}>
