@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canDelete, canEditDetails, canEditPerson, cleanName, inviteChoices, inviteEmailFailed, readAccountRole, roleChoices, toDirectory, type AccountRole } from '../../src/portal/people';
+import { canDelete, canEditDetails, canEditPerson, cleanName, inviteChoices, inviteEmailFailed, joinDateProblem, latestJoinDate, readAccountRole, readJoinDate, roleChoices, toDirectory, type AccountRole } from '../../src/portal/people';
 import { ApiError } from '../../src/portal/api';
 
 // GET /api/user/directory, as the local backend returns it
@@ -14,6 +14,7 @@ const asha = {
   workPhone: '+91 80 4000 0001',
   stream: 'hr',
   team: 'People Ops',
+  joinedOn: '2024-03-01',
   status: 'active',
 };
 
@@ -31,6 +32,7 @@ test('the directory becomes the rows the page shows', () => {
       workPhone: '+91 80 4000 0001',
       stream: 'hr',
       team: 'People Ops',
+      joined: '2024-03-01',
       status: 'active',
     },
   ]);
@@ -38,7 +40,20 @@ test('the directory becomes the rows the page shows', () => {
 
 test('missing details read as not set, and an inactive account stays inactive', () => {
   const [p] = toDirectory([{ id: 'u2', name: 'New Joiner', email: 'new@example.test', role: 'Intern', stream: null, team: '', status: 'inactive' }]);
-  assert.deepEqual([p.employeeId, p.stream, p.team, p.phone, p.status], [undefined, undefined, undefined, undefined, 'inactive']);
+  assert.deepEqual([p.employeeId, p.stream, p.team, p.phone, p.joined, p.status], [undefined, undefined, undefined, undefined, undefined, 'inactive']);
+});
+
+test('a join date is only taken when it is a real day written YYYY-MM-DD', () => {
+  assert.equal(readJoinDate('2024-02-29'), '2024-02-29');
+  for (const junk of ['2023-02-29', '2024-13-01', '01/03/2024', '2024-3-1', '', null, undefined, 20240301]) assert.equal(readJoinDate(junk), undefined, String(junk));
+  assert.equal(toDirectory([{ ...asha, joinedOn: '2024-02-30' }])[0].joined, undefined);
+});
+
+test('a join date is checked the way the backend checks it: from 1990 to a year ahead, and empty clears it', () => {
+  const today = '2026-10-23';
+  assert.equal(latestJoinDate(today), '2027-10-23');
+  for (const ok of ['', '1990-01-01', '2024-03-01', '2027-10-23']) assert.equal(joinDateProblem(ok, today), '', ok);
+  for (const bad of ['1989-12-31', '2027-10-24', '2023-02-29']) assert.match(joinDateProblem(bad, today), /1990/, bad);
 });
 
 test('an entry without an id or email is skipped instead of breaking the list', () => {

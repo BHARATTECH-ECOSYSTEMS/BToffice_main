@@ -326,7 +326,7 @@ export function IdCardDialog({ person, photo, onClose }: { person: CardPerson; p
   const office = person.office ?? HQ;
   const officeShort = office.split(',')[0];
   const expiry = person.joined ? cardExpiry(person.joined) : undefined;
-  // someone still invited joins later; anyone else without a date simply has none on file (the backend keeps none)
+  // someone still invited joins later; anyone else without a date has none on file until an admin sets it
   const noDate = person.status === 'invited' ? { joined: 'Not yet', valid: 'On joining' } : { joined: 'Not on file', valid: 'Not on file' };
   // the name set in two lines, first name over the rest; a long one drops a size so it stays on the card
   const [first, ...others] = person.name.trim().split(/\s+/);

@@ -67,6 +67,13 @@ test('connected, your photo is saved to the account and only an admin renames yo
   assert.doesNotMatch(a, /photo shows only in this browser|name or photo from Settings/i);
 });
 
+test('connected, everyone learns that an admin sets the join date, and that it saves', () => {
+  for (const role of ['employee', 'subadmin', 'admin'] as const) assert.ok(questions(true, role).includes('Where does my join date come from?'), role);
+  assert.ok(!questions(false, 'employee').includes('Where does my join date come from?'));
+  const saves = answers(true, 'employee').find((a) => a.startsWith('People, Tasks'));
+  assert.match(saves ?? '', /join dates/);
+});
+
 test('the demo keeps its own answers', () => {
   assert.ok(questions(false, 'employee').includes('Why did my changes disappear?'));
   assert.ok(!questions(true, 'employee').includes('Why did my changes disappear?'));

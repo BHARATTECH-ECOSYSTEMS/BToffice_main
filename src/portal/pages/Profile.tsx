@@ -74,6 +74,7 @@ export function Profile() {
               ['Role', account.profile.roleLabel],
               ['Stream', account.profile.stream && STREAM_LABEL[account.profile.stream]],
               ['Team', account.profile.team],
+              ['Joined', account.profile.joined && formatDate(account.profile.joined)],
               ['Status', PERSON_STATUS_LABEL[account.profile.status]],
               ['Phone', account.profile.phone],
               ['Work phone', account.profile.workPhone],

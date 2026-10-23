@@ -2,6 +2,7 @@ import { CERTIFICATE_TYPES, ROLE_LABEL, STREAM_LABEL, type PersonRole, type Pers
 import { ACCOUNT_ROLES, roleLabel, type DirectoryPerson } from './people';
 import type { AccountProfile } from './profile';
 import type { IssuedCertificate } from './certificates';
+import { plural } from './lmsData';
 
 /**
  * The dashboard's numbers and the ID card's person, worked out from the backend's records (the directory, the
@@ -21,7 +22,7 @@ export interface CardPerson {
   team?: string;
   status: PersonStatus;
   phone?: string;
-  /** First working day (ISO). The backend keeps no join date, so a real account has none. */
+  /** First working day (ISO); a real account has one once an admin sets it. */
   joined?: string;
   office?: string;
 }
@@ -36,6 +37,7 @@ export const toCardPerson = (profile: AccountProfile): CardPerson => ({
   team: profile.team,
   status: profile.status,
   phone: profile.phone,
+  ...(profile.joined && { joined: profile.joined }),
 });
 
 const roleName = (person: CardPerson) => person.roleLabel ?? ROLE_LABEL[person.role];
@@ -63,6 +65,34 @@ export function contactCard(person: CardPerson) {
 }
 
 const isoDay = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+export interface Joiner {
+  id: string;
+  name: string;
+  /** First working day, "YYYY-MM-DD". */
+  joined?: string;
+  status?: PersonStatus;
+}
+
+/**
+ * The calendar's people dates from `from` to `to` (both "YYYY-MM-DD"): each first day and work anniversary in that
+ * stretch. Invited people haven't joined yet; someone without a join date has nothing to show.
+ */
+export function workAnniversaries(people: Joiner[], from: string, to: string) {
+  const out: { id: string; date: string; title: string; meta: string }[] = [];
+  const years = [Number(from.slice(0, 4)), Number(to.slice(0, 4))];
+  for (const p of people) {
+    if (p.status === 'invited' || !p.joined) continue;
+    for (let y = years[0]; y <= years[1]; y++) {
+      const date = `${y}${p.joined.slice(4)}`;
+      const served = y - Number(p.joined.slice(0, 4));
+      // a 29 February joiner has no date in other years; skip rather than move it
+      if (date < from || date > to || served < 0 || isoDay(new Date(`${date}T00:00:00`)) !== date) continue;
+      out.push({ id: `p-${p.id}-${y}`, date, title: p.name, meta: served === 0 ? 'First day' : `Work anniversary · ${plural(served, 'year')}` });
+    }
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date));
+}
 
 /** How many were issued today or in the days before it, `days` in all, by this browser's calendar. */
 export function issuedInLastDays(certificates: IssuedCertificate[], days: number, today = new Date()) {

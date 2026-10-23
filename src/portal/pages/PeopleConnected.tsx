@@ -7,6 +7,9 @@ import {
   canEditPerson,
   cleanName,
   inviteChoices,
+  JOIN_EARLIEST,
+  joinDateProblem,
+  latestJoinDate,
   NAME_MAX,
   NAME_MIN,
   inviteEmailFailed,
@@ -17,6 +20,7 @@ import {
   type DirectoryPerson,
 } from '../people';
 import { useSession } from '../session';
+import { localDay } from '../eoffice';
 import { Badge, btnClass, BtnLabel, Empty, Modal, PageHead, SearchField, useListFlip, useNotice } from '../ui';
 
 /**
@@ -399,7 +403,10 @@ export function InviteModal({
 
 const TEAM_MAX = 80;
 
-/** Name, stream and team. The name is sent only when it changed, and the backend also changes it in Keycloak. */
+/**
+ * Name, stream, team and join date. The name is sent only when it changed, and the backend also changes it in
+ * Keycloak; the join date too, so the company app's records are never touched by a save that didn't change it.
+ */
 function DetailsModal({
   person,
   onClose,
@@ -407,12 +414,15 @@ function DetailsModal({
 }: {
   person: DirectoryPerson;
   onClose: () => void;
-  onSave: (details: { fullName?: string; stream: Stream | null; team: string }) => void;
+  onSave: (details: { fullName?: string; stream: Stream | null; team: string; joinedOn?: string | null }) => void;
 }) {
   const [name, setName] = useState(person.name);
   const [nameError, setNameError] = useState('');
   const [stream, setStream] = useState<Stream | ''>(person.stream ?? '');
   const [team, setTeam] = useState(person.team ?? '');
+  const [joined, setJoined] = useState(person.joined ?? '');
+  const [joinedError, setJoinedError] = useState('');
+  const today = localDay();
   return (
     <Modal
       title={`${person.name}’s details`}
@@ -421,7 +431,14 @@ function DetailsModal({
       onSubmit={() => {
         const fullName = cleanName(name);
         if (!fullName) return setNameError(`Enter a name of ${NAME_MIN} to ${NAME_MAX} characters.`);
-        onSave({ ...(fullName !== person.name && { fullName }), stream: stream || null, team: team.trim() });
+        const problem = joinDateProblem(joined, today);
+        if (problem) return setJoinedError(problem);
+        onSave({
+          ...(fullName !== person.name && { fullName }),
+          stream: stream || null,
+          team: team.trim(),
+          ...(joined !== (person.joined ?? '') && { joinedOn: joined || null }),
+        });
         onClose();
       }}
       footer={
@@ -466,6 +483,27 @@ function DetailsModal({
       <label className="p-field">
         <span>Team</span>
         <input value={team} maxLength={TEAM_MAX} onChange={(e) => setTeam(e.target.value)} placeholder="e.g. Platform" />
+      </label>
+      <label className="p-field">
+        <span>Joined (first working day)</span>
+        <input
+          type="date"
+          value={joined}
+          min={JOIN_EARLIEST}
+          max={latestJoinDate(today)}
+          onChange={(e) => (setJoined(e.target.value), setJoinedError(''))}
+          aria-invalid={!!joinedError || undefined}
+          aria-describedby={joinedError ? 'details-joined-err' : 'details-joined-hint'}
+        />
+        {joinedError ? (
+          <span id="details-joined-err" className="p-error" role="alert">
+            {joinedError}
+          </span>
+        ) : (
+          <span id="details-joined-hint" className="p-field-hint">
+            Shown on their ID card and as work anniversaries on everyone’s calendar. Clear it to remove it.
+          </span>
+        )}
       </label>
     </Modal>
   );

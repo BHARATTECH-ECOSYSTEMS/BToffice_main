@@ -114,6 +114,7 @@ const CONNECTED_HELP: HelpGroup[] = [
     icon: 'users',
     topics: [
       { q: 'How do I change my name or photo?', a: 'Open Settings, then Profile, to upload or remove your photo; it’s saved to your account, so it shows on any device. Your name is on your certificates, so only an admin can change it, from the People page; ask one if it’s wrong.', link: { to: '/portal/settings?tab=profile', label: 'Open Profile settings' } },
+      { q: 'Where does my join date come from?', a: 'An admin sets your first working day from the People page. It shows on your Profile and ID card (valid for three years from joining, renewed every three years) and as your work anniversary on the calendar. Until it’s set, your ID card says “Not on file”; ask an admin if it’s missing or wrong.' },
       { q: 'How do I change my password?', a: 'Open Settings, then Password. The checklist shows what the new password still needs (no $ sign for now). Once it’s changed, every other sign-in ends and you sign in again with the new password. Forgot it? Press “Forgot password?” on the sign-in window and we’ll email you a link that works once, for 30 minutes.', link: { to: '/portal/settings?tab=password', label: 'Open Password settings' } },
       { q: 'Can I choose which emails I get?', a: 'Yes: open the bell next to your name and press the gear. The switches are saved to your account. The bell lists everything either way; the switches only choose which emails you get.' },
       EMAIL_OR_ROLE,
@@ -142,7 +143,7 @@ const CONNECTED_HELP: HelpGroup[] = [
     title: 'Good to know',
     icon: 'alert',
     topics: [
-      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload. e-Office check-ins stay in this browser for now.' },
+      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload. e-Office check-ins stay in this browser for now.' },
     ],
   },
 ];

@@ -78,10 +78,31 @@ export interface DirectoryPerson {
   workPhone?: string;
   stream?: Stream;
   team?: string;
+  /** First working day, "YYYY-MM-DD", once an admin has set it. */
+  joined?: string;
   status: PersonStatus;
 }
 
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
+
+/** A join date as the backend keeps it: a real day written "YYYY-MM-DD" (so "2023-02-29" is not one), else unset. */
+export function readJoinDate(value: unknown) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const [y, m, d] = value.split('-').map(Number);
+  const day = new Date(Date.UTC(y, m - 1, d));
+  return day.getUTCFullYear() === y && day.getUTCMonth() === m - 1 && day.getUTCDate() === d ? value : undefined;
+}
+
+// the backend's range (models/User.js): earlier is a typo; up to a year ahead lets someone be set up before they start
+export const JOIN_EARLIEST = '1990-01-01';
+export const latestJoinDate = (today: string) => `${Number(today.slice(0, 4)) + 1}${today.slice(4)}`;
+
+/** Why the backend would refuse this join date, or '' when it's fine. An empty value clears the date. */
+export function joinDateProblem(value: string, today: string) {
+  if (!value) return '';
+  const day = readJoinDate(value);
+  return day && day >= JOIN_EARLIEST && day <= latestJoinDate(today) ? '' : 'Pick a day from 1990 up to a year from today.';
+}
 
 export function toDirectory(raw: unknown): DirectoryPerson[] {
   if (!Array.isArray(raw)) throw new ApiError('unavailable', 'The backend’s answer isn’t a list of people.');
@@ -105,6 +126,7 @@ export function toDirectory(raw: unknown): DirectoryPerson[] {
       workPhone: text(p.workPhone),
       stream: STREAMS.find((s) => s.id === p.stream)?.id,
       team: text(p.team),
+      joined: readJoinDate(p.joinedOn),
       status: p.status === 'inactive' ? 'inactive' : 'active',
     });
   }
@@ -154,7 +176,7 @@ export function useDirectory() {
     state,
     retry: () => void load(),
     changeRole: (id: string, role: AccountRole) => act(() => api!.patch(`/user/${id}`, { role })),
-    saveDetails: (id: string, details: { fullName?: string; stream: Stream | null; team: string }) => act(() => api!.patch(`/user/${id}`, details)),
+    saveDetails: (id: string, details: { fullName?: string; stream: Stream | null; team: string; joinedOn?: string | null }) => act(() => api!.patch(`/user/${id}`, details)),
     remove: (id: string) => act(() => api!.del(`/user/${id}`)),
     /**
      * Creates the person's login with a temporary password and emails it to them. They join the directory at their

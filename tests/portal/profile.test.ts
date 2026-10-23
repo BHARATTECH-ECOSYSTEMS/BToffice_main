@@ -26,6 +26,7 @@ const intern = {
   employeeId: 'BT-0002',
   stream: 'operations',
   team: 'Field Ops',
+  joinedOn: '2025-06-02',
 };
 
 test("the backend's profile becomes what the page shows", () => {
@@ -37,6 +38,7 @@ test("the backend's profile becomes what the page shows", () => {
     roleLabel: 'Intern',
     stream: 'operations',
     team: 'Field Ops',
+    joined: '2025-06-02',
     status: 'active',
     phone: undefined,
     workPhone: undefined,

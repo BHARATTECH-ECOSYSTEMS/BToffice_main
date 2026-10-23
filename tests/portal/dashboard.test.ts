@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cardRoleLine, certificatesByType, contactCard, issuedInLastDays, managerFigures, peopleByRole, toCardPerson } from '../../src/portal/dashboard';
+import { cardRoleLine, certificatesByType, contactCard, issuedInLastDays, managerFigures, peopleByRole, toCardPerson, workAnniversaries } from '../../src/portal/dashboard';
 import type { AccountProfile } from '../../src/portal/profile';
 import type { DirectoryPerson } from '../../src/portal/people';
 import type { IssuedCertificate } from '../../src/portal/certificates';
@@ -29,6 +29,40 @@ test('the ID card carries the real Employee ID, role, stream and status, and no 
     status: 'active',
     phone: '+91 90000 00002',
   });
+});
+
+test('the ID card carries the join date an admin set', () => {
+  assert.equal(toCardPerson({ ...intern, joined: '2025-06-02' }).joined, '2025-06-02');
+});
+
+const joiner = (id: string, joined?: string, status?: 'active' | 'inactive' | 'invited') => ({ id, name: `Person ${id}`, joined, status });
+
+test('the calendar shows each work anniversary and first day in the range, with the years served', () => {
+  const items = workAnniversaries([joiner('a', '2023-11-05'), joiner('b', '2026-11-20'), joiner('c', '2025-11-30')], '2026-11-01', '2026-11-30');
+  assert.deepEqual(items, [
+    { id: 'p-a-2026', date: '2026-11-05', title: 'Person a', meta: 'Work anniversary · 3 years' },
+    { id: 'p-b-2026', date: '2026-11-20', title: 'Person b', meta: 'First day' },
+    { id: 'p-c-2026', date: '2026-11-30', title: 'Person c', meta: 'Work anniversary · 1 year' },
+  ]);
+});
+
+test('a range across the new year finds dates in both years', () => {
+  const items = workAnniversaries([joiner('a', '2020-12-30'), joiner('b', '2021-01-02')], '2026-12-15', '2027-01-29');
+  assert.deepEqual(items.map((i) => [i.date, i.meta]), [
+    ['2026-12-30', 'Work anniversary · 6 years'],
+    ['2027-01-02', 'Work anniversary · 6 years'],
+  ]);
+});
+
+test('nobody has an anniversary before they joined, without a date, or while still invited', () => {
+  const people = [joiner('later', '2027-03-10'), joiner('none'), joiner('invited', '2024-03-10', 'invited')];
+  assert.deepEqual(workAnniversaries(people, '2026-03-01', '2026-03-31'), []);
+});
+
+test('someone who joined on 29 February has no date in other years rather than a moved one', () => {
+  const people = [joiner('leap', '2024-02-29')];
+  assert.deepEqual(workAnniversaries(people, '2026-02-01', '2026-03-31'), []);
+  assert.deepEqual(workAnniversaries(people, '2028-02-01', '2028-03-31').map((i) => i.meta), ['Work anniversary · 4 years']);
 });
 
 test('a superadmin wears the admin badge but the card reads "Super Admin"', () => {

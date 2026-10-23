@@ -283,6 +283,8 @@ function ConnectedEmployeeDashboard({ arrive }: { arrive: boolean }) {
   const [notice, notify] = useNotice();
   const [profile] = useAccountProfile();
   const tasks = useTasks('mine');
+  // only for the calendar's first days and work anniversaries
+  const directory = useDirectory();
   const [openId, setOpenId] = useState<string | null>(null);
   const close = useCallback(() => setOpenId(null), []);
   const list: PortalTask[] = tasks.state.kind === 'ready' ? tasks.state.tasks : [];
@@ -311,7 +313,7 @@ function ConnectedEmployeeDashboard({ arrive }: { arrive: boolean }) {
           <TaskBoard title="My tasks" list={list} editable onStatus={(id, s) => void changeStatus(id, s)} onOpen={(t) => setOpenId(t.id)} note={note} />
         </div>
         <WorkspaceCard notify={notify} />
-        <CalendarCard tasks={list.filter((t) => t.status !== 'done')} notify={notify} />
+        <CalendarCard tasks={list.filter((t) => t.status !== 'done')} joiners={directory.state.kind === 'ready' ? directory.state.people : undefined} notify={notify} />
       </div>
       <OpenTask id={openId} tasks={tasks} viewer={{ accountRole: 'Employee', email }} onClose={close} notify={notify} />
     </>
@@ -369,7 +371,7 @@ function ConnectedManaging({ arrive, certificates }: { arrive: boolean; certific
             <NextDueCard list={list} />
             <TaskBoard title="Team tasks" list={list} onOpen={(t) => setOpenId(t.id)} note={tasksNote(tasks, 'Loading the tasks…')} />
             <WorkspaceCard notify={notify} />
-            <CalendarCard tasks={list.filter((t) => t.status !== 'done')} notify={notify} />
+            <CalendarCard tasks={list.filter((t) => t.status !== 'done')} joiners={people} notify={notify} />
           </div>
           {certificates && <ConnectedCertificatesPanel certificates={certificates} />}
           <ConnectedTeamPanel directory={directory} />

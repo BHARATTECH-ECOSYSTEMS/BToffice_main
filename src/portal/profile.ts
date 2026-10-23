@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from './api';
 import { STREAMS, type PersonRole, type PersonStatus, type Stream } from './data';
-import { readAccountRole, roleBadge, roleLabel } from './people';
+import { readAccountRole, readJoinDate, roleBadge, roleLabel } from './people';
 
 /**
  * The signed-in person's own record from the backend (GET /api/user/me), in the portal's terms. Fields the account
@@ -17,6 +17,8 @@ export interface AccountProfile {
   roleLabel: string;
   stream?: Stream;
   team?: string;
+  /** First working day, "YYYY-MM-DD", once an admin has set it. */
+  joined?: string;
   status: PersonStatus;
   phone?: string;
   workPhone?: string;
@@ -57,6 +59,7 @@ export function toAccountProfile(raw: unknown): AccountProfile {
     roleLabel: roleLabel(accountRole),
     stream: STREAMS.find((s) => s.id === p.stream)?.id,
     team: text(p.team),
+    joined: readJoinDate(p.joinedOn),
     status: p.isBanned === true ? 'inactive' : 'active',
     phone: text(p.phone) ?? text(p.phoneNumber),
     workPhone: text(p.workPhone),

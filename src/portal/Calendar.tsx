@@ -8,6 +8,7 @@ import { usePeopleById, usePortal } from './store';
 import { btnClass, BtnLabel, Modal, PIcon } from './ui';
 import { api, ApiError } from './api';
 import { eventFailedMessage, useEvents, type EventDraft } from './events';
+import { workAnniversaries, type Joiner } from './dashboard';
 
 /**
  * The dashboard calendar: the month on the left, the picked day's agenda and what comes next on the right.
@@ -54,12 +55,15 @@ const DAY_NUMBER = new Intl.DateTimeFormat('en-IN', { day: 'numeric' });
 const MONTH_SHORT = new Intl.DateTimeFormat('en-IN', { month: 'short' });
 const dayLabel = (iso: string, f: Intl.DateTimeFormat) => f.format(dateOf(iso));
 
-// With the backend connected, the directory, job board and verification desk here are still the demo's samples, so
-// their dates (anniversaries, first days, follow-ups) stay off the calendar until those records come from the backend.
+// With the backend connected, the job board and verification desk here are still the demo's samples, so their
+// follow-ups stay off the calendar until those records come from the backend.
 const SAMPLE_RECORDS = !api;
 
-/** Without `tasks` (they aren't connected to the backend yet) the calendar has no task dates and no "Task" in its legend. */
-export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text: string) => void }) {
+/**
+ * Without `tasks` the calendar has no task dates and no "Task" in its legend. Connected, `joiners` is the backend's
+ * directory, for first days and work anniversaries; without it (still loading, or it failed) there are none.
+ */
+export function CalendarCard({ tasks, joiners, notify }: { tasks?: Task[]; joiners?: Joiner[]; notify: (text: string) => void }) {
   const role = useSession()!.role;
   const manager = managesPortal(role);
   const { events, people, jobs, verifications, addEvent, removeEvent } = usePortal();
@@ -114,18 +118,7 @@ export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text:
       const event = { id: e.id, draft: { title: e.title, kind: e.kind, date: e.date, time: e.time }, canChange: e.canChange };
       out.push({ id: `e-${e.id}`, date: e.date, kind: 'event', title: e.title, meta: EVENT_LABEL[e.kind], time: e.time || undefined, event });
     }
-    // work anniversaries, and the first day of anyone joining in this stretch; invited people haven't joined yet
-    const years = [Number(monthStart.slice(0, 4)), Number(rangeEnd.slice(0, 4))];
-    for (const p of SAMPLE_RECORDS ? people : []) {
-      if (p.status === 'invited' || !p.joined) continue;
-      for (let y = years[0]; y <= years[1]; y++) {
-        const date = `${y}${p.joined.slice(4)}`;
-        const served = y - Number(p.joined.slice(0, 4));
-        // a 29 February joiner has no date in other years; skip rather than move it
-        if (!inRange(date) || served < 0 || localDay(dateOf(date).getTime()) !== date) continue;
-        out.push({ id: `p-${p.id}-${y}`, date, kind: 'people', title: p.name, meta: served === 0 ? 'First day' : `Work anniversary · ${plural(served, 'year')}` });
-      }
-    }
+    for (const a of workAnniversaries(api ? (joiners ?? []) : people, monthStart, rangeEnd)) out.push({ ...a, kind: 'people' });
     if (manager && SAMPLE_RECORDS) {
       for (const j of jobs) {
         if (j.open && j.closes && inRange(j.closes)) out.push({ id: `j-${j.id}`, date: j.closes, kind: 'followup', title: j.title, meta: 'Applications close', to: '/portal/community' });
@@ -144,7 +137,7 @@ export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text:
     }
     // timed events first, by time; then by kind, so a day always reads in the same order
     return out.sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '99').localeCompare(b.time ?? '99') || KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
-  }, [tasks, shownEvents, people, jobs, verifications, byId, manager, role, monthStart, rangeEnd]);
+  }, [tasks, shownEvents, people, joiners, jobs, verifications, byId, manager, role, monthStart, rangeEnd]);
 
   const byDate = useMemo(() => {
     const map = new Map<string, CalItem[]>();
@@ -153,7 +146,7 @@ export function CalendarCard({ tasks, notify }: { tasks?: Task[]; notify: (text:
   }, [items]);
   const dayItems = byDate.get(picked) ?? [];
   const ahead = items.filter((it) => it.date > picked).slice(0, AHEAD_MAX);
-  const kinds = KIND_ORDER.filter((k) => (k !== 'followup' || (manager && SAMPLE_RECORDS)) && (k !== 'people' || SAMPLE_RECORDS) && (k !== 'task' || tasks));
+  const kinds = KIND_ORDER.filter((k) => (k !== 'followup' || (manager && SAMPLE_RECORDS)) && (k !== 'people' || !api || joiners) && (k !== 'task' || tasks));
 
   // Weeks start on Sunday; the grid is filled out to whole weeks with the neighbouring months' days, greyed out.
   const lead = month.getDay();
