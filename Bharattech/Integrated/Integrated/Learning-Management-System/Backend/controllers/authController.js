@@ -920,4 +920,6 @@ module.exports = {
   keycloakLogin,
   acceptInvite,
   keycloakChangePassword,
+  // shared with the "Forgot password?" form (passwordResetController.js), which takes an Employee ID too
+  loginNameFor,
 };

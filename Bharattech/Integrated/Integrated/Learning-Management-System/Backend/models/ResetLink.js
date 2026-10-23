@@ -21,8 +21,7 @@ const ResetLinkSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now }
 }, { timestamps: true });
 
-// Index for faster lookups
-ResetLinkSchema.index({ resetToken: 1 });
+// Index for faster lookups (resetToken already has its unique index from the field; a second one clashes with it)
 ResetLinkSchema.index({ userEmail: 1 });
 ResetLinkSchema.index({ userRole: 1 });
 

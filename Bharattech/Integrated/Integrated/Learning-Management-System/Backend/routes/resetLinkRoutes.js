@@ -6,8 +6,8 @@ const { keycloakAuth, requireAdmin } = require("../middlewares/keycloakAuth");
 // Generate reset link (Admin only)
 router.post("/", keycloakAuth, requireAdmin, resetLinkController.generateResetLink);
 
-// Get reset links by role (Any authenticated user)
-router.get("/", keycloakAuth, resetLinkController.getResetLinksByRole);
+// Get reset links by role (Admin only: each one is a live link to someone else's account)
+router.get("/", keycloakAuth, requireAdmin, resetLinkController.getResetLinksByRole);
 
 // Mark reset link as used (public endpoint, no auth required) - MUST come before /:id routes
 router.post("/use", resetLinkController.markResetLinkUsed);

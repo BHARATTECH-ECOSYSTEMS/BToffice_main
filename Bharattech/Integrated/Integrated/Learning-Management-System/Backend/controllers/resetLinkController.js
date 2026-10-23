@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const ResetLink = require("../models/ResetLink");
 
 // ✅ Generate reset link
@@ -18,10 +19,9 @@ exports.generateResetLink = async (req, res) => {
         };
         const normalizedRole = roleMap[userRole?.toLowerCase()] || userRole;
         
-        console.log("🔍 Generating reset link:", { userEmail, originalRole: userRole, normalizedRole });
 
-        // Generate unique token
-        const resetToken = Math.random().toString(36).slice(2, 15) + Date.now().toString(36);
+        // Unguessable: the link is as good as a password for the next 24 hours
+        const resetToken = crypto.randomBytes(32).toString("base64url");
         
         // Create reset link URL
         const link = `${process.env.FRONTEND_URL || "http://localhost:5173"}/reset-password?token=${resetToken}&email=${encodeURIComponent(userEmail)}`;
@@ -43,7 +43,6 @@ exports.generateResetLink = async (req, res) => {
 
         await resetLink.save();
 
-        console.log("✅ Reset link generated:", userEmail, normalizedRole, "Status: Pending");
 
         res.status(201).json({
             id: resetLink._id,
@@ -57,7 +56,7 @@ exports.generateResetLink = async (req, res) => {
         console.log("📢 Reset link saved to database - should be visible on dashboards");
     } catch (error) {
         console.error("❌ Generate Reset Link Error:", error);
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
@@ -81,7 +80,7 @@ exports.getResetLinksByRole = async (req, res) => {
             // Also include case-insensitive regex as fallback for any legacy data
             query.$or = [
                 { userRole: normalizedRole }, // Exact match (most efficient)
-                { userRole: { $regex: new RegExp(`^${role}$`, "i") } } // Case-insensitive fallback
+                { userRole: { $regex: new RegExp(`^${String(role).replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") } } // Case-insensitive fallback
             ];
         }
 
@@ -93,9 +92,6 @@ exports.getResetLinksByRole = async (req, res) => {
             .sort({ createdAt: -1 });
 
         console.log(`📋 Found ${resetLinks.length} reset links before filtering`);
-        resetLinks.forEach((link, idx) => {
-            console.log(`  Link ${idx + 1}: email=${link.userEmail}, role=${link.userRole}, status=${link.status}, expired=${new Date(link.expiresAt) < new Date()}, used=${link.used}`);
-        });
 
         // Check expiration and filter to show "Pending" and "Sent" links (not "Used")
         const now = new Date();
@@ -104,9 +100,6 @@ exports.getResetLinksByRole = async (req, res) => {
                 const isExpired = new Date(link.expiresAt) < now;
                 // Show links that are "Pending" or "Sent" and not expired/used
                 const shouldShow = (link.status === "Pending" || link.status === "Sent") && !isExpired && !link.used;
-                if (!shouldShow) {
-                    console.log(`⏭️ Filtering out link for ${link.userEmail}: status=${link.status}, expired=${isExpired}, used=${link.used}`);
-                }
                 return shouldShow;
             })
             .map(link => {
@@ -127,7 +120,7 @@ exports.getResetLinksByRole = async (req, res) => {
         res.status(200).json(linksWithStatus);
     } catch (error) {
         console.error("❌ Get Reset Links Error:", error);
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
@@ -166,7 +159,6 @@ exports.markResetLinkAsSent = async (req, res) => {
         resetLink.status = "Sent";
         await resetLink.save();
 
-        console.log("✅ Reset link marked as sent:", resetLink.userEmail);
 
         res.status(200).json({
             message: "Reset link marked as sent",
@@ -181,7 +173,7 @@ exports.markResetLinkAsSent = async (req, res) => {
         });
     } catch (error) {
         console.error("❌ Mark Reset Link As Sent Error:", error);
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
@@ -213,7 +205,7 @@ exports.markResetLinkUsed = async (req, res) => {
         res.status(200).json({ message: "Reset link marked as used" });
     } catch (error) {
         console.error("❌ Mark Reset Link Used Error:", error);
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
