@@ -1,8 +1,7 @@
 const mongoose = require("mongoose");
 
-// Profile photos are kept in MongoDB (GridFS, bucket "userPhotos"), like task files and policy PDFs, rather than on
-// the server's disk (which hosts like Render wipe on restart) or an outside image service.
-const bucket = () => new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: "userPhotos" });
+// Profile photos (and learning course covers, utils/courseThumbs.js) are kept in MongoDB GridFS, like task files and
+// policy PDFs, rather than on the server's disk (which hosts like Render wipe on restart) or an outside image service.
 
 // The portal crops photos to a 640 px square JPEG (~100 KB) before sending, so this only stops misuse.
 const PHOTO_MAX_BYTES = 2 * 1024 * 1024;
@@ -19,26 +18,36 @@ const KINDS = [
 /** The content type to store for this photo, or null when it isn't a PNG, JPG or WebP. */
 const photoType = (buffer) => (buffer?.length ? KINDS.find((k) => k.matches(buffer))?.type ?? null : null);
 
-const saveUserPhoto = (buffer, { contentType, userId }) =>
-  new Promise((resolve, reject) => {
-    const upload = bucket().openUploadStream(`photo-${userId}`, { metadata: { contentType, userId: String(userId) } });
-    upload.once("error", reject).once("finish", () => resolve(upload.id));
-    upload.end(buffer);
-  });
-
-/** The stored file's record (its type and size), or null when it's gone. */
-const findUserPhoto = async (fileId) => (await bucket().find({ _id: fileId }).limit(1).toArray())[0] ?? null;
-
-const openUserPhoto = (fileId) => bucket().openDownloadStream(fileId);
-
-const deleteUserPhoto = async (fileId) => {
-  if (!fileId) return;
-  // a photo already gone is fine: the goal is that it isn't there
-  await bucket()
-    .delete(fileId)
-    .catch((error) => {
-      if (!/FileNotFound|not found/i.test(error.message)) throw error;
-    });
+/** Saving, finding, streaming and deleting images in one GridFS bucket. */
+const imageStore = (bucketName) => {
+  const bucket = () => new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName });
+  return {
+    save: (buffer, { name, contentType, metadata = {} }) =>
+      new Promise((resolve, reject) => {
+        const upload = bucket().openUploadStream(name, { metadata: { contentType, ...metadata } });
+        upload.once("error", reject).once("finish", () => resolve(upload.id));
+        upload.end(buffer);
+      }),
+    /** The stored file's record (its type and size), or null when it's gone. */
+    find: async (fileId) => (await bucket().find({ _id: fileId }).limit(1).toArray())[0] ?? null,
+    open: (fileId) => bucket().openDownloadStream(fileId),
+    remove: async (fileId) => {
+      if (!fileId) return;
+      // an image already gone is fine: the goal is that it isn't there
+      await bucket()
+        .delete(fileId)
+        .catch((error) => {
+          if (!/FileNotFound|not found/i.test(error.message)) throw error;
+        });
+    },
+  };
 };
 
-module.exports = { PHOTO_MAX_BYTES, photoType, saveUserPhoto, findUserPhoto, openUserPhoto, deleteUserPhoto };
+const photos = imageStore("userPhotos");
+
+const saveUserPhoto = (buffer, { contentType, userId }) => photos.save(buffer, { name: `photo-${userId}`, contentType, metadata: { userId: String(userId) } });
+const findUserPhoto = photos.find;
+const openUserPhoto = photos.open;
+const deleteUserPhoto = photos.remove;
+
+module.exports = { PHOTO_MAX_BYTES, photoType, imageStore, saveUserPhoto, findUserPhoto, openUserPhoto, deleteUserPhoto };

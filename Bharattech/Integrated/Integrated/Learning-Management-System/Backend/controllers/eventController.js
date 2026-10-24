@@ -2,6 +2,7 @@ const CalendarEvent = require("../models/CalendarEvent");
 const { KINDS, TITLE_MAX } = require("../models/CalendarEvent");
 const { noteEvent } = require("../utils/notify");
 const { todayInIndia, readDay } = require("../utils/days");
+const { Refusal, answerError, isAdmin, isManager, isObjectId } = require("../utils/refusal");
 
 /*
  * The portal calendar's events (GET/POST /api/events, PATCH/DELETE /api/events/:id; server.js signs everyone in).
@@ -17,24 +18,7 @@ const KIND_LABEL = { meeting: "Meeting", training: "Training", deadline: "Deadli
 const RANGE_MAX_DAYS = 400;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-const roleKey = (role) => String(role || "").toLowerCase().replace(/[-_\s]/g, "");
-const isAdmin = (user) => ["admin", "superadmin"].includes(roleKey(user.role));
-const isManager = (user) => isAdmin(user) || roleKey(user.role) === "subadmin";
-const isObjectId = (value) => /^[0-9a-f]{24}$/i.test(String(value ?? ""));
 const canChange = (event, user) => isAdmin(user) || (isManager(user) && String(event.createdBy?._id ?? event.createdBy) === String(user.id));
-
-class Refusal extends Error {
-  constructor(status, message) {
-    super(message);
-    this.status = status;
-  }
-}
-
-const answerError = (res, error, what) => {
-  if (error instanceof Refusal) return res.status(error.status).json({ message: error.message });
-  console.error(`${what} error:`, error.message);
-  return res.status(500).json({ message: "Server Error" });
-};
 
 /** The event as the request would leave it: `current` with the request's changes, all checked. */
 const readEvent = (body = {}, current = {}) => {
