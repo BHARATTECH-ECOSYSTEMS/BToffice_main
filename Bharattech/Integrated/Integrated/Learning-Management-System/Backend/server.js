@@ -39,6 +39,7 @@ const verificationRoutes = require("./routes/verificationRoutes");
 const verificationRequestRoutes = require("./routes/verificationRequestRoutes");
 const idDocumentRoutes = require("./routes/idDocumentRoutes");
 const communityRoutes = require("./routes/communityRoutes");
+const attendanceRoutes = require("./routes/attendanceRoutes");
 const { startDailyLeaverCheck } = require("./utils/leaverDocuments");
 const courseProgressRoutes = require("./routes/courseProgressRoutes");
 const certificateRoutes = require("./routes/certificateRoutes");
@@ -107,6 +108,7 @@ app.use("/api/learning", keycloakAuth, learningRoutes);
 app.use("/api/verifications", keycloakAuth, verificationRoutes);
 app.use("/api/verification-documents", keycloakAuth, idDocumentRoutes);
 app.use("/api/community", keycloakAuth, communityRoutes);
+app.use("/api/attendance", keycloakAuth, attendanceRoutes);
 // the website's public form: no sign-in, a few an hour per address
 app.use("/api/verification-requests", rateLimits.publicForm, verificationRequestRoutes);
 app.use("/api/course-progress", keycloakAuth, courseProgressRoutes);
