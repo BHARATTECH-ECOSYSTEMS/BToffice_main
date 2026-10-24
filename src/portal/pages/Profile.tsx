@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { ApiErrorKind } from '../api';
-import { BUSY_MESSAGE } from '../api';
-import { ID_DOC_MAX_MB, ID_DOCS, ID_RETENTION_DAYS, PERSON_STATUS_LABEL, ROLE_LABEL, STREAM_LABEL, type IdDocument, type PersonRole } from '../data';
+import { ApiError, BUSY_MESSAGE } from '../api';
+import { ID_DOC_MAX_MB, ID_DOCS, ID_RETENTION_DAYS, PERSON_STATUS_LABEL, ROLE_LABEL, STREAM_LABEL, type IdDocKind, type IdDocument, type PersonRole } from '../data';
+import { myDocumentsFailedMessage, useMyDocuments } from '../myDocuments';
 import { useMyPhoto } from '../myPhoto';
+import { PdfModal } from '../PdfModal';
 import { useAccountProfile, type ProfileState } from '../profile';
 import { formatDate, formatSize, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, Empty, initials, PageHead, PIcon, SampleDataBar, useNotice } from '../ui';
@@ -22,19 +24,19 @@ const NOT_SET = 'Not set yet';
 /**
  * The signed-in person's own profile, opened from their name in the top bar. With the real sign-in, the details come
  * from the backend's account record (src/portal/profile.ts); with the demo sign-in, from the demo directory. Its
- * documents section is where the upload link from an employee verification lands (?docs=1): the employee uploads
- * their Aadhaar and PAN here, and only admins see them in HR OPS. That part has no backend yet, so it stays a demo.
+ * documents section is where an employee verification's bell note and email land (?docs=1): the employee uploads
+ * their Aadhaar and PAN here (connected: src/portal/myDocuments.ts), and only they and admins can open them.
  * Name and photo are changed in Settings.
  */
 export function Profile() {
   const photo = useMyPhoto();
   const [account, retry] = useAccountProfile();
-  const { me, verifications, documents, uploadDocument } = usePortal();
+  const { me } = usePortal();
   const [params] = useSearchParams();
   const docsRef = useRef<HTMLElement>(null);
   const [notice, notify] = useNotice();
-  const request = verifications.find((v) => v.kind === 'employee' && v.personId === me.id && v.status === 'pending');
-  const mine = documents.filter((d) => d.personId === me.id);
+  const docs = useVerificationDocuments();
+  const [viewing, setViewing] = useState<IdDocKind | null>(null);
 
   // the upload link opens straight onto the documents
   useEffect(() => {
@@ -95,22 +97,32 @@ export function Profile() {
               <h2 id="me-docs" className="p-card-title">
                 Verification documents
               </h2>
-              <p className="p-muted">{request ? 'HR has asked for your documents. Upload both to finish your verification.' : 'Documents HR asks for appear here.'}</p>
+              <p className="p-muted">{docs.headline}</p>
             </div>
           </div>
-          <SampleDataBar>this part isn’t connected to the company system yet, so uploads stay in this browser tab and are gone after a reload.</SampleDataBar>
-          {request || mine.length ? (
-            <fieldset className="p-docs" disabled={!request}>
+          {!docs.connected && <SampleDataBar>this part isn’t connected to the company system yet, so uploads stay in this browser tab and are gone after a reload.</SampleDataBar>}
+          {docs.status === 'loading' ? (
+            <p className="p-muted">Loading your documents…</p>
+          ) : docs.status === 'error' ? (
+            <Empty icon="alert" title="Couldn’t load your documents">
+              {docs.errorText}{' '}
+              <button type="button" className={btnClass('ghost', { small: true })} onClick={docs.retry}>
+                <BtnLabel icon="refresh">Try again</BtnLabel>
+              </button>
+            </Empty>
+          ) : docs.canUpload || docs.list.length ? (
+            <fieldset className="p-docs" disabled={!docs.canUpload}>
               <legend>Government ID</legend>
               {ID_DOCS.map((d) => (
                 <DocRow
                   key={d.id}
                   label={d.label}
                   hint={d.hint}
-                  doc={mine.find((m) => m.kind === d.id)}
-                  canUpload={!!request}
-                  onPick={(file) => {
-                    uploadDocument(d.id, file);
+                  doc={docs.list.find((m) => m.kind === d.id)}
+                  canUpload={docs.canUpload}
+                  onOpen={docs.open ? () => setViewing(d.id) : undefined}
+                  onPick={async (file) => {
+                    await docs.upload(d.id, file);
                     notify(`${d.label} uploaded. HR can see it now.`);
                   }}
                 />
@@ -122,10 +134,20 @@ export function Profile() {
             </Empty>
           )}
           <p className="p-field-hint">
-            Only admins can open these files. They're deleted automatically {ID_RETENTION_DAYS} days after your last working day; we keep only your name, dates and role.
+            Only you and admins can open these files, and every time an admin opens one it’s recorded. They're deleted automatically {ID_RETENTION_DAYS} days after your last
+            working day; we keep only your name, dates and role.
           </p>
           {account.kind === 'off' && <p className="p-field-hint">Demo: there's no server yet, so files stay in this browser tab only and are gone after a reload.</p>}
         </section>
+        {viewing && docs.open && (
+          <PdfModal
+            title={ID_DOCS.find((d) => d.id === viewing)?.label ?? 'Document'}
+            fileName={docs.list.find((m) => m.kind === viewing)?.fileName ?? `${viewing}.pdf`}
+            load={() => docs.open!(viewing)}
+            failure={(kind) => (kind === 'not-found' ? 'That file isn’t there any more.' : myDocumentsFailedMessage(new ApiError(kind)))}
+            onClose={() => setViewing(null)}
+          />
+        )}
       </div>
     </>
   );
@@ -191,16 +213,82 @@ function AccountPending({ state, onRetry }: { state: Exclude<ProfileState, { kin
   );
 }
 
-function DocRow({ label, hint, doc, canUpload, onPick }: { label: string; hint: string; doc?: IdDocument; canUpload: boolean; onPick: (file: File) => void }) {
+type ShownDocument = Pick<IdDocument, 'kind' | 'fileName' | 'size' | 'uploaded'> & { url?: string };
+
+/**
+ * The documents card's data: the demo's in-tab uploads, or (connected) the employee's own verification on the
+ * backend (myDocuments.ts). Either way: whether HR is waiting for uploads, what's uploaded, and how to send one.
+ */
+function useVerificationDocuments() {
+  const { me, verifications, documents, uploadDocument } = usePortal();
+  const remote = useMyDocuments();
+  if (remote.state.kind === 'off') {
+    const request = verifications.find((v) => v.kind === 'employee' && v.personId === me.id && v.status === 'pending');
+    return {
+      connected: false,
+      status: 'ready' as const,
+      errorText: '',
+      retry: () => {},
+      headline: request ? 'HR has asked for your documents. Upload both to finish your verification.' : 'Documents HR asks for appear here.',
+      canUpload: !!request,
+      list: documents.filter((d) => d.personId === me.id) as ShownDocument[],
+      upload: async (kind: IdDocKind, file: File) => uploadDocument(kind, file),
+      open: null as ((kind: IdDocKind) => Promise<Blob>) | null,
+    };
+  }
+  const ready = remote.state.kind === 'ready' ? remote.state.mine : null;
+  const pending = ready?.request?.status === 'pending';
+  return {
+    connected: true,
+    status: remote.state.kind === 'ready' ? ('ready' as const) : remote.state.kind,
+    errorText: remote.state.kind === 'error' ? myDocumentsFailedMessage(remote.state.error) : '',
+    retry: remote.retry,
+    headline: pending
+      ? 'HR has asked for your documents. Upload both to finish your verification.'
+      : ready?.request
+        ? `Your verification is ${ready.request.status}. Your files stay on record; you can still open them.`
+        : 'Documents HR asks for appear here.',
+    canUpload: pending,
+    list: (ready?.documents ?? []) as ShownDocument[],
+    upload: remote.upload,
+    open: remote.open as ((kind: IdDocKind) => Promise<Blob>) | null,
+  };
+}
+
+function DocRow({
+  label,
+  hint,
+  doc,
+  canUpload,
+  onPick,
+  onOpen,
+}: {
+  label: string;
+  hint: string;
+  doc?: ShownDocument;
+  canUpload: boolean;
+  /** Resolves when saved; a refusal shows under the row. */
+  onPick: (file: File) => Promise<void>;
+  /** Connected: the file opens in the portal's PDF window (it needs the sign-in); the demo links to its in-tab file. */
+  onOpen?: () => void;
+}) {
   const input = useRef<HTMLInputElement>(null);
   const [error, setError] = useState('');
-  const pick = (file?: File) => {
+  const [saving, setSaving] = useState(false);
+  const pick = async (file?: File) => {
     if (input.current) input.current.value = '';
     if (!file) return;
     if (file.type !== 'application/pdf' || !file.name.toLowerCase().endsWith('.pdf')) return setError('Only PDF files can be uploaded.');
     if (file.size > ID_DOC_MAX_MB * 1024 * 1024) return setError(`The file is over ${ID_DOC_MAX_MB} MB. Scan it at a lower resolution and try again.`);
     setError('');
-    onPick(file);
+    setSaving(true);
+    try {
+      await onPick(file);
+    } catch (e) {
+      setError(myDocumentsFailedMessage(e instanceof ApiError ? e : new ApiError('unavailable')));
+    } finally {
+      setSaving(false);
+    }
   };
   return (
     <div className="p-doc-row" data-done={doc ? '' : undefined}>
@@ -213,10 +301,17 @@ function DocRow({ label, hint, doc, canUpload, onPick }: { label: string; hint: 
         </strong>
         {doc ? (
           <span>
-            <a href={doc.url} target="_blank" rel="noreferrer">
-              {doc.fileName}
-              <span className="sr-only"> (opens in a new tab)</span>
-            </a>{' '}
+            {onOpen ? (
+              <button type="button" className="p-link" onClick={onOpen}>
+                {doc.fileName}
+                <span className="sr-only"> (opens the PDF)</span>
+              </button>
+            ) : (
+              <a href={doc.url} target="_blank" rel="noreferrer">
+                {doc.fileName}
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            )}{' '}
             · {formatSize(doc.size)} · uploaded {formatDate(doc.uploaded)}
           </span>
         ) : (
@@ -230,13 +325,13 @@ function DocRow({ label, hint, doc, canUpload, onPick }: { label: string; hint: 
       </div>
       {canUpload && (
         <>
-          <button type="button" className={btnClass(doc ? 'ghost' : 'primary', { small: true })} onClick={() => input.current?.click()}>
+          <button type="button" className={btnClass(doc ? 'ghost' : 'primary', { small: true })} onClick={() => input.current?.click()} disabled={saving}>
             <BtnLabel icon="upload">
               {doc ? 'Replace' : 'Upload'}
               <span className="sr-only"> {label}</span>
             </BtnLabel>
           </button>
-          <input ref={input} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => pick(e.target.files?.[0])} />
+          <input ref={input} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => void pick(e.target.files?.[0])} />
         </>
       )}
     </div>

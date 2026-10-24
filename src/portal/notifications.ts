@@ -21,7 +21,17 @@ export interface BellNote {
   at?: string;
 }
 
-const ICON: Record<string, PortalIconName> = { task: 'clipboard', 'task-update': 'edit', 'work-handed-in': 'upload', certificate: 'award', policy: 'file', event: 'calendar', course: 'cap' };
+// a kind missing here is never shown, so each new kind of note needs its icon
+const ICON: Record<string, PortalIconName> = {
+  task: 'clipboard',
+  'task-update': 'edit',
+  'work-handed-in': 'upload',
+  certificate: 'award',
+  policy: 'file',
+  event: 'calendar',
+  course: 'cap',
+  verification: 'shield',
+};
 const PORTAL_PATH = /^\/portal(\/|$)/;
 
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);

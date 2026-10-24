@@ -78,3 +78,9 @@ test('a new course note shows in the bell with the course icon and links to the 
   assert.equal(notes[0].icon, 'cap');
   assert.equal(notes[0].to, '/portal/lms/course/6ad8bc3dd430c9b545aa2a01');
 });
+
+test("an admin's note about a verification request from another company shows with the shield, opening that request", () => {
+  const note = { id: 'n9', kind: 'verification', title: 'Verification request VR-0001: Asha Rao', detail: 'From Acme Hiring Pvt Ltd', link: '/portal/verification/requests?file=6ad8bc3dd430c9b545aa3003', at: '2026-10-24T09:00:00.000Z', read: false };
+  const { notes } = toBellNotes({ notes: [note], unread: 1 });
+  assert.deepEqual(notes.map((n) => [n.id, n.icon, n.to]), [['n9', 'shield', '/portal/verification/requests?file=6ad8bc3dd430c9b545aa3003']]);
+});

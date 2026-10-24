@@ -1,13 +1,16 @@
+import { authConfig } from './auth';
 import type { Verification } from './data';
 
 /**
- * Verification requests sent from the public website, waiting for the portal. Outside companies use the footer form
- * instead of emailing someone at Bharattech, so every request lands in one place (HR OPS → Verification Requests).
- * There is no backend yet: requests are held in this tab's memory and the portal picks them up when it opens, so
- * they are gone after a reload. With a backend this module becomes one POST from the form.
+ * Verification requests sent from the public website. Outside companies use the footer form instead of emailing
+ * someone at Bharattech, so every request lands in one place (HR OPS → Verification Requests).
+ * - Connected (authConfig set), the form posts to the backend's public /verification-requests, which needs no
+ *   sign-in, files the request and emails the requester a receipt (sendEmploymentRequest).
+ * - In the demo, requests are held in this tab's memory and the portal picks them up when it opens, so they are
+ *   gone after a reload (submitEmploymentRequest).
  */
 
-type EmploymentRequestDraft = Pick<
+export type EmploymentRequestDraft = Pick<
   Extract<Verification, { kind: 'employment' }>,
   'requesterCompany' | 'requesterName' | 'requesterEmail' | 'candidate' | 'employeeId' | 'designation' | 'from' | 'to'
 >;
@@ -42,3 +45,36 @@ export function submitEmploymentRequest(draft: EmploymentRequestDraft) {
 
 /** The requests sent so far in this tab, newest first. */
 export const receivedRequests = (): Verification[] => [...received];
+
+/** Whether the footer form goes to the company's backend (else it's the demo's, kept in this tab). */
+export const sendsToBackend = !!authConfig;
+
+export type SendResult = { ok: true; reference: string } | { ok: false; message: string };
+const UNREACHABLE = 'We couldn’t send your request just now. Try again in a moment, or email our HR team.';
+
+/**
+ * Posts the form to the backend, with no sign-in: the website's visitors aren't signed in. `website` is the hidden
+ * field people never see, sent as it was filled (only something automatic fills it in). Resolves with the reference
+ * the requester is shown, '' when the backend quietly turned a bot away, or the backend's own reason for refusing.
+ */
+export async function sendEmploymentRequest(
+  draft: EmploymentRequestDraft,
+  website: string,
+  { base = authConfig?.api ?? '', request = (input: string, init: RequestInit) => fetch(input, init) }: { base?: string; request?: (input: string, init: RequestInit) => Promise<Response> } = {},
+): Promise<SendResult> {
+  let res: Response;
+  try {
+    res = await request(`${base}/verification-requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ ...draft, consent: true, website }),
+    });
+  } catch {
+    return { ok: false, message: UNREACHABLE };
+  }
+  const body = (await res.json().catch(() => null)) as { reference?: unknown; message?: unknown } | null;
+  if (res.ok) return { ok: true, reference: typeof body?.reference === 'string' ? body.reference : '' };
+  // a refused field, or too many from here: the backend says what to do
+  if ((res.status === 400 || res.status === 429) && typeof body?.message === 'string' && body.message.trim()) return { ok: false, message: body.message.trim() };
+  return { ok: false, message: UNREACHABLE };
+}

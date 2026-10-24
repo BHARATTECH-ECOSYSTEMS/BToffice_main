@@ -137,14 +137,19 @@ const CONNECTED_HELP: HelpGroup[] = [
     topics: [
       { q: 'What can admins do?', a: 'Admins add employees and interns, change the roles of sub admins, employees and interns or remove them, give tasks, issue certificates, publish policies, add resources and run HR OPS. Only a Super Admin can add, change or remove admins.', only: 'admin' },
       { q: 'What can a sub admin do?', a: 'Sub admins see everyone in People, give tasks to employees and interns, and change or delete the tasks they gave. Adding or removing people, changing roles, certificates, policies, resources and HR OPS stay with admins.', only: 'subadmin' },
-      { q: 'How do I verify a company or an employee?', a: `${VERIFY_STEPS} This desk still shows sample data until it’s connected.`, audience: 'admin', link: VERIFY_LINK },
+      {
+        q: 'How do I verify a company or an employee?',
+        a: `${VERIFY_STEPS} Company and employee requests are saved to the company system; a decided one is kept as the record, so only a pending request can be deleted. When you open an employee’s request, they’re asked in their bell and by email to upload their Aadhaar and PAN in their Profile; each can be ticked once it’s there, and every time an admin opens one it’s recorded in the request’s activity. Verification Requests come from other companies through the website’s form; you get a bell note for each, and your decision is emailed to them as a plain yes or no about the details they sent, never your note.`,
+        audience: 'admin',
+        link: VERIFY_LINK,
+      },
     ],
   },
   {
     title: 'Good to know',
     icon: 'alert',
     topics: [
-      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, courses and your progress in them, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload. e-Office check-ins stay in this browser for now.' },
+      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, courses and your progress in them, verifications (including requests from other companies), the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload. e-Office check-ins stay in this browser for now.' },
     ],
   },
 ];

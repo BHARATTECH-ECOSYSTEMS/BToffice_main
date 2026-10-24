@@ -1,15 +1,15 @@
 import { useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useScene } from '../gl/Scene';
-import { submitEmploymentRequest } from '../portal/inbox';
+import { sendEmploymentRequest, sendsToBackend, submitEmploymentRequest } from '../portal/inbox';
 import { Arrow, BtnText } from './ui';
 import '../styles/verify-request.css';
 
 /**
  * Employment verification for outside companies, in the site footer. Other companies (a new employer, a
  * background-check agency) send their request here instead of emailing someone at Bharattech, so every request
- * reaches HR OPS → Verification Requests in one place. There is no backend yet: the request is kept in this tab
- * only, and the answer is not emailed back. The form says so.
+ * reaches HR OPS → Verification Requests in one place. Connected, it goes to the company's backend, which emails a
+ * receipt and later the answer; in the demo it's kept in this tab only, and the form says so.
  */
 /** The footer's request button, under the CONNECT pill, with one line saying who it is for. */
 export function VerifyRequestButton() {
@@ -75,6 +75,9 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
   const ids = useId();
   const [error, setError] = useState('');
   const [reference, setReference] = useState('');
+  // connected: received, with the address the receipt went to
+  const [received, setReceived] = useState<{ email: string } | null>(null);
+  const [sending, setSending] = useState(false);
 
   // a modal <dialog> brings Esc, a focus trap and an inert page; the page behind stops scrolling
   useEffect(() => {
@@ -95,8 +98,9 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
     };
   }, [lenis]);
 
-  const submit = (e: FormEvent<HTMLFormElement>) => {
+  const submit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (sending) return;
     const f = new FormData(e.currentTarget);
     const get = (k: string) => String(f.get(k) ?? '').trim();
     const draft = {
@@ -114,8 +118,15 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
     if (draft.to && draft.to < draft.from) return setError('The month they left can’t be before the month they joined.');
     if (draft.from > thisMonth() || (draft.to && draft.to > thisMonth())) return setError('Employment months can’t be in the future.');
     setError('');
-    setReference(submitEmploymentRequest(draft));
+    if (!sendsToBackend) return setReference(submitEmploymentRequest(draft));
+    setSending(true);
+    const sent = await sendEmploymentRequest(draft, get('website'));
+    setSending(false);
+    if (!sent.ok) return setError(sent.message);
+    setReference(sent.reference);
+    setReceived({ email: draft.requesterEmail });
   };
+  const done = !!reference || !!received;
 
   return (
     <dialog
@@ -134,23 +145,31 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
     >
       {/* the title and the close button stay put while the fields scroll under them */}
       <header className="vr-head">
-        <h2 id={`${ids}-title`}>{reference ? 'Request received' : 'Request an employment verification'}</h2>
-        {!reference && <p className="vr-sub">Tell us who you’re checking. We confirm whether they worked here, for how long, and in which role.</p>}
+        <h2 id={`${ids}-title`}>{done ? 'Request received' : 'Request an employment verification'}</h2>
+        {!done && <p className="vr-sub">Tell us who you’re checking. We confirm whether they worked here, for how long, and in which role.</p>}
         <button type="button" className="vr-close" onClick={onClose} aria-label="Close">
           <svg viewBox="0 0 16 16" aria-hidden="true">
             <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
           </svg>
         </button>
       </header>
-      {reference ? (
+      {done ? (
         <div className="vr-body vr-done" role="status">
-          <p>
-            Your reference is <strong className="vr-ref">{reference}</strong>. Our HR team checks it against our records.
-          </p>
-          <p className="form-note">
-            Demo: there is no server yet, so this request is kept in this browser tab only and the answer won’t be emailed to you. Staff can see it in the
-            portal under HR OPS, Verification Requests.
-          </p>
+          {reference ? (
+            <p>
+              Your reference is <strong className="vr-ref">{reference}</strong>. Our HR team checks it against our records.
+            </p>
+          ) : (
+            <p>Thank you. Our HR team checks it against our records.</p>
+          )}
+          {received ? (
+            <p className="form-note">We’ve emailed a receipt to {received.email}, and we’ll email the answer there too.</p>
+          ) : (
+            <p className="form-note">
+              Demo: there is no server yet, so this request is kept in this browser tab only and the answer won’t be emailed to you. Staff can see it in the
+              portal under HR OPS, Verification Requests.
+            </p>
+          )}
           <button type="button" className="btn btn-primary" onClick={onClose} autoFocus>
             <BtnText>Done</BtnText>
           </button>
@@ -204,6 +223,14 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
               <input name="consent" type="checkbox" required />
               <span>The candidate has given written consent for this check.</span>
             </label>
+            {/* a trap for bots: off-screen, out of the tab order and hidden from screen readers, so only something
+                automatic fills it in, and the backend then quietly saves nothing */}
+            <div className="vr-trap" aria-hidden="true">
+              <label>
+                Leave this empty
+                <input name="website" tabIndex={-1} autoComplete="off" />
+              </label>
+            </div>
             {error && (
               <p className="vr-error" role="alert">
                 {error}
@@ -212,10 +239,12 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
           </div>
           {/* the send button stays in reach however far the fields are scrolled */}
           <div className="vr-foot form-foot">
-            <button className="btn btn-primary" type="submit">
-              <BtnText>Send request</BtnText> <Arrow />
+            <button className="btn btn-primary" type="submit" disabled={sending}>
+              <BtnText>{sending ? 'Sending…' : 'Send request'}</BtnText> <Arrow />
             </button>
-            <p className="form-note">Demo: requests aren’t sent to a server yet, and nothing is emailed.</p>
+            <p className="form-note">
+              {sendsToBackend ? 'We email you a receipt now, and the answer once HR has checked.' : 'Demo: requests aren’t sent to a server yet, and nothing is emailed.'}
+            </p>
           </div>
         </form>
       )}

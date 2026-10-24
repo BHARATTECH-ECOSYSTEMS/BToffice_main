@@ -9,6 +9,7 @@ import { btnClass, BtnLabel, Modal, PIcon } from './ui';
 import { api, ApiError } from './api';
 import { eventFailedMessage, useEvents, type EventDraft } from './events';
 import { workAnniversaries, type Joiner } from './dashboard';
+import { useRemoteVerifications, type RemoteVerification } from './verifications';
 
 /**
  * The dashboard calendar: the month on the left, the picked day's agenda and what comes next on the right.
@@ -55,8 +56,8 @@ const DAY_NUMBER = new Intl.DateTimeFormat('en-IN', { day: 'numeric' });
 const MONTH_SHORT = new Intl.DateTimeFormat('en-IN', { month: 'short' });
 const dayLabel = (iso: string, f: Intl.DateTimeFormat) => f.format(dateOf(iso));
 
-// With the backend connected, the job board and verification desk here are still the demo's samples, so their
-// follow-ups stay off the calendar until those records come from the backend.
+// With the backend connected, the job board is still the demo's samples, so its follow-ups stay off the calendar
+// until those records come from the backend. (The verification desk's follow-ups come from the backend; see below.)
 const SAMPLE_RECORDS = !api;
 
 /**
@@ -85,6 +86,19 @@ export function CalendarCard({ tasks, joiners, notify }: { tasks?: Task[]; joine
   const lastDay = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
   // connected, the month's events and everything "Coming up" can reach from any of its days, in one request per month
   const remote = useEvents(monthStart, addDays(iso(lastDay), AHEAD_DAYS));
+  // the verification desk is admin-only, so its follow-ups are too; connected, they come from the backend's requests
+  const companyChecks = useRemoteVerifications('company', role === 'admin');
+  const employeeChecks = useRemoteVerifications('employee', role === 'admin');
+  const outsideRequests = useRemoteVerifications('employment', role === 'admin');
+  const followUpRequests = useMemo(
+    () =>
+      api
+        ? [companyChecks.state, employeeChecks.state, outsideRequests.state].flatMap((s) => (s.kind === 'ready' ? s.requests : []))
+        : SAMPLE_RECORDS
+          ? verifications
+          : [],
+    [companyChecks.state, employeeChecks.state, outsideRequests.state, verifications],
+  );
   const shownEvents = useMemo(
     () =>
       api
@@ -124,20 +138,21 @@ export function CalendarCard({ tasks, joiners, notify }: { tasks?: Task[]; joine
         if (j.open && j.closes && inRange(j.closes)) out.push({ id: `j-${j.id}`, date: j.closes, kind: 'followup', title: j.title, meta: 'Applications close', to: '/portal/community' });
       }
     }
-    // the verification desk is admin-only, so its follow-ups are too
-    if (role === 'admin' && SAMPLE_RECORDS) {
-      for (const v of verifications) {
+    if (role === 'admin') {
+      for (const v of followUpRequests) {
         if (v.status !== 'pending') continue;
         const date = addDays(v.requested, VERIFICATION_STALE_DAYS);
         if (!inRange(date)) continue;
-        const subject = v.kind === 'company' ? v.company : v.kind === 'employment' ? v.candidate : (byId.get(v.personId)?.name ?? 'Removed user');
+        const person = (v as RemoteVerification).person;
+        const subject =
+          v.kind === 'company' ? v.company : v.kind === 'employment' ? v.candidate : person ? (person.removed ? 'Removed user' : person.name) : (byId.get(v.personId)?.name ?? 'Removed user');
         const page = v.kind === 'employment' ? 'requests' : v.kind;
         out.push({ id: `v-${v.id}`, date, kind: 'followup', title: subject, meta: 'Verification follow-up', to: `/portal/verification/${page}?file=${v.id}` });
       }
     }
     // timed events first, by time; then by kind, so a day always reads in the same order
     return out.sort((a, b) => a.date.localeCompare(b.date) || (a.time ?? '99').localeCompare(b.time ?? '99') || KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind));
-  }, [tasks, shownEvents, people, joiners, jobs, verifications, byId, manager, role, monthStart, rangeEnd]);
+  }, [tasks, shownEvents, people, joiners, jobs, followUpRequests, byId, manager, role, monthStart, rangeEnd]);
 
   const byDate = useMemo(() => {
     const map = new Map<string, CalItem[]>();

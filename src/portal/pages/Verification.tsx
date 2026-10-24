@@ -1,9 +1,14 @@
 import { useState, type CSSProperties, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
-import { COMPANY_CHECKS, EMAIL_SHAPE, EMPLOYEE_CHECKS, EMPLOYMENT_CHECKS, ID_DOCS, ID_RETENTION_DAYS, ROLE_LABEL, VERIFICATION_STALE_DAYS, type Verification, type VerificationKind, type VerificationStatus } from '../data';
+import { ApiError } from '../api';
+import { COMPANY_CHECKS, EMAIL_SHAPE, EMPLOYEE_CHECKS, EMPLOYMENT_CHECKS, ID_DOCS, ID_RETENTION_DAYS, VERIFICATION_STALE_DAYS, type IdDocKind, type Verification, type VerificationKind, type VerificationStatus } from '../data';
+import { PdfModal } from '../PdfModal';
+import { useDirectory } from '../people';
 import { useSession } from '../session';
-import { documentsDeleteOn, formatDate, formatSize, usePeopleById, usePortal } from '../store';
+import { documentsDeleteOn, formatDate, formatSize, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PageHead, PIcon, PortalNotFound, SampleDataBar, SearchField, useNotice } from '../ui';
+import { verificationFailedMessage } from '../verifications';
+import { useVerificationSource, type VerificationSource } from './verificationSource';
 
 const STATUS_LABEL: Record<VerificationStatus, string> = { pending: 'Pending', verified: 'Verified', rejected: 'Rejected' };
 // status badges reuse the portal's existing colours: amber waiting, green done, red stopped
@@ -36,6 +41,7 @@ const todayIso = () => new Date().toISOString().slice(0, 10);
 const formatMonth = (month: string) => new Date(`${month}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 const formatStamp = (at: string) =>
   new Date(at).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' });
+const failure = (error: unknown) => verificationFailedMessage(error instanceof ApiError ? error : new ApiError('unavailable'));
 
 export const CompanyVerification = () => <VerificationPage kind="company" />;
 export const EmployeeVerification = () => <VerificationPage kind="employee" />;
@@ -47,8 +53,7 @@ export const EmploymentVerification = () => <VerificationPage kind="employment" 
  */
 function VerificationPage({ kind }: { kind: VerificationKind }) {
   const role = useSession()!.role;
-  const { verifications } = usePortal();
-  const byId = usePeopleById();
+  const source = useVerificationSource(kind, role === 'admin');
   const [params, setParams] = useSearchParams();
   const [q, setQ] = useState('');
   const [status, setStatus] = useState<VerificationStatus | ''>('');
@@ -60,9 +65,8 @@ function VerificationPage({ kind }: { kind: VerificationKind }) {
   if (role !== 'admin') return <PortalNotFound />;
 
   const copy = COPY[kind];
-  const mine = verifications.filter((v) => v.kind === kind);
-  const subjectOf = (v: Verification) => (v.kind === 'company' ? v.company : v.kind === 'employment' ? v.candidate : (byId.get(v.personId)?.name ?? 'Removed user'));
-  const sublineOf = (v: Verification) => (v.kind === 'company' ? v.contactEmail : v.kind === 'employment' ? `For ${v.requesterCompany}` : (byId.get(v.personId)?.email ?? ''));
+  const mine = source.requests;
+  const { subjectOf, sublineOf } = source;
   const query = q.trim().toLowerCase();
   const extraOf = (v: Verification) => (v.kind === 'company' ? [v.registration] : v.kind === 'employment' ? [v.requesterEmail, v.designation] : []);
   const matches = (v: Verification) => !query || [subjectOf(v), sublineOf(v), ...extraOf(v)].some((t) => t.toLowerCase().includes(query));
@@ -86,9 +90,24 @@ function VerificationPage({ kind }: { kind: VerificationKind }) {
           </button>
         )}
       </PageHead>
-      <SampleDataBar />
+      {!source.connected && <SampleDataBar />}
       {notice}
-      {mine.length ? (
+      {source.status.kind === 'loading' ? (
+        <section className="p-card">
+          <Empty icon="shield" title="Loading requests">
+            Getting them from the company system.
+          </Empty>
+        </section>
+      ) : source.status.kind === 'error' ? (
+        <section className="p-card">
+          <Empty icon="alert" title="Couldn’t load the requests">
+            {verificationFailedMessage(source.status.error)}{' '}
+            <button type="button" className={btnClass('ghost', { small: true })} onClick={source.retry}>
+              <BtnLabel icon="refresh">Try again</BtnLabel>
+            </button>
+          </Empty>
+        </section>
+      ) : mine.length ? (
         <div className="p-desk">
           <section className="p-desk-list" aria-label="Requests">
             <div className="p-desk-filters" role="group" aria-label="Show requests">
@@ -142,6 +161,7 @@ function VerificationPage({ kind }: { kind: VerificationKind }) {
           {open && (
             <CaseFile
               key={open.id}
+              source={source}
               request={open}
               subject={subjectOf(open)}
               stamp={stamped === open.id}
@@ -158,12 +178,13 @@ function VerificationPage({ kind }: { kind: VerificationKind }) {
           </Empty>
         </section>
       )}
-      {creating && kind !== 'employment' && <NewRequest kind={kind} existing={mine} onClose={() => setCreating(false)} onCreated={select} notify={notify} />}
+      {creating && kind !== 'employment' && <NewRequest kind={kind} source={source} existing={mine} onClose={() => setCreating(false)} onCreated={select} notify={notify} />}
     </>
   );
 }
 
 function CaseFile({
+  source,
   request,
   subject,
   stamp,
@@ -171,6 +192,7 @@ function CaseFile({
   onDeleted,
   notify,
 }: {
+  source: VerificationSource;
   request: Verification;
   subject: string;
   stamp: boolean;
@@ -178,20 +200,37 @@ function CaseFile({
   onDeleted: () => void;
   notify: (t: string) => void;
 }) {
-  const { setVerificationCheck, decideVerification, removeVerification, documents, deleted, alumni } = usePortal();
-  const byId = usePeopleById();
   const [note, setNote] = useState(request.note);
   const [error, setError] = useState('');
+  // one change at a time: the buttons wait while the backend saves
+  const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  // the upload open in the PDF window (connected)
+  const [viewing, setViewing] = useState<IdDocKind | null>(null);
   const checks = CHECKS[request.kind];
   const allDone = checks.every((c) => request.done.includes(c.id));
   const pending = request.status === 'pending';
-  const person = request.kind === 'employee' ? byId.get(request.personId) : undefined;
+  const person = source.personOf(request);
   const age = daysBetween(request.requested, request.decided ?? todayIso());
   // the employee's own uploads (employee files only), and when the 60-day rule removes them
-  const ids = request.kind === 'employee' ? documents.filter((d) => d.personId === request.personId) : [];
+  const ids = source.uploadsOf(request);
   const idsComplete = ID_DOCS.every((d) => ids.some((u) => u.kind === d.id));
-  const leftOn = request.kind === 'employee' ? alumni.find((a) => a.id === request.personId)?.left : undefined;
-  const deletedOn = request.kind === 'employee' ? deleted[request.personId] : undefined;
+  const leftOn = source.leftOn(request);
+  const deletedOn = source.deletedOn(request);
+  /** Runs one change; a refusal shows in the file instead of a notice that says it worked. */
+  const save = async (change: () => Promise<void>) => {
+    setSaving(true);
+    setError('');
+    try {
+      await change();
+      return true;
+    } catch (e) {
+      setError(failure(e));
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
   // One link for every employee's upload: it opens their own profile once they sign in. A real one carries a
   // single-use token for this request.
   const uploadLink = `${window.location.origin}${window.location.pathname}#/portal/profile?docs=1`;
@@ -201,20 +240,26 @@ function CaseFile({
       .then(() => notify('Upload link copied.'))
       .catch(() => notify(`Couldn't copy it. The link is ${uploadLink}`));
 
-  const decide = (status: VerificationStatus) => {
+  const decide = async (status: VerificationStatus) => {
     // a rejection without a reason leaves nobody able to fix it
     if (status === 'rejected' && !note.trim()) return setError('Add a note saying why it was rejected.');
-    decideVerification(request.id, status, note.trim());
-    setError('');
+    const result: { decided?: Verification } = {};
+    if (!(await save(async () => void (result.decided = (await source.decide(request.id, status, note.trim())) || undefined)))) return;
     if (status !== 'pending') onDecided();
-    // the answer is meant to go back by email on its own; until that's connected, say so instead of implying it went
-    const unsent = request.kind === 'employment' && status !== 'pending' ? ` Email isn’t connected yet, so ${request.requesterCompany} hasn’t been sent the answer.` : '';
-    notify(status === 'pending' ? `${subject} was reopened.` : `${subject} was marked ${STATUS_LABEL[status].toLowerCase()}.${unsent}`);
+    // an outside request's answer goes back by email: say whether it went, never imply it did
+    const emailed = result.decided ? source.answerEmailed(result.decided) : undefined;
+    const answer =
+      request.kind !== 'employment' || status === 'pending'
+        ? ''
+        : emailed === true
+          ? ` The answer was emailed to ${request.requesterEmail}.`
+          : emailed === false
+            ? ` The answer email didn’t go out, so reply to ${request.requesterEmail} by hand.`
+            : ` Email isn’t connected yet, so ${request.requesterCompany} hasn’t been sent the answer.`;
+    notify(status === 'pending' ? `${subject} was reopened.` : `${subject} was marked ${STATUS_LABEL[status].toLowerCase()}.${answer}`);
   };
-  const directoryMatch =
-    request.kind === 'employment'
-      ? [...byId.values()].find((p) => (request.employeeId && p.id === request.employeeId.toUpperCase()) || p.name.toLowerCase() === request.candidate.toLowerCase())
-      : undefined;
+  const lead = source.leadOf(request);
+  const emailedNow = source.answerEmailed(request);
 
   const facts: [string, ReactNode][] =
     request.kind === 'company'
@@ -235,18 +280,24 @@ function CaseFile({
         ]
       : request.kind === 'employment'
       ? [
+          ...((request as { reference?: string }).reference ? [['Reference', <span className="p-mono">{(request as { reference?: string }).reference}</span>] as [string, ReactNode]] : []),
           ['Asked by', `${request.requesterName}, ${request.requesterCompany}`],
           ['Reply to', request.requesterEmail],
           ['Designation', request.designation],
           ['Worked here', `${formatMonth(request.from)} to ${request.to ? formatMonth(request.to) : 'now'}`],
           ['Employee ID', request.employeeId ? <span className="p-mono">{request.employeeId}</span> : 'Not given'],
           // a lead for the "Found in our records" check, not a decision: names can repeat
-          ['In our directory', directoryMatch ? `${directoryMatch.name} (${directoryMatch.id})` : 'No match found'],
+          [
+            'In our directory',
+            lead
+              ? [`${lead.name} (${lead.employeeId || 'no ID'})`, lead.roleLabel, lead.joinedOn && `joined ${formatDate(lead.joinedOn)}`, !lead.current && 'no longer here'].filter(Boolean).join(', ')
+              : 'No match found',
+          ],
         ]
       : [
           ['Email', person?.email ?? 'Removed user'],
-          ['Role', person ? ROLE_LABEL[person.role] : 'Not found'],
-          ['Team', person?.team ?? 'Not found'],
+          ['Role', person ? person.roleLabel : 'Not found'],
+          ['Team', person ? person.team || 'Not set' : 'Not found'],
         ];
 
   return (
@@ -282,7 +333,7 @@ function CaseFile({
       </dl>
 
       <div className="p-file-body">
-        <fieldset className="p-file-docs" disabled={!pending}>
+        <fieldset className="p-file-docs" disabled={!pending || saving}>
           <legend>
             <span>{request.kind === 'employment' ? 'Checks' : 'Documents'}</span>
             <span className="p-dim">
@@ -308,7 +359,10 @@ function CaseFile({
                     checked={request.done.includes(c.id)}
                     disabled={waiting}
                     aria-describedby={isUpload ? fileId : undefined}
-                    onChange={(e) => setVerificationCheck(request.id, c.id, e.target.checked)}
+                    onChange={(e) => {
+                      const done = e.target.checked;
+                      void save(() => source.setCheck(request.id, c.id, done));
+                    }}
                   />
                   <span className="p-doc-box" aria-hidden="true">
                     <PIcon name="check" size={12} />
@@ -319,16 +373,24 @@ function CaseFile({
                   <span id={fileId} className="p-doc-file" data-missing={file ? undefined : ''}>
                     {file ? (
                       <>
-                        <a href={file.url} target="_blank" rel="noreferrer" title={file.fileName}>
-                          {file.fileName}
-                          <span className="sr-only"> (opens in a new tab)</span>
-                        </a>
+                        {source.openUpload ? (
+                          // the file needs the sign-in, so it opens in the portal's PDF window (and the opening is logged)
+                          <button type="button" className="p-link" title={file.fileName} onClick={() => setViewing(c.id as IdDocKind)}>
+                            {file.fileName}
+                            <span className="sr-only"> (opens the PDF)</span>
+                          </button>
+                        ) : (
+                          <a href={file.url} target="_blank" rel="noreferrer" title={file.fileName}>
+                            {file.fileName}
+                            <span className="sr-only"> (opens in a new tab)</span>
+                          </a>
+                        )}
                         <span>{formatSize(file.size)}</span>
                       </>
                     ) : (
                       <>
                         <PIcon name="clock" size={13} />
-                        {deletedOn ? 'Deleted' : pending ? 'Not uploaded yet' : 'No file on record'}
+                        {deletedOn ? 'Deleted' : !source.uploadsConnected ? 'Uploads aren’t connected yet' : pending ? 'Not uploaded yet' : 'No file on record'}
                       </>
                     )}
                   </span>
@@ -345,6 +407,11 @@ function CaseFile({
               ) : leftOn && ids.length > 0 ? (
                 <span>
                   They left on {formatDate(leftOn)}, so their files are deleted automatically on {formatDate(documentsDeleteOn(leftOn))}.
+                </span>
+              ) : source.openUpload ? (
+                <span>
+                  {subject} was asked in their bell and by email to upload the Aadhaar and PAN in their Profile. Each shows here once it’s uploaded, and can be ticked
+                  then.
                 </span>
               ) : (
                 <>
@@ -384,71 +451,156 @@ function CaseFile({
           {error}
         </p>
       )}
-      {request.kind === 'employment' && !pending && <p className="p-field-hint">Email isn’t connected yet, so {request.requesterEmail} hasn’t been sent this answer.</p>}
+      {request.kind === 'employment' && !pending && (
+        <p className="p-field-hint">
+          {emailedNow === true
+            ? `The answer was emailed to ${request.requesterEmail}: only whether the details they sent are confirmed, never this note.`
+            : emailedNow === false
+              ? `The answer email didn’t go out, so reply to ${request.requesterEmail} by hand.`
+              : `Email isn’t connected yet, so ${request.requesterEmail} hasn’t been sent this answer.`}
+        </p>
+      )}
 
       <footer className="p-file-foot">
-        <DeleteButton
-          small
-          label="Delete request"
-          onDone={() => {
-            removeVerification(request.id);
-            onDeleted();
-            notify('The request was deleted.');
-          }}
-        />
+        {/* connected, a decided request is the record and stays; the demo's bin button deletes any */}
+        {source.canDelete(request) &&
+          (source.connected ? (
+            <button type="button" className={btnClass('ghost', { small: true })} onClick={() => setDeleting(true)} disabled={saving}>
+              <BtnLabel>Delete request</BtnLabel>
+            </button>
+          ) : (
+            <DeleteButton
+              small
+              label="Delete request"
+              onDone={() => {
+                void source.remove(request.id);
+                onDeleted();
+                notify('The request was deleted.');
+              }}
+            />
+          ))}
         <span className="p-file-actions">
           {pending ? (
             <>
               {!allDone && <span className="p-dim">{request.kind === 'employment' ? 'Tick every check to verify' : 'Check every document to verify'}</span>}
-              <button type="button" className={btnClass('ghost')} onClick={() => decide('rejected')}>
+              <button type="button" className={btnClass('ghost')} onClick={() => void decide('rejected')} disabled={saving}>
                 <BtnLabel icon="close">Reject</BtnLabel>
               </button>
-              <button type="button" className={btnClass('primary')} onClick={() => decide('verified')} disabled={!allDone}>
+              <button type="button" className={btnClass('primary')} onClick={() => void decide('verified')} disabled={!allDone || saving}>
                 <BtnLabel icon="check">Mark verified</BtnLabel>
               </button>
             </>
           ) : (
-            <button type="button" className={btnClass('ghost')} onClick={() => decide('pending')}>
+            <button type="button" className={btnClass('ghost')} onClick={() => void decide('pending')} disabled={saving}>
               <BtnLabel icon="refresh">Reopen</BtnLabel>
             </button>
           )}
         </span>
       </footer>
+      {viewing && source.openUpload && (
+        <PdfModal
+          title={`${subject}: ${ID_DOCS.find((d) => d.id === viewing)?.label}`}
+          fileName={ids.find((u) => u.kind === viewing)?.fileName ?? `${viewing}.pdf`}
+          load={() => source.openUpload!(request, viewing)}
+          failure={(kind) => (kind === 'not-found' ? 'That file isn’t there any more.' : verificationFailedMessage(new ApiError(kind)))}
+          details="Opening it is recorded in this request’s activity."
+          // the backend logged the opening: load the request again so the activity shows it
+          onOpened={source.retry}
+          onClose={() => setViewing(null)}
+        />
+      )}
+      {deleting && (
+        <Modal
+          title={`Delete the request for ${subject}?`}
+          icon="shield"
+          onClose={() => setDeleting(false)}
+          onSubmit={async () => {
+            setDeleting(false);
+            if (await save(() => source.remove(request.id))) {
+              onDeleted();
+              notify('The request was deleted.');
+            }
+          }}
+          footer={
+            <>
+              <button type="button" className={btnClass('ghost')} onClick={() => setDeleting(false)}>
+                <BtnLabel>Keep it</BtnLabel>
+              </button>
+              <button type="submit" className={btnClass('primary')}>
+                <BtnLabel>Delete the request</BtnLabel>
+              </button>
+            </>
+          }
+        >
+          <p>It’s still pending, so it can be deleted, with its checks and activity. This can’t be undone. A decided request is kept as the record.</p>
+        </Modal>
+      )}
     </article>
   );
 }
 
 function NewRequest({
   kind,
+  source,
   existing,
   onClose,
   onCreated,
   notify,
 }: {
   kind: Exclude<VerificationKind, 'employment'>;
+  source: VerificationSource;
   existing: Verification[];
   onClose: () => void;
   onCreated: (id: string) => void;
   notify: (t: string) => void;
 }) {
-  const { people, requestVerification } = usePortal();
+  const { people } = usePortal();
+  // connected, who can be verified comes from the company's directory; the demo uses its sample people
+  const directory = useDirectory();
   // one open request per person: a second pending check would split the evidence across two records
   const busy = new Set(existing.flatMap((v) => (v.kind === 'employee' && v.status === 'pending' ? [v.personId] : [])));
-  const candidates = people.filter((p) => p.role !== 'admin' && !busy.has(p.id));
-  const [personId, setPersonId] = useState(candidates[0]?.id ?? '');
+  const everyone = source.connected
+    ? directory.state.kind === 'ready'
+      ? directory.state.people.filter((p) => p.accountRole !== 'Superadmin' && p.accountRole !== 'Admin').map((p) => ({ id: p.id, name: p.name, email: p.email }))
+      : null
+    : people.filter((p) => p.role !== 'admin');
+  const candidates = (everyone ?? []).filter((p) => !busy.has(p.id));
+  const loadingPeople = kind === 'employee' && source.connected && directory.state.kind === 'loading';
+  const peopleFailed = kind === 'employee' && source.connected && directory.state.kind === 'error';
+  const [picked, setPicked] = useState('');
+  const personId = picked || candidates[0]?.id || '';
   const [company, setCompany] = useState('');
   const [registration, setRegistration] = useState('');
   const [website, setWebsite] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
   const change = (set: (v: string) => void) => (e: { target: { value: string } }) => (set(e.target.value), setError(''));
+  /** Saves the request; a refusal (say, one already pending) stays in the window to fix. */
+  const start = async (draft: Parameters<VerificationSource['open']>[0], done: string) => {
+    setSaving(true);
+    try {
+      onCreated(await source.open(draft));
+      notify(done);
+      onClose();
+    } catch (e) {
+      setError(failure(e));
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const submit = () => {
+    if (saving) return;
     if (kind === 'employee') {
       if (!personId) return setError('Pick who to verify.');
-      onCreated(requestVerification({ kind, personId }));
-      notify(`Verification started for ${people.find((p) => p.id === personId)?.name}. Email isn't connected yet, so copy the upload link from the request and send it to them.`);
-      return onClose();
+      const name = candidates.find((p) => p.id === personId)?.name;
+      return void start(
+        { kind, personId },
+        source.connected
+          ? `Verification started for ${name}. They were asked in their bell and by email to upload their Aadhaar and PAN.`
+          : `Verification started for ${name}. Email isn't connected yet, so copy the upload link from the request and send it to them.`,
+      );
     }
     const name = company.trim();
     if (!name) return setError('Enter the company name.');
@@ -466,9 +618,7 @@ function NewRequest({
         return setError('Enter the website as a full address, starting with https://');
       }
     }
-    onCreated(requestVerification({ kind, company: name, registration: registration.trim().toUpperCase(), website: site, contactEmail: contactEmail.trim().toLowerCase() }));
-    notify(`Verification started for ${name}.`);
-    onClose();
+    void start({ kind, company: name, registration: registration.trim().toUpperCase(), website: site, contactEmail: contactEmail.trim().toLowerCase() }, `Verification started for ${name}.`);
   };
 
   return (
@@ -482,17 +632,21 @@ function NewRequest({
           <button type="button" className={btnClass('ghost')} onClick={onClose}>
             <BtnLabel>Cancel</BtnLabel>
           </button>
-          <button type="submit" className={btnClass('primary')} disabled={kind === 'employee' && !candidates.length}>
+          <button type="submit" className={btnClass('primary')} disabled={saving || (kind === 'employee' && !candidates.length)}>
             <BtnLabel>Start verification</BtnLabel>
           </button>
         </>
       }
     >
       {kind === 'employee' ? (
-        candidates.length ? (
+        loadingPeople ? (
+          <p className="p-modal-text">Loading the directory…</p>
+        ) : peopleFailed ? (
+          <p className="p-modal-text">The directory didn’t load, so nobody can be picked. Close this and try again in a moment.</p>
+        ) : candidates.length ? (
           <label className="p-field">
             <span>Employee</span>
-            <select className="p-select" value={personId} onChange={change(setPersonId)} autoFocus>
+            <select className="p-select" value={personId} onChange={change(setPicked)} autoFocus>
               {candidates.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name} ({p.email})
