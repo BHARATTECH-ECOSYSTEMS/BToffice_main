@@ -15,6 +15,8 @@ export interface CommunitySource {
   connected: boolean;
   status: { kind: 'ready' } | { kind: 'loading' } | { kind: 'error'; error: ApiError };
   retry: () => void;
+  /** Loads the members again without a loading state (after someone rejoined through a job). */
+  refresh: () => void;
   members: SourceMember[];
   /** Connected only: brings a member back to People; resolves with whether they need an invite to sign in. */
   bringBack: ((id: string) => Promise<{ needsInvite: boolean }>) | null;
@@ -36,6 +38,7 @@ export function useCommunitySource(): CommunitySource {
       connected: true,
       status: state.kind === 'ready' || state.kind === 'off' ? READY : state,
       retry: remote.retry,
+      refresh: remote.refresh,
       members: state.kind === 'ready' ? state.members : [],
       bringBack: remote.bringBack,
       setPersonalEmail: async (id, email) => void (await remote.setPersonalEmail(id, email)),
@@ -46,6 +49,8 @@ export function useCommunitySource(): CommunitySource {
     connected: false,
     status: READY,
     retry: () => {},
+    // the demo's store updates the wall by itself
+    refresh: () => {},
     members: portal.alumni.map((a) => ({ id: a.id, name: a.name, stream: a.stream, left: a.left, employeeId: a.id, personalEmail: a.personalEmail, canBringBack: false, workEmail: a.email })),
     bringBack: null,
     setPersonalEmail: async (id, email) => portal.setPersonalEmail(id, email),

@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { EMAIL, HQ } from '../../content';
-import { EMAIL_SHAPE, STREAM_LABEL, STREAMS, WORK_MODE_LABEL, type ApplicationStage, type InternalJob, type Stream, type WorkMode } from '../data';
-import { formatDate, usePeopleById, usePortal } from '../store';
+import type { ApiError } from '../api';
+import { communityFailedMessage, emailedLine, JOB_LIMITS, jobProblem, nextStages, type JobDraft } from '../community';
+import { STREAM_LABEL, STREAMS, WORK_MODE_LABEL, type ApplicationStage, type InternalJob, type Stream, type WorkMode } from '../data';
+import { formatDate } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, Modal, PIcon } from '../ui';
+import type { SourceMember } from './communitySource';
+import type { JobsSource, SourceApplicant, SourceJob } from './jobsSource';
 
 // the local calendar day, so an apply-by date ends at midnight here rather than in UTC
 const todayIso = () => {
@@ -14,7 +18,7 @@ const todayIso = () => {
 const mailto = ({ to = '', bcc = [] as string[], subject, body }: { to?: string; bcc?: string[]; subject: string; body: string }) =>
   `mailto:${encodeURIComponent(to)}?${bcc.length ? `bcc=${bcc.map(encodeURIComponent).join(',')}&` : ''}subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 
-/** The posting as plain text, for the email that offers it to a community. */
+/** The posting as plain text, for the demo's email that offers it to a community (connected, the backend emails it). */
 function jobEmail(job: InternalJob) {
   return [
     `Hi,`,
@@ -50,16 +54,46 @@ const STAGE: Record<ApplicationStage, { label: string; short: string; badge: str
 // the road an application takes; "not this time" can happen at two of the steps, so it's counted beside them
 const PIPELINE: ApplicationStage[] = ['applied', 'eligible', 'checking', 'rejoined'];
 
+/** What the page says after a step, and whether its email went (connected; the demo sends none). */
+function stepNotice(name: string, to: ApplicationStage, { emailed, needsInvite }: { emailed?: boolean; needsInvite?: boolean }, connected: boolean) {
+  const mail = (sent: string, failed: string) => (emailed === undefined ? '' : emailed ? ` ${sent}` : ` ${failed}`);
+  switch (to) {
+    case 'eligible':
+      return `${name} meets the criteria.`;
+    case 'checking':
+      return connected ? `The knowledge check was emailed to ${name}.` : `Knowledge check marked as sent to ${name}. Email isn't connected yet, so nothing was sent.`;
+    case 'rejoined':
+      return `${name} passed and is back in People${connected ? ', with today as their join date' : ''}.${needsInvite ? ' Their sign-in account was gone, so send them an invite from People.' : ''}${mail('They were emailed how to sign in.', "The welcome email couldn't be sent; tell them by hand.")}`;
+    case 'declined':
+      return `${name} won't go ahead this time.${mail('They were told kindly by email.', "The email couldn't be sent; tell them by hand.")}`;
+    default:
+      return '';
+  }
+}
+
 /**
  * Internal job postings (IJPs) for former colleagues: an admin offers an opening back to one stream's community,
- * adds the people who apply (only former colleagues from that stream can be added), checks them against the
- * criteria, sends a knowledge check instead of an interview, and on a pass they're back in People automatically.
- * Former colleagues can't sign in or apply online yet, so applications are added here by the admin. Everyone else
- * sees the postings and their criteria, but not who applied.
+ * adds the people who apply (only former colleagues from that stream), checks them against the criteria, sends a
+ * knowledge check instead of an interview, and on a pass they're back in People. Former colleagues can't sign in, so
+ * applications reach the admin by email and are added here. Sub admins see the postings but not who applied.
  */
-export function InternalJobs({ stream, notify, isAdmin }: { stream: Stream | ''; notify: (t: string) => void; isAdmin: boolean }) {
-  const { jobs } = usePortal();
-  const shown = jobs.filter((j) => !stream || j.stream === stream);
+export function InternalJobs({
+  stream,
+  notify,
+  isAdmin,
+  source,
+  members,
+  onRejoined,
+}: {
+  stream: Stream | '';
+  notify: (t: string) => void;
+  isAdmin: boolean;
+  source: JobsSource;
+  members: SourceMember[];
+  /** Someone rejoined: they're staff again, so whatever lists the community should load again. */
+  onRejoined: () => void;
+}) {
+  const shown = source.jobs.filter((j) => !stream || j.stream === stream);
   const openCount = shown.filter(isOpen).length;
   return (
     <section className="p-comm-jobs" aria-labelledby="comm-jobs">
@@ -69,14 +103,32 @@ export function InternalJobs({ stream, notify, isAdmin }: { stream: Stream | '';
         </h2>
         <p className="p-muted">
           {openCount ? `${openCount} ${openCount === 1 ? 'role is' : 'roles are'} open to former colleagues right now.` : 'No roles are open to former colleagues right now.'}
-          {/* the admin runs the applications by hand while former colleagues can't sign in and the portal sends no email */}
-          {isAdmin && " They can't sign in yet: email them the job, and add the applications they send you to it."}
+          {/* former colleagues can't sign in, so the admin adds the applications they email in */}
+          {isAdmin &&
+            (source.connected
+              ? ' Posting emails the community; add the applications they send you to the job.'
+              : " They can't sign in yet: email them the job, and add the applications they send you to it.")}
         </p>
       </header>
-      {shown.length ? (
+      {source.status.kind === 'loading' ? (
+        <p className="p-muted" role="status">
+          Loading internal jobs…
+        </p>
+      ) : source.status.kind === 'error' ? (
+        <div className="p-card" role="alert">
+          <Empty icon="alert" title="Internal jobs didn’t load">
+            {communityFailedMessage(source.status.error)}
+          </Empty>
+          {source.status.error.kind !== 'signed-out' && (
+            <button type="button" className={btnClass('light', { small: true })} onClick={source.retry}>
+              <BtnLabel icon="refresh">Try again</BtnLabel>
+            </button>
+          )}
+        </div>
+      ) : shown.length ? (
         <div className="p-ijp-list">
           {shown.map((j) => (
-            <JobCard key={j.id} job={j} notify={notify} isAdmin={isAdmin} />
+            <JobCard key={j.id} job={j} notify={notify} isAdmin={isAdmin} source={source} members={members} onRejoined={onRejoined} />
           ))}
         </div>
       ) : (
@@ -90,10 +142,10 @@ export function InternalJobs({ stream, notify, isAdmin }: { stream: Stream | '';
   );
 }
 
-// past its apply-by date a posting reads as closed, even before an admin closes it
+// past its apply-by date a posting reads as closed, even before an admin closes it (connected, the backend decides)
 const isOpen = (job: InternalJob) => job.open && !(job.closes && job.closes < todayIso());
 
-function JobCard({ job, notify, isAdmin }: { job: InternalJob; notify: (t: string) => void; isAdmin: boolean }) {
+function JobCard({ job, notify, isAdmin, source, members, onRejoined }: { job: SourceJob; notify: (t: string) => void; isAdmin: boolean; source: JobsSource; members: SourceMember[]; onRejoined: () => void }) {
   const open = isOpen(job);
   const facts: [string, string][] = [
     ['Location', job.location],
@@ -110,6 +162,7 @@ function JobCard({ job, notify, isAdmin }: { job: InternalJob; notify: (t: strin
           <p className="p-dim">
             For the {STREAM_LABEL[job.stream]} community. Posted by {job.postedBy} on {formatDate(job.posted)}
           </p>
+          {job.emailed !== undefined && <p className="p-dim p-ijp-sent">{emailedLine({ stream: job.stream, emailed: job.emailed, failed: job.failed ?? 0 })}</p>}
         </div>
         <Badge kind={open ? 'active' : 'inactive'}>{open ? 'Open' : 'Closed'}</Badge>
       </header>
@@ -157,7 +210,7 @@ function JobCard({ job, notify, isAdmin }: { job: InternalJob; notify: (t: strin
         </div>
       )}
       {isAdmin ? (
-        <JobAdmin job={job} open={open} notify={notify} />
+        <JobAdmin job={job} open={open} notify={notify} source={source} members={members} onRejoined={onRejoined} />
       ) : (
         open && <p className="p-ijp-note">Know a former colleague who fits? Let your HR team know, and they'll pass the posting on.</p>
       )}
@@ -166,15 +219,39 @@ function JobCard({ job, notify, isAdmin }: { job: InternalJob; notify: (t: strin
 }
 
 /** The admin's half of a job: who applied, where each one is, adding applicants, and closing or deleting it. */
-function JobAdmin({ job, open, notify }: { job: InternalJob; open: boolean; notify: (t: string) => void }) {
-  const { alumni, applications, setJobOpen, removeJob, addApplicant, moveApplication } = usePortal();
-  const byId = usePeopleById();
+function JobAdmin({ job, open, notify, source, members, onRejoined }: { job: SourceJob; open: boolean; notify: (t: string) => void; source: JobsSource; members: SourceMember[]; onRejoined: () => void }) {
   const [who, setWho] = useState('');
-  const mine = applications.filter((a) => a.jobId === job.id);
+  const [busy, setBusy] = useState(false);
+  // connected, sending the check asks for its link or instructions, and rejoining asks first
+  const [checking, setChecking] = useState<SourceApplicant | null>(null);
+  const [rejoining, setRejoining] = useState<SourceApplicant | null>(null);
+  const mine = job.applicants ?? [];
   // only former colleagues from this job's stream, and nobody twice
-  const candidates = alumni.filter((a) => a.stream === job.stream && !mine.some((m) => m.personId === a.id));
-  // everyone in the community the job can be emailed to: their personal email, since their work one stopped
-  const reach = alumni.filter((a) => a.stream === job.stream && a.personalEmail).map((a) => a.personalEmail!);
+  const candidates = members.filter((m) => m.stream === job.stream && !mine.some((a) => a.personId === m.id));
+  // the demo's "Email this job": everyone in the community with a personal email, in Bcc
+  const reach = members.filter((m) => m.stream === job.stream && m.personalEmail).map((m) => m.personalEmail!);
+
+  const run = async (change: () => Promise<string>) => {
+    setBusy(true);
+    try {
+      notify(await change());
+    } catch (error) {
+      notify(communityFailedMessage(error as ApiError));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const move = (a: SourceApplicant, to: ApplicationStage, instructions?: string) =>
+    run(async () => {
+      const notice = stepNotice(a.name, to, await source.move(job.id, a, to, instructions), source.connected);
+      if (to === 'rejoined') onRejoined();
+      return notice;
+    });
+  const ask = (a: SourceApplicant, to: ApplicationStage) => {
+    if (source.connected && to === 'checking') return setChecking(a);
+    if (source.connected && to === 'rejoined') return setRejoining(a);
+    void move(a, to);
+  };
 
   const declined = mine.filter((a) => a.stage === 'declined').length;
   return (
@@ -198,54 +275,20 @@ function JobAdmin({ job, open, notify }: { job: InternalJob; open: boolean; noti
         )}
         {mine.length ? (
           <ul>
-            {mine.map((a) => {
-              const person = byId.get(a.personId);
-              const name = person?.name ?? 'Removed user';
-              const personal = alumni.find((x) => x.id === a.personId)?.personalEmail;
-              return (
-                <li key={a.id} className="p-ijp-applicant">
-                  <span className="p-comm-main">
-                    <strong>{name}</strong>
-                    <small>Updated {formatDate(a.updated)}</small>
-                  </span>
-                  <Badge kind={STAGE[a.stage].badge}>{STAGE[a.stage].label}</Badge>
-                  <span className="p-ijp-actions">
-                    {a.stage === 'applied' && (
-                      <>
-                        <button type="button" className={btnClass('primary', { small: true })} onClick={() => (moveApplication(a.id, 'eligible'), notify(`${name} meets the criteria.`))}>
-                          <BtnLabel icon="check">Meets criteria</BtnLabel>
-                        </button>
-                        <button type="button" className={btnClass('ghost', { small: true })} onClick={() => (moveApplication(a.id, 'declined'), notify(`${name} doesn't meet the criteria this time.`))}>
-                          <BtnLabel>Doesn't meet</BtnLabel>
-                        </button>
-                      </>
-                    )}
-                    {a.stage === 'eligible' && (
-                      // the check goes to their personal email: their work email stopped when they left
-                      <button
-                        type="button"
-                        className={btnClass('primary', { small: true })}
-                        disabled={!personal}
-                        title={personal ? undefined : 'Add their personal email under Members first'}
-                        onClick={() => (moveApplication(a.id, 'checking'), notify(`Knowledge check marked as sent to ${personal}. Email isn't connected yet, so nothing was sent.`))}
-                      >
-                        <BtnLabel icon="clipboard">Send knowledge check</BtnLabel>
-                      </button>
-                    )}
-                    {a.stage === 'checking' && (
-                      <>
-                        <button type="button" className={btnClass('primary', { small: true })} onClick={() => (moveApplication(a.id, 'rejoined'), notify(`${name} passed and is back in People.`))}>
-                          <BtnLabel icon="check">Passed, rejoin</BtnLabel>
-                        </button>
-                        <button type="button" className={btnClass('ghost', { small: true })} onClick={() => (moveApplication(a.id, 'declined'), notify(`${name} didn't pass the knowledge check.`))}>
-                          <BtnLabel>Didn't pass</BtnLabel>
-                        </button>
-                      </>
-                    )}
-                  </span>
-                </li>
-              );
-            })}
+            {mine.map((a) => (
+              <li key={a.id} className="p-ijp-applicant">
+                <span className="p-comm-main">
+                  <strong>{a.name}</strong>
+                  <small>Updated {formatDate(a.updated)}</small>
+                </span>
+                <Badge kind={STAGE[a.stage].badge}>{STAGE[a.stage].label}</Badge>
+                <span className="p-ijp-actions">
+                  {nextStages(a.stage).map((to) => (
+                    <StepButton key={to} applicant={a} to={to} disabled={busy} onClick={() => ask(a, to)} />
+                  ))}
+                </span>
+              </li>
+            ))}
           </ul>
         ) : (
           <p className="p-dim">Nobody has applied yet.</p>
@@ -258,15 +301,18 @@ function JobAdmin({ job, open, notify }: { job: InternalJob; open: boolean; noti
             className="p-assign"
             onSubmit={(e) => {
               e.preventDefault();
-              if (!who) return;
-              addApplicant(job.id, who);
-              notify(`${byId.get(who)?.name} was added as an applicant.`);
-              setWho('');
+              const person = candidates.find((c) => c.id === who);
+              if (!person) return;
+              void run(async () => {
+                await source.addApplicant(job.id, person.id);
+                setWho('');
+                return `${person.name} was added as an applicant.`;
+              });
             }}
           >
             <label className="p-field is-tight">
               <span>Add an applicant</span>
-              <select className="p-select" value={who} onChange={(e) => setWho(e.target.value)} disabled={!candidates.length}>
+              <select className="p-select" value={who} onChange={(e) => setWho(e.target.value)} disabled={!candidates.length || busy}>
                 <option value="">{candidates.length ? `Former ${STREAM_LABEL[job.stream]} colleague` : 'Everyone in this community is added'}</option>
                 {candidates.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -275,7 +321,7 @@ function JobAdmin({ job, open, notify }: { job: InternalJob; open: boolean; noti
                 ))}
               </select>
             </label>
-            <button type="submit" className={btnClass('ghost')} disabled={!who}>
+            <button type="submit" className={btnClass('ghost')} disabled={!who || busy}>
               <BtnLabel icon="plus">Add</BtnLabel>
             </button>
           </form>
@@ -283,6 +329,7 @@ function JobAdmin({ job, open, notify }: { job: InternalJob; open: boolean; noti
         {/* one button height across the footer, level with the Add button beside the select */}
         <span className="p-ijp-foot-actions">
           {open &&
+            !source.connected &&
             (reach.length ? (
               <a
                 className={btnClass('primary')}
@@ -296,13 +343,139 @@ function JobAdmin({ job, open, notify }: { job: InternalJob; open: boolean; noti
                 <BtnLabel icon="share">Email this job</BtnLabel>
               </button>
             ))}
-          <button type="button" className={btnClass('ghost')} onClick={() => (setJobOpen(job.id, !job.open), notify(job.open ? `${job.title} is closed.` : `${job.title} is open again.`))}>
+          <button
+            type="button"
+            className={btnClass('ghost')}
+            disabled={busy}
+            onClick={() => void run(async () => (await source.setOpen(job.id, !job.open), job.open ? `${job.title} is closed.` : `${job.title} is open again.`))}
+          >
             <BtnLabel icon={job.open ? 'lock' : 'refresh'}>{job.open ? 'Close posting' : 'Reopen'}</BtnLabel>
           </button>
-          <DeleteButton srText={job.title} onDone={() => (removeJob(job.id), notify(`${job.title} was deleted.`))} />
+          <DeleteButton srText={job.title} onDone={() => void run(async () => (await source.remove(job.id), `${job.title} was deleted.`))} />
         </span>
       </footer>
+
+      {checking && (
+        <SendCheck
+          job={job}
+          applicant={checking}
+          onClose={() => setChecking(null)}
+          onSend={async (instructions) => {
+            const notice = stepNotice(checking.name, 'checking', await source.move(job.id, checking, 'checking', instructions), true);
+            setChecking(null);
+            notify(notice);
+          }}
+        />
+      )}
+      {rejoining && (
+        <Modal
+          title={`${rejoining.name} passed: bring them back?`}
+          icon="users"
+          onClose={() => setRejoining(null)}
+          onSubmit={() => {
+            const a = rejoining;
+            setRejoining(null);
+            void move(a, 'rejoined');
+          }}
+          footer={
+            <>
+              <button type="button" className={btnClass('ghost')} onClick={() => setRejoining(null)}>
+                <BtnLabel>Not yet</BtnLabel>
+              </button>
+              <button type="submit" className={btnClass('primary')}>
+                <BtnLabel icon="check">Rejoin</BtnLabel>
+              </button>
+            </>
+          }
+        >
+          <p>
+            {rejoining.name} goes back to People with the same Employee ID, their sign-in is switched on again, their join date becomes today, and they’re
+            emailed how to sign in.
+          </p>
+        </Modal>
+      )}
     </>
+  );
+}
+
+/** One step an application can take next, worded for where it is now. */
+function StepButton({ applicant, to, disabled, onClick }: { applicant: SourceApplicant; to: ApplicationStage; disabled: boolean; onClick: () => void }) {
+  const primary = to === 'eligible' || to === 'checking' || to === 'rejoined';
+  const label: Record<ApplicationStage, string> = {
+    eligible: 'Meets criteria',
+    checking: 'Send knowledge check',
+    rejoined: 'Passed, rejoin',
+    declined: applicant.stage === 'checking' ? "Didn't pass" : "Doesn't meet",
+    applied: '',
+  };
+  // the check goes to their personal email: their work email stopped when they left
+  const noEmail = to === 'checking' && !applicant.hasPersonalEmail;
+  return (
+    <button
+      type="button"
+      className={btnClass(primary ? 'primary' : 'ghost', { small: true })}
+      disabled={disabled || noEmail}
+      title={noEmail ? 'Add their personal email under Members first' : undefined}
+      onClick={onClick}
+    >
+      <BtnLabel icon={to === 'checking' ? 'clipboard' : primary ? 'check' : undefined}>{label[to]}</BtnLabel>
+    </button>
+  );
+}
+
+const INSTRUCTIONS_MAX = 1000;
+
+/** The knowledge check's link or instructions, emailed to the applicant; the window stays open until it has gone. */
+function SendCheck({ job, applicant, onClose, onSend }: { job: SourceJob; applicant: SourceApplicant; onClose: () => void; onSend: (instructions: string) => Promise<void> }) {
+  const [instructions, setInstructions] = useState('');
+  const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
+  const submit = async () => {
+    if (!instructions.trim()) return setError('Add the test link or instructions to send.');
+    setSending(true);
+    try {
+      await onSend(instructions);
+    } catch (e) {
+      setError(communityFailedMessage(e as ApiError));
+      setSending(false);
+    }
+  };
+  return (
+    <Modal
+      title={`Send ${applicant.name} the knowledge check`}
+      icon="clipboard"
+      onClose={onClose}
+      onSubmit={() => void submit()}
+      footer={
+        <>
+          <button type="button" className={btnClass('ghost')} onClick={onClose} disabled={sending}>
+            <BtnLabel>Cancel</BtnLabel>
+          </button>
+          <button type="submit" className={btnClass('primary')} disabled={sending}>
+            <BtnLabel icon="clipboard">{sending ? 'Emailing…' : 'Email the check'}</BtnLabel>
+          </button>
+        </>
+      }
+    >
+      <p className="p-muted">{job.check}</p>
+      <label className="p-field">
+        <span>Test link or instructions</span>
+        <textarea
+          value={instructions}
+          onChange={(e) => (setInstructions(e.target.value), setError(''))}
+          rows={4}
+          maxLength={INSTRUCTIONS_MAX}
+          placeholder="The test's link, when to take it by, anything they need"
+          autoFocus
+        />
+      </label>
+      <p className="p-field-hint">It goes to their personal email. The step changes to “Knowledge check sent” only once the email has gone.</p>
+      {error && (
+        <p className="p-error" role="alert">
+          {error}
+        </p>
+      )}
+    </Modal>
   );
 }
 
@@ -310,10 +483,22 @@ const DEFAULT_CHECK = 'A short online test on the skills this role needs, sent t
 
 /**
  * Posting an internal job: what the role is, who it's offered to, the practical facts (where, how, how many, by when),
- * who can apply, and what the knowledge check covers. The location starts as the head office.
+ * who can apply, and what the knowledge check covers. The location starts as the head office. Connected, posting
+ * also emails the community, so the window stays open until that's done.
  */
-export function PostJob({ initial, onClose, onPosted }: { initial: Stream; onClose: () => void; onPosted: (title: string, stream: Stream) => void }) {
-  const { postJob } = usePortal();
+export function PostJob({
+  initial,
+  post,
+  connected,
+  onClose,
+  onPosted,
+}: {
+  initial: Stream;
+  post: (draft: JobDraft) => Promise<SourceJob>;
+  connected: boolean;
+  onClose: () => void;
+  onPosted: (job: SourceJob) => void;
+}) {
   const [stream, setStream] = useState<Stream>(initial);
   const [title, setTitle] = useState('');
   const [about, setAbout] = useState('');
@@ -326,38 +511,21 @@ export function PostJob({ initial, onClose, onPosted }: { initial: Stream; onClo
   const [check, setCheck] = useState(DEFAULT_CHECK);
   const [applyEmail, setApplyEmail] = useState(EMAIL);
   const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
   const change = (set: (v: string) => void) => (e: { target: { value: string } }) => (set(e.target.value), setError(''));
-  const lines = criteria
-    .split('\n')
-    .map((l) => l.trim())
-    .filter(Boolean);
-  const count = Number(openings);
 
-  const submit = () => {
-    if (!title.trim()) return setError('Enter the role, like Frontend Engineer.');
-    if (!about.trim()) return setError('Say in a line or two what the role involves.');
-    if (!location.trim()) return setError('Enter where the role is based, like Kanpur.');
-    if (!experience.trim()) return setError('Enter the experience it needs, like 2+ years.');
-    if (!Number.isInteger(count) || count < 1 || count > 50) return setError('Openings must be a whole number from 1 to 50.');
-    if (closes && closes < todayIso()) return setError('The apply-by date has passed. Pick today or later.');
-    if (!lines.length) return setError('Add at least one line under "Who can apply".');
-    if (!check.trim()) return setError('Describe the knowledge check, so people know what to expect.');
-    if (!EMAIL_SHAPE.test(applyEmail.trim())) return setError('Enter the email applications go to, like hr@bharattechorigin.com.');
-    postJob({
-      stream,
-      title: title.trim(),
-      about: about.trim(),
-      location: location.trim(),
-      mode,
-      experience: experience.trim(),
-      openings: count,
-      closes: closes || undefined,
-      criteria: lines,
-      check: check.trim(),
-      applyEmail: applyEmail.trim().toLowerCase(),
-    });
-    onPosted(title.trim(), stream);
-    onClose();
+  const submit = async () => {
+    const draft: JobDraft = { stream, title, about, location, mode, experience, openings: Number(openings), closes, criteria: criteria.split('\n'), check, applyEmail };
+    const problem = jobProblem(draft, todayIso());
+    if (problem) return setError(problem);
+    setSending(true);
+    try {
+      onPosted(await post(draft));
+      onClose();
+    } catch (e) {
+      setError(communityFailedMessage(e as ApiError));
+      setSending(false);
+    }
   };
 
   return (
@@ -365,14 +533,14 @@ export function PostJob({ initial, onClose, onPosted }: { initial: Stream; onClo
       title="Post an internal job"
       icon="spark"
       onClose={onClose}
-      onSubmit={submit}
+      onSubmit={() => void submit()}
       footer={
         <>
-          <button type="button" className={btnClass('ghost')} onClick={onClose}>
+          <button type="button" className={btnClass('ghost')} onClick={onClose} disabled={sending}>
             <BtnLabel>Cancel</BtnLabel>
           </button>
-          <button type="submit" className={btnClass('primary')}>
-            <BtnLabel icon="spark">Post job</BtnLabel>
+          <button type="submit" className={btnClass('primary')} disabled={sending}>
+            <BtnLabel icon="spark">{sending ? 'Posting and emailing…' : connected ? 'Post and email' : 'Post job'}</BtnLabel>
           </button>
         </>
       }
@@ -380,7 +548,7 @@ export function PostJob({ initial, onClose, onPosted }: { initial: Stream; onClo
       <div className="p-form-row">
         <label className="p-field">
           <span>Role</span>
-          <input value={title} onChange={change(setTitle)} placeholder="e.g. Frontend Engineer" maxLength={120} autoFocus />
+          <input value={title} onChange={change(setTitle)} placeholder="e.g. Frontend Engineer" maxLength={JOB_LIMITS.title} autoFocus />
         </label>
         <label className="p-field">
           <span>Offered to</span>
@@ -416,11 +584,11 @@ export function PostJob({ initial, onClose, onPosted }: { initial: Stream; onClo
       <div className="p-form-row">
         <label className="p-field">
           <span>Experience</span>
-          <input value={experience} onChange={change(setExperience)} placeholder="e.g. 2+ years" maxLength={40} />
+          <input value={experience} onChange={change(setExperience)} placeholder="e.g. 2+ years" maxLength={JOB_LIMITS.experience} />
         </label>
         <label className="p-field">
           <span>Openings</span>
-          <input type="number" min={1} max={50} step={1} inputMode="numeric" value={openings} onChange={change(setOpenings)} />
+          <input type="number" min={1} max={JOB_LIMITS.openings} step={1} inputMode="numeric" value={openings} onChange={change(setOpenings)} />
         </label>
         <label className="p-field">
           <span>Apply by (optional)</span>
@@ -437,8 +605,9 @@ export function PostJob({ initial, onClose, onPosted }: { initial: Stream; onClo
       </label>
       <label className="p-field">
         <span>Applications go to</span>
-        <input type="email" value={applyEmail} onChange={change(setApplyEmail)} autoComplete="off" maxLength={120} />
+        <input type="email" value={applyEmail} onChange={change(setApplyEmail)} autoComplete="off" maxLength={JOB_LIMITS.email} />
       </label>
+      {connected && <p className="p-field-hint">Members of the {STREAM_LABEL[stream]} community with a personal email get it by email, one each.</p>}
       {error && (
         <p className="p-error" role="alert">
           {error}

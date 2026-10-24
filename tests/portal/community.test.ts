@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ApiError, BUSY_MESSAGE, createApi } from '../../src/portal/api';
-import { communityCalls, communityFailedMessage, emailedLine, personalEmailProblem, referralBody, referralProblem, toMembers, toReferrals } from '../../src/portal/community';
+import { communityCalls, communityFailedMessage, emailedLine, jobBody, jobProblem, nextStages, personalEmailProblem, referralBody, referralProblem, toJobs, toMembers, toReferrals } from '../../src/portal/community';
 import { localDay } from '../../src/portal/eoffice';
 import { canMarkLeft, ACCOUNT_ROLES, type AccountRole } from '../../src/portal/people';
 
@@ -180,4 +180,100 @@ test('sharing, listing and removing go to their own addresses', async () => {
 test('a share the backend answers oddly counts as not saved, so the page never claims who was emailed', async () => {
   const { community } = backend([201, { nothing: true }], [201, { referral: { ...go, title: '' } }]);
   for (let i = 0; i < 2; i++) await assert.rejects(community.shareReferral({ stream: 'tech', title: 'Role', company: 'Co', link: '', note: '' }), (e: unknown) => e instanceof ApiError && e.kind === 'unavailable');
+});
+
+/* ── Internal jobs (Part 3) ── */
+
+const POSTED = '2026-10-24T10:00:00.000Z';
+const APP_ID = '6ad8bc3dd430c9b545aa7001';
+const frontendJob = {
+  id: '6ad8bc3dd430c9b545aa6001', stream: 'tech', title: 'Frontend Engineer', about: 'Build the portal.', location: 'Kanpur', mode: 'hybrid', experience: '1+ year',
+  openings: 2, closes: '2026-11-15', criteria: ['Worked with us for a year'], check: 'A 45-minute test.', applyEmail: 'hr@bharattech.example',
+  postedBy: 'Test Admin', postedOn: POSTED, open: true, emailed: 3, failed: 0,
+  applicants: [{ id: APP_ID, personId: neha.id, name: 'Neha Kapoor', stage: 'eligible', updatedAt: POSTED, hasPersonalEmail: true }],
+};
+
+test('jobs come in as the page shows them, with applicants only when the backend sent them', () => {
+  const [job] = toJobs([frontendJob]);
+  assert.deepEqual(job, {
+    id: frontendJob.id, stream: 'tech', title: 'Frontend Engineer', about: 'Build the portal.', location: 'Kanpur', mode: 'hybrid', experience: '1+ year',
+    openings: 2, closes: '2026-11-15', criteria: ['Worked with us for a year'], check: 'A 45-minute test.', applyEmail: 'hr@bharattech.example',
+    postedBy: 'Test Admin', posted: localDay(Date.parse(POSTED)), open: true, emailed: 3, failed: 0,
+    applicants: [{ id: APP_ID, personId: neha.id, name: 'Neha Kapoor', stage: 'eligible', updated: localDay(Date.parse(POSTED)), hasPersonalEmail: true }],
+  });
+  const { applicants: _gone, ...forSubadmin } = frontendJob;
+  assert.equal(toJobs([forSubadmin])[0].applicants, undefined);
+  assert.equal(toJobs([{ ...frontendJob, closes: '' }])[0].closes, undefined);
+});
+
+test('a broken job or applicant is left out; an answer that is not a list is an error', () => {
+  const broken = [{ ...frontendJob, id: '' }, { ...frontendJob, stream: 'sales' }, { ...frontendJob, mode: 'anywhere' }, { ...frontendJob, openings: 0 }, { ...frontendJob, postedOn: 'soon' }, null];
+  assert.deepEqual(toJobs([...broken, frontendJob]).map((j) => j.id), [frontendJob.id]);
+  const odd = { ...frontendJob, applicants: [{ ...frontendJob.applicants[0], stage: 'hired' }, frontendJob.applicants[0]] };
+  assert.equal(toJobs([odd])[0].applicants!.length, 1);
+  assert.throws(() => toJobs({}), (e: unknown) => e instanceof ApiError && e.kind === 'unavailable');
+});
+
+test('the post form checks what the backend checks, and sends only what it reads', () => {
+  const today = '2026-10-24';
+  const draft = { stream: 'tech' as const, title: ' Frontend Engineer ', about: ' Build it. ', location: ' Kanpur ', mode: 'hybrid' as const, experience: ' 1+ year ', openings: 2, closes: '', criteria: [' A year with us ', ' '], check: ' A test. ', applyEmail: ' HR@Example.com ' };
+  assert.equal(jobProblem(draft, today), '');
+  const refused: [Partial<typeof draft>, RegExp][] = [
+    [{ title: '' }, /role/i], [{ about: '' }, /involves/i], [{ location: '' }, /based/i], [{ experience: '' }, /experience/i],
+    [{ openings: 0 }, /1 to 50/], [{ openings: 51 }, /1 to 50/], [{ openings: 1.5 }, /1 to 50/],
+    [{ closes: '2026-10-23' }, /passed/i], [{ criteria: [' '] }, /who can apply/i], [{ criteria: Array.from({ length: 11 }, (_, i) => `L${i}`) }, /10/],
+    [{ check: '' }, /knowledge check/i], [{ applyEmail: 'hr at example' }, /email/i], [{ title: 'x'.repeat(121) }, /120/],
+  ];
+  for (const [change, pattern] of refused) assert.match(jobProblem({ ...draft, ...change }, today), pattern, JSON.stringify(change).slice(0, 40));
+  assert.equal(jobProblem({ ...draft, closes: today }, today), '');
+  assert.deepEqual(jobBody({ ...draft, extra: 1 } as typeof draft), {
+    stream: 'tech', title: 'Frontend Engineer', about: 'Build it.', location: 'Kanpur', mode: 'hybrid', experience: '1+ year', openings: 2, closes: '', criteria: ['A year with us'], check: 'A test.', applyEmail: 'hr@example.com',
+  });
+});
+
+test('each stage offers only the next steps the backend allows', () => {
+  assert.deepEqual(nextStages('applied'), ['eligible', 'declined']);
+  assert.deepEqual(nextStages('eligible'), ['checking']);
+  assert.deepEqual(nextStages('checking'), ['rejoined', 'declined']);
+  assert.deepEqual(nextStages('rejoined'), []);
+  assert.deepEqual(nextStages('declined'), []);
+});
+
+test('a job id with odd characters is encoded, so it can never reach another address', async () => {
+  const { calls, community } = backend([200, { message: 'Internal job deleted.' }]);
+  await community.removeJob('../users 1');
+  assert.equal(calls[0].url, 'http://api.test/api/community/jobs/..%2Fusers%201');
+});
+
+test('job actions go to their own addresses, with the stage the page saw', async () => {
+  const { calls, community } = backend(
+    [200, [frontendJob]],
+    [201, { job: frontendJob }],
+    [200, { job: { ...frontendJob, open: false } }],
+    [201, { job: frontendJob }],
+    [200, { job: frontendJob, emailed: true }],
+    [200, { job: frontendJob, emailed: false, needsInvite: true }],
+    [200, { message: 'Internal job deleted.' }],
+  );
+  assert.equal((await community.jobs())[0].title, 'Frontend Engineer');
+  await community.postJob({ stream: 'tech', title: 'Frontend Engineer', about: 'a', location: 'b', mode: 'onsite', experience: 'c', openings: 1, closes: '', criteria: ['d'], check: 'e', applyEmail: 'hr@example.com' });
+  assert.equal((await community.setJobOpen(frontendJob.id, false)).open, false);
+  await community.addApplicant(frontendJob.id, neha.id);
+  assert.equal((await community.moveApplicant(frontendJob.id, APP_ID, 'eligible', 'checking', ' https://t.example ')).emailed, true);
+  const rejoined = await community.moveApplicant(frontendJob.id, APP_ID, 'checking', 'rejoined');
+  assert.deepEqual([rejoined.emailed, rejoined.needsInvite], [false, true]);
+  await community.removeJob(frontendJob.id);
+  const stage = `/community/jobs/${frontendJob.id}/applicants/${APP_ID}/stage`;
+  assert.deepEqual(
+    calls.map((c) => [c.method, c.url.replace('http://api.test/api', ''), c.body]),
+    [
+      ['GET', '/community/jobs', undefined],
+      ['POST', '/community/jobs', { stream: 'tech', title: 'Frontend Engineer', about: 'a', location: 'b', mode: 'onsite', experience: 'c', openings: 1, closes: '', criteria: ['d'], check: 'e', applyEmail: 'hr@example.com' }],
+      ['PATCH', `/community/jobs/${frontendJob.id}`, { open: false }],
+      ['POST', `/community/jobs/${frontendJob.id}/applicants`, { personId: neha.id }],
+      ['POST', stage, { from: 'eligible', to: 'checking', instructions: 'https://t.example' }],
+      ['POST', stage, { from: 'checking', to: 'rejoined' }],
+      ['DELETE', `/community/jobs/${frontendJob.id}`, undefined],
+    ],
+  );
 });

@@ -19,6 +19,7 @@ import { formatDate, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PageHead, PIcon, useListFlip, useNotice } from '../ui';
 import { useCommunitySource, useOwnPersonalEmail, type CommunitySource, type SourceMember } from './communitySource';
 import { InternalJobs, PostJob } from './CommunityJobs';
+import { useJobsSource } from './jobsSource';
 
 /** Each stream's colour, for the ring round a member's initials. */
 const STREAM_TONE: Record<Stream, HueName> = { tech: 'violet', operations: 'tangerine', hr: 'saffron', finance: 'violet' };
@@ -50,6 +51,7 @@ export function Community() {
   const session = useSession()!;
   const portal = usePortal();
   const source = useCommunitySource();
+  const jobs = useJobsSource(managesPortal(session.role));
   // referrals are for admins and sub admins; employees see the members only (and never ask the backend for them)
   const showReferrals = session.role !== 'employee';
   const remoteReferrals = useReferrals(showReferrals);
@@ -90,14 +92,14 @@ export function Community() {
             : 'Where former colleagues stay connected, and hear about roles at Bharattech first.'
         }
       >
-        {isAdmin && !source.connected && (
-          <button type="button" className={btnClass('primary')} onClick={() => setPosting(true)}>
-            <BtnLabel icon="spark">Post an internal job</BtnLabel>
+        {isAdmin && source.connected && (
+          <button type="button" className={btnClass('light')} onClick={() => setSharing(true)}>
+            <BtnLabel icon="share">Share a referral</BtnLabel>
           </button>
         )}
-        {isAdmin && source.connected && (
-          <button type="button" className={btnClass('primary')} onClick={() => setSharing(true)}>
-            <BtnLabel icon="share">Share a referral</BtnLabel>
+        {isAdmin && (
+          <button type="button" className={btnClass('primary')} onClick={() => setPosting(true)}>
+            <BtnLabel icon="spark">Post an internal job</BtnLabel>
           </button>
         )}
       </PageHead>
@@ -263,17 +265,11 @@ export function Community() {
         )}
       </div>
 
-      {/* internal job postings are run by admins and sub admins; employees don't see them */}
-      {managesPortal(session.role) &&
-        (source.connected ? (
-          <section className="p-card">
-            <Empty icon="spark" title="Internal jobs are being connected next">
-              Members, their personal emails and referrals are saved to the company system now. Posting internal jobs comes next.
-            </Empty>
-          </section>
-        ) : (
-          <InternalJobs stream={stream} notify={notify} isAdmin={isAdmin} />
-        ))}
+      {/* internal job postings are seen by admins and sub admins and run by admins; employees don't see them */}
+      {managesPortal(session.role) && (
+        // someone who rejoins through a job leaves the community, so the wall reloads
+        <InternalJobs stream={stream} notify={notify} isAdmin={isAdmin} source={jobs} members={all} onRejoined={source.refresh} />
+      )}
 
       {bringing && source.bringBack && (
         <BringBackModal
@@ -311,10 +307,14 @@ export function Community() {
       {posting && (
         <PostJob
           initial={stream || 'tech'}
+          post={jobs.post}
+          connected={jobs.connected}
           onClose={() => setPosting(false)}
-          onPosted={(title, s) => {
-            setStream(s);
-            notify(`${title} was offered to the ${STREAM_LABEL[s]} community.`);
+          onPosted={(job) => {
+            setStream(job.stream);
+            notify(
+              `${job.title} was offered to the ${STREAM_LABEL[job.stream]} community.${job.emailed !== undefined ? ` ${emailedLine({ stream: job.stream, emailed: job.emailed, failed: job.failed ?? 0 })}.` : ''}`,
+            );
           }}
         />
       )}

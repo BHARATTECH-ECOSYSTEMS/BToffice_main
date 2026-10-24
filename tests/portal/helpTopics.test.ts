@@ -116,6 +116,19 @@ test('connected, admins learn how a referral is shared and emailed; nobody else 
   assert.match(saves ?? '', /referrals/);
 });
 
+test('connected, admins learn how internal jobs run end to end; sub admins what they see; employees nothing', () => {
+  const admin = helpGroups(true, 'admin', '').flatMap((g) => g.topics).find((t) => t.q === 'How do internal jobs work?');
+  assert.ok(admin, 'admins get the full answer');
+  for (const part of [/emailed/i, /add .*applicant/i, /knowledge check/i, /join date/i, /not this time/i]) assert.match(admin.a, part);
+  const sub = helpGroups(true, 'subadmin', '').flatMap((g) => g.topics).find((t) => t.q === 'What are internal job postings?');
+  assert.ok(sub, 'sub admins get their own answer');
+  assert.match(sub.a, /admins/i);
+  assert.ok(!questions(true, 'subadmin').includes('How do internal jobs work?'));
+  for (const q of ['How do internal jobs work?', 'What are internal job postings?']) assert.ok(!questions(true, 'employee').includes(q), q);
+  const saves = answers(true, 'admin').find((a) => a.startsWith('People, Tasks'));
+  assert.match(saves ?? '', /internal jobs/);
+});
+
 test('the demo keeps its own answers', () => {
   assert.ok(questions(false, 'employee').includes('Why did my changes disappear?'));
   assert.ok(!questions(true, 'employee').includes('Why did my changes disappear?'));
