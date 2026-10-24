@@ -60,6 +60,7 @@ app.use(express.json());
 
 /* ------------------ INPUT SANITIZATION ------------------ */
 const { applyRequestSanitizers } = require("./middlewares/requestSanitizers");
+const { errorHandler } = require("./middlewares/errorHandler");
 
 applyRequestSanitizers(app);
 
@@ -134,13 +135,8 @@ app.get("/test", (req, res) => {
 
 /* ------------------ ERROR HANDLER (must stay last) ------------------ */
 
-app.use((err, req, res, next) => {
-  console.error("Server Error:", err);
-  res.status(err.status || 500).json({
-    message: err.message || "Internal Server Error",
-    error: process.env.NODE_ENV === "development" ? err.stack : undefined,
-  });
-});
+// a plain message to the caller, the details in the server log (middlewares/errorHandler.js)
+app.use(errorHandler);
 
 /* ------------------ SERVER ------------------ */
 

@@ -16,7 +16,7 @@ router.get("/users/assignable", keycloakAuth, requireAdmin, adminController.getA
 // Get signup requests (Admin only)
 router.get("/signup-requests", keycloakAuth, requireAdmin, adminController.getSignupRequests);
 
-router.get("/dashboard", keycloakAuth, adminController.getDashboard);
+router.get("/dashboard", keycloakAuth, requireAdmin, adminController.getDashboard);
 
 // Approve signup request (Admin only)
 router.post("/signup-requests/:id/approve", keycloakAuth, requireAdmin, adminController.approveSignupRequest);
@@ -29,10 +29,8 @@ router.post("/setup-realm", keycloakAuth, requireSuperAdmin, async (req, res) =>
     res.json(result);
   } catch (err) {
     console.error("Realm setup error:", err?.response?.data || err);
-    res.status(500).json({
-      success: false,
-      message: err?.response?.data?.errorMessage || err.message || "Realm setup failed",
-    });
+    // the details stay in the server log
+    res.status(500).json({ success: false, message: "Realm setup failed" });
   }
 });
 

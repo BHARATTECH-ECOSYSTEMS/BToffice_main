@@ -5,6 +5,7 @@ const KcAdminClient = require("keycloak-admin").default;
 const User = require("../models/User");
 const { createKeycloakAdminSession } = require("../utils/keycloakAdminSession");
 const { photoType, saveUserPhoto, findUserPhoto, openUserPhoto, deleteUserPhoto } = require("../utils/userPhotos");
+const { isAdmin } = require("../utils/refusal");
 
 const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL || "http://localhost:8080";
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
@@ -292,17 +293,18 @@ const storePhoto = async (user, file) => {
   return oldFileId;
 };
 
+// Keycloak sends at most this many accounts at once
+const KEYCLOAK_PAGE = 1000;
+
+/** Keycloak's enabled accounts with their realm roles, and whether that's everyone (more than a page isn't). */
 const fetchKeycloakUsers = async () => {
   await authKeycloakAdmin();
 
-  const users = await kcAdmin.users.find({
-    realm: KEYCLOAK_REALM,
-    max: 1000,
-  });
+  const [users, total] = await Promise.all([kcAdmin.users.find({ realm: KEYCLOAK_REALM, max: KEYCLOAK_PAGE }), kcAdmin.users.count({ realm: KEYCLOAK_REALM })]);
 
   const enabledUsers = users.filter((user) => user.enabled !== false);
 
-  return Promise.all(
+  const withRoles = await Promise.all(
     enabledUsers.map(async (user) => {
       const realmRoleMappings =
         (await kcAdmin.users.listRealmRoleMappings({
@@ -316,6 +318,7 @@ const fetchKeycloakUsers = async () => {
       };
     })
   );
+  return { users: withRoles, complete: users.length >= total };
 };
 
 const upsertLocalUserFromKeycloak = async (kcUser) => {
@@ -379,7 +382,7 @@ const upsertLocalUserFromKeycloak = async (kcUser) => {
 };
 
 const syncKeycloakUsersToLocal = async () => {
-  const keycloakUsers = await fetchKeycloakUsers();
+  const { users: keycloakUsers, complete } = await fetchKeycloakUsers();
   const activeKeycloakIds = keycloakUsers.map((user) => user.id).filter(Boolean);
   const syncedUsers = [];
 
@@ -387,13 +390,17 @@ const syncKeycloakUsersToLocal = async () => {
     syncedUsers.push(await upsertLocalUserFromKeycloak(kcUser));
   }
 
-  await User.updateMany(
-    {
-      keycloakId: { $exists: true, $nin: activeKeycloakIds },
-      isDeleted: { $ne: true },
-    },
-    { $set: { isDeleted: true, deletedAt: new Date() } }
-  );
+  // someone missing from the list was removed in Keycloak, but only when the list is everyone: from a partial one
+  // (more accounts than a page) that would wrongly remove whoever didn't fit
+  if (complete) {
+    await User.updateMany(
+      {
+        keycloakId: { $exists: true, $nin: activeKeycloakIds },
+        isDeleted: { $ne: true },
+      },
+      { $set: { isDeleted: true, deletedAt: new Date() } }
+    );
+  }
 
   return syncedUsers.sort((a, b) =>
     String(a.fullName || "").localeCompare(String(b.fullName || ""))
@@ -408,6 +415,10 @@ const listLocalUsers = async () => {
 
 exports.getUsers = async (req, res) => {
   try {
+    // The company's People page reads this for every role. Only an admin's request syncs from Keycloak (the sync
+    // writes to everyone's records and asks Keycloak about every account); everyone else gets the stored list.
+    if (!isAdmin(req.user)) return res.json((await listLocalUsers()).map(publicUser));
+
     let users = [];
 
     try {
@@ -430,10 +441,7 @@ exports.getUsers = async (req, res) => {
       }
     }
 
-    res.status(500).json({
-      message: "Failed to fetch users",
-      details: error?.response?.data?.error_description || error.message,
-    });
+    res.status(500).json({ message: "Failed to fetch users" });
   }
 };
 
@@ -589,10 +597,16 @@ exports.getKeycloakUsers = async (req, res) => {
         })
     );
 
-    res.json(users.sort((a, b) => a.fullName.localeCompare(b.fullName)));
+    // each person's "show my phone" lives in their stored record
+    const hidden = new Set(
+      (await User.find({ keycloakId: { $in: users.map((u) => u.id) }, "privacySettings.showPhone": false }).select("keycloakId").lean()).map((u) => u.keycloakId)
+    );
+    const shown = users.map((u) => (hidden.has(u.id) ? { ...u, phone: "", workPhone: "" } : u));
+
+    res.json(shown.sort((a, b) => a.fullName.localeCompare(b.fullName)));
   } catch (err) {
     console.error("getKeycloakUsers error:", err?.response?.data || err.message);
-    res.status(500).json({ message: "Failed to fetch users from Keycloak", details: err?.message });
+    res.status(500).json({ message: "Failed to fetch users from Keycloak" });
   }
 };
 
@@ -767,10 +781,7 @@ exports.updateUser = async (req, res) => {
       return res.status(400).json({ message: Object.values(error.errors).map((e) => e.message).join(" ") });
     }
     console.error("Update user error:", error);
-    res.status(500).json({
-      message: "Failed to update user",
-      details: error?.response?.data?.error_description || error.message,
-    });
+    res.status(500).json({ message: "Failed to update user" });
   }
 };
 

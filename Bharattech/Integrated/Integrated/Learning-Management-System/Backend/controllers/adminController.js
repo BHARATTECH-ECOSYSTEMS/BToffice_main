@@ -7,6 +7,7 @@ const {
     ensureKeycloakUser,
     setTemporaryPassword,
 } = require("./inviteController");
+const { canCreateRole } = require("./userController");
 
 // ✅ Create user (Admin only - stores in User collection, visible in Admin Dashboard)
 exports.createUser = async (req, res) => {
@@ -37,6 +38,10 @@ exports.createUser = async (req, res) => {
         const validRoles = ["Admin", "Subadmin", "Employee", "Intern"];
         if (!validRoles.includes(normalizedRole)) {
             return res.status(400).json({ message: `Invalid role. Must be one of: ${validRoles.join(", ")}` });
+        }
+        // the same rule as /api/user/add-user: an Admin creates Sub Admins, Employees and Interns; a Super Admin any
+        if (!canCreateRole(req.user?.role, normalizedRole)) {
+            return res.status(403).json({ message: "Your role can't create that kind of account." });
         }
 
         // Generate a temporary password
@@ -83,11 +88,7 @@ exports.createUser = async (req, res) => {
         });
     } catch (error) {
         console.error("❌ Create User Error:", error?.response?.data || error);
-        const message =
-            error?.response?.data?.errorMessage ||
-            error?.response?.data?.message ||
-            error.message;
-        res.status(500).json({ message: "Server Error", error: message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
@@ -113,7 +114,7 @@ exports.getAdminUsers = async (req, res) => {
         res.status(200).json(normalizedUsers);
     } catch (error) {
         console.error("❌ Get Admin Users Error:", error);
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
@@ -163,7 +164,7 @@ exports.getAssignableUsers = async (req, res) => {
         res.status(200).json(normalizedUsers);
     } catch (error) {
         console.error("❌ Get Assignable Users Error:", error);
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
@@ -177,7 +178,7 @@ exports.getSignupRequests = async (req, res) => {
         res.status(200).json(requests);
     } catch (error) {
         console.error("❌ Get Signup Requests Error:", error);
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
@@ -232,7 +233,7 @@ exports.approveSignupRequest = async (req, res) => {
         });
     } catch (error) {
         console.error("❌ Approve Signup Request Error:", error);
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 

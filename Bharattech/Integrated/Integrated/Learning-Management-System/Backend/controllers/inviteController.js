@@ -502,19 +502,14 @@ const sendInvite = async (req, res) => {
     } catch (emailError) {
       console.error("Invite email error:", emailError?.response?.data || emailError);
 
-      const emailMessage =
-        emailError?.response?.data?.errorMessage ||
-        emailError?.response?.data?.message ||
-        emailError?.message ||
-        (resent
-          ? "User exists, but the Keycloak invite email could not be re-sent."
-          : restored
-            ? "User was restored, but the Keycloak invite email could not be sent."
-            : "User account was created, but the Keycloak invite email could not be sent.");
-
+      // what went wrong with the mail server stays in the log above
       return res.status(500).json({
         success: false,
-        message: emailMessage,
+        message: resent
+          ? "User exists, but the invite email could not be re-sent."
+          : restored
+            ? "User was restored, but the invite email could not be sent."
+            : "User account was created, but the invite email could not be sent.",
         inviteEmailSent: false,
         resent,
         keycloakSynced: true,
@@ -524,10 +519,6 @@ const sendInvite = async (req, res) => {
     console.error("Invite error:", error);
 
     const upstreamStatus = error?.response?.status;
-    const upstreamMessage =
-      error?.response?.data?.errorMessage ||
-      error?.response?.data?.message ||
-      error?.message;
 
     if (upstreamStatus === 409) {
       return res.status(409).json({
@@ -538,7 +529,7 @@ const sendInvite = async (req, res) => {
 
     return res.status(500).json({
       success: false,
-      message: upstreamMessage || "Failed to send invite",
+      message: "Failed to send invite",
     });
   }
 };

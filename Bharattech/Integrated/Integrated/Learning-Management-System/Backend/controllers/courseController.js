@@ -39,7 +39,7 @@ const createCourse = async (req, res) => {
                 }
             });
         } catch (err) {
-            return res.status(400).json({ success: false, message: "Invalid syllabus format: " + err.message });
+            return res.status(400).json({ success: false, message: "Invalid syllabus format. Each item needs a title and a description." });
         }
 
         // ✅ Create Course (Pending Approval)
@@ -68,7 +68,7 @@ const createCourse = async (req, res) => {
 
     } catch (error) {
         console.error("Error creating course:", error);
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(500).json({ success: false, message: "Server Error" });
     }
 };
 
@@ -110,7 +110,7 @@ const updateCourseApproval = async (req, res) => {
 
     } catch (error) {
         console.error("Error updating course approval:", error);
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(500).json({ success: false, message: "Server Error" });
     }
 };
 
@@ -129,7 +129,7 @@ const getAllCourses = async (req, res) => {
 
     } catch (error) {
         console.error("Error fetching courses:", error);
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(500).json({ success: false, message: "Server Error" });
     }
 };
 
@@ -145,7 +145,7 @@ const getPendingCourses = async (req, res) => {
 
     } catch (error) {
         console.error("Error fetching pending courses:", error);
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(500).json({ success: false, message: "Server Error" });
     }
 };
 
@@ -167,7 +167,7 @@ const getCourse = async (req, res) => {
         res.status(200).json({ success: true, course });
     } catch (error) {
         console.error("Error fetching course:", error);
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: "Server Error" });
     }
 };
 
@@ -302,7 +302,7 @@ const updateCourse = async (req, res) => {
 
     } catch (error) {
         console.error("Error updating course:", error);
-        return res.status(500).json({ message: "Failed to update course", error: error.message });
+        return res.status(500).json({ message: "Failed to update course" });
     }
 };
 
@@ -332,7 +332,7 @@ const deleteCourse = async (req, res) => {
         return res.status(200).json({ success: true, message: "Course deleted successfully" });
     } catch (error) {
         console.error("Error deleting course:", error);
-        return res.status(500).json({ success: false, message: "Failed to delete course", error: error.message });
+        return res.status(500).json({ success: false, message: "Failed to delete course" });
     }
 };
 
@@ -356,7 +356,7 @@ const getTrainerCourses = async (req, res) => {
 
     } catch (error) {
         console.error("Error fetching trainer courses:", error);
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(500).json({ success: false, message: "Server Error" });
     }
 };
 
@@ -397,7 +397,7 @@ const enrollCourse = async (req, res) => {
 
     } catch (error) {
         console.error("Error enrolling in course:", error);
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(500).json({ success: false, message: "Server Error" });
     }
 };
 const getEnrolledCourses = async (req, res) => {
@@ -421,7 +421,7 @@ const getEnrolledCourses = async (req, res) => {
 
     } catch (error) {
         console.error("Error fetching enrolled courses:", error);
-        return res.status(500).json({ success: false, message: error.message });
+        return res.status(500).json({ success: false, message: "Server Error" });
     }
 };
 

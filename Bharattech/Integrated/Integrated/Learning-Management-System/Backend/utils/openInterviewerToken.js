@@ -2,13 +2,10 @@ const { TextEncoder } = require("util");
 
 const DEV_FALLBACK_SECRET = "fallback-secret-for-encryption-1234567890";
 
+// The launch is signed with its own secret, shared only with OpenInterviewer. Until step 17 it fell back to
+// ADMIN_SECRET, JWT_SECRET, SESSION_SECRET or ADMIN_PASSWORD, handing OpenInterviewer a secret meant for something else.
 const getLaunchSecret = () => {
-  const secret =
-    process.env.BHARATTECH_LAUNCH_SECRET ||
-    process.env.ADMIN_SECRET ||
-    process.env.JWT_SECRET ||
-    process.env.SESSION_SECRET ||
-    process.env.ADMIN_PASSWORD;
+  const secret = process.env.BHARATTECH_LAUNCH_SECRET;
 
   if (!secret) {
     if (process.env.NODE_ENV === "production") {
@@ -58,4 +55,5 @@ const buildOpenInterviewerLaunchUrl = (token) => {
 module.exports = {
   buildOpenInterviewerLaunchUrl,
   createOpenInterviewerToken,
+  getLaunchSecret,
 };

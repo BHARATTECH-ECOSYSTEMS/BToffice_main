@@ -1,7 +1,20 @@
 const { test, before, beforeEach, after } = require("node:test");
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
+const http = require("node:http");
 const express = require("express");
 const jwt = require("jsonwebtoken");
+
+// A stand-in Keycloak that only publishes its signing key, so tokens can go through the real Keycloak path. Its
+// address must be known before keycloakAuth loads (the key client is made then), so the port is picked here.
+const KEYCLOAK_PORT = 47000 + Math.floor(Math.random() * 2000);
+process.env.KEYCLOAK_BASE_URL = `http://127.0.0.1:${KEYCLOAK_PORT}`;
+process.env.KEYCLOAK_REALM = "bharattech";
+const ISSUER = `http://127.0.0.1:${KEYCLOAK_PORT}/realms/bharattech`;
+const keys = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
+const otherKeys = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
+const KID = "test-key";
+
 const User = require("../models/User");
 const { keycloakAuth, audienceAllowed, inactiveReason, assertAuthConfig } = require("../middlewares/keycloakAuth");
 const { allowOrigin } = require("../middlewares/corsOptions");
@@ -11,11 +24,18 @@ const OLD_FALLBACK = "fallback-secret-for-encryption-1234567890";
 const REAL_SECRET = "test-local-secret-please-change";
 
 let server;
+let keycloak;
 let base;
 const saved = {};
 
 before(async () => {
   await connectTestDb();
+  const jwk = { ...keys.publicKey.export({ format: "jwk" }), kid: KID, use: "sig", alg: "RS256" };
+  keycloak = http.createServer((req, res) => {
+    res.setHeader("Content-Type", "application/json");
+    res.end(JSON.stringify({ keys: [jwk] }));
+  });
+  await new Promise((resolve) => keycloak.listen(KEYCLOAK_PORT, "127.0.0.1", resolve));
   const app = express();
   app.use(express.json());
   // the real middleware guards a route that simply reports who it decided you are
@@ -35,8 +55,18 @@ beforeEach(async () => {
 after(async () => {
   for (const [k, v] of Object.entries(saved)) v === undefined ? delete process.env[k] : (process.env[k] = v);
   if (server?.listening) await new Promise((resolve) => server.close(resolve));
+  if (keycloak?.listening) await new Promise((resolve) => keycloak.close(resolve));
   await disconnectTestDb();
 });
+
+/** A token as Keycloak would sign it for this person (or with another key, to prove it's refused). */
+const keycloakToken = (user, { key = keys.privateKey } = {}) =>
+  jwt.sign({ sub: user.keycloakId, email: user.email, preferred_username: user.username, realm_access: { roles: [user.role] } }, key, {
+    algorithm: "RS256",
+    keyid: KID,
+    issuer: ISSUER,
+    expiresIn: "5m",
+  });
 
 const whoami = (token, headers = {}) =>
   fetch(`${base}/whoami`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...headers } }).then(async (r) => ({ status: r.status, body: await r.json() }));
@@ -75,44 +105,36 @@ test("a token signed with the old hardcoded fallback secret is refused", async (
   assert.equal(r.status, 401);
 });
 
-test("the local-secret path is off entirely unless a real JWT_SECRET is set", async () => {
-  const user = await User.create(userFields());
-  // JWT_SECRET unset: even a token this server could once have made is refused
-  assert.equal((await whoami(hs256({ id: String(user._id), role: "Employee" }, OLD_FALLBACK))).status, 401);
+// Step 17 (owner's 1A): only Keycloak's tokens sign in. The backend's own local tokens (from the removed
+// /api/auth/login) are refused even when signed with the real JWT_SECRET.
+test("a token signed with JWT_SECRET is refused: only Keycloak's tokens sign in", async () => {
+  process.env.JWT_SECRET = REAL_SECRET;
+  const user = await User.create(userFields({ role: "Superadmin" }));
+  assert.equal((await whoami(hs256({ id: String(user._id), role: "Superadmin" }, REAL_SECRET))).status, 401);
 });
 
-test("with a real JWT_SECRET set, a token signed with it still signs an active user in", async () => {
-  process.env.JWT_SECRET = REAL_SECRET;
+test("a token Keycloak signed signs an active person in", async () => {
   const user = await User.create(userFields({ role: "Employee" }));
-  const r = await whoami(hs256({ id: String(user._id), role: "Employee" }, REAL_SECRET));
+  const r = await whoami(keycloakToken(user));
   assert.equal(r.status, 200);
   assert.equal(r.body.id, String(user._id));
 });
 
-test("a token signed with the wrong secret is refused even when a real one is set", async () => {
-  process.env.JWT_SECRET = REAL_SECRET;
-  const user = await User.create(userFields());
-  assert.equal((await whoami(hs256({ id: String(user._id), role: "Admin" }, "some-other-secret"))).status, 401);
+test("a token signed with any other key is refused", async () => {
+  const user = await User.create(userFields({ role: "Employee" }));
+  assert.equal((await whoami(keycloakToken(user, { key: otherKeys.privateKey }))).status, 401);
 });
 
 // --- blocked and deleted accounts lose access at the door ---
 
 test("a blocked account is refused, not just hidden", async () => {
-  process.env.JWT_SECRET = REAL_SECRET;
   const user = await User.create(userFields({ role: "Employee", isBanned: true }));
-  const r = await whoami(hs256({ id: String(user._id), role: "Employee" }, REAL_SECRET));
-  assert.equal(r.status, 403);
+  assert.equal((await whoami(keycloakToken(user))).status, 403);
 });
 
 test("a deleted account is refused", async () => {
-  process.env.JWT_SECRET = REAL_SECRET;
   const user = await User.create(userFields({ role: "Employee", isDeleted: true }));
-  assert.equal((await whoami(hs256({ id: String(user._id), role: "Employee" }, REAL_SECRET))).status, 403);
-});
-
-test("a token for an account that no longer exists is refused", async () => {
-  process.env.JWT_SECRET = REAL_SECRET;
-  assert.equal((await whoami(hs256({ id: "6a1f00000000000000000099", role: "Admin" }, REAL_SECRET))).status, 401);
+  assert.equal((await whoami(keycloakToken(user))).status, 403);
 });
 
 // --- audience / authorized-party check (unit, since the real path needs Keycloak) ---
@@ -148,20 +170,18 @@ test("the server refuses to start with demo mode on in production", () => {
   assert.throws(() => assertAuthConfig(), /demo/i);
 });
 
-test("the server refuses to start in production without a real JWT_SECRET or admin password", () => {
+test("the server refuses to start in production without a real Keycloak admin password", () => {
   process.env.NODE_ENV = "production";
-  process.env.KEYCLOAK_ADMIN_PASSWORD = "a-real-password";
-  assert.throws(() => assertAuthConfig(), /JWT_SECRET/i);
-  process.env.JWT_SECRET = OLD_FALLBACK;
-  assert.throws(() => assertAuthConfig(), /JWT_SECRET/i);
-  process.env.JWT_SECRET = REAL_SECRET;
+  delete process.env.KEYCLOAK_ADMIN_PASSWORD;
+  assert.throws(() => assertAuthConfig(), /admin/i);
   process.env.KEYCLOAK_ADMIN_PASSWORD = "admin";
   assert.throws(() => assertAuthConfig(), /admin/i);
 });
 
 test("the config guard is happy with safe production settings, and never complains in development", () => {
   process.env.NODE_ENV = "production";
-  process.env.JWT_SECRET = REAL_SECRET;
+  // no local tokens any more (step 17), so JWT_SECRET isn't needed to start
+  delete process.env.JWT_SECRET;
   process.env.KEYCLOAK_ADMIN_PASSWORD = "a-real-password";
   assert.doesNotThrow(() => assertAuthConfig());
   process.env.NODE_ENV = "development";

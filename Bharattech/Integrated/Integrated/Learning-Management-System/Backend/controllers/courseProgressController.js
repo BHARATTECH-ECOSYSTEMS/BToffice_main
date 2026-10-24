@@ -27,7 +27,7 @@ exports.enrollCourse = async (req, res) => {
 
         res.status(201).json(populatedProgress);
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
@@ -49,7 +49,7 @@ exports.updateProgress = async (req, res) => {
 
         res.status(200).json(progressData);
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
@@ -63,7 +63,7 @@ exports.getMyCourses = async (req, res) => {
 
         res.status(200).json(progressData);
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 
@@ -84,7 +84,7 @@ exports.getCourseProgress = async (req, res) => {
 
         res.status(200).json(progress);
     } catch (error) {
-        res.status(500).json({ message: "Server Error", error: error.message });
+        res.status(500).json({ message: "Server Error" });
     }
 };
 

@@ -1,7 +1,5 @@
 const express = require("express");
-const bcrypt = require("bcryptjs");
 const fs = require("fs/promises");
-const { randomUUID } = require("crypto");
 const mongoose = require("mongoose");
 const path = require("path");
 
@@ -17,6 +15,10 @@ const User = require("../models/User");
 const { notifyCertificateIssued, forgetNotesAbout } = require("../utils/notify");
 const { myCertificates, certificatePdf } = require("../controllers/certificateAccessController");
 
+/**
+ * The signed-in admin's own record, or null. A certificate is issued only in their name: before step 17 an unknown
+ * issuer fell back to the oldest Admin, or a new Admin record was made up for them.
+ */
 const resolveIssuerUser = async (req) => {
   if (mongoose.Types.ObjectId.isValid(req.user?.id)) {
     const issuerById = await User.findById(req.user.id);
@@ -39,30 +41,7 @@ const resolveIssuerUser = async (req) => {
     if (issuerByEmail) return issuerByEmail;
   }
 
-  const fallbackAdmin = await User.findOne({
-    role: "Admin",
-    isDeleted: { $ne: true },
-  }).sort({ createdAt: 1 });
-
-  if (fallbackAdmin) return fallbackAdmin;
-
-  const safeEmail = (req.user?.email || "admin@bharattech.local").toLowerCase();
-  const safeUsername =
-    req.user?.fullName?.toLowerCase().replace(/\s+/g, ".") ||
-    safeEmail.split("@")[0] ||
-    `admin-${Date.now()}`;
-
-  return User.create({
-    fullName: req.user?.fullName || "Admin User",
-    username: safeUsername,
-    email: safeEmail,
-    password: await bcrypt.hash(randomUUID(), 10),
-    keycloakId: req.user?.keycloakId || req.user?.sub || `demo-admin-${Date.now()}`,
-    role: "Admin",
-    authProvider: "keycloak",
-    isDeleted: false,
-    isBanned: false,
-  });
+  return null;
 };
 
 router.post("/generate", keycloakAuth, requireAdmin, async (req, res) => {
@@ -78,6 +57,12 @@ router.post("/generate", keycloakAuth, requireAdmin, async (req, res) => {
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    // before the PDF is made, so a refused request leaves no file behind
+    const issuer = await resolveIssuerUser(req);
+    if (!issuer) {
+      return res.status(403).json({ message: "Your account has no record here, so it can't issue certificates." });
     }
 
     const name =
@@ -99,8 +84,6 @@ router.post("/generate", keycloakAuth, requireAdmin, async (req, res) => {
       username: user.username,
     });
 
-    const issuer = await resolveIssuerUser(req);
-
     const cert = new Certificate({
       userId: user._id,
       title,
@@ -119,7 +102,7 @@ router.post("/generate", keycloakAuth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error("Certificate error:", error);
     res.status(500).json({
-      message: error.message || "Server error",
+      message: "Server error",
     });
   }
 });
@@ -135,7 +118,7 @@ router.get("/", keycloakAuth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error("Certificate history error:", error);
     res.status(500).json({
-      message: error.message || "Failed to fetch certificate history",
+      message: "Failed to fetch certificate history",
     });
   }
 });
@@ -181,16 +164,9 @@ router.delete("/:id", keycloakAuth, requireAdmin, async (req, res) => {
   } catch (error) {
     console.error("Delete certificate error:", error);
     res.status(500).json({
-      message: error.message || "Failed to delete certificate",
+      message: "Failed to delete certificate",
     });
   }
-});
-
-router.get("/test-auth", keycloakAuth, (req, res) => {
-  res.json({
-    message: "Auth working",
-    user: req.user,
-  });
 });
 
 module.exports = router;
