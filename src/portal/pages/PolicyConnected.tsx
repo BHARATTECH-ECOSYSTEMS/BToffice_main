@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ApiError, ApiErrorKind } from '../api';
+import { BUSY_MESSAGE } from '../api';
 import { PdfModal } from '../PdfModal';
 import { usePolicies, type PolicyDocument } from '../policies';
 import { useSession } from '../session';
@@ -19,6 +20,7 @@ const LOAD_FAILED: Record<ApiErrorKind, string> = {
   'not-found': 'Documents weren’t found on the server.',
   conflict: 'We couldn’t load the documents. Please try again.',
   'bad-request': 'We couldn’t load the documents. Please try again.',
+  busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the employee records. Check your connection and try again.',
 };
 const ACTION_FAILED: Record<ApiErrorKind, string> = {
@@ -27,6 +29,7 @@ const ACTION_FAILED: Record<ApiErrorKind, string> = {
   'not-found': 'That document isn’t there any more. The list has been refreshed.',
   conflict: 'That clashes with another document. Please try again.',
   'bad-request': 'That wasn’t accepted.',
+  busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the employee records, so nothing was changed. Try again in a moment.',
 };
 

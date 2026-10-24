@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ApiError, ApiErrorKind } from '../api';
+import { BUSY_MESSAGE } from '../api';
 import type { LinkResource } from '../data';
 import { useDirectory, type DirectoryState } from '../people';
 import { audience, isWebLink, useResources } from '../resources';
@@ -21,6 +22,7 @@ const LOAD_FAILED: Record<ApiErrorKind, string> = {
   'not-found': 'Shared links weren’t found on the server.',
   conflict: 'We couldn’t load the shared links. Please try again.',
   'bad-request': 'We couldn’t load the shared links. Please try again.',
+  busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the server. Check your connection and try again.',
 };
 const ACTION_FAILED: Record<ApiErrorKind, string> = {
@@ -29,6 +31,7 @@ const ACTION_FAILED: Record<ApiErrorKind, string> = {
   'not-found': 'That link or person isn’t in the records any more. The list has been refreshed.',
   conflict: 'That clashes with a change someone else made. The list has been refreshed.',
   'bad-request': 'The server didn’t accept that. Check the name and address and try again.',
+  busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the server, so nothing was changed. Try again in a moment.',
 };
 // the backend explains a refused name or address itself ("Enter a full web address starting with http://…")

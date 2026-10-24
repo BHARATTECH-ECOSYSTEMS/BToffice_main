@@ -32,7 +32,7 @@ export interface Account {
   role: Role;
 }
 
-export type SignInResult = { ok: true; account: Account } | { ok: false; reason: 'credentials' | 'set-password' | 'unavailable' };
+export type SignInResult = { ok: true; account: Account } | { ok: false; reason: 'credentials' | 'set-password' | 'busy' | 'unavailable' };
 
 export interface InviteSetup {
   /** What they signed in with: their email (or the username from the invite). */
@@ -45,7 +45,7 @@ export interface InviteSetup {
 
 export type ChangePasswordResult =
   | { ok: true }
-  | { ok: false; reason: 'wrong-current' | 'signed-out' | 'unavailable' }
+  | { ok: false; reason: 'wrong-current' | 'signed-out' | 'busy' | 'unavailable' }
   | { ok: false; reason: 'refused'; message: string };
 
 /**
@@ -57,14 +57,14 @@ export const passwordHasBlockedCharacter = (password: string) => password.includ
 
 export type InviteSetupResult =
   | { ok: true; account: Account }
-  | { ok: false; reason: 'credentials' | 'username-taken' | 'unavailable' }
+  | { ok: false; reason: 'credentials' | 'username-taken' | 'busy' | 'unavailable' }
   | { ok: false; reason: 'invalid'; message: string };
 
-export type ResetRequestResult = { ok: true; message: string } | { ok: false; reason: 'unavailable' };
+export type ResetRequestResult = { ok: true; message: string } | { ok: false; reason: 'busy' | 'unavailable' };
 
 export type ResetPasswordResult =
   | { ok: true }
-  | { ok: false; reason: 'link-gone' | 'unavailable' }
+  | { ok: false; reason: 'link-gone' | 'busy' | 'unavailable' }
   | { ok: false; reason: 'refused'; message: string };
 
 // the token in a reset email's link: <site>/#/reset-password?token=… (controllers/passwordResetController.js)
@@ -209,6 +209,8 @@ export function createAuth(config: AuthConfig, request: typeof fetch = (input, i
   async function signIn(username: string, password: string, rememberMe: boolean): Promise<SignInResult> {
     const reply = await post('/auth/keycloak-login', { username, password });
     if (!reply) return { ok: false, reason: 'unavailable' };
+    // the backend limits sign-in tries per address (429): that's a wait, not an outage or a wrong password
+    if (reply.status === 429) return { ok: false, reason: 'busy' };
     if (reply.status === 403 && reply.body?.requiresPasswordChange) return { ok: false, reason: 'set-password' };
     if (reply.status === 400 || reply.status === 401) return { ok: false, reason: 'credentials' };
     const account = reply.ok ? begin(reply.body, rememberMe, username) : null;
@@ -222,6 +224,7 @@ export function createAuth(config: AuthConfig, request: typeof fetch = (input, i
   async function acceptInvite(setup: InviteSetup, rememberMe: boolean): Promise<InviteSetupResult> {
     const reply = await post('/auth/accept-invite', setup);
     if (!reply) return { ok: false, reason: 'unavailable' };
+    if (reply.status === 429) return { ok: false, reason: 'busy' };
     if (reply.status === 401) return { ok: false, reason: 'credentials' };
     if (reply.status === 409) return { ok: false, reason: 'username-taken' };
     if (reply.status === 400) return { ok: false, reason: 'invalid', message: reply.body?.message ?? '' };
@@ -306,6 +309,7 @@ export function createAuth(config: AuthConfig, request: typeof fetch = (input, i
     // the backend answers a wrong current password with 401 too; only its message tells it from an ended sign-in
     if (res.status === 401) return { ok: false, reason: body?.message === 'Current password is incorrect' ? 'wrong-current' : 'signed-out' };
     if (res.status === 400) return { ok: false, reason: 'refused', message: body?.message ?? '' };
+    if (res.status === 429) return { ok: false, reason: 'busy' };
     return { ok: false, reason: 'unavailable' };
   }
 
@@ -315,6 +319,7 @@ export function createAuth(config: AuthConfig, request: typeof fetch = (input, i
    */
   async function requestPasswordReset(login: string): Promise<ResetRequestResult> {
     const reply = await post('/auth/forgot-password', { login });
+    if (reply?.status === 429) return { ok: false, reason: 'busy' };
     return reply?.ok && reply.body?.message ? { ok: true, message: reply.body.message } : { ok: false, reason: 'unavailable' };
   }
 
@@ -322,6 +327,7 @@ export function createAuth(config: AuthConfig, request: typeof fetch = (input, i
   async function resetPassword(token: string, newPassword: string): Promise<ResetPasswordResult> {
     const reply = await post('/auth/reset-password', { token, newPassword });
     if (reply?.ok) return { ok: true };
+    if (reply?.status === 429) return { ok: false, reason: 'busy' };
     if (reply?.status === 400) return reply.body?.code === 'link-gone' ? { ok: false, reason: 'link-gone' } : { ok: false, reason: 'refused', message: reply.body?.message ?? '' };
     return { ok: false, reason: 'unavailable' };
   }

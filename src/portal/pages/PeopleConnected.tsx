@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { EMAIL_SHAPE, ROLE_LABEL, STREAM_LABEL, STREAMS, type PersonRole, type Stream } from '../data';
 import type { ApiError } from '../api';
+import { BUSY_MESSAGE } from '../api';
 import {
   canDelete,
   canEditDetails,
@@ -35,6 +36,7 @@ const SAVE_FAILED: Record<ApiError['kind'], string> = {
   'not-found': 'That person isn’t in the employee records any more. The list has been refreshed.',
   conflict: 'That change clashes with another account.',
   'bad-request': 'That change wasn’t accepted.',
+  busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the employee records, so nothing was changed. Try again in a moment.',
 };
 /** What to tell someone when a change was refused; the backend's own words for refused input are more useful. */
@@ -46,6 +48,7 @@ const LOAD_FAILED: Record<ApiError['kind'], string> = {
   'not-found': 'The directory wasn’t found on the server.',
   conflict: 'We couldn’t load the directory. Please try again.',
   'bad-request': 'We couldn’t load the directory. Please try again.',
+  busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the employee records. Check your connection and try again.',
 };
 
@@ -302,6 +305,7 @@ const INVITE_FAILED: Record<ApiError['kind'], string> = {
   'not-found': 'The invite service wasn’t found on the server.',
   conflict: 'An account with that email or username already exists.',
   'bad-request': 'Enter their name and a valid email address.',
+  busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the employee records, so no invite was sent. Try again in a moment.',
 };
 

@@ -77,13 +77,17 @@ const RESET_LINK_GONE = 'That reset link has expired or was already used. Ask fo
 const RESET_LINK_BROKEN = 'That reset link isn’t complete. Ask for a new one here.';
 const RESET_SAVE_FAILED = 'We couldn’t reach the sign-in service, so your password wasn’t changed. Try again in a moment.';
 const RESET_DONE = 'Your password was changed, and you were signed out everywhere else. Sign in with the new one.';
+// the backend limits password tries per address (429): a short wait, not an outage
+const TOO_MANY_TRIES = 'Too many tries from here right now. Wait a minute and try again.';
 const SIGN_IN_FAILED: Record<Exclude<SignInResult, { ok: true }>['reason'], string> = {
   credentials: 'Those details don’t match. Check your email or Employee ID and password, and try again.',
   'set-password': 'Your account still needs a new password before you can sign in. Please ask your administrator to help you finish setting it.',
+  busy: 'Too many sign-in attempts from here right now. Wait a minute and try again.',
   unavailable: 'We couldn’t reach the sign-in service. Check your connection and try again in a moment.',
 };
 const SETUP_FAILED = {
   credentials: 'Your temporary password didn’t work any more. Go back and sign in again with the one from your invite email.',
+  busy: TOO_MANY_TRIES,
   unavailable: 'We couldn’t finish setting up your account. Check your connection and try again in a moment.',
 };
 const COPY: Record<View, { title: string; sub: string; submit: string; busy: string }> = {
@@ -287,7 +291,7 @@ function LoginDialog({ onClose, reset }: { onClose: () => void; reset: { token: 
       return;
     }
     void auth.requestPasswordReset(mail).then((result) => {
-      if (alive.current) setStatus({ kind: 'notice', text: result.ok ? result.message : RESET_UNAVAILABLE });
+      if (alive.current) setStatus({ kind: 'notice', text: result.ok ? result.message : result.reason === 'busy' ? TOO_MANY_TRIES : RESET_UNAVAILABLE });
     });
   };
 
@@ -325,7 +329,7 @@ function LoginDialog({ onClose, reset }: { onClose: () => void; reset: { token: 
         formEl.querySelector<HTMLInputElement>('[name="newPassword"]')?.focus();
         return;
       }
-      setStatus({ kind: 'notice', text: RESET_SAVE_FAILED });
+      setStatus({ kind: 'notice', text: result.reason === 'busy' ? TOO_MANY_TRIES : RESET_SAVE_FAILED });
     });
   };
 

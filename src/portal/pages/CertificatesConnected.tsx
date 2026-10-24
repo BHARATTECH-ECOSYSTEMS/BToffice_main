@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { ApiError, ApiErrorKind } from '../api';
+import { BUSY_MESSAGE } from '../api';
 import { certificateTitle, useCertificates, type IssuedCertificate } from '../certificates';
 import { PdfModal } from '../PdfModal';
 import { useDirectory } from '../people';
@@ -20,6 +21,7 @@ const LOAD_FAILED: Record<ApiErrorKind, string> = {
   'not-found': 'Certificates weren’t found on the server.',
   conflict: 'We couldn’t load the certificates. Please try again.',
   'bad-request': 'We couldn’t load the certificates. Please try again.',
+  busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the employee records. Check your connection and try again.',
 };
 const ACTION_FAILED: Record<ApiErrorKind, string> = {
@@ -28,6 +30,7 @@ const ACTION_FAILED: Record<ApiErrorKind, string> = {
   'not-found': 'That certificate or person isn’t in the records any more. The list has been refreshed.',
   conflict: 'That clashes with an existing certificate. Please try again.',
   'bad-request': 'Choose a certificate type and a person first.',
+  busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the employee records, so nothing was changed. Try again in a moment.',
 };
 

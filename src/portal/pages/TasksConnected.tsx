@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { type TaskStatus } from '../data';
 import type { ApiError, ApiErrorKind } from '../api';
+import { BUSY_MESSAGE } from '../api';
 import type { DirectoryPerson } from '../people';
 import { formatDate } from '../store';
 import {
@@ -32,6 +33,7 @@ const TASK_FAILED: Record<ApiErrorKind, string> = {
   'not-found': 'That task isn’t there any more. The list has been refreshed.',
   conflict: 'That clashes with another change. Try again.',
   'bad-request': 'That wasn’t accepted.',
+  busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the task records, so nothing was changed. Try again in a moment.',
 };
 /** The backend's own words for refused input are more useful than a generic line. */

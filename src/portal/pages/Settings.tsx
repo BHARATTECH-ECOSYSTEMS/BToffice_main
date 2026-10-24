@@ -1,7 +1,7 @@
 import { useRef, useState, type ChangeEvent, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { PortalIconName } from '../data';
-import { api, ApiError } from '../api';
+import { api, ApiError, BUSY_MESSAGE } from '../api';
 import { auth, passwordHasBlockedCharacter } from '../auth';
 import { removeMyPhoto, saveMyPhoto, useMyPhoto } from '../myPhoto';
 import { endSessionForNewSignIn, ROLE_NAME, setDisplayName, setPhoto, useSession } from '../session';
@@ -106,6 +106,7 @@ const PHOTO_FAILED: Record<ApiError['kind'], string> = {
   'not-found': 'Your account isn’t in the employee records yet. Please ask your administrator.',
   conflict: 'The photo wasn’t saved. Please try again.',
   'bad-request': 'That photo wasn’t accepted.',
+  busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the server, so your photo wasn’t changed. Try again in a moment.',
 };
 const photoFailed = (e: ApiError) => (e.kind === 'bad-request' && e.message !== e.kind ? e.message : PHOTO_FAILED[e.kind]);
@@ -251,9 +252,10 @@ function ProfilePanel() {
   );
 }
 
-const CHANGE_FAILED: Record<'wrong-current' | 'signed-out' | 'unavailable', string> = {
+const CHANGE_FAILED: Record<'wrong-current' | 'signed-out' | 'busy' | 'unavailable', string> = {
   'wrong-current': 'Your current password is incorrect. After 5 wrong tries your account is locked for a minute or more.',
   'signed-out': 'Your sign-in has ended. Sign out and sign in again, then try once more.',
+  busy: "Too many tries right now, so your password wasn't changed. Wait a minute and try again.",
   unavailable: "We couldn't reach the server, so your password wasn't changed. Try again in a moment.",
 };
 // long enough to read the confirmation before the portal closes for the new sign-in

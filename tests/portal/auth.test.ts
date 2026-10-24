@@ -92,12 +92,18 @@ test('an invited account that still has its temporary password is asked to set a
   assert.deepEqual(await auth.signIn('a@example.test', 'temp', false), { ok: false, reason: 'set-password' });
 });
 
-test('a backend that is down, failing or rate limiting reads as unavailable, not as a wrong password', async () => {
-  for (const reply of [new TypeError('Failed to fetch'), json(500, { message: 'Login failed' }), json(429, { message: 'Too many requests' })]) {
+test('a backend that is down or failing reads as unavailable, not as a wrong password', async () => {
+  for (const reply of [new TypeError('Failed to fetch'), json(500, { message: 'Login failed' })]) {
     const auth = createAuth(CONFIG, network(reply).request);
     assert.deepEqual(await auth.signIn('a@example.test', 'pw', false), { ok: false, reason: 'unavailable' });
     assert.equal(auth.signedIn(), false);
   }
+});
+
+test('too many sign-in tries from here reads as busy (wait and try again), not as unavailable or a wrong password', async () => {
+  const auth = createAuth(CONFIG, network(json(429, { message: 'Too many requests. Wait a minute and try again.' })).request);
+  assert.deepEqual(await auth.signIn('a@example.test', 'pw', false), { ok: false, reason: 'busy' });
+  assert.equal(auth.signedIn(), false);
 });
 
 test('a success reply without tokens is not treated as signed in', async () => {
@@ -234,6 +240,11 @@ test('a backend that is down or fails while finishing reads as unavailable', asy
   }
 });
 
+test('too many tries while finishing an invite reads as busy', async () => {
+  const auth = createAuth(CONFIG, network(json(429, {})).request);
+  assert.deepEqual(await auth.acceptInvite(SETUP, false), { ok: false, reason: 'busy' });
+});
+
 // ---- the link in invite emails: <site>/login
 
 test('the /login address from invite emails opens the portal login', () => {
@@ -312,11 +323,17 @@ test("a new password the server refuses comes back with the server's reason", as
 });
 
 test('a server that is down or failing reads as unavailable, and nothing changes here', async () => {
-  for (const reply of [new TypeError('Failed to fetch'), json(500, { message: 'Failed to change password' }), json(429, {})]) {
+  for (const reply of [new TypeError('Failed to fetch'), json(500, { message: 'Failed to change password' })]) {
     const { auth } = await signedInWith(reply);
     assert.deepEqual(await auth.changePassword('Old-Password-1', 'New-Password-2'), { ok: false, reason: 'unavailable' });
     assert.equal(auth.signedIn(), true);
   }
+});
+
+test('too many tries reads as busy, and the person stays signed in', async () => {
+  const { auth } = await signedInWith(json(429, {}));
+  assert.deepEqual(await auth.changePassword('Old-Password-1', 'New-Password-2'), { ok: false, reason: 'busy' });
+  assert.equal(auth.signedIn(), true);
 });
 
 test('someone signed out cannot change a password and no request is sent', async () => {
@@ -350,10 +367,15 @@ test("asking for a reset link sends what was typed and shows the backend's one r
 });
 
 test('a backend that is down or failing means no link was asked for', async () => {
-  for (const reply of [new TypeError('Failed to fetch'), json(500, {}), json(500, { message: 'Server Error' }), json(429, { message: 'Too many requests' })]) {
+  for (const reply of [new TypeError('Failed to fetch'), json(500, {}), json(500, { message: 'Server Error' })]) {
     const auth = createAuth(CONFIG, network(reply).request);
     assert.deepEqual(await auth.requestPasswordReset('asha@example.test'), { ok: false, reason: 'unavailable' });
   }
+});
+
+test('too many reset requests from here, or tries with a link, read as busy', async () => {
+  assert.deepEqual(await createAuth(CONFIG, network(json(429, {})).request).requestPasswordReset('asha@example.test'), { ok: false, reason: 'busy' });
+  assert.deepEqual(await createAuth(CONFIG, network(json(429, {})).request).resetPassword('t'.repeat(64), 'New-Password-2'), { ok: false, reason: 'busy' });
 });
 
 test('a link sets the new password; the backend says when the link is dead or the password refused', async () => {

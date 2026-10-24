@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError } from './api';
+import { api, ApiError, BUSY_MESSAGE } from './api';
 import { EVENT_KINDS, type EventKind } from './data';
 
 /**
@@ -53,6 +53,7 @@ const FAILED: Record<ApiError['kind'], string> = {
   'not-found': 'That event isn’t on the calendar any more. The calendar has been refreshed.',
   conflict: 'That change clashes with another one. The calendar has been refreshed.',
   'bad-request': 'That event wasn’t accepted.',
+  busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the calendar, so nothing was changed. Try again in a moment.',
 };
 /** What to say when a change was refused; the backend's own words are clearest for refused input and roles. */

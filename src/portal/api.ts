@@ -6,7 +6,10 @@ import { auth, authConfig } from './auth';
  * `api` is null while the site runs with the demo sign-in.
  */
 
-export type ApiErrorKind = 'signed-out' | 'forbidden' | 'not-found' | 'conflict' | 'bad-request' | 'unavailable';
+export type ApiErrorKind = 'signed-out' | 'forbidden' | 'not-found' | 'conflict' | 'bad-request' | 'busy' | 'unavailable';
+
+/** What every page says when the backend asks to slow down (429): nothing is wrong, it just needs a moment. */
+export const BUSY_MESSAGE = 'Too many requests right now. Wait a minute and try again.';
 
 export class ApiError extends Error {
   kind: ApiErrorKind;
@@ -20,7 +23,7 @@ export class ApiError extends Error {
   }
 }
 
-const STATUS_KIND: Partial<Record<number, ApiErrorKind>> = { 400: 'bad-request', 401: 'signed-out', 403: 'forbidden', 404: 'not-found', 409: 'conflict' };
+const STATUS_KIND: Partial<Record<number, ApiErrorKind>> = { 400: 'bad-request', 401: 'signed-out', 403: 'forbidden', 404: 'not-found', 409: 'conflict', 429: 'busy' };
 
 // long enough for a slow connection, short enough that a hung backend shows an error instead of loading forever
 const TIMEOUT_MS = 20_000;

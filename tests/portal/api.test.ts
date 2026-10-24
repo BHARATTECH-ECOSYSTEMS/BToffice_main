@@ -61,7 +61,7 @@ test('each kind of backend answer becomes its own error', async () => {
     [json(404, { message: 'User not found' }), 'not-found'],
     [json(400, { message: 'bad stream' }), 'bad-request'],
     [json(500, { message: 'Failed to fetch profile' }), 'unavailable'],
-    [json(429, { message: 'Too many requests' }), 'unavailable'],
+    [json(429, { message: 'Too many requests. Wait a minute and try again.' }), 'busy'],
     [new TypeError('Failed to fetch'), 'unavailable'],
     [new Response('<html>proxy error</html>', { status: 200 }), 'unavailable'],
   ];
