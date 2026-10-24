@@ -85,7 +85,7 @@ exports.shareReferral = async (req, res) => {
       .select("personalEmail")
       .lean();
     const counts = await sendReferralEmails(referral, members.map((m) => m.personalEmail));
-    const saved = await Referral.findByIdAndUpdate(referral._id, { $set: counts }, { new: true }).lean();
+    const saved = await Referral.findByIdAndUpdate(referral._id, { $set: counts }, { returnDocument: "after" }).lean();
     res.status(201).json({ referral: referralView(saved ?? { ...referral.toObject(), ...counts }) });
   } catch (error) {
     answerError(res, error, "Share a referral");

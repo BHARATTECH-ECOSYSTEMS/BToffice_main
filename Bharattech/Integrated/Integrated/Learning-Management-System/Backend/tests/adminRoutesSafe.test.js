@@ -64,7 +64,7 @@ test("the admin dashboard needs an admin", () => {
 });
 
 test("a failed realm setup answers without internal error text", async () => {
-  realm.error = Object.assign(new Error("ECONNREFUSED 10.0.0.7 (internal detail)"), { response: { data: { errorMessage: "admin token for master realm (internal detail)" } } });
+  realm.error = Object.assign(new Error("ECONNREFUSED 10.0.0.7 (internal detail)"), { response: { status: 500 }, responseData: { errorMessage: "admin token for master realm (internal detail)" } });
   const handlers = handlersOf(adminRoutes, "post", "/setup-realm");
   const r = reply();
   await quiet(() => handlers[handlers.length - 1]({ user: { role: "Superadmin" } }, r.res));

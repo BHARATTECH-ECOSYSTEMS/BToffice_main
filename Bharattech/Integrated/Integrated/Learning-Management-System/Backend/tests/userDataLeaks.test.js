@@ -9,7 +9,6 @@ const {
   publicUser,
   stripSensitive,
   pickEditableFields,
-  canCreateRole,
 } = require("../controllers/userController");
 const { connectTestDb, clearTestDb, disconnectTestDb, userFields } = require("./helpers/testDb");
 
@@ -80,16 +79,8 @@ test("pickEditableFields keeps isBanned, so an admin can still block an account 
   assert.deepEqual(pickEditableFields({ isBanned: true }), { isBanned: true });
 });
 
-// --- who an admin may create (unit) ---
-
-test("an Admin can't create an Admin or Superadmin; a Superadmin can create any role", () => {
-  assert.equal(canCreateRole("Admin", "Employee"), true);
-  assert.equal(canCreateRole("Admin", "Subadmin"), true);
-  assert.equal(canCreateRole("Admin", "Admin"), false);
-  assert.equal(canCreateRole("Admin", "Superadmin"), false);
-  assert.equal(canCreateRole("Superadmin", "Admin"), true);
-  assert.equal(canCreateRole("Subadmin", "Employee"), false);
-});
+// Who an admin may add is the invite's rule since step 17 Part 2 ("Add user" sends an invite): tested against the
+// real invite code in tests/pendingInvites.test.js.
 
 // --- the handlers, called directly (DB, no Keycloak needed for local accounts) ---
 

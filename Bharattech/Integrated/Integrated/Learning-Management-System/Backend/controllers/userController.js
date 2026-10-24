@@ -1,17 +1,12 @@
 const bcrypt = require("bcryptjs");
 const { randomUUID } = require("crypto");
 const mongoose = require("mongoose");
-const KcAdminClient = require("keycloak-admin").default;
 const User = require("../models/User");
-const { createKeycloakAdminSession } = require("../utils/keycloakAdminSession");
+const { kcAdmin, ensureKeycloakAdmin: authKeycloakAdmin } = require("../utils/keycloakAdmin");
 const { photoType, saveUserPhoto, findUserPhoto, openUserPhoto, deleteUserPhoto } = require("../utils/userPhotos");
 const { isAdmin } = require("../utils/refusal");
 
-const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL || "http://localhost:8080";
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
-const KEYCLOAK_ADMIN_REALM = process.env.KEYCLOAK_ADMIN_REALM || "master";
-const KEYCLOAK_ADMIN_USERNAME = process.env.KEYCLOAK_ADMIN_USERNAME || "admin";
-const KEYCLOAK_ADMIN_PASSWORD = process.env.KEYCLOAK_ADMIN_PASSWORD || "admin";
 const DEMO_AUTH_ENABLED = process.env.AUTH_MODE === "demo";
 
 const ROLE_ALIASES = {
@@ -37,18 +32,6 @@ const KEYCLOAK_ROLE_NAMES = {
 const MANAGED_KEYCLOAK_ROLE_NAMES = [
   ...new Set([...VALID_ROLES, ...VALID_ROLES.map((role) => KEYCLOAK_ROLE_NAMES[role])]),
 ];
-
-const kcAdmin = new KcAdminClient({
-  baseUrl: KEYCLOAK_BASE_URL,
-  realmName: KEYCLOAK_ADMIN_REALM,
-});
-
-const authKeycloakAdmin = createKeycloakAdminSession(kcAdmin, {
-  username: KEYCLOAK_ADMIN_USERNAME,
-  password: KEYCLOAK_ADMIN_PASSWORD,
-  grantType: "password",
-  clientId: "admin-cli",
-});
 
 const normalizeRole = (role) => {
   return ROLE_ALIASES[String(role || "").trim().toLowerCase()] || "Employee";
@@ -517,20 +500,10 @@ const pickEditableFields = (body = {}) => {
   return out;
 };
 
-/** Which roles an actor may create via add-user: a Superadmin any, an Admin only below Admin. */
-const canCreateRole = (actorRole, newRole) => {
-  const actor = normalizeRole(actorRole);
-  const target = normalizeRole(newRole);
-  if (actor === "Superadmin") return VALID_ROLES.includes(target);
-  if (actor === "Admin") return ["Subadmin", "Employee", "Intern"].includes(target);
-  return false;
-};
-
 // exported for unit tests (tests/userDataLeaks.test.js)
 exports.publicUser = publicUser;
 exports.stripSensitive = stripSensitive;
 exports.pickEditableFields = pickEditableFields;
-exports.canCreateRole = canCreateRole;
 exports.canEditUser = canEditUser;
 exports.canDeleteUser = canDeleteUser;
 exports.setKeycloakEnabled = setKeycloakEnabled;
@@ -795,7 +768,7 @@ exports.updateCurrentUser = async (req, res) => {
     const user = await User.findOneAndUpdate(
       { keycloakId: req.user?.keycloakId, isDeleted: { $ne: true } },
       updates,
-      { new: true, runValidators: true }
+      { returnDocument: "after", runValidators: true }
     );
 
     if (!user) return res.status(404).json({ message: "User not found" });

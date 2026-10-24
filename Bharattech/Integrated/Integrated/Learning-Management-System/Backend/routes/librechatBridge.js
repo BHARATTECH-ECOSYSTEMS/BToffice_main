@@ -1,13 +1,13 @@
 const express = require("express");
 const router = express.Router();
 const jwt = require("jsonwebtoken");
-const { keycloakAuth } = require("../middlewares/keycloakAuth");
+// server.js signs everyone in before these routes (app.use("/api/ai-assistant", keycloakAuth, librechatBridge)), so they don't check again
 
 /**
  * Generate time-limited embed token for LibreChat iframe
  * Requires authenticated Keycloak session
  */
-router.get("/token", keycloakAuth, async (req, res) => {
+router.get("/token", async (req, res) => {
   try {
     const librechatUrl = process.env.LIBRECHAT_URL;
     const sharedSecret =

@@ -14,7 +14,7 @@ const expiresAt = (jwt) => {
 };
 
 /**
- * Returns `ensureLoggedIn()`: logs `client` (a keycloak-admin client) in when it has no usable token, and does
+ * Returns `ensureLoggedIn()`: logs `client` (a Keycloak admin client) in when it has no usable token, and does
  * nothing while the last login is still good. A token whose expiry can't be read is never reused.
  */
 const createKeycloakAdminSession = (client, credentials, now = Date.now) => {

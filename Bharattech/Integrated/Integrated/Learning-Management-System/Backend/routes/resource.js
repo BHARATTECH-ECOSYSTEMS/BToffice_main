@@ -133,7 +133,7 @@ router.post("/:resourceId/assign", async (req, res) => {
     const resource = await Resource.findByIdAndUpdate(
       resourceId,
       { $addToSet: { assignedTo: userId } },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!resource) {
@@ -167,7 +167,7 @@ router.delete("/:resourceId/assign/:userId", async (req, res) => {
     const resource = await Resource.findByIdAndUpdate(
       resourceId,
       { $pull: { assignedTo: userId } },
-      { new: true }
+      { returnDocument: "after" }
     );
 
     if (!resource) {

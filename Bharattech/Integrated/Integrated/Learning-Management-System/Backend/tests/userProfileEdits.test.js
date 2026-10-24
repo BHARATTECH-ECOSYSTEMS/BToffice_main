@@ -17,7 +17,7 @@ class FakeKcAdminClient {
   }
   async auth() {}
 }
-require.cache[require.resolve("keycloak-admin")] = { id: "keycloak-admin", loaded: true, exports: { default: FakeKcAdminClient } };
+require("./helpers/fakeKeycloakAdmin").stubKeycloakAdminPackage(FakeKcAdminClient);
 
 const User = require("../models/User");
 const { updateUser, setMyPhoto, removeMyPhoto, getUserPhoto, canEditUser, readFullName, keycloakNames } = require("../controllers/userController");

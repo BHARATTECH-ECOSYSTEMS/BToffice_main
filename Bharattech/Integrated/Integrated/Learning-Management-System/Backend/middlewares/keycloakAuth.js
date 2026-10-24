@@ -1,7 +1,6 @@
 const jwt = require("jsonwebtoken");
 const jwksClient = require("jwks-rsa");
 const User = require("../models/User");
-const KcAdminClient = require("keycloak-admin").default;
 
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 const KEYCLOAK_BASE_URL =
@@ -34,22 +33,6 @@ const assertAuthConfig = () => {
   // JWT_SECRET is no longer needed: local tokens aren't accepted since step 17
   const adminPassword = process.env.KEYCLOAK_ADMIN_PASSWORD;
   if (!adminPassword || adminPassword === "admin") throw new Error("KEYCLOAK_ADMIN_PASSWORD must be set to a real password in production.");
-};
-
-const KEYCLOAK_ADMIN_REALM = process.env.KEYCLOAK_ADMIN_REALM || "master";
-const KEYCLOAK_ADMIN_USERNAME = process.env.KEYCLOAK_ADMIN_USERNAME || "admin";
-const KEYCLOAK_ADMIN_PASSWORD = process.env.KEYCLOAK_ADMIN_PASSWORD || "admin";
-
-const kcAdmin = new KcAdminClient({
-  baseUrl: KEYCLOAK_BASE_URL,
-  realmName: KEYCLOAK_ADMIN_REALM,
-});
-
-let lastSessionCheckTime = 0;
-let cachedActiveAdminSession = false;
-
-const checkActiveAdminSession = async () => {
-  return true;
 };
 
 const client = jwksClient({
@@ -287,7 +270,6 @@ module.exports = {
   requireAdmin,
   requireSuperAdmin,
   getOrCreateUser,
-  checkActiveAdminSession,
   audienceAllowed,
   inactiveReason,
   assertAuthConfig,

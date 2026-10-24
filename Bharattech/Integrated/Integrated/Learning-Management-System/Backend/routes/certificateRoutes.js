@@ -5,10 +5,8 @@ const path = require("path");
 
 const router = express.Router();
 
-const {
-  keycloakAuth,
-  requireAdmin,
-} = require("../middlewares/keycloakAuth");
+const { requireAdmin } = require("../middlewares/keycloakAuth");
+// server.js signs everyone in before these routes (app.use("/api/certificates", keycloakAuth, certificateRoutes)), so they don't check again
 const Certificate = require("../models/Certificate");
 const generateCertificate = require("../utils/generateCertifcate");
 const User = require("../models/User");
@@ -44,7 +42,7 @@ const resolveIssuerUser = async (req) => {
   return null;
 };
 
-router.post("/generate", keycloakAuth, requireAdmin, async (req, res) => {
+router.post("/generate", requireAdmin, async (req, res) => {
   const { userId, title } = req.body;
 
   try {
@@ -107,7 +105,7 @@ router.post("/generate", keycloakAuth, requireAdmin, async (req, res) => {
   }
 });
 
-router.get("/", keycloakAuth, requireAdmin, async (req, res) => {
+router.get("/", requireAdmin, async (req, res) => {
   try {
     const certificates = await Certificate.find({})
       .populate("issuedBy", "fullName email role")
@@ -124,12 +122,12 @@ router.get("/", keycloakAuth, requireAdmin, async (req, res) => {
 });
 
 // The signed-in person's own certificates (matched by account, never by name)
-router.get("/my", keycloakAuth, myCertificates);
+router.get("/my", myCertificates);
 
 // A certificate as a PDF, built fresh each time; for its owner, admins and superadmins
-router.get("/:id/pdf", keycloakAuth, certificatePdf);
+router.get("/:id/pdf", certificatePdf);
 
-router.delete("/:id", keycloakAuth, requireAdmin, async (req, res) => {
+router.delete("/:id", requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 

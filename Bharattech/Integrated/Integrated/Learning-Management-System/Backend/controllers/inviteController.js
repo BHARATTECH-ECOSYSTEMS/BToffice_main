@@ -1,5 +1,4 @@
 const { randomBytes } = require("crypto");
-const KcAdminClient = require("keycloak-admin").default;
 const User = require("../models/User");
 // email settings and transport are shared with notification emails (utils/mailer.js)
 const {
@@ -13,17 +12,10 @@ const {
   escapeHtml,
 } = require("../utils/mailer");
 
-const KEYCLOAK_BASE_URL =
-  process.env.KEYCLOAK_BASE_URL ||
-  process.env.KEYCLOAK_URL ||
-  "http://localhost:8080";
-const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
-const KEYCLOAK_ADMIN_REALM = process.env.KEYCLOAK_ADMIN_REALM || "master";
+// the backend's one Keycloak admin client; authAdminClient() reuses its login while it's still good
+const { kcAdmin: kcAdminClient, ensureKeycloakAdmin: authAdminClient, keycloakReply } = require("../utils/keycloakAdmin");
 
-const kcAdminClient = new KcAdminClient({
-  baseUrl: KEYCLOAK_BASE_URL,
-  realmName: KEYCLOAK_ADMIN_REALM,
-});
+const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 
 const roleMap = {
   user: "Employee",
@@ -233,15 +225,6 @@ const sendBackendInviteEmail = async ({ name, username, email, role, temporaryPa
         <p style="margin-top:24px;color:#9ca3af;font-size:12px;">BharatTech — if you were not expecting this invitation, you can ignore this email.</p>
       </div>
     `,
-  });
-};
-
-const authAdminClient = async () => {
-  await kcAdminClient.auth({
-    username: process.env.KEYCLOAK_ADMIN_USERNAME || "admin",
-    password: process.env.KEYCLOAK_ADMIN_PASSWORD || "admin",
-    grantType: "password",
-    clientId: process.env.KEYCLOAK_ADMIN_CLIENT_ID || "admin-cli",
   });
 };
 
@@ -523,7 +506,7 @@ const inviteSomeone = async ({ name, email, role, actorRole }) => {
   } catch (error) {
     console.error("Invite error:", error);
 
-    const upstreamStatus = error?.response?.status;
+    const upstreamStatus = keycloakReply(error).status;
 
     if (upstreamStatus === 409) {
       return reply(409, {

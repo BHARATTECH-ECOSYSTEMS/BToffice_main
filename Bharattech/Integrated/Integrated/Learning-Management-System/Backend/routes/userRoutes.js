@@ -14,44 +14,45 @@ const {
   removeMyPhoto,
   getUserPhoto
 } = require("../controllers/userController");
-const { keycloakAuth, requireAdmin } = require("../middlewares/keycloakAuth");
+const { requireAdmin } = require("../middlewares/keycloakAuth");
+// server.js signs everyone in before these routes (app.use("/api/user", keycloakAuth, userRoutes)), so they don't check again
 const { uploadUserPhoto } = require("../middlewares/uploadUserPhoto");
 
 // Get current logged-in user
-router.get("/me", keycloakAuth, getCurrentUser);
+router.get("/me", getCurrentUser);
 
 // Update current logged-in user's profile (phone, workPhone, etc.)
-router.patch("/me", keycloakAuth, updateCurrentUser);
+router.patch("/me", updateCurrentUser);
 
 // The signed-in person's own photo (form field "photo"), kept in MongoDB
-router.put("/me/photo", keycloakAuth, uploadUserPhoto("photo"), setMyPhoto);
-router.delete("/me/photo", keycloakAuth, removeMyPhoto);
+router.put("/me/photo", uploadUserPhoto("photo"), setMyPhoto);
+router.delete("/me/photo", removeMyPhoto);
 
 // Adding a person is an invite (POST /api/invite/send-invite); the old add-user, which made a database-only account
 // nobody could sign in with, was removed in step 17 Part 2.
 
 // Get all users (authenticated users can view; mutations stay admin-only)
-router.get("/", keycloakAuth, getUsers);
+router.get("/", getUsers);
 
 // People directory with only the fields colleagues may see (any signed-in role) — must be before /:id
-router.get("/directory", keycloakAuth, getDirectory);
+router.get("/directory", getDirectory);
 
 // Fetch users directly from Keycloak (no MongoDB intermediary) — must be before /:id
-router.get("/keycloak-users", keycloakAuth, getKeycloakUsers);
+router.get("/keycloak-users", getKeycloakUsers);
 
 // Anyone's photo, for anyone signed in (like the directory)
-router.get("/:id/photo", keycloakAuth, getUserPhoto);
+router.get("/:id/photo", getUserPhoto);
 
 // Get user by ID - MUST come after named routes to avoid conflicts
-router.get("/:id", keycloakAuth, getUserById);
+router.get("/:id", getUserById);
 
 // Update user (PUT - full update). A photo comes as the form field "profilePicture" and goes to the same store.
-router.put("/:id", keycloakAuth, requireAdmin, uploadUserPhoto("profilePicture"), updateUser);
+router.put("/:id", requireAdmin, uploadUserPhoto("profilePicture"), updateUser);
 
 // Partially update user (PATCH)
-router.patch("/:id", keycloakAuth, requireAdmin, uploadUserPhoto("profilePicture"), partialUpdateUser);
+router.patch("/:id", requireAdmin, uploadUserPhoto("profilePicture"), partialUpdateUser);
 
 // Delete user (soft delete - Admin only)
-router.delete("/:id", keycloakAuth, requireAdmin, deleteUser);
+router.delete("/:id", requireAdmin, deleteUser);
 
 module.exports = router;

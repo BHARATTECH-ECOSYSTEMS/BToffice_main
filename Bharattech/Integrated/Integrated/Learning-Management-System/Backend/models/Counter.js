@@ -14,7 +14,7 @@ const CounterSchema = new mongoose.Schema(
  * different numbers, even across several backend servers.
  */
 CounterSchema.statics.next = async function (name) {
-  const counter = await this.findOneAndUpdate({ _id: name }, { $inc: { seq: 1 } }, { upsert: true, new: true });
+  const counter = await this.findOneAndUpdate({ _id: name }, { $inc: { seq: 1 } }, { upsert: true, returnDocument: "after" });
   return counter.seq;
 };
 

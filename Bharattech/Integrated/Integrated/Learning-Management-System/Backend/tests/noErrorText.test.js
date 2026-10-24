@@ -39,11 +39,10 @@ test("the last-resort error handler answers a plain message and never a stack", 
   assert.deepEqual(run(Object.assign(new Error("internal detail"), { status: 400 })), { status: 400, body: { message: "Bad request" } });
 });
 
-// Every file the running server loads, minus the ones nothing loads any more (Part 3 removes those).
+// Every file the running server loads (the ones nothing loaded any more were removed in Part 3).
 const BACKEND = path.resolve(__dirname, "..");
-const DEAD = new Set(["controllers/certificateController.js", "middlewares/authMiddleware.js", "middlewares/security.middleware.js"]);
 const liveFiles = () =>
-  ["server.js", ...["routes", "controllers", "middlewares", "utils"].flatMap((dir) => fs.readdirSync(path.join(BACKEND, dir)).filter((f) => f.endsWith(".js")).map((f) => `${dir}/${f}`))].filter((f) => !DEAD.has(f));
+  ["server.js", ...["routes", "controllers", "middlewares", "utils"].flatMap((dir) => fs.readdirSync(path.join(BACKEND, dir)).filter((f) => f.endsWith(".js")).map((f) => `${dir}/${f}`))];
 
 /** The text of every `.json(...)` call in a file (to its matching bracket), with its line number. */
 const jsonReplies = (text) => {

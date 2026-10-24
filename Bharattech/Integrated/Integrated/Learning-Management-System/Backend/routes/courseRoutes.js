@@ -12,7 +12,8 @@ const {
     updateCourseApproval, 
     getPendingCourses
 } = require("../controllers/courseController");
-const { keycloakAuth, requireAdmin } = require("../middlewares/keycloakAuth");
+const { requireAdmin } = require("../middlewares/keycloakAuth");
+// server.js signs everyone in before these routes (app.use("/api/courses", keycloakAuth, courseRoutes)), so they don't check again
 const mongoose = require("mongoose");
 
 const router = express.Router();
@@ -20,7 +21,6 @@ const router = express.Router();
 // ✅ Create Course (Admin only - simplified from Trainer/Admin)
 router.post(
     "/create-course",
-    keycloakAuth,
     requireAdmin,
     uploadCourseFiles,
     createCourse
@@ -32,27 +32,27 @@ router.get("/all-approved", getAllCourses);
 /**
  * ✅ Approve or Reject a Course (Admin Only)
  */
-router.put("/approval/:courseId", keycloakAuth, requireAdmin, updateCourseApproval);
+router.put("/approval/:courseId", requireAdmin, updateCourseApproval);
 
 /**
  * ✅ Get Pending Courses (Admin Only)
  */
-router.get("/pending", keycloakAuth, requireAdmin, getPendingCourses);
+router.get("/pending", requireAdmin, getPendingCourses);
 
 // ✅ Get Trainer's Courses (Admin only - simplified)
-router.get("/trainer", keycloakAuth, requireAdmin, getTrainerCourses);
+router.get("/trainer", requireAdmin, getTrainerCourses);
 
 // Delete course (Admin only - simplified)
-router.delete("/:courseId", keycloakAuth, requireAdmin, deleteCourse);
+router.delete("/:courseId", requireAdmin, deleteCourse);
 
 // ✅ Enroll in a Course (Any authenticated user)
-router.post("/enroll/:courseId", keycloakAuth, enrollCourse);
+router.post("/enroll/:courseId", enrollCourse);
 
 // ✅ Get Enrolled Courses (Any authenticated user)
-router.get("/enrolled", keycloakAuth, getEnrolledCourses);
+router.get("/enrolled", getEnrolledCourses);
 
 // ✅ Partial Update Course (Admin Only - simplified)
-router.patch("/:courseId", keycloakAuth, requireAdmin, async (req, res, next) => {
+router.patch("/:courseId", requireAdmin, async (req, res, next) => {
     const { courseId } = req.params;
 
     // ✅ Validate if courseId is a valid MongoDB ObjectId
@@ -64,7 +64,7 @@ router.patch("/:courseId", keycloakAuth, requireAdmin, async (req, res, next) =>
 }, uploadCourseFiles, updateCourse);
 
 // ✅ Get Single Course by ID (Logged-in Users Only)
-router.get("/:id", keycloakAuth, async (req, res, next) => {
+router.get("/:id", async (req, res, next) => {
     const { id } = req.params;
 
     // Validate if the ID is a valid ObjectId

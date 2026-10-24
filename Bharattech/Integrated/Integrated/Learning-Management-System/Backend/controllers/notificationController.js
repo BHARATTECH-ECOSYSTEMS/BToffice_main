@@ -114,7 +114,7 @@ exports.setPrefs = async (req, res) => {
       return res.status(400).json({ message: `muted must be a list of: ${EMAIL_SWITCHES.join(", ")}.` });
     }
     const unique = [...new Set(muted)];
-    const user = isObjectId(req.user?.id) ? await User.findByIdAndUpdate(req.user.id, { $set: { mutedNotifications: unique } }, { new: true }).select("mutedNotifications") : null;
+    const user = isObjectId(req.user?.id) ? await User.findByIdAndUpdate(req.user.id, { $set: { mutedNotifications: unique } }, { returnDocument: "after" }).select("mutedNotifications") : null;
     if (!user) return res.status(404).json({ message: "Account not found" });
     return res.status(200).json({ muted: user.mutedNotifications });
   } catch (error) {

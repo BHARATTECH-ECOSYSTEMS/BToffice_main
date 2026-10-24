@@ -25,7 +25,7 @@ class FakeKcAdminClient {
     keycloak.calls.push(["auth"]);
   }
 }
-require.cache[require.resolve("keycloak-admin")] = { id: "keycloak-admin", loaded: true, exports: { default: FakeKcAdminClient } };
+require("./helpers/fakeKeycloakAdmin").stubKeycloakAdminPackage(FakeKcAdminClient);
 
 const { keycloakLogin, keycloakChangePassword } = require("../controllers/authController");
 const { connectTestDb, clearTestDb, disconnectTestDb } = require("./helpers/testDb");

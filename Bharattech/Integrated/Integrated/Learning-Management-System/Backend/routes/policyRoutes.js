@@ -17,9 +17,11 @@ const {
 
 router.get("/", keycloakAuth, getPolicies);
 
-router.get("/file/:filename", streamPolicyPdfFile);
+// Signed in since step 17: before, anyone with a link could download an internal policy. The portal sends the
+// sign-in with the request; the company's old Policy page shows these in an iframe, which can't.
+router.get("/file/:filename", keycloakAuth, streamPolicyPdfFile);
 
-router.get("/:id/pdf", streamPolicyPdf);
+router.get("/:id/pdf", keycloakAuth, streamPolicyPdf);
 
 router.post(
   "/",

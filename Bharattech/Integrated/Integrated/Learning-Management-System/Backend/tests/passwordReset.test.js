@@ -23,7 +23,7 @@ class FakeKcAdminClient {
   }
   async auth() {}
 }
-require.cache[require.resolve("keycloak-admin")] = { id: "keycloak-admin", loaded: true, exports: { default: FakeKcAdminClient } };
+require("./helpers/fakeKeycloakAdmin").stubKeycloakAdminPackage(FakeKcAdminClient);
 
 const User = require("../models/User");
 const PasswordReset = require("../models/PasswordReset");
@@ -200,8 +200,10 @@ test("a password Keycloak refuses is explained, and the link can be used again",
   await asha();
   await ask("asha@example.test");
   const token = tokenFrom("asha@example.test");
-  kc.resetError = Object.assign(new Error("Request failed with status code 400"), {
-    response: { status: 400, data: { error_description: "Invalid password: minimum length 12." } },
+  // the admin client's NetworkError: the HTTP reply in `response`, its parsed body in `responseData`
+  kc.resetError = Object.assign(new Error("invalidPasswordMinLengthMessage"), {
+    response: { status: 400 },
+    responseData: { error: "invalidPasswordMinLengthMessage", error_description: "Invalid password: minimum length 12." },
   });
 
   const refused = await reset(token);

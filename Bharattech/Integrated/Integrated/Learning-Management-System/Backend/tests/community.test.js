@@ -29,7 +29,7 @@ class FakeKcAdminClient {
   }
   async auth() {}
 }
-require.cache[require.resolve("keycloak-admin")] = { id: "keycloak-admin", loaded: true, exports: { default: FakeKcAdminClient } };
+require("./helpers/fakeKeycloakAdmin").stubKeycloakAdminPackage(FakeKcAdminClient);
 
 const User = require("../models/User");
 const Verification = require("../models/Verification");

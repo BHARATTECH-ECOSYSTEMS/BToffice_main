@@ -1,5 +1,14 @@
-// An in-memory stand-in for the keycloak-admin client: accounts, realm roles and passwords, enough for the invite
-// flow. Put it in place before the code under test loads keycloak-admin:
+// The Keycloak admin package the backend loads (once, in utils/keycloakAdmin.js).
+const KEYCLOAK_ADMIN_PACKAGE = "@keycloak/keycloak-admin-client";
+
+/** Puts `FakeKcAdminClient` where the backend loads Keycloak's admin client from. Call it before the code under test loads. */
+const stubKeycloakAdminPackage = (FakeKcAdminClient) => {
+  const file = require.resolve(KEYCLOAK_ADMIN_PACKAGE);
+  require.cache[file] = { id: file, filename: file, loaded: true, exports: { default: FakeKcAdminClient } };
+};
+
+// An in-memory stand-in for the Keycloak admin client: accounts, realm roles and passwords, enough for the invite
+// flow. Put it in place before the code under test loads the admin client:
 //   const realm = installFakeKeycloakAdmin();   // then require the controllers
 // realm.accounts, realm.passwords and realm.calls can be read and set by the test.
 const installFakeKeycloakAdmin = () => {
@@ -53,8 +62,8 @@ const installFakeKeycloakAdmin = () => {
     async auth() {}
   }
 
-  require.cache[require.resolve("keycloak-admin")] = { id: "keycloak-admin", loaded: true, exports: { default: FakeKcAdminClient } };
+  stubKeycloakAdminPackage(FakeKcAdminClient);
   return realm;
 };
 
-module.exports = { installFakeKeycloakAdmin };
+module.exports = { installFakeKeycloakAdmin, stubKeycloakAdminPackage, KEYCLOAK_ADMIN_PACKAGE };

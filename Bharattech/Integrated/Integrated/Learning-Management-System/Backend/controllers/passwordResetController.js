@@ -1,24 +1,14 @@
 const crypto = require("crypto");
-const KcAdminClient = require("keycloak-admin").default;
 const User = require("../models/User");
 const PasswordReset = require("../models/PasswordReset");
-const { createKeycloakAdminSession } = require("../utils/keycloakAdminSession");
+const { kcAdmin, ensureKeycloakAdmin: authKeycloakAdmin, keycloakReply } = require("../utils/keycloakAdmin");
 const { createMailTransporter, escapeHtml, portalUrl, EMAIL_FROM } = require("../utils/mailer");
 const { loginNameFor } = require("./authController");
 
 // "Forgot password?" on the portal's login: a link by email that sets a new password in Keycloak. Both routes are
 // public, so neither may reveal whether an account exists, and a link must be unguessable, short-lived and single-use.
 
-const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL || "http://localhost:8080";
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
-
-const kcAdmin = new KcAdminClient({ baseUrl: KEYCLOAK_BASE_URL, realmName: process.env.KEYCLOAK_ADMIN_REALM || "master" });
-const authKeycloakAdmin = createKeycloakAdminSession(kcAdmin, {
-  username: process.env.KEYCLOAK_ADMIN_USERNAME || "admin",
-  password: process.env.KEYCLOAK_ADMIN_PASSWORD || "admin",
-  grantType: "password",
-  clientId: "admin-cli",
-});
 
 const RESET_LINK_MINUTES = 30;
 // one link every 2 minutes and 5 an hour per account, so the form can't be used to flood someone's inbox
@@ -104,7 +94,7 @@ exports.resetPassword = async (req, res) => {
     const link = await PasswordReset.findOneAndUpdate(
       { tokenHash: hashToken(token), usedAt: null, cancelledAt: null, expiresAt: { $gt: now } },
       { $set: { usedAt: now } },
-      { new: true }
+      { returnDocument: "after" }
     );
     if (!link) return res.status(400).json({ code: "link-gone", message: LINK_GONE });
 
@@ -122,9 +112,10 @@ exports.resetPassword = async (req, res) => {
       // nothing changed, so the link is handed back for another try
       await PasswordReset.updateOne({ _id: link._id }, { $unset: { usedAt: 1 } });
       // Keycloak refuses a password that breaks the realm's rules with a 400 and a readable reason
-      const reason = error?.response?.status === 400 && error.response.data?.error_description;
+      const keycloak = keycloakReply(error);
+      const reason = keycloak.status === 400 && keycloak.data?.error_description;
       if (reason) return res.status(400).json({ message: reason });
-      console.error("Password reset Keycloak error:", error?.response?.status || error.message);
+      console.error("Password reset Keycloak error:", keycloak.status || error.message);
       return res.status(502).json({ message: "We couldn't reach the sign-in service, so your password wasn't changed. Try the link again in a moment." });
     }
 

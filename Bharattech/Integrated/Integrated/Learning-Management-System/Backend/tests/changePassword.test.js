@@ -20,7 +20,7 @@ class FakeKcAdminClient {
     admin.calls.push(["auth"]);
   }
 }
-require.cache[require.resolve("keycloak-admin")] = { id: "keycloak-admin", loaded: true, exports: { default: FakeKcAdminClient } };
+require("./helpers/fakeKeycloakAdmin").stubKeycloakAdminPackage(FakeKcAdminClient);
 
 const { keycloakChangePassword } = require("../controllers/authController");
 const { connectTestDb, clearTestDb, disconnectTestDb } = require("./helpers/testDb");
@@ -67,10 +67,12 @@ const change = async (body) => {
   return reply;
 };
 
-/** How Keycloak's admin API answers when the new password breaks the realm's password rules. */
+/** How Keycloak's admin API answers when the new password breaks the realm's password rules (the admin client's
+ * NetworkError: the HTTP reply in `response`, its parsed body in `responseData`). */
 const keycloakRefusal = () =>
-  Object.assign(new Error("Request failed with status code 400"), {
-    response: { status: 400, data: { error: "invalidPasswordMinLengthMessage", error_description: "Invalid password: minimum length 12." } },
+  Object.assign(new Error("invalidPasswordMinLengthMessage"), {
+    response: { status: 400 },
+    responseData: { error: "invalidPasswordMinLengthMessage", error_description: "Invalid password: minimum length 12." },
   });
 
 test("the right current password sets the new one and signs the person out everywhere", async () => {

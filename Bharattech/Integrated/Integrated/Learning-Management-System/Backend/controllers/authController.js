@@ -4,13 +4,10 @@
 // Superadmin included, and logged the whole request, password and all; nothing called them any more.
 const User = require("../models/User");
 
-const KcAdminClient = require("keycloak-admin").default;
+const { kcAdmin, ensureKeycloakAdmin, keycloakReply } = require("../utils/keycloakAdmin");
 const KEYCLOAK_BASE_URL =
   process.env.KEYCLOAK_BASE_URL || "http://localhost:8080";
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
-const KEYCLOAK_ADMIN_REALM = process.env.KEYCLOAK_ADMIN_REALM || "master";
-const KEYCLOAK_ADMIN_USERNAME = process.env.KEYCLOAK_ADMIN_USERNAME || "admin";
-const KEYCLOAK_ADMIN_PASSWORD = process.env.KEYCLOAK_ADMIN_PASSWORD || "admin";
 
 const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || "lms-client";
 
@@ -112,8 +109,7 @@ const passwordGrantAsTyped = async (username, password, { resave = false } = {})
   if (resave) {
     try {
       const { sub } = JSON.parse(Buffer.from(older.access_token.split(".")[1], "base64url").toString("utf8"));
-      const kcAdmin = new KcAdminClient({ baseUrl: KEYCLOAK_BASE_URL, realmName: KEYCLOAK_ADMIN_REALM });
-      await kcAdmin.auth({ username: KEYCLOAK_ADMIN_USERNAME, password: KEYCLOAK_ADMIN_PASSWORD, grantType: "password", clientId: "admin-cli" });
+      await ensureKeycloakAdmin();
       await kcAdmin.users.resetPassword({ realm: KEYCLOAK_REALM, id: sub, credential: { type: "password", value: password, temporary: false } });
     } catch (error) {
       console.warn("Sign-in: an older password couldn't be saved again as typed:", error.message);
@@ -140,8 +136,7 @@ const loginNameFor = async (typed) => {
 /** The steps Keycloak still wants on this account (by username, else email), or null when it can't be looked up. */
 const unfinishedSteps = async (login) => {
   try {
-    const kcAdmin = new KcAdminClient({ baseUrl: KEYCLOAK_BASE_URL, realmName: KEYCLOAK_ADMIN_REALM });
-    await kcAdmin.auth({ username: KEYCLOAK_ADMIN_USERNAME, password: KEYCLOAK_ADMIN_PASSWORD, grantType: "password", clientId: "admin-cli" });
+    await ensureKeycloakAdmin();
     const byUsername = await kcAdmin.users.find({ realm: KEYCLOAK_REALM, username: login, exact: true });
     const [account] = byUsername.length ? byUsername : await kcAdmin.users.find({ realm: KEYCLOAK_REALM, email: login, exact: true });
     return account ? account.requiredActions || [] : null;
@@ -235,17 +230,7 @@ const acceptInvite = async (req, res) => {
         .json({ message: "Invalid username or temporary password" });
     }
 
-    const kcAdmin = new KcAdminClient({
-      baseUrl: KEYCLOAK_BASE_URL,
-      realmName: KEYCLOAK_ADMIN_REALM,
-    });
-
-    await kcAdmin.auth({
-      username: KEYCLOAK_ADMIN_USERNAME,
-      password: KEYCLOAK_ADMIN_PASSWORD,
-      grantType: "password",
-      clientId: "admin-cli",
-    });
+    await ensureKeycloakAdmin();
 
     // The invitee may have typed either their assigned username or their
     // email to sign in — try both when locating their Keycloak record.
@@ -343,17 +328,7 @@ const keycloakChangePassword = async (req, res) => {
       return res.status(401).json({ message: "Current password is incorrect" });
     }
 
-    const kcAdmin = new KcAdminClient({
-      baseUrl: KEYCLOAK_BASE_URL,
-      realmName: KEYCLOAK_ADMIN_REALM,
-    });
-
-    await kcAdmin.auth({
-      username: KEYCLOAK_ADMIN_USERNAME,
-      password: KEYCLOAK_ADMIN_PASSWORD,
-      grantType: "password",
-      clientId: "admin-cli",
-    });
+    await ensureKeycloakAdmin();
 
     try {
       await kcAdmin.users.resetPassword({
@@ -363,7 +338,8 @@ const keycloakChangePassword = async (req, res) => {
       });
     } catch (error) {
       // Keycloak refuses a password that breaks the realm's rules with a 400 and a readable reason
-      const reason = error?.response?.status === 400 && error.response.data?.error_description;
+      const keycloak = keycloakReply(error);
+      const reason = keycloak.status === 400 && keycloak.data?.error_description;
       if (reason) return res.status(400).json({ message: reason });
       throw error;
     }

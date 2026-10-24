@@ -137,7 +137,7 @@ exports.postJob = async (req, res) => {
     // the stream's members who gave a personal email: people who left (isDeleted + leftOn), not people deleted
     const members = await User.find({ ...MEMBER, stream: draft.stream, personalEmail: { $type: "string" } }).select("personalEmail").lean();
     const counts = await sendOneEach(members.map((m) => m.personalEmail), postingMessage(job), "Internal job");
-    const saved = await InternalJob.findByIdAndUpdate(job._id, { $set: counts }, { new: true }).lean();
+    const saved = await InternalJob.findByIdAndUpdate(job._id, { $set: counts }, { returnDocument: "after" }).lean();
     res.status(201).json({ job: jobView(saved, req.user) });
   } catch (error) {
     answerError(res, error, "Post an internal job");

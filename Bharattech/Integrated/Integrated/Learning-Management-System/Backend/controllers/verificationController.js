@@ -153,7 +153,7 @@ const findRequest = async (id) => {
 
 /** Applies `change` only if the request is still in `expected`; anyone else's change in between makes it a 409. */
 const applyIf = async (id, expected, change, stale) => {
-  const updated = await withPerson(Verification.findOneAndUpdate({ _id: id, ...expected }, change, { new: true, runValidators: true }));
+  const updated = await withPerson(Verification.findOneAndUpdate({ _id: id, ...expected }, change, { returnDocument: "after", runValidators: true }));
   if (!updated) throw new Refusal(409, stale);
   return updated;
 };
@@ -290,7 +290,7 @@ exports.decide = async (req, res) => {
           ...(emailed ? { $set: { answeredAt: new Date() } } : {}),
           $push: { log: { at: new Date(), by: "System", text: emailed ? `Emailed the answer to ${updated.requesterEmail}` : `Couldn't email the answer to ${updated.requesterEmail}; reply by hand` } },
         },
-        { new: true }
+        { returnDocument: "after" }
       )
     );
     return res.status(200).json(await viewOne(answered ?? updated));

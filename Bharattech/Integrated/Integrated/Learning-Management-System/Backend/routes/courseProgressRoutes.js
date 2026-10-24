@@ -1,19 +1,19 @@
 const express = require("express");
 const router = express.Router();
 const controller = require("../controllers/courseProgressController");
-const { keycloakAuth } = require("../middlewares/keycloakAuth");
+// server.js signs everyone in before these routes (app.use("/api/course-progress", keycloakAuth, courseProgressRoutes)), so they don't check again
 
 // Enroll in a course
-router.post("/enroll", keycloakAuth, controller.enrollCourse);
+router.post("/enroll", controller.enrollCourse);
 
 // Update course progress
-router.patch("/update", keycloakAuth, controller.updateProgress);
+router.patch("/update", controller.updateProgress);
 
 // Get all courses for current user
-router.get("/", keycloakAuth, controller.getMyCourses);
+router.get("/", controller.getMyCourses);
 
 // Get specific course progress
-router.get("/:courseId", keycloakAuth, controller.getCourseProgress);
+router.get("/:courseId", controller.getCourseProgress);
 
 module.exports = router;
 

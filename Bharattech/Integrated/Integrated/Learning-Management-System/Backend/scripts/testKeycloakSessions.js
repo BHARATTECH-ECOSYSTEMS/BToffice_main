@@ -1,4 +1,4 @@
-const KcAdminClient = require("keycloak-admin").default;
+const KcAdminClient = require("@keycloak/keycloak-admin-client").default;
 require("dotenv").config({ path: require("path").resolve(__dirname, "..", "..", ".env") });
 
 const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL || "http://localhost:4000";

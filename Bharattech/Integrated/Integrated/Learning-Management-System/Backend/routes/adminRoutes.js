@@ -1,23 +1,24 @@
 const express = require("express");
 const router = express.Router();
 const adminController = require("../controllers/adminController");
-const { keycloakAuth, requireAdmin, requireSuperAdmin } = require("../middlewares/keycloakAuth");
+const { requireAdmin, requireSuperAdmin } = require("../middlewares/keycloakAuth");
+// server.js signs everyone in before these routes (app.use("/api/admin", keycloakAuth, adminRoutes)), so they don't check again
 const { setupKeycloakRealm } = require("../scripts/setupKeycloakRealm");
 
 // Create user (Admin only)
-router.post("/users", keycloakAuth, requireAdmin, adminController.createUser);
+router.post("/users", requireAdmin, adminController.createUser);
 
 // Get all admin-created users (Admin only)
-router.get("/users", keycloakAuth, requireAdmin, adminController.getAdminUsers);
+router.get("/users", requireAdmin, adminController.getAdminUsers);
 
 // Get assignable users (Admin only)
-router.get("/users/assignable", keycloakAuth, requireAdmin, adminController.getAssignableUsers);
+router.get("/users/assignable", requireAdmin, adminController.getAssignableUsers);
 
-router.get("/dashboard", keycloakAuth, requireAdmin, adminController.getDashboard);
+router.get("/dashboard", requireAdmin, adminController.getDashboard);
 
 // Keycloak realm bootstrap — SuperAdmin only
 // Creates/updates realm roles, disables self-registration, configures composite hierarchy.
-router.post("/setup-realm", keycloakAuth, requireSuperAdmin, async (req, res) => {
+router.post("/setup-realm", requireSuperAdmin, async (req, res) => {
   try {
     const result = await setupKeycloakRealm();
     res.json(result);

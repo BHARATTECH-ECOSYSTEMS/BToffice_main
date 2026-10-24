@@ -2,7 +2,7 @@
 // Run with: node scripts/seedKeycloakUsers.js
 
 require("dotenv").config({ path: require("path").resolve(__dirname, "..", "..", ".env") });
-const KcAdminClient = require("keycloak-admin").default;
+const KcAdminClient = require("@keycloak/keycloak-admin-client").default;
 
 const KEYCLOAK_BASE_URL = process.env.KEYCLOAK_BASE_URL || process.env.KEYCLOAK_URL || "http://localhost:4000";
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";

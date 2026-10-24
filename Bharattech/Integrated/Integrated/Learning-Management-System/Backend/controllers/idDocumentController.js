@@ -96,7 +96,7 @@ exports.uploadMine = async (req, res) => {
         $set: { documents: [...request.documents.filter((d) => d.kind !== kind), doc] },
         $push: { log: { at: new Date(), by: nameOf(req.user), text: `${old ? "Replaced" : "Uploaded"} the ${LABEL[kind]}` } },
       },
-      { new: true }
+      { returnDocument: "after" }
     );
     if (!updated) {
       // decided in the meantime: the new file goes, nothing changed

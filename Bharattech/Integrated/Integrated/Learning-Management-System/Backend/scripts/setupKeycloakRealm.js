@@ -7,7 +7,7 @@
  * Can also be invoked via POST /api/admin/setup-realm (SuperAdmin only).
  */
 
-const KcAdminClient = require("keycloak-admin").default;
+const KcAdminClient = require("@keycloak/keycloak-admin-client").default;
 
 const KEYCLOAK_BASE_URL =
   process.env.KEYCLOAK_BASE_URL ||

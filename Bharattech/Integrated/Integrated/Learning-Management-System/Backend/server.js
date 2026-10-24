@@ -49,7 +49,6 @@ const resourceRoutes = require("./routes/resource");
 const policyRoutes = require("./routes/policyRoutes");
 const openInterviewerRoutes = require("./routes/openInterviewerRoutes");
 const librechatBridge = require("./routes/librechatBridge");
-const { streamPolicyPdf } = require("./controllers/policyController");
 
 // 🔐 Keycloak middleware
 const { keycloakAuth } = require("./middlewares/keycloakAuth");
@@ -98,7 +97,6 @@ app.use("/api/reset-links", resetLinkRoutes);
 
 // 🔐 PROTECTED ROUTES (AUTO USER CREATION)
 app.use("/api/resources", keycloakAuth, resourceRoutes);
-app.get("/api/policies/:id/pdf", streamPolicyPdf);
 app.use("/api/policies", policyRoutes);
 app.use("/api/courses", keycloakAuth, courseRoutes);
 app.use("/api/user", keycloakAuth, userRoutes);

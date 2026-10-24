@@ -60,7 +60,7 @@ const savePersonalEmail = async (where, user, raw) => {
   const email = readPersonalEmail(raw, user.email);
   if (email && (await User.exists({ personalEmail: email, _id: { $ne: user._id } }))) throw new Refusal(409, TAKEN);
   try {
-    const saved = await User.findOneAndUpdate(where, email ? { $set: { personalEmail: email } } : { $unset: { personalEmail: 1 } }, { new: true });
+    const saved = await User.findOneAndUpdate(where, email ? { $set: { personalEmail: email } } : { $unset: { personalEmail: 1 } }, { returnDocument: "after" });
     return saved ? { personalEmail: saved.personalEmail || "" } : null;
   } catch (error) {
     // two people saving the same email at once: the unique index lets one through
@@ -102,7 +102,7 @@ exports.markLeft = async (req, res) => {
       left = await User.findOneAndUpdate(
         { _id: id, isDeleted: { $ne: true } },
         { $set: { isDeleted: true, deletedAt: new Date(), leftOn: todayInIndia() } },
-        { new: true }
+        { returnDocument: "after" }
       );
     } catch (error) {
       // put their sign-in back, so a failed save doesn't leave someone locked out but still listed as staff
@@ -130,7 +130,7 @@ const restoreMember = async (member, alsoSet = {}) => {
     console.error("Bringing back: switching on the Keycloak account failed:", error.message);
     throw new Refusal(502, "Their sign-in couldn't be switched back on right now, so they're still in the community. Try again in a minute.");
   }
-  const back = await User.findOneAndUpdate({ _id: member._id, ...MEMBER }, { $set: { isDeleted: false, deletedAt: null, ...alsoSet }, $unset: { leftOn: 1 } }, { new: true });
+  const back = await User.findOneAndUpdate({ _id: member._id, ...MEMBER }, { $set: { isDeleted: false, deletedAt: null, ...alsoSet }, $unset: { leftOn: 1 } }, { returnDocument: "after" });
   if (!back) throw new Refusal(404, NOT_A_MEMBER);
   return { person: back, needsInvite: !hasAccount };
 };
