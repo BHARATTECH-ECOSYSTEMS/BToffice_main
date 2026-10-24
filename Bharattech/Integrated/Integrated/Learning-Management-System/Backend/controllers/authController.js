@@ -668,6 +668,35 @@ const passwordGrantLogin = async (username, password) => {
   };
 };
 
+// Before step 16 the request cleaner deleted every "$" from what people typed, so a password chosen with "$" was
+// saved in Keycloak without it, and signing in worked only because the typing was cut the same way. Passwords now
+// arrive as typed, so when one with a "$" is refused, the same password without its "$" is tried once.
+const isWrongPassword = (result) => !result.ok && /invalid user credentials/i.test(result.errorDescription || "");
+const withoutDollars = (password) => String(password).replace(/\$/g, "");
+
+/**
+ * Signs in with the password as typed or, for a password saved before step 16, as it was saved. `resave` then saves
+ * it as typed, so the next sign-in needs one try; a failure there is logged (never the password) and doesn't stop
+ * the sign-in.
+ */
+const passwordGrantAsTyped = async (username, password, { resave = false } = {}) => {
+  const result = await passwordGrantLogin(username, password);
+  if (!isWrongPassword(result) || typeof password !== "string" || !password.includes("$")) return result;
+  const older = await passwordGrantLogin(username, withoutDollars(password));
+  if (!older.ok) return result;
+  if (resave) {
+    try {
+      const { sub } = JSON.parse(Buffer.from(older.access_token.split(".")[1], "base64url").toString("utf8"));
+      const kcAdmin = new KcAdminClient({ baseUrl: KEYCLOAK_BASE_URL, realmName: KEYCLOAK_ADMIN_REALM });
+      await kcAdmin.auth({ username: KEYCLOAK_ADMIN_USERNAME, password: KEYCLOAK_ADMIN_PASSWORD, grantType: "password", clientId: "admin-cli" });
+      await kcAdmin.users.resetPassword({ realm: KEYCLOAK_REALM, id: sub, credential: { type: "password", value: password, temporary: false } });
+    } catch (error) {
+      console.warn("Sign-in: an older password couldn't be saved again as typed:", error.message);
+    }
+  }
+  return older;
+};
+
 // BT-0001, bt-0001, BT0001… (IDs are padded to at least four digits).
 const EMPLOYEE_ID_SHAPE = /^bt-?(\d{4,})$/i;
 
@@ -692,7 +721,7 @@ const keycloakLogin = async (req, res) => {
         .json({ message: "Username and password are required" });
     }
 
-    const result = await passwordGrantLogin(await loginNameFor(username), password);
+    const result = await passwordGrantAsTyped(await loginNameFor(username), password, { resave: true });
 
     if (!result.ok) {
       console.warn(
@@ -863,7 +892,8 @@ const keycloakChangePassword = async (req, res) => {
         .json({ message: "Could not identify the current user" });
     }
 
-    const checkResult = await passwordGrantLogin(username, currentPassword);
+    // the new password replaces it anyway, so the older one isn't saved again first
+    const checkResult = await passwordGrantAsTyped(username, currentPassword);
     if (!checkResult.ok) {
       return res.status(401).json({ message: "Current password is incorrect" });
     }

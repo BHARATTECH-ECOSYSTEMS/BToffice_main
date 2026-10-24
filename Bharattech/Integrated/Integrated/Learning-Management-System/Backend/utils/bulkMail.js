@@ -6,10 +6,10 @@ const { createMailTransporter, escapeHtml, EMAIL_FROM } = require("./mailer");
 
 const AT_ONCE = 5;
 
-/** A plain-text and escaped-HTML email from these lines (empty ones left out). */
+/** A plain-text and escaped-HTML email from these lines (empty ones left out); line breaks typed inside one are kept. */
 const messageFrom = (subject, lines) => {
   const kept = lines.filter(Boolean);
-  return { from: EMAIL_FROM, subject, text: kept.join("\n\n"), html: kept.map((line) => `<p>${escapeHtml(line)}</p>`).join("") };
+  return { from: EMAIL_FROM, subject, text: kept.join("\n\n"), html: kept.map((line) => `<p>${escapeHtml(line).replace(/\r?\n/g, "<br>")}</p>`).join("") };
 };
 
 const logFailure = (what, error) => console.error(`${what} email failed:`, String(error?.message ?? "unknown error").replace(/\S+@\S+/g, "<address>"));

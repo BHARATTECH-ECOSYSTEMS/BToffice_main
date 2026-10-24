@@ -51,14 +51,52 @@ test("markup is stored as plain text, not rewritten", async () => {
   assert.deepEqual(await echo(typed), typed);
 });
 
-test("a database operator smuggled into a field is still removed", async () => {
+/** Every field name in a received value, at any depth (inside lists too). */
+const namesIn = (value) =>
+  Array.isArray(value) ? value.flatMap(namesIn) : value && typeof value === "object" ? Object.entries(value).flatMap(([k, v]) => [k, ...namesIn(v)]) : [];
+
+test("a database operator smuggled into a field is removed, name and all", async () => {
   const received = await echo({ email: { $gt: "" }, password: { $ne: null } });
-  assert.equal(JSON.stringify(received).includes("$"), false, JSON.stringify(received));
+  assert.deepEqual(received, { email: {}, password: {} });
 });
 
-// Known and reported: mongoSanitize also drops $ from ordinary text. Left as it is for now (owner's choice 3A).
-test("a $ inside ordinary text is still removed by the database cleaner", async () => {
-  assert.notEqual((await echo({ password: "Pa$$word" })).password, "Pa$$word");
+test("operator names are removed at any depth and inside lists", async () => {
+  const received = await echo({ person: { address: { city: { $regex: ".*" } } }, tags: [{ $where: "sleep(1000)" }, "ok"], $or: [{ a: 1 }] });
+  assert.deepEqual(received, { person: { address: { city: {} } }, tags: [{}, "ok"] });
+  assert.equal(namesIn(received).some((n) => n.includes("$")), false);
+});
+
+test("dotted names and prototype names are removed", async () => {
+  const received = await echo(JSON.parse('{"a.b": 1, "__proto__": {"admin": true}, "constructor": {"prototype": {"x": 1}}, "fine": 2}'));
+  assert.deepEqual(received, { fine: 2 });
+  assert.equal({}.admin, undefined);
+});
+
+test("operator names in the address are removed too", async () => {
+  const res = await fetch(`${base}?email[$ne]=x&role=Employee&a.b=1`);
+  assert.deepEqual(await res.json(), { role: "Employee" });
+});
+
+// Owner's choice 1A (step 16): only field names can carry an operator, so typed values arrive exactly as typed.
+test("a $ in ordinary text arrives as typed, passwords included", async () => {
+  const typed = { password: "Pa$$word1", price: "Costs $500", email: "a$b@example.test", list: ["x$y"] };
+  assert.deepEqual(await echo(typed), typed);
+});
+
+test("line breaks and tabs arrive as typed", async () => {
+  const typed = { note: "Line one\nLine two\r\n\tIndented", lines: ["a\nb"] };
+  assert.deepEqual(await echo(typed), typed);
+});
+
+test("invisible control characters are still removed from text", async () => {
+  assert.deepEqual(await echo({ name: "Asha\u0000 Rao\u0007\u001b\u007f\u0085" }), { name: "Asha Rao" });
+  const res = await fetch(`${base}?q=a%00b`);
+  assert.deepEqual(await res.json(), { q: "ab" });
+});
+
+test("numbers, true/false and empty values pass through unchanged", async () => {
+  const typed = { n: 3, ok: false, nothing: null, empty: "", list: [] };
+  assert.deepEqual(await echo(typed), typed);
 });
 
 test("a query parameter sent twice is read once (parameter pollution)", async () => {

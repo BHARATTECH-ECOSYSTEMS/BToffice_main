@@ -113,6 +113,15 @@ test("the email says what the role is, where to apply, and how to stop these ema
   assert.ok(m.html.includes(GO.link.replace(/&/g, "&amp;")), "the link is in the HTML, escaped");
 });
 
+test("a note's line breaks reach the email, in the text and in the HTML (step 16)", async () => {
+  const p = await people();
+  await member("tech", "neha.home@example.net");
+  await share(p.admin, { ...GO, note: "Ask for Meghna.\nMention <the portal>\r\nBefore Friday" });
+  const [m] = mail.sent;
+  assert.ok(m.text.includes("Ask for Meghna.\nMention <the portal>\r\nBefore Friday"));
+  assert.ok(m.html.includes("Ask for Meghna.<br>Mention &lt;the portal&gt;<br>Before Friday"), m.html);
+});
+
 test("Super Admins share too; Sub Admins, employees and interns can't, and nothing is saved or sent", async () => {
   const p = await people();
   await member("tech", "neha.home@example.net");

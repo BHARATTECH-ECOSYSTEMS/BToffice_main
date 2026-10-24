@@ -15,8 +15,9 @@ const afterServerSanitizers = async (password) => {
   return req.body.password;
 };
 
-test("the database cleaner really does change $, which is why temporary passwords must avoid it", async () => {
-  assert.notEqual(await afterServerSanitizers("abc$def"), "abc$def");
+// Until step 16 the database cleaner deleted every $, which is why temporary passwords still leave it out.
+test("$ now reaches sign-in unchanged too (the cleaner only drops dangerous field names)", async () => {
+  assert.equal(await afterServerSanitizers("abc$def"), "abc$def");
 });
 
 test("& now reaches sign-in unchanged (the HTML cleaner that rewrote it is gone)", async () => {
