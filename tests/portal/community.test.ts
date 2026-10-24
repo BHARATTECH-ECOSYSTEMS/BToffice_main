@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ApiError, BUSY_MESSAGE, createApi } from '../../src/portal/api';
-import { communityCalls, communityFailedMessage, personalEmailProblem, toMembers } from '../../src/portal/community';
+import { communityCalls, communityFailedMessage, emailedLine, personalEmailProblem, referralBody, referralProblem, toMembers, toReferrals } from '../../src/portal/community';
+import { localDay } from '../../src/portal/eoffice';
 import { canMarkLeft, ACCOUNT_ROLES, type AccountRole } from '../../src/portal/people';
 
 // GET /api/community/members as the local backend returns it (controllers/communityController.js), admin view
@@ -116,4 +117,67 @@ test("a refused action rejects with the backend's reason, and a strange answer c
   await assert.rejects(community.saveMyPersonalEmail('x@example.net'), (e: unknown) => e instanceof ApiError && e.kind === 'conflict' && e.message === 'Someone else already uses this email.');
   await assert.rejects(community.myPersonalEmail(), (e: unknown) => e instanceof ApiError && e.kind === 'unavailable');
   assert.deepEqual(await community.bringBack(neha.id), { needsInvite: false });
+});
+
+/* ── Referrals (Part 2) ── */
+
+// GET /api/community/referrals as the local backend returns it (controllers/referralController.js)
+const SHARED = '2026-10-24T09:30:00.000Z';
+const go = { id: '6ad8bc3dd430c9b545aa5001', stream: 'tech', title: 'Backend Engineer (Go)', company: 'Northwind Logistics', link: 'https://northwind.example.com/careers', note: 'Ask for Meghna.', sharedBy: 'Test Admin', sharedOn: SHARED, emailed: 2, failed: 1 };
+
+test('referrals come in as the list shows them, dated in the viewer’s own day, in the backend’s order', () => {
+  const plain = { ...go, id: '6ad8bc3dd430c9b545aa5002', link: '', note: '', emailed: 0, failed: 0 };
+  assert.deepEqual(toReferrals([go, plain]), [
+    { id: go.id, stream: 'tech', title: 'Backend Engineer (Go)', company: 'Northwind Logistics', link: 'https://northwind.example.com/careers', note: 'Ask for Meghna.', postedBy: 'Test Admin', posted: localDay(Date.parse(SHARED)), emailed: 2, failed: 1 },
+    { id: plain.id, stream: 'tech', title: 'Backend Engineer (Go)', company: 'Northwind Logistics', link: '', note: '', postedBy: 'Test Admin', posted: localDay(Date.parse(SHARED)), emailed: 0, failed: 0 },
+  ]);
+});
+
+test('a broken referral is left out, and a link that isn’t a web address is never shown as one', () => {
+  const broken = [{ ...go, id: '' }, { ...go, title: '' }, { ...go, company: '' }, { ...go, stream: 'sales' }, { ...go, sharedOn: 'soon' }, null];
+  assert.deepEqual(toReferrals([...broken, go]).map((r) => r.id), [go.id]);
+  assert.equal(toReferrals([{ ...go, link: 'javascript:alert(1)' }])[0].link, '');
+  assert.throws(() => toReferrals({}), (e: unknown) => e instanceof ApiError && e.kind === 'unavailable');
+});
+
+test('the share form checks what the backend checks, and sends only what it reads', () => {
+  const draft = { stream: 'tech' as const, title: ' Backend Engineer ', company: ' Northwind ', link: ' https://northwind.example.com/jobs?a=1&b=2 ', note: ' Ask for Meghna. ' };
+  assert.equal(referralProblem(draft), '');
+  assert.match(referralProblem({ ...draft, title: ' ' }), /role/i);
+  assert.match(referralProblem({ ...draft, company: '' }), /company/i);
+  assert.match(referralProblem({ ...draft, title: 'x'.repeat(121) }), /120/);
+  assert.match(referralProblem({ ...draft, company: 'x'.repeat(121) }), /120/);
+  assert.match(referralProblem({ ...draft, note: 'x'.repeat(501) }), /500/);
+  for (const link of ['javascript:alert(1)', 'ftp://x.example.com', 'northwind.example.com']) assert.match(referralProblem({ ...draft, link }), /https?:\/\//, link);
+  assert.equal(referralProblem({ ...draft, link: '', note: '' }), '');
+  assert.deepEqual(referralBody({ ...draft, extra: 'no' } as typeof draft), { stream: 'tech', title: 'Backend Engineer', company: 'Northwind', link: 'https://northwind.example.com/jobs?a=1&b=2', note: 'Ask for Meghna.' });
+});
+
+test('each referral says who it was emailed to, without naming anyone', () => {
+  assert.equal(emailedLine({ stream: 'tech', emailed: 1, failed: 0 }), 'Emailed to 1 member');
+  assert.equal(emailedLine({ stream: 'tech', emailed: 3, failed: 0 }), 'Emailed to 3 members');
+  assert.equal(emailedLine({ stream: 'tech', emailed: 2, failed: 1 }), 'Emailed to 2 of 3 members; 1 couldn’t be sent');
+  assert.equal(emailedLine({ stream: 'hr', emailed: 0, failed: 2 }), 'Couldn’t be emailed to the 2 members; pass it on by hand');
+  assert.equal(emailedLine({ stream: 'finance', emailed: 0, failed: 0 }), 'Nobody in the Finance community has a personal email yet, so it wasn’t emailed');
+});
+
+test('sharing, listing and removing go to their own addresses', async () => {
+  const { calls, community } = backend([200, [go]], [201, { referral: go }], [200, { message: 'Referral removed.' }]);
+  assert.equal((await community.referrals())[0].title, 'Backend Engineer (Go)');
+  const shared = await community.shareReferral({ stream: 'tech', title: ' Backend Engineer (Go) ', company: 'Northwind Logistics', link: '', note: '' });
+  assert.deepEqual([shared.id, shared.emailed], [go.id, 2]);
+  await community.removeReferral('6ad8 bc');
+  assert.deepEqual(
+    calls.map((c) => [c.method, c.url.replace('http://api.test/api', ''), c.body]),
+    [
+      ['GET', '/community/referrals', undefined],
+      ['POST', '/community/referrals', { stream: 'tech', title: 'Backend Engineer (Go)', company: 'Northwind Logistics', link: '', note: '' }],
+      ['DELETE', '/community/referrals/6ad8%20bc', undefined],
+    ],
+  );
+});
+
+test('a share the backend answers oddly counts as not saved, so the page never claims who was emailed', async () => {
+  const { community } = backend([201, { nothing: true }], [201, { referral: { ...go, title: '' } }]);
+  for (let i = 0; i < 2; i++) await assert.rejects(community.shareReferral({ stream: 'tech', title: 'Role', company: 'Co', link: '', note: '' }), (e: unknown) => e instanceof ApiError && e.kind === 'unavailable');
 });

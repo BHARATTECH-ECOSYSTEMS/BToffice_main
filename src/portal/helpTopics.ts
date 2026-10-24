@@ -150,13 +150,19 @@ const CONNECTED_HELP: HelpGroup[] = [
         audience: 'admin',
         link: { to: '/portal/people', label: 'Open People' },
       },
+      {
+        q: 'How do I share a referral?',
+        a: 'On the Community page, press “Share a referral” and give the role, the company, the community it’s for, and a link or note if you have one. Every member of that community with a personal email gets it by email, one email each, and the list shows how many it reached. Sub admins see the list too. Removing a referral doesn’t take back the emails already sent.',
+        audience: 'admin',
+        link: { to: '/portal/community', label: 'Open Community' },
+      },
     ],
   },
   {
     title: 'Good to know',
     icon: 'alert',
     topics: [
-      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, courses and your progress in them, verifications (including requests from other companies), the Community’s members and personal emails, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload. e-Office check-ins stay in this browser for now.' },
+      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, courses and your progress in them, verifications (including requests from other companies), the Community’s members, personal emails and referrals, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload. e-Office check-ins stay in this browser for now.' },
     ],
   },
 ];

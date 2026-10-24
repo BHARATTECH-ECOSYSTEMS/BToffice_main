@@ -2,8 +2,17 @@ import { useEffect, useState, type CSSProperties } from 'react';
 import { toneStyle } from '../../components/ui';
 import type { HueName } from '../../gl/palette';
 import type { ApiError } from '../api';
-import { communityFailedMessage, personalEmailProblem } from '../community';
-import { STREAM_LABEL, STREAMS, type Stream } from '../data';
+import {
+  communityFailedMessage,
+  emailedLine,
+  personalEmailProblem,
+  REFERRAL_LIMITS,
+  referralProblem,
+  useReferrals,
+  type ReferralDraft,
+  type RemoteReferral,
+} from '../community';
+import { STREAM_LABEL, STREAMS, type Referral, type Stream } from '../data';
 import { useAccountProfile } from '../profile';
 import { managesPortal, useSession } from '../session';
 import { formatDate, usePortal } from '../store';
@@ -39,22 +48,31 @@ const STEPS = {
 
 export function Community() {
   const session = useSession()!;
-  const { referrals, removeReferral } = usePortal();
+  const portal = usePortal();
   const source = useCommunitySource();
+  // referrals are for admins and sub admins; employees see the members only (and never ask the backend for them)
+  const showReferrals = session.role !== 'employee';
+  const remoteReferrals = useReferrals(showReferrals);
   const [stream, setStream] = useState<Stream | ''>('');
   const [posting, setPosting] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [bringing, setBringing] = useState<SourceMember | null>(null);
   const [notice, notify] = useNotice();
   const all = source.members;
   // the backend sends them newest leaver first; the demo's samples are sorted the same way here
   const members = all.filter((a) => !stream || a.stream === stream).sort((a, b) => b.left.localeCompare(a.left));
+  const referralsState = remoteReferrals.state;
+  const referrals: (Referral & Partial<Pick<RemoteReferral, 'emailed' | 'failed'>>)[] = source.connected
+    ? referralsState.kind === 'ready'
+      ? referralsState.referrals
+      : []
+    : portal.referrals;
+  const removeReferral = source.connected ? remoteReferrals.remove : async (id: string) => portal.removeReferral(id);
   const shared = referrals.filter((r) => !stream || r.stream === stream);
   const membersRef = useListFlip<HTMLUListElement>(`${stream}|${all.length}`);
   const referralsRef = useListFlip<HTMLUListElement>(`${stream}|${referrals.length}`);
   const label = stream ? `${STREAM_LABEL[stream]} community` : 'community';
   const isAdmin = session.role === 'admin';
-  // referrals are for admins and sub admins; employees see the members only. Connected, they wait for Part 2.
-  const showReferrals = session.role !== 'employee' && !source.connected;
   // the wall's cards come in one after another on arrival only; later changes slide (useListFlip)
   const [entering, setEntering] = useState(true);
   useEffect(() => {
@@ -75,6 +93,11 @@ export function Community() {
         {isAdmin && !source.connected && (
           <button type="button" className={btnClass('primary')} onClick={() => setPosting(true)}>
             <BtnLabel icon="spark">Post an internal job</BtnLabel>
+          </button>
+        )}
+        {isAdmin && source.connected && (
+          <button type="button" className={btnClass('primary')} onClick={() => setSharing(true)}>
+            <BtnLabel icon="share">Share a referral</BtnLabel>
           </button>
         )}
       </PageHead>
@@ -173,7 +196,22 @@ export function Community() {
               <p className="p-muted">Roles at other companies passed on to the {label}.</p>
             </header>
             <section className="p-card p-comm-panel">
-              {shared.length ? (
+              {source.connected && referralsState.kind === 'loading' ? (
+                <p className="p-muted" role="status">
+                  Loading referrals…
+                </p>
+              ) : source.connected && referralsState.kind === 'error' ? (
+                <div role="alert">
+                  <Empty icon="alert" title="Referrals didn’t load">
+                    {communityFailedMessage(referralsState.error)}
+                  </Empty>
+                  {referralsState.error.kind !== 'signed-out' && (
+                    <button type="button" className={btnClass('light', { small: true })} onClick={remoteReferrals.retry}>
+                      <BtnLabel icon="refresh">Try again</BtnLabel>
+                    </button>
+                  )}
+                </div>
+              ) : shared.length ? (
                 <ul className="p-comm-people" ref={referralsRef}>
                   {shared.map((r) => (
                     <li key={r.id} className="p-comm-ref" data-flip={r.id}>
@@ -184,6 +222,7 @@ export function Community() {
                         <small>
                           {STREAM_LABEL[r.stream]}, shared by {r.postedBy} on {formatDate(r.posted)}
                         </small>
+                        {r.emailed !== undefined && <small className="p-comm-ref-sent">{emailedLine({ stream: r.stream, emailed: r.emailed, failed: r.failed ?? 0 })}</small>}
                       </span>
                       {(r.link || isAdmin) && (
                         <span className="p-comm-ref-actions">
@@ -199,9 +238,13 @@ export function Community() {
                               small
                               label="Remove"
                               srText={r.title}
-                              onDone={() => {
-                                removeReferral(r.id);
-                                notify('The referral was removed.');
+                              onDone={async () => {
+                                try {
+                                  await removeReferral(r.id);
+                                  notify('The referral was removed. Emails already sent stay with the people who got them.');
+                                } catch (error) {
+                                  notify(communityFailedMessage(error as ApiError));
+                                }
                               }}
                             />
                           )}
@@ -224,8 +267,8 @@ export function Community() {
       {managesPortal(session.role) &&
         (source.connected ? (
           <section className="p-card">
-            <Empty icon="spark" title="Referrals and internal jobs are being connected next">
-              Members and their personal emails are saved to the company system now. Sharing referrals and posting internal jobs come next.
+            <Empty icon="spark" title="Internal jobs are being connected next">
+              Members, their personal emails and referrals are saved to the company system now. Posting internal jobs comes next.
             </Empty>
           </section>
         ) : (
@@ -249,6 +292,18 @@ export function Community() {
             } catch (error) {
               notify(communityFailedMessage(error as ApiError));
             }
+          }}
+        />
+      )}
+
+      {sharing && (
+        <ShareReferral
+          initial={stream || 'tech'}
+          share={remoteReferrals.share}
+          onClose={() => setSharing(false)}
+          onShared={(r) => {
+            setStream(r.stream);
+            notify(`${r.title} at ${r.company} was shared with the ${STREAM_LABEL[r.stream]} community. ${emailedLine(r)}.`);
           }}
         />
       )}
@@ -480,6 +535,98 @@ function PersonalEmail({ member, source, notify }: { member: SourceMember; sourc
         </small>
       )}
     </form>
+  );
+}
+
+/**
+ * Shares a job at another company with one stream's former colleagues: the backend saves it and emails each of them
+ * who has a personal email. The window stays open while it sends, and keeps what was typed if something goes wrong.
+ */
+function ShareReferral({
+  initial,
+  share,
+  onClose,
+  onShared,
+}: {
+  initial: Stream;
+  share: (draft: ReferralDraft) => Promise<RemoteReferral>;
+  onClose: () => void;
+  onShared: (referral: RemoteReferral) => void;
+}) {
+  const [draft, setDraft] = useState<ReferralDraft>({ stream: initial, title: '', company: '', link: '', note: '' });
+  const [error, setError] = useState('');
+  const [sending, setSending] = useState(false);
+  const set = (field: keyof ReferralDraft) => (e: { target: { value: string } }) => (setDraft((d) => ({ ...d, [field]: e.target.value })), setError(''));
+
+  const submit = async () => {
+    const problem = referralProblem(draft);
+    if (problem) return setError(problem);
+    setSending(true);
+    try {
+      onShared(await share(draft));
+      onClose();
+    } catch (e) {
+      setError(communityFailedMessage(e as ApiError));
+      setSending(false);
+    }
+  };
+
+  return (
+    <Modal
+      title="Share a referral"
+      icon="share"
+      onClose={onClose}
+      onSubmit={() => void submit()}
+      footer={
+        <>
+          <button type="button" className={btnClass('ghost')} onClick={onClose} disabled={sending}>
+            <BtnLabel>Cancel</BtnLabel>
+          </button>
+          <button type="submit" className={btnClass('primary')} disabled={sending}>
+            <BtnLabel>{sending ? 'Sharing and emailing…' : 'Share and email'}</BtnLabel>
+          </button>
+        </>
+      }
+    >
+      <div className="p-form-row">
+        <label className="p-field">
+          <span>Role</span>
+          <input value={draft.title} onChange={set('title')} placeholder="Backend Engineer" maxLength={REFERRAL_LIMITS.title} autoFocus />
+        </label>
+        <label className="p-field">
+          <span>Company</span>
+          <input value={draft.company} onChange={set('company')} placeholder="Who is hiring" maxLength={REFERRAL_LIMITS.company} />
+        </label>
+      </div>
+      <div className="p-form-row">
+        <label className="p-field">
+          <span>Community</span>
+          <select className="p-select" value={draft.stream} onChange={set('stream')}>
+            {STREAMS.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="p-field">
+          <span>Link (optional)</span>
+          <input type="url" value={draft.link} onChange={set('link')} placeholder="https://" maxLength={REFERRAL_LIMITS.link} />
+        </label>
+      </div>
+      <label className="p-field">
+        <span>Note (optional)</span>
+        <textarea value={draft.note} onChange={set('note')} rows={2} placeholder="Who to ask, location, anything that helps" maxLength={REFERRAL_LIMITS.note} />
+      </label>
+      <p className="p-field-hint">
+        Members of the {STREAM_LABEL[draft.stream]} community with a personal email get it by email, one each. Removing it later doesn’t take those emails back.
+      </p>
+      {error && (
+        <p className="p-error" role="alert">
+          {error}
+        </p>
+      )}
+    </Modal>
   );
 }
 

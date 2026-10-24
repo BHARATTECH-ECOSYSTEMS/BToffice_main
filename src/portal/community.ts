@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, BUSY_MESSAGE, type createApi } from './api';
-import { EMAIL_SHAPE, STREAMS, type Stream } from './data';
+import { EMAIL_SHAPE, STREAM_LABEL, STREAMS, type Referral, type Stream } from './data';
+import { localDay } from './eoffice';
 import { readJoinDate } from './people';
 
 /**
  * The Bharattech Community on the backend (/api/community): the people who have left, the personal email the
- * community reaches them on, and bringing someone back. Marking someone as left is on the People page (people.ts).
+ * community reaches them on, bringing someone back, and the referrals emailed to them. Marking someone as left is on
+ * the People page (people.ts).
  */
 
 export interface CommunityMember {
@@ -48,6 +50,76 @@ export function personalEmailProblem(value: string, workEmail: string) {
   return '';
 }
 
+/** A referral as the list shows it, with how its emails went. */
+export type RemoteReferral = Referral & { emailed: number; failed: number };
+export type ReferralDraft = Pick<Referral, 'stream' | 'title' | 'company' | 'link' | 'note'>;
+
+// the backend's limits (models/Referral.js)
+export const REFERRAL_LIMITS = { title: 120, company: 120, note: 500, link: 2048 } as const;
+
+/** A web address starting with http:// or https://, as the browser writes it; null when it isn't one. */
+const webLink = (value: string) => {
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
+  } catch {
+    return null;
+  }
+};
+const count = (value: unknown) => (typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : 0);
+
+/** The referrals the backend sent, in its order (newest first); a broken one is left out. */
+export function toReferrals(raw: unknown): RemoteReferral[] {
+  if (!Array.isArray(raw)) throw new ApiError('unavailable');
+  return raw.flatMap((r) => (isRecord(r) ? (toReferral(r) ?? []) : []));
+}
+function toReferral(r: Record<string, unknown>): RemoteReferral | null {
+  const stream = STREAMS.find((s) => s.id === r.stream)?.id;
+  const shared = typeof r.sharedOn === 'string' ? Date.parse(r.sharedOn) : NaN;
+  if (!str(r.id) || !str(r.title) || !str(r.company) || !stream || Number.isNaN(shared)) return null;
+  return {
+    id: str(r.id),
+    stream,
+    title: str(r.title),
+    company: str(r.company),
+    // only ever shown as a link people click, so anything but a web address is dropped
+    link: webLink(str(r.link)) ?? '',
+    note: str(r.note),
+    postedBy: str(r.sharedBy),
+    posted: localDay(shared),
+    emailed: count(r.emailed),
+    failed: count(r.failed),
+  };
+}
+
+/** Why the backend would refuse this referral, or '' when it's fine. */
+export function referralProblem(draft: ReferralDraft) {
+  const title = draft.title.trim();
+  const company = draft.company.trim();
+  const link = draft.link.trim();
+  if (!title) return 'Enter the role, like Backend Engineer.';
+  if (!company) return 'Enter the company that is hiring.';
+  if (title.length > REFERRAL_LIMITS.title || company.length > REFERRAL_LIMITS.company) return `Keep the role and company to ${REFERRAL_LIMITS.title} characters each.`;
+  if (link && (link.length > REFERRAL_LIMITS.link || !webLink(link))) return 'Enter the link as a full web address starting with https:// or http://';
+  if (draft.note.trim().length > REFERRAL_LIMITS.note) return `Keep the note to ${REFERRAL_LIMITS.note} characters.`;
+  return '';
+}
+
+/** What POST /api/community/referrals reads, and nothing else. */
+export const referralBody = (draft: ReferralDraft) => {
+  const link = draft.link.trim();
+  return { stream: draft.stream, title: draft.title.trim(), company: draft.company.trim(), link: link ? (webLink(link) ?? link) : '', note: draft.note.trim() };
+};
+
+const members = (n: number) => `${n} ${n === 1 ? 'member' : 'members'}`;
+/** Who a referral reached, by number only. */
+export function emailedLine({ stream, emailed, failed }: { stream: Stream; emailed: number; failed: number }) {
+  if (!emailed && !failed) return `Nobody in the ${STREAM_LABEL[stream]} community has a personal email yet, so it wasn’t emailed`;
+  if (!emailed) return `Couldn’t be emailed to the ${members(failed)}; pass it on by hand`;
+  if (failed) return `Emailed to ${emailed} of ${members(emailed + failed)}; ${failed} couldn’t be sent`;
+  return `Emailed to ${members(emailed)}`;
+}
+
 const FAILED: Record<ApiError['kind'], string> = {
   'signed-out': 'Your sign-in has ended. Sign out and sign in again, then try once more.',
   forbidden: 'Your role can’t do that.',
@@ -82,8 +154,20 @@ export function communityCalls(client: Client) {
     saveMyPersonalEmail: async (email: string) => personalEmailOf(await client.put<unknown>('/community/me/personal-email', { personalEmail: email.trim().toLowerCase() })),
     saveMemberPersonalEmail: async (id: string, email: string) =>
       personalEmailOf(await client.put<unknown>(`${member(id)}/personal-email`, { personalEmail: email.trim().toLowerCase() })),
+    referrals: async () => toReferrals(await client.get<unknown>('/community/referrals')),
+    /** Shares it and emails the stream's members; resolves with the referral as saved, with its email counts. */
+    shareReferral: async (draft: ReferralDraft) => {
+      const reply = await client.post<unknown>('/community/referrals', referralBody(draft), { timeoutMs: SHARE_TIMEOUT_MS });
+      const shared = isRecord(reply) && isRecord(reply.referral) ? toReferral(reply.referral) : null;
+      if (!shared) throw new ApiError('unavailable');
+      return shared;
+    },
+    removeReferral: async (id: string) => void (await client.del(`/community/referrals/${encodeURIComponent(id)}`)),
   };
 }
+
+// sharing waits for the emails to go out (a few at a time), so it gets longer than the usual limit
+const SHARE_TIMEOUT_MS = 60_000;
 
 const asApiError = (error: unknown) => (error instanceof ApiError ? error : new ApiError('unavailable'));
 
@@ -129,6 +213,51 @@ export function useCommunityMembers() {
     retry: () => void load(),
     bringBack: (id: string) => act(() => communityCalls(api!).bringBack(id)),
     setPersonalEmail: (id: string, email: string) => act(() => communityCalls(api!).saveMemberPersonalEmail(id, email)),
+  };
+}
+
+export type ReferralsState = { kind: 'off' } | { kind: 'loading' } | { kind: 'ready'; referrals: RemoteReferral[] } | { kind: 'error'; error: ApiError };
+
+/**
+ * The referrals list from the backend; `off` with the demo sign-in or when `on` is false (employees never ask).
+ * Sharing and removing load the list again; they throw an ApiError when the backend refuses.
+ */
+export function useReferrals(on: boolean) {
+  const live = !!api && on;
+  const [state, setState] = useState<ReferralsState>(live ? { kind: 'loading' } : { kind: 'off' });
+
+  const load = useCallback(async () => {
+    if (!api || !on) return;
+    try {
+      setState({ kind: 'ready', referrals: await communityCalls(api).referrals() });
+    } catch (error) {
+      setState({ kind: 'error', error: asApiError(error) });
+    }
+  }, [on]);
+
+  useEffect(() => {
+    setState(live ? { kind: 'loading' } : { kind: 'off' });
+    void load();
+  }, [load, live]);
+
+  const act = useCallback(
+    async <T>(change: () => Promise<T>) => {
+      try {
+        return await change();
+      } catch (error) {
+        throw asApiError(error);
+      } finally {
+        await load();
+      }
+    },
+    [load],
+  );
+
+  return {
+    state,
+    retry: () => void load(),
+    share: (draft: ReferralDraft) => act(() => communityCalls(api!).shareReferral(draft)),
+    remove: (id: string) => act(() => communityCalls(api!).removeReferral(id)),
   };
 }
 

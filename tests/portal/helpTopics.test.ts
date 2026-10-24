@@ -105,6 +105,17 @@ test('connected, everyone learns what the Community is; only admins how to mark 
   assert.match(saves ?? '', /the Community/);
 });
 
+test('connected, admins learn how a referral is shared and emailed; nobody else is offered it', () => {
+  assert.ok(questions(true, 'admin').includes('How do I share a referral?'));
+  for (const role of ['employee', 'subadmin'] as const) assert.ok(!questions(true, role).includes('How do I share a referral?'), role);
+  const topic = helpGroups(true, 'admin', 'referral').flatMap((g) => g.topics).find((t) => t.q === 'How do I share a referral?');
+  assert.match(topic?.a ?? '', /personal email/i);
+  assert.match(topic?.a ?? '', /one email each|one each/i);
+  assert.match(topic?.a ?? '', /doesn’t take (.* )?back/i);
+  const saves = answers(true, 'admin').find((a) => a.startsWith('People, Tasks'));
+  assert.match(saves ?? '', /referrals/);
+});
+
 test('the demo keeps its own answers', () => {
   assert.ok(questions(false, 'employee').includes('Why did my changes disappear?'));
   assert.ok(!questions(true, 'employee').includes('Why did my changes disappear?'));
