@@ -21,7 +21,7 @@ export interface BellNote {
   at?: string;
 }
 
-const ICON: Record<string, PortalIconName> = { task: 'clipboard', 'task-update': 'edit', 'work-handed-in': 'upload', certificate: 'award', policy: 'file', event: 'calendar' };
+const ICON: Record<string, PortalIconName> = { task: 'clipboard', 'task-update': 'edit', 'work-handed-in': 'upload', certificate: 'award', policy: 'file', event: 'calendar', course: 'cap' };
 const PORTAL_PATH = /^\/portal(\/|$)/;
 
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
@@ -63,8 +63,8 @@ export function timeAgo(iso: string, now = Date.now()) {
   return DATE.format(at);
 }
 
-/** The email switches offered when connected: course updates wait until Learning is connected. */
-export const EMAIL_KINDS = NOTIFICATION_KINDS.filter((k) => k.id !== 'courses');
+/** The email switches offered when connected: all of them, now that Learning is connected too. */
+export const EMAIL_KINDS = NOTIFICATION_KINDS;
 
 const POLL_MS = 60_000;
 

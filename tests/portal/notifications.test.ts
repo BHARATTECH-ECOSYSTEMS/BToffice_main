@@ -64,9 +64,17 @@ test('times read as "just now", minutes, hours, days, then the date', () => {
   assert.equal(timeAgo('not a date', now), '');
 });
 
-test('the email switches leave out course updates until Learning is connected', () => {
+test('connected, every email switch is offered, course updates included', () => {
   assert.deepEqual(
     EMAIL_KINDS.map((k) => k.id),
-    ['tasks', 'certificates', 'policies', 'events'],
+    ['tasks', 'certificates', 'policies', 'courses', 'events'],
   );
+  assert.match(EMAIL_KINDS.find((k) => k.id === 'courses')!.hint, /new course/i);
+});
+
+test('a new course note shows in the bell with the course icon and links to the course', () => {
+  const { notes } = toBellNotes({ unread: 1, notes: [{ id: 'c1', kind: 'course', title: 'New course: Docker', detail: 'By Test Admin · 3 lectures', link: '/portal/lms/course/6ad8bc3dd430c9b545aa2a01', at: '2026-10-23T09:00:00.000Z', read: false }] });
+  assert.equal(notes.length, 1);
+  assert.equal(notes[0].icon, 'cap');
+  assert.equal(notes[0].to, '/portal/lms/course/6ad8bc3dd430c9b545aa2a01');
 });

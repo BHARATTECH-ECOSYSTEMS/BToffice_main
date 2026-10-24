@@ -126,7 +126,8 @@ const CONNECTED_HELP: HelpGroup[] = [
     topics: [
       NOT_CONNECTED_TOOL,
       WORKSPACE,
-      { q: 'How do courses work?', a: 'Learning isn’t connected to the company system yet, so its courses are samples to try out, and nothing you do there is kept.', link: { to: '/portal/lms', label: 'Open Learning' } },
+      { q: 'How do courses work?', a: 'Every course in Learning is free. Open one and enroll; lectures marked Preview are open before that. Mark lectures as done and rate the course from the player: your enrollments, progress and rating are saved to your account.', only: 'employee', link: { to: '/portal/lms', label: 'Open Learning' } },
+      { q: 'How do courses work?', a: 'Every course in Learning is free. Enroll in any course; your progress and rating are saved to your account. You can publish courses too (View as educator, then Add course); a new course goes live at once and everyone is told in their bell. You change, unpublish or delete your own courses from My courses; admins can change any.', audience: 'manager', link: { to: '/portal/lms', label: 'Open Learning' } },
       OPEN_POLICIES,
     ],
   },
@@ -143,7 +144,7 @@ const CONNECTED_HELP: HelpGroup[] = [
     title: 'Good to know',
     icon: 'alert',
     topics: [
-      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload. e-Office check-ins stay in this browser for now.' },
+      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, courses and your progress in them, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload. e-Office check-ins stay in this browser for now.' },
     ],
   },
 ];

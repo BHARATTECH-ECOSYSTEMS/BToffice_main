@@ -230,6 +230,7 @@ const router = createHashRouter([
             children: [
               { index: true, lazy: page(loadEducator, 'EducatorDashboard') },
               { path: 'add', lazy: page(loadAddCourse, 'AddCourse') },
+              { path: 'edit/:id', lazy: page(loadAddCourse, 'EditCourse') },
               { path: 'courses', lazy: page(loadEducator, 'MyCourses') },
               { path: 'students', lazy: page(loadEducator, 'StudentsEnrolled') },
             ],

@@ -81,6 +81,8 @@ export function createApi({ base, token, signedIn, request = (input, init) => fe
     postForm: <T>(path: string, form: FormData, { timeoutMs: limitMs }: { timeoutMs?: number } = {}) => send<T>('POST', path, form, limitMs),
     /** A file that replaces the one already there (a profile photo). */
     putForm: <T>(path: string, form: FormData) => send<T>('PUT', path, form),
+    /** A value that replaces the one already there (a rating, a lecture marked done). */
+    put: <T>(path: string, record: object) => send<T>('PUT', path, record),
     patch: <T>(path: string, changes: object) => send<T>('PATCH', path, changes),
     del: <T>(path: string) => send<T>('DELETE', path),
   };

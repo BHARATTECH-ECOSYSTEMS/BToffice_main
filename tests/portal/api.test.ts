@@ -94,6 +94,19 @@ test('a change is sent as JSON with the sign-in token, and the answer comes back
   assert.deepEqual(JSON.parse(String(init.body)), { team: 'Platform', stream: 'tech' });
 });
 
+test('a value that replaces the one there (a rating) is put as JSON with the sign-in token', async () => {
+  const net = backend(json(200, { id: 'c1' }));
+  const api = createApi({ base: 'http://api.test/api', ...signedIn, request: net.request });
+
+  assert.deepEqual(await api.put('/learning/courses/c1/rating', { stars: 4 }), { id: 'c1' });
+  const { url, init } = net.calls[0];
+  assert.equal(url, 'http://api.test/api/learning/courses/c1/rating');
+  assert.equal(init.method, 'PUT');
+  assert.equal(new Headers(init.headers).get('Authorization'), 'Bearer token-123');
+  assert.equal(new Headers(init.headers).get('Content-Type'), 'application/json');
+  assert.deepEqual(JSON.parse(String(init.body)), { stars: 4 });
+});
+
 test('a delete is sent with the sign-in token and no body', async () => {
   const net = backend(json(200, { message: 'User deleted successfully' }));
   const api = createApi({ base: 'http://api.test/api', ...signedIn, request: net.request });
@@ -197,4 +210,12 @@ test('a backend that never answers gives up after the time limit instead of load
 
   assert.equal(await failure(api.get('/user/me')), 'unavailable');
   assert.ok(Date.now() - started < 1000);
+});
+
+test('a refusal for too many requests says to wait, wherever it shows', async () => {
+  const { BUSY_MESSAGE } = await import('../../src/portal/api');
+  const { eventFailedMessage } = await import('../../src/portal/events');
+  const { learningFailedMessage } = await import('../../src/portal/learning');
+  assert.match(BUSY_MESSAGE, /wait a minute/i);
+  for (const message of [eventFailedMessage(new ApiError('busy')), learningFailedMessage(new ApiError('busy'))]) assert.equal(message, BUSY_MESSAGE);
 });

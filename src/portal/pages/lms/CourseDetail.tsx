@@ -1,21 +1,26 @@
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { allLectures, COURSE_INCLUDES, finalPrice, formatMinutes, plural, totalMinutes, type Course } from '../../lmsData';
-import { usePeopleById, usePortal } from '../../store';
+import { learningFailedMessage } from '../../learning';
+import type { ApiError } from '../../api';
 import { btnClass, BtnLabel, PIcon, PortalNotFound, useNotice } from '../../ui';
 import { CourseStructure, CourseThumb, PriceTag, Stars, useCourseStats, useMyProgress } from './parts';
+import { useLearning } from './source';
+
+// what a connected course really gives: the demo's list promises things (certificates, downloads) nothing provides
+const CONNECTED_INCLUDES = ['Every lecture, to watch at your own pace', 'Your progress saved to your account', 'Free for everyone at the company'];
 
 export function CourseDetail() {
   const { id = '' } = useParams();
-  const course = usePortal().courses.find((c) => c.id === id);
+  const course = useLearning().courses.find((c) => c.id === id);
   // keyed by id so moving to another course starts with its description collapsed again
   return course ? <CourseView key={course.id} course={course} /> : <PortalNotFound />;
 }
 
 function CourseView({ course }: { course: Course }) {
-  const { enroll } = usePortal();
-  const byId = usePeopleById();
+  const { connected, enroll, educatorName, isLive } = useLearning();
   const [expanded, setExpanded] = useState(false);
+  const [enrolling, setEnrolling] = useState(false);
   const [notice, notify] = useNotice();
   const stats = useCourseStats(course);
   const progress = useMyProgress(course);
@@ -24,6 +29,16 @@ function CourseView({ course }: { course: Course }) {
   const minutes = totalMinutes(lectures);
   const paid = finalPrice(course) > 0;
   const hasPreview = lectures.some((l) => l.preview);
+  const live = isLive(course);
+  const join = () => {
+    setEnrolling(true);
+    enroll(course)
+      .then(
+        () => notify(`You're enrolled in ${course.title}.`),
+        (e: ApiError) => notify(learningFailedMessage(e)),
+      )
+      .finally(() => setEnrolling(false));
+  };
 
   return (
     <div className="p-detail">
@@ -49,17 +64,18 @@ function CourseView({ course }: { course: Course }) {
           </span>
           <span>{plural(stats.students, 'student')}</span>
           <span>
-            Course by <strong>{byId.get(course.educatorId)?.name ?? 'a former educator'}</strong>
+            Course by <strong>{educatorName(course) || 'a former educator'}</strong>
           </span>
         </p>
+        {!live && <p className="p-hint">This course isn’t published, so only you and admins can see it.</p>}
 
         <h2 className="p-card-title">Course structure</h2>
         <CourseStructure
           chapters={course.chapters}
           action={(l) =>
-            progress.enrolled || l.preview ? (
+            progress.watchesAll || l.preview ? (
               <Link to={`/portal/lms/player/${course.id}?lecture=${l.id}`} className="p-watch">
-                {progress.enrolled ? 'Watch' : 'Preview'}
+                {progress.watchesAll ? 'Watch' : 'Preview'}
                 <span className="sr-only"> {l.title}</span>
               </Link>
             ) : (
@@ -74,7 +90,7 @@ function CourseView({ course }: { course: Course }) {
 
       <aside className="p-card p-buy" aria-label="Enrollment">
         <CourseThumb course={course} size="large" />
-        <PriceTag course={course} />
+        {!connected && <PriceTag course={course} />}
         <p className="p-buy-stats">
           <span>
             <PIcon name="spark" size={15} /> {stats.average.toFixed(1)}
@@ -95,27 +111,22 @@ function CourseView({ course }: { course: Course }) {
               <PIcon name="check" size={14} /> You're enrolled · {progress.done} of {plural(progress.total, 'lecture')} done
             </p>
           </>
-        ) : (
+        ) : live ? (
           <>
-            <button
-              type="button"
-              className={btnClass('primary', { wide: true })}
-              onClick={() => {
-                enroll(course.id);
-                notify(`You're enrolled in ${course.title}.`);
-              }}
-            >
-              <BtnLabel>Enroll now</BtnLabel>
+            <button type="button" className={btnClass('primary', { wide: true })} onClick={join} disabled={enrolling}>
+              <BtnLabel>{enrolling ? 'Enrolling…' : 'Enroll now'}</BtnLabel>
             </button>
             {paid && <p className="p-buy-note">Payments aren't connected yet, so enrolling doesn't charge anything.</p>}
             {hasPreview && <p className="p-buy-note">Lectures marked Preview can be watched before enrolling.</p>}
           </>
+        ) : (
+          <p className="p-buy-note">Publish the course from My courses to let people enroll.</p>
         )}
         {notice}
         <div className="p-buy-includes">
           <h2 className="p-buy-heading">What's in the course?</h2>
           <ul className="p-checks is-plain">
-            {COURSE_INCLUDES.map((item) => (
+            {(connected ? CONNECTED_INCLUDES : COURSE_INCLUDES).map((item) => (
               <li key={item}>
                 <PIcon name="check" size={14} /> {item}
               </li>

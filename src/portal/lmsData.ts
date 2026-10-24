@@ -237,6 +237,12 @@ export const finalPrice = (c: Course) => Math.round(c.price * (100 - c.discount)
 
 export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
+/** The first paragraph, cut at a word near 120 characters: the one-line summary under the course title. */
+export function summarise(paragraph: string) {
+  if (paragraph.length <= 120) return paragraph;
+  return `${paragraph.slice(0, 120).replace(/\s+\S*$/, '')}…`;
+}
+
 /** 34 → "34 minutes", 80 → "1 hour, 20 minutes", 120 → "2 hours". */
 export function formatMinutes(total: number) {
   const h = Math.floor(total / 60);

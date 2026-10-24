@@ -1,16 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, Navigate, useParams, useSearchParams } from 'react-router';
 import { allLectures, formatMinutes, plural, totalMinutes, youtubeId, type Course } from '../../lmsData';
-import { usePortal } from '../../store';
+import { learningFailedMessage } from '../../learning';
+import type { ApiError } from '../../api';
 import { Badge, btnClass, BtnLabel, Empty, PIcon, PortalNotFound, useNotice } from '../../ui';
 import { CourseStructure, CourseThumb, EduHead, StarInput, useMyProgress } from './parts';
+import { useLearning } from './source';
 
 export function MyEnrollments() {
-  const { me, courses, enrollments } = usePortal();
-  const mine = enrollments
-    .filter((e) => e.personId === me.id)
-    .map((e) => courses.find((c) => c.id === e.courseId))
-    .filter((c): c is Course => !!c);
+  const mine = useLearning().enrolledIn;
 
   return (
     <>
@@ -73,28 +71,35 @@ function EnrollmentRow({ course }: { course: Course }) {
 
 export function Player() {
   const { id = '' } = useParams();
-  const course = usePortal().courses.find((c) => c.id === id);
+  const course = useLearning().courses.find((c) => c.id === id);
   return course ? <PlayerView key={course.id} course={course} /> : <PortalNotFound />;
 }
 
 function PlayerView({ course }: { course: Course }) {
-  const { me, ratings, setLectureDone, rateCourse } = usePortal();
+  const { setLectureDone, rate } = useLearning();
   const [params, setParams] = useSearchParams();
   const [notice, notify] = useNotice();
+  const [saving, setSaving] = useState(false);
   const progress = useMyProgress(course);
   const lectures = allLectures(course);
-  const canWatch = (lectureId: string) => progress.enrolled || !!lectures.find((l) => l.id === lectureId)?.preview;
+  const canWatch = (lectureId: string) => progress.watchesAll || !!lectures.find((l) => l.id === lectureId)?.preview;
 
   // Nothing here is open to someone who isn't enrolled, apart from preview lectures.
-  if (!progress.enrolled && !lectures.some((l) => l.preview)) return <Navigate to={`/portal/lms/course/${course.id}`} replace />;
+  if (!progress.watchesAll && !lectures.some((l) => l.preview)) return <Navigate to={`/portal/lms/course/${course.id}`} replace />;
 
   const requested = params.get('lecture');
   const current = requested && canWatch(requested) ? lectures.find((l) => l.id === requested) : undefined;
   const next = current && lectures.slice(lectures.indexOf(current) + 1).find((l) => canWatch(l.id));
   const video = current ? youtubeId(current.videoUrl) : null;
-  const myRating = ratings.find((r) => r.courseId === course.id && r.personId === me.id)?.stars ?? 0;
   const watch = (lectureId: string) => setParams({ lecture: lectureId });
   const complete = progress.enrolled && progress.total > 0 && progress.done === progress.total;
+  const failed = (e: ApiError) => notify(learningFailedMessage(e));
+  const toggleDone = (lectureId: string) => {
+    setSaving(true);
+    setLectureDone(course, lectureId, !progress.isDone(lectureId))
+      .catch(failed)
+      .finally(() => setSaving(false));
+  };
 
   return (
     <div className="p-player">
@@ -133,15 +138,12 @@ function PlayerView({ course }: { course: Course }) {
           <div className="p-rate">
             <p className="p-rate-label">Rate this course:</p>
             <StarInput
-              value={myRating}
+              value={progress.rating}
               label={`Rate ${course.title}`}
-              onChange={(stars) => {
-                rateCourse(course.id, stars);
-                notify(`Thanks, you rated it ${plural(stars, 'star')}.`);
-              }}
+              onChange={(stars) => rate(course, stars).then(() => notify(`Thanks, you rated it ${plural(stars, 'star')}.`), failed)}
             />
           </div>
-        ) : (
+        ) : progress.watchesAll ? null : (
           <p className="p-hint">
             You're watching previews. <Link to={`/portal/lms/course/${course.id}`}>Enroll</Link> to unlock every lecture.
           </p>
@@ -173,7 +175,7 @@ function PlayerView({ course }: { course: Course }) {
             </div>
             <div className="p-row">
               {progress.enrolled && (
-                <button type="button" className={btnClass(progress.isDone(current.id) ? 'ghost' : 'primary')} onClick={() => setLectureDone(current.id, !progress.isDone(current.id))} aria-pressed={progress.isDone(current.id)}>
+                <button type="button" className={btnClass(progress.isDone(current.id) ? 'ghost' : 'primary')} onClick={() => toggleDone(current.id)} aria-pressed={progress.isDone(current.id)} disabled={saving}>
                   <BtnLabel icon="check">{progress.isDone(current.id) ? 'Completed' : 'Mark complete'}</BtnLabel>
                 </button>
               )}

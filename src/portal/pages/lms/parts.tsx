@@ -1,10 +1,12 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router';
 import type { PortalIconName } from '../../data';
-import { allLectures, finalPrice, formatMinutes, formatPrice, plural, totalMinutes, type Chapter, type Course, type Lecture } from '../../lmsData';
+import { finalPrice, formatMinutes, formatPrice, plural, totalMinutes, type Chapter, type Course, type Lecture } from '../../lmsData';
 import { managesPortal, useSession } from '../../session';
-import { usePeopleById, usePortal } from '../../store';
-import { btnClass, BtnLabel, PIcon, SampleDataBar } from '../../ui';
+import { api } from '../../api';
+import { learningFailedMessage } from '../../learning';
+import { btnClass, BtnLabel, Empty, PIcon, SampleDataBar } from '../../ui';
+import { DemoLearning, RemoteLearning, useLearning } from './source';
 
 const STUDENT_TABS: [string, string, PortalIconName][] = [
   ['/portal/lms', 'Home', 'home'],
@@ -28,14 +30,25 @@ export function useCanTeach() {
   return !!session && managesPortal(session.role);
 }
 
-/** The learning platform's own bar under the portal top bar: the student or educator pages, and the switch between them. */
+/** The learning platform's pages, on the backend's courses when connected and the demo's samples otherwise. */
 export function LmsShell() {
+  const Source = api ? RemoteLearning : DemoLearning;
+  return (
+    <Source>
+      <LmsFrame />
+    </Source>
+  );
+}
+
+/** The learning platform's own bar under the portal top bar: the student or educator pages, and the switch between them. */
+function LmsFrame() {
   const { pathname } = useLocation();
   const canTeach = useCanTeach();
+  const { connected, status, retry } = useLearning();
   const educator = pathname.startsWith('/portal/lms/educator');
   return (
     <>
-      <SampleDataBar />
+      {!connected && <SampleDataBar />}
       <div className="p-lms-bar">
         <nav className="p-lms-nav" aria-label={educator ? 'Educator pages' : 'Learning platform'}>
           {(educator ? EDUCATOR_TABS : STUDENT_TABS).map(([to, label, icon]) => (
@@ -50,7 +63,22 @@ export function LmsShell() {
           </Link>
         )}
       </div>
-      <Outlet />
+      {status.kind === 'ready' ? (
+        <Outlet />
+      ) : (
+        <section className="p-card" aria-live="polite">
+          {status.kind === 'error' ? (
+            <Empty icon="book" title="The courses didn’t load">
+              {learningFailedMessage(status.error)}{' '}
+              <button type="button" className="p-text-btn" onClick={retry}>
+                Try again
+              </button>
+            </Empty>
+          ) : (
+            <Empty icon="book" title="Loading the courses…" />
+          )}
+        </section>
+      )}
     </>
   );
 }
@@ -70,25 +98,10 @@ export function EduHead({ id, title, sub, count, children }: { id?: string; titl
 }
 
 /** Rating and audience numbers for one course. */
-export function useCourseStats(course: Course) {
-  const { ratings, enrollments } = usePortal();
-  const mine = ratings.filter((r) => r.courseId === course.id);
-  const average = mine.length ? mine.reduce((n, r) => n + r.stars, 0) / mine.length : 0;
-  return { average, ratingCount: mine.length, students: enrollments.filter((e) => e.courseId === course.id).length };
-}
+export const useCourseStats = (course: Course) => useLearning().stats(course);
 
 /** The signed-in person's enrollment in a course, if any, and their progress through it. */
-export function useMyProgress(course: Course) {
-  const { me, enrollments, completed } = usePortal();
-  const lectures = allLectures(course);
-  const done = lectures.filter((l) => completed.has(`${me.id}:${l.id}`)).length;
-  return {
-    enrolled: enrollments.some((e) => e.courseId === course.id && e.personId === me.id),
-    done,
-    total: lectures.length,
-    isDone: (lectureId: string) => completed.has(`${me.id}:${lectureId}`),
-  };
-}
+export const useMyProgress = (course: Course) => useLearning().progress(course);
 
 /** A generated cover: the course's icon on a tinted tile (no logos copied from elsewhere). */
 export function CourseThumb({ course, size = 'card' }: { course: Course; size?: 'card' | 'large' | 'row' }) {
@@ -145,20 +158,21 @@ export function PriceTag({ course }: { course: Course }) {
 }
 
 export function CourseCard({ course }: { course: Course }) {
-  const byId = usePeopleById();
+  const { connected, educatorName } = useLearning();
   const { average, ratingCount } = useCourseStats(course);
   return (
     <article className="p-card p-course">
       <CourseThumb course={course} />
       <h2 className="p-card-title">{course.title}</h2>
-      <p className="p-muted">{byId.get(course.educatorId)?.name ?? 'Former educator'}</p>
+      <p className="p-muted">{educatorName(course) || 'Former educator'}</p>
       <p className="p-rating">
         <span>{average.toFixed(1)}</span>
         <Stars value={average} />
         <span className="p-dim">({ratingCount})</span>
         <span className="sr-only">{ratingCount ? `, average of ${plural(ratingCount, 'rating')}` : ', no ratings yet'}</span>
       </p>
-      <PriceTag course={course} />
+      {/* connected, every course is free, so there's no price to show */}
+      {!connected && <PriceTag course={course} />}
       <Link to={`/portal/lms/course/${course.id}`} className={btnClass('primary', { wide: true })}>
         <BtnLabel icon="eye">
           View<span className="sr-only"> {course.title}</span>

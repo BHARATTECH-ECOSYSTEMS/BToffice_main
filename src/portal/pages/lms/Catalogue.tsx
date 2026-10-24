@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { SearchPill } from '../../../components/SearchPill';
 import { Link, useNavigate, useSearchParams } from 'react-router';
-import { usePeopleById, usePortal } from '../../store';
 import { btnClass, BtnLabel, Empty } from '../../ui';
 import { CourseCard } from './parts';
+import { useLearning } from './source';
 
 /** The search box on both pages: it always lands on the course list, with the words in the address so it can be shared. */
 function CourseSearch({ initial = '' }: { initial?: string }) {
@@ -26,9 +26,8 @@ function CourseSearch({ initial = '' }: { initial?: string }) {
 }
 
 export function LmsHome() {
-  const { courses } = usePortal();
   // the four newest, like the old platform's home
-  const latest = [...courses].sort((a, b) => b.published.localeCompare(a.published)).slice(0, 4);
+  const latest = useLearning().catalogue.slice(0, 4);
   return (
     <>
       <header className="p-lms-hero">
@@ -42,11 +41,19 @@ export function LmsHome() {
         <h2 id="latest-courses" className="p-card-title">
           Latest courses
         </h2>
-        <div className="p-course-grid">
-          {latest.map((c) => (
-            <CourseCard key={c.id} course={c} />
-          ))}
-        </div>
+        {latest.length ? (
+          <div className="p-course-grid">
+            {latest.map((c) => (
+              <CourseCard key={c.id} course={c} />
+            ))}
+          </div>
+        ) : (
+          <section className="p-card">
+            <Empty icon="book" title="No courses yet">
+              Courses appear here once an educator publishes one.
+            </Empty>
+          </section>
+        )}
         <Link to="/portal/lms/courses" className={`${btnClass('light')} p-lms-more`}>
           <BtnLabel arrow="right">Show all courses</BtnLabel>
         </Link>
@@ -56,12 +63,11 @@ export function LmsHome() {
 }
 
 export function CourseList() {
-  const { courses } = usePortal();
-  const byId = usePeopleById();
+  const { catalogue, educatorName } = useLearning();
   const [params] = useSearchParams();
   const q = params.get('q')?.trim() ?? '';
   const query = q.toLowerCase();
-  const rows = courses.filter((c) => !query || [c.title, c.summary, byId.get(c.educatorId)?.name ?? ''].some((v) => v.toLowerCase().includes(query)));
+  const rows = catalogue.filter((c) => !query || [c.title, c.summary, educatorName(c)].some((v) => v.toLowerCase().includes(query)));
 
   return (
     <>

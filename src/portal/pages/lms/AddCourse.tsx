@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router';
-import { formatMinutes, plural, totalMinutes, youtubeId, type Lecture } from '../../lmsData';
-import { usePortal } from '../../store';
-import { btnClass, BtnLabel, DeleteButton, Modal, PIcon } from '../../ui';
+import { Navigate, useNavigate, useParams } from 'react-router';
+import { formatMinutes, plural, totalMinutes, youtubeId, type Course, type Lecture } from '../../lmsData';
+import { learningFailedMessage } from '../../learning';
+import { ApiError } from '../../api';
+import { btnClass, BtnLabel, DeleteButton, Modal, PIcon, PortalNotFound } from '../../ui';
 import { EduHead } from './parts';
+import { useLearning, type Cover } from './source';
 
 const MAX_THUMB_MB = 2;
 const THUMB_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -16,27 +18,39 @@ interface DraftChapter {
 }
 
 const newId = () => crypto.randomUUID();
-
-/** The first paragraph, cut at a word near 120 characters: the one-line summary under the course title. */
-function summarise(paragraph: string) {
-  if (paragraph.length <= 120) return paragraph;
-  return `${paragraph.slice(0, 120).replace(/\s+\S*$/, '')}…`;
-}
+const asApiError = (error: unknown) => (error instanceof ApiError ? error : new ApiError('unavailable'));
 
 export function AddCourse() {
-  const { addCourse } = usePortal();
+  return <CourseForm />;
+}
+
+/** Connected: change a course this person may change (their own; an admin's: any). */
+export function EditCourse() {
+  const { id = '' } = useParams();
+  const { canManage, teaching } = useLearning();
+  const course = teaching.find((c) => c.id === id);
+  if (!canManage) return <Navigate to="/portal/lms/educator/courses" replace />;
+  return course ? <CourseForm key={course.id} course={course} /> : <PortalNotFound />;
+}
+
+/** The course form: a new course, or (with `course`) the changes to one. */
+function CourseForm({ course }: { course?: Course }) {
+  const { connected, publish, save, setCover } = useLearning();
   const navigate = useNavigate();
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [title, setTitle] = useState(course?.title ?? '');
+  const [description, setDescription] = useState(course?.description.join('\n\n') ?? '');
   const [price, setPrice] = useState('');
   const [discount, setDiscount] = useState('0');
-  const [thumb, setThumb] = useState<{ file: File; url: string } | null>(null);
-  const [chapters, setChapters] = useState<DraftChapter[]>([]);
+  const [thumb, setThumb] = useState<Cover | null>(null);
+  // editing: the cover already saved, until it's replaced or removed
+  const [keptCover, setKeptCover] = useState(course?.thumbUrl);
+  const [chapters, setChapters] = useState<DraftChapter[]>(() => (course?.chapters ?? []).map((c) => ({ ...c, open: false })));
   const [addingChapter, setAddingChapter] = useState(false);
   const [lectureFor, setLectureFor] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
-  // The cover preview is an object URL; free it when it's replaced or the form is left, unless the course kept it.
+  // The cover preview is an object URL; free it when it's replaced or the form is left, unless the demo's course kept it.
   const published = useRef(false);
   const thumbUrl = useRef('');
   useEffect(() => () => void (!published.current && thumbUrl.current && URL.revokeObjectURL(thumbUrl.current)), []);
@@ -53,7 +67,7 @@ export function AddCourse() {
 
   const updateChapter = (id: string, change: (c: DraftChapter) => DraftChapter) => setChapters((list) => list.map((c) => (c.id === id ? change(c) : c)));
 
-  const submit = () => {
+  const submit = async () => {
     const priceN = Number(price);
     const discountN = Number(discount);
     const paragraphs = description
@@ -62,36 +76,49 @@ export function AddCourse() {
       .filter(Boolean);
     if (!title.trim()) return setError('Give the course a title.');
     if (!paragraphs.length) return setError('Write a short description of the course.');
-    if (price.trim() === '' || !Number.isFinite(priceN) || priceN < 0 || priceN > 10000) return setError('Enter a price of 0 or more (0 makes the course free).');
-    if (!Number.isInteger(discountN) || discountN < 0 || discountN > 100) return setError('The discount is a whole number from 0 to 100.');
+    // connected, courses are free: there's no price to check
+    if (!connected) {
+      if (price.trim() === '' || !Number.isFinite(priceN) || priceN < 0 || priceN > 10000) return setError('Enter a price of 0 or more (0 makes the course free).');
+      if (!Number.isInteger(discountN) || discountN < 0 || discountN > 100) return setError('The discount is a whole number from 0 to 100.');
+    }
     if (!chapters.length) return setError('Add at least one chapter.');
     const empty = chapters.find((c) => !c.lectures.length);
     if (empty) return setError(`Add a lecture to "${empty.title}", or remove that chapter.`);
 
-    const course = addCourse({
-      title: title.trim(),
-      summary: summarise(paragraphs[0]),
-      description: paragraphs,
-      price: Math.round(priceN * 100) / 100,
-      discount: discountN,
-      icon: 'book',
-      tone: 'violet',
-      thumbUrl: thumb?.url,
-      chapters: chapters.map(({ id, title: t, lectures }) => ({ id, title: t, lectures })),
-    });
-    published.current = true;
-    navigate('/portal/lms/educator/courses', { state: { created: course.title } });
+    const input = { title: title.trim(), description: paragraphs, chapters: chapters.map(({ id, title: t, lectures }) => ({ id, title: t, lectures })) };
+    setSaving(true);
+    try {
+      if (course) {
+        await save(course, input);
+        if (thumb) await setCover(course, thumb.file);
+        else if (course.thumbUrl && !keptCover) await setCover(course, null);
+        navigate('/portal/lms/educator/courses', { state: { saved: input.title } });
+      } else {
+        const done = await publish({ ...input, price: Math.round(priceN * 100) / 100, discount: discountN }, thumb ?? undefined);
+        // the demo shows the picked cover from its object URL for as long as the page lives
+        published.current = !connected;
+        navigate('/portal/lms/educator/courses', { state: { created: input.title, coverFailed: !done.coverSaved } });
+      }
+    } catch (e) {
+      setError(learningFailedMessage(asApiError(e)));
+      setSaving(false);
+    }
   };
 
+  const cover = thumb?.url ?? keptCover;
   return (
     <>
-      <EduHead id="create-course" title="Create new course" sub="Add the details, structure the content, and publish the course." />
+      <EduHead
+        id="create-course"
+        title={course ? 'Edit course' : 'Create new course'}
+        sub={course ? `Change ${course.title}. People enrolled keep their progress on the lectures that stay.` : 'Add the details, structure the content, and publish the course.'}
+      />
       <section className="p-card p-course-form" aria-labelledby="create-course">
         <form
           noValidate
           onSubmit={(e) => {
             e.preventDefault();
-            submit();
+            void submit();
           }}
         >
           <label className="p-field">
@@ -102,22 +129,24 @@ export function AddCourse() {
             <span>Course description</span>
             <textarea value={description} onChange={(e) => (setDescription(e.target.value), setError(''))} rows={6} placeholder="What will people learn? Leave a blank line between paragraphs." maxLength={4000} />
           </label>
-          <div className="p-form-row">
-            <label className="p-field">
-              <span>Course price ($)</span>
-              <input type="number" min={0} step="0.01" inputMode="decimal" value={price} onChange={(e) => (setPrice(e.target.value), setError(''))} placeholder="0" />
-            </label>
-            <label className="p-field">
-              <span>Discount (%)</span>
-              <input type="number" min={0} max={100} step={1} inputMode="numeric" value={discount} onChange={(e) => (setDiscount(e.target.value), setError(''))} />
-            </label>
-          </div>
+          {!connected && (
+            <div className="p-form-row">
+              <label className="p-field">
+                <span>Course price ($)</span>
+                <input type="number" min={0} step="0.01" inputMode="decimal" value={price} onChange={(e) => (setPrice(e.target.value), setError(''))} placeholder="0" />
+              </label>
+              <label className="p-field">
+                <span>Discount (%)</span>
+                <input type="number" min={0} max={100} step={1} inputMode="numeric" value={discount} onChange={(e) => (setDiscount(e.target.value), setError(''))} />
+              </label>
+            </div>
+          )}
           <div className="p-field">
             <span>Thumbnail (optional)</span>
             <label className="p-drop">
               <input type="file" accept={THUMB_TYPES.join(',')} onChange={(e) => pickThumb(e.target.files?.[0])} />
-              {thumb ? (
-                <img src={thumb.url} alt="" />
+              {cover ? (
+                <img src={cover} alt="" />
               ) : (
                 <>
                   <PIcon name="upload" size={22} />
@@ -129,6 +158,11 @@ export function AddCourse() {
               )}
               {thumb && <span className="sr-only">Selected: {thumb.file.name}. Choose another file to replace it.</span>}
             </label>
+            {cover && course && (
+              <button type="button" className="p-text-btn is-danger" onClick={() => (setThumb(null), setKeptCover(undefined))}>
+                Remove the cover
+              </button>
+            )}
           </div>
 
           <fieldset className="p-course-content">
@@ -190,8 +224,8 @@ export function AddCourse() {
               {error}
             </p>
           )}
-          <button type="submit" className={btnClass('primary', { wide: true })}>
-            <BtnLabel>Create course</BtnLabel>
+          <button type="submit" className={btnClass('primary', { wide: true })} disabled={saving}>
+            <BtnLabel>{saving ? 'Saving…' : course ? 'Save changes' : connected ? 'Publish course' : 'Create course'}</BtnLabel>
           </button>
         </form>
 
