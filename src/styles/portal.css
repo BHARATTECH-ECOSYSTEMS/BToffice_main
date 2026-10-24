@@ -776,6 +776,11 @@ body:has(.portal) .scene {
 .p-file-facts dd.is-unset {
   color: var(--ink-soft);
 }
+/* Profile shows each detail whole: a long email or phone number takes a second line instead of being cut off */
+.p-me-facts dd {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
 .p-file-body {
   display: grid;
   /* the checklist carries the file names of uploaded IDs, so it gets the wider share */
@@ -5679,6 +5684,11 @@ html:has(.portal),
   height: 2px;
   border-radius: 0 0 2px 2px;
   background: var(--tone);
+}
+/* the stream badge in the stream's colour; its text is half ink, so orange and yellow still read (5:1 or more) */
+.p-comm-card .p-badge.is-soft {
+  color: color-mix(in srgb, var(--tone) 50%, var(--ink));
+  background: color-mix(in srgb, var(--tone) 12%, var(--paper));
 }
 .p-comm-card-top {
   display: flex;

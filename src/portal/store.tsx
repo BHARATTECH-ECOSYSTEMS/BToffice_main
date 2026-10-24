@@ -15,6 +15,7 @@ import {
   EMPLOYMENT_CHECKS,
   SEED_VERIFICATIONS,
   ID_RETENTION_DAYS,
+  rejoinedPerson,
   type Acceptance,
   type ApplicationStage,
   type InternalJob,
@@ -278,9 +279,8 @@ function usePortalState(session: Session) {
     (id: string) => {
       const former = alumni.find((a) => a.id === id);
       if (!former) return;
-      const { left: _left, personalEmail: _personal, ...person } = former;
       setAlumni((list) => list.filter((a) => a.id !== id));
-      setPeople((list) => [...list, { ...person, status: 'active', joined: today() }]);
+      setPeople((list) => [...list, rejoinedPerson(former, today())]);
     },
     [alumni]
   );

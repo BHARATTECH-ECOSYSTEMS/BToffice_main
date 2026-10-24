@@ -40,7 +40,7 @@ const REASONS = [
   },
   {
     title: 'Full-Stack Ecosystem Synergy',
-    body: 'From grassroots higher education with CollegeCue to developer community platforms with Recag and unified search, every product shares one knowledge fabric and compounds value over time.',
+    body: 'From foundation models to unified search, every product shares one knowledge fabric and compounds value over time.',
   },
   {
     title: 'Proven Track Record & Honors',

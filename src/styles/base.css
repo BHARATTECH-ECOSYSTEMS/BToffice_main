@@ -11,7 +11,8 @@
   --ink: #14130F;
   --ink-2: #2B2923;
   --ink-soft: #5C574E;
-  --muted: #8E877B;
+  /* quiet text, still 4.5:1 or more on every light background (#8E877B was about 3.3:1) */
+  --muted: #6E675C;
   --line: rgb(20 19 15 / 0.08);
   --line-strong: rgb(20 19 15 / 0.16);
 

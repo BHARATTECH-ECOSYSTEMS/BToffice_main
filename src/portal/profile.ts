@@ -29,6 +29,12 @@ export interface AccountProfile {
  * Where a person's photo comes from: one saved to their account (fetched from the backend with the sign-in, since an
  * <img> can't send it), or a full web address (the company's old sign-up photos).
  */
+/** An email split before its @, so a narrow column can break it there; null for anything else. */
+export function emailParts(value: string | undefined): [string, string] | null {
+  const at = value?.indexOf('@') ?? -1;
+  return value && at > 0 ? [value.slice(0, at), value.slice(at)] : null;
+}
+
 export type PhotoSource = { kind: 'stored'; path: string } | { kind: 'web'; url: string };
 
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);

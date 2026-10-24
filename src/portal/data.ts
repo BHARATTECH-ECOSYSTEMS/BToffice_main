@@ -1,3 +1,4 @@
+import type { HueName } from '../gl/palette';
 import type { Role } from './session';
 import { readToolLinks, withToolLinks } from './toolLinks';
 
@@ -46,12 +47,21 @@ export const STREAMS: { id: Stream; label: string }[] = [
   { id: 'finance', label: 'Finance' },
 ];
 export const STREAM_LABEL = Object.fromEntries(STREAMS.map((s) => [s.id, s.label])) as Record<Stream, string>;
+/** Each stream's colour on the Community wall (a member card's stripe, ring and badge), one per stream. */
+export const STREAM_TONE: Record<Stream, HueName> = { tech: 'violet', operations: 'tangerine', hr: 'saffron', finance: 'ink' };
 
 /**
  * Someone who has left. Marking a person as left moves them here, into their stream's community. Their work email
  * stops working when they go, so an admin adds the personal email the community reaches them on.
  */
 export type Alumnus = Person & { left: string; personalEmail?: string };
+
+/** A former colleague back in the directory after rejoining: active again, with today as their join date. */
+export function rejoinedPerson(former: Alumnus, today: string): Person {
+  // the personal email stays, as on the backend: it's how they were reached while away
+  const { left: _left, ...person } = former;
+  return { ...person, status: 'active', joined: today };
+}
 
 /**
  * An internal job posting (IJP): an opening at Bharattech offered back to former colleagues in one stream. Those

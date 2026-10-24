@@ -1,6 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { toneStyle } from '../../components/ui';
-import type { HueName } from '../../gl/palette';
 import type { ApiError } from '../api';
 import {
   communityFailedMessage,
@@ -12,7 +11,7 @@ import {
   type ReferralDraft,
   type RemoteReferral,
 } from '../community';
-import { STREAM_LABEL, STREAMS, type Referral, type Stream } from '../data';
+import { STREAM_LABEL, STREAM_TONE, STREAMS, type Referral, type Stream } from '../data';
 import { useAccountProfile } from '../profile';
 import { managesPortal, useSession } from '../session';
 import { formatDate, usePortal } from '../store';
@@ -22,8 +21,6 @@ import { InternalJobs, PostJob } from './CommunityJobs';
 import { useJobsSource } from './jobsSource';
 
 /** Each stream's colour, for the ring round a member's initials. */
-const STREAM_TONE: Record<Stream, HueName> = { tech: 'violet', operations: 'tangerine', hr: 'saffron', finance: 'violet' };
-
 /**
  * Bharattech Community: everyone who has left, as a wall of member cards filtered by the stream they worked in, with
  * the referrals shared with them beside it and the internal jobs offered back to them below. Employees see the

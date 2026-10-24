@@ -6,7 +6,7 @@ import { ID_DOC_MAX_MB, ID_DOCS, ID_RETENTION_DAYS, PERSON_STATUS_LABEL, ROLE_LA
 import { myDocumentsFailedMessage, useMyDocuments } from '../myDocuments';
 import { useMyPhoto } from '../myPhoto';
 import { PdfModal } from '../PdfModal';
-import { useAccountProfile, type ProfileState } from '../profile';
+import { emailParts, useAccountProfile, type ProfileState } from '../profile';
 import { formatDate, formatSize, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, Empty, initials, PageHead, PIcon, SampleDataBar, useNotice } from '../ui';
 
@@ -169,18 +169,25 @@ function DetailsCard({ name, badge, badgeLabel, photo, facts }: { name: string; 
           <Badge kind={badge}>{badgeLabel ?? ROLE_LABEL[badge]}</Badge>
         </div>
       </div>
-      <dl className="p-file-facts">
+      <dl className="p-file-facts p-me-facts">
         {facts.map(([k, v]) => (
           <div key={k}>
             <dt>{k}</dt>
-            <dd title={v ?? NOT_SET} className={v ? undefined : 'is-unset'}>
-              {v ?? NOT_SET}
+            <dd className={v ? undefined : 'is-unset'}>
+              <FactValue value={v} />
             </dd>
           </div>
         ))}
       </dl>
     </section>
   );
+}
+
+/** A detail as text that may wrap; an email gets its line break before the @ when the column is narrow. */
+function FactValue({ value }: { value: string | undefined }) {
+  const email = emailParts(value);
+  if (email) return <>{email[0]}<wbr />{email[1]}</>;
+  return <>{value ?? NOT_SET}</>;
 }
 
 /** The details card while the account record loads, or when it couldn't be loaded. */

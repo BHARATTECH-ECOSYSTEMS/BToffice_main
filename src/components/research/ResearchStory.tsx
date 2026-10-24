@@ -13,11 +13,9 @@ const LEDE = 'Six connected research domains. One shared ambition: intelligence 
 const COPY_LEAD = 0.6;
 const WHERE_WE_WORK = DOMAINS.length + 2;
 
-const PROOF = [ // PLACEHOLDER: dummy figures until real proof arrives
-  { value: '40+', label: 'researchers and engineers' }, // PLACEHOLDER
-  { value: '12', label: 'active research programmes' }, // PLACEHOLDER
-  { value: '3', label: 'patents filed' }, // PLACEHOLDER
-];
+// The team's figures under the opening (e.g. { value: '40+', label: 'researchers and engineers' }). Empty until the
+// company gives real ones: the earlier three were made up, and the row only shows when there are figures.
+const PROOF: { value: string; label: string }[] = [];
 
 /** Which side of the stage a stop's copy takes, so the stage can darken the swarm behind it. */
 const copySide = (stop: number) => (stop === 0 || stop === LAST ? 'none' : stop === 1 || stop === WHERE_WE_WORK ? 'both' : sideOf(stop) > 0 ? 'left' : 'right');
@@ -288,14 +286,16 @@ export function ResearchStory({ onFail }: { onFail: () => void }) {
             <button type="button" className="ra-text-link" onClick={() => goTo(2)} onFocus={() => goTo(1)}>
               Explore the six domains <Arrow />
             </button>
-            <ul className="ra-proof">
-              {PROOF.map((p, i) => (
-                <li key={p.label} style={{ '--i': i } as CSSProperties}>
-                  <strong>{p.value}</strong>
-                  <span>{p.label}</span>
-                </li>
-              ))}
-            </ul>
+            {PROOF.length > 0 && (
+              <ul className="ra-proof">
+                {PROOF.map((p, i) => (
+                  <li key={p.label} style={{ '--i': i } as CSSProperties}>
+                    <strong>{p.value}</strong>
+                    <span>{p.label}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
         </Scene>
 
