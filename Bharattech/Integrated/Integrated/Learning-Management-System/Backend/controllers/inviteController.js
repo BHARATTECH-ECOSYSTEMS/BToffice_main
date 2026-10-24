@@ -443,6 +443,16 @@ const sendInvite = async (req, res) => {
       email: normalizedEmail,
     });
 
+    // Someone who left still has their Keycloak account, switched off: an invite would give it a new password it can't
+    // use. They come back through the Community's "Bring back" (controllers/communityController.js).
+    if (existingDbUser?.isDeleted && existingDbUser.leftOn) {
+      return res.status(409).json({
+        success: false,
+        code: "left",
+        message: "They've left Bharattech. Bring them back from the Community page instead.",
+      });
+    }
+
     const restored = Boolean(existingDbUser && existingDbUser.isDeleted);
     const resent = Boolean(existingDbUser && !existingDbUser.isDeleted);
 

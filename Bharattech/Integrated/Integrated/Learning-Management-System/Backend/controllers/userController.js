@@ -246,6 +246,37 @@ const syncKeycloakName = async (keycloakId, fullName) => {
   );
 };
 
+/**
+ * Switches a Keycloak account off (someone left) or back on (brought back), sending the rest of the account back
+ * unchanged. Switching off also ends every session; a failure there is only logged, because the account is already
+ * off and keycloakAuth refuses a record that has left. Returns false when the account no longer exists in Keycloak.
+ */
+const setKeycloakEnabled = async (keycloakId, enabled) => {
+  await authKeycloakAdmin();
+  const kcUser = await kcAdmin.users.findOne({ realm: KEYCLOAK_REALM, id: keycloakId });
+  if (!kcUser) return false;
+  await kcAdmin.users.update(
+    { realm: KEYCLOAK_REALM, id: keycloakId },
+    {
+      username: kcUser.username,
+      email: kcUser.email,
+      emailVerified: kcUser.emailVerified,
+      firstName: kcUser.firstName,
+      lastName: kcUser.lastName,
+      attributes: kcUser.attributes,
+      enabled,
+    }
+  );
+  if (!enabled) {
+    try {
+      await kcAdmin.users.logout({ realm: KEYCLOAK_REALM, id: keycloakId });
+    } catch (error) {
+      console.error("Leaving: ending sessions failed:", error.message);
+    }
+  }
+  return true;
+};
+
 const PHOTO_PROBLEM = "Choose a PNG, JPG or WebP image.";
 
 /**
@@ -491,6 +522,8 @@ exports.stripSensitive = stripSensitive;
 exports.pickEditableFields = pickEditableFields;
 exports.canCreateRole = canCreateRole;
 exports.canEditUser = canEditUser;
+exports.canDeleteUser = canDeleteUser;
+exports.setKeycloakEnabled = setKeycloakEnabled;
 exports.readFullName = readFullName;
 exports.keycloakNames = keycloakNames;
 

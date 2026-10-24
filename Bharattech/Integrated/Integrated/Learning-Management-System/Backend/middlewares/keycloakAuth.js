@@ -151,6 +151,7 @@ const getOrCreateUser = async (keycloakUser, keycloakUserId = null) => {
         user.keycloakId = keycloakId;
         user.isDeleted = false;
         user.deletedAt = null;
+        user.leftOn = undefined;
         await user.save();
       }
     }

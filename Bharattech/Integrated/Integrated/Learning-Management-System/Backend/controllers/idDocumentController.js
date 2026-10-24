@@ -11,7 +11,7 @@ const { Refusal, answerError, isAdmin, isObjectId } = require("../utils/refusal"
  * - The employee can open their own; Super Admins and Admins can open anyone's, and every such opening is written
  *   to the request's log. Nobody else gets them.
  * - PDFs only (checked from the file's own bytes), 1 MB at most; never cached by the browser.
- * - They stay until the request is deleted (or, once "Mark as left" exists, the 60-day rule after someone leaves).
+ * - They stay until the request is deleted, or until 60 days after the person leaves (utils/leaverDocuments.js).
  */
 
 // the same GridFS helper as photos and covers, in a bucket of its own

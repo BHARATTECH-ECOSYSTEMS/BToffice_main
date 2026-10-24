@@ -126,7 +126,15 @@ const UserSchema = new mongoose.Schema({
     // Soft Delete (for deactivation)
     isDeleted: { type: Boolean, default: false },
     deletedAt: { type: Date },
+    // Leaving (controllers/communityController.js): someone who left is also isDeleted, so every list of current
+    // staff skips them; leftOn ("YYYY-MM-DD", India time) is what puts them in the community instead of just gone.
+    leftOn: { type: String },
+    // Where the community reaches them once their work email stops; staff may give it before they leave.
+    personalEmail: { type: String, lowercase: true, trim: true },
 }, { timestamps: true }); // createdAt/updatedAt from now on; records made before this have none
+
+// One person per personal email, held by the database too, so two people saving the same one at once can't both win.
+UserSchema.index({ personalEmail: 1 }, { unique: true, partialFilterExpression: { personalEmail: { $type: "string" } } });
 
 const formatEmployeeId = (n) => `BT-${String(n).padStart(4, "0")}`;
 
