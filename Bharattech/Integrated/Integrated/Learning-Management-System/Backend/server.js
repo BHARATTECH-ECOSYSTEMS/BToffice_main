@@ -2,7 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const path = require("path");
 const cors = require("cors");
-const { rateLimit } = require("express-rate-limit");
+const { createRateLimits, SIGN_IN_PATHS } = require("./middlewares/rateLimits");
 
 // Load env before importing routes/controllers that read process.env at module scope.
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
@@ -58,13 +58,11 @@ const { applyRequestSanitizers } = require("./middlewares/requestSanitizers");
 applyRequestSanitizers(app);
 
 /* ------------------ RATE LIMITING ------------------ */
-// Registered before routes so it actually applies to real requests.
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: 100,
-  message: "Too many requests",
-});
-app.use("/api", limiter);
+// Registered before routes so it actually applies to real requests: generous per signed-in person, strict on the
+// routes that take or set a password (middlewares/rateLimits.js).
+const rateLimits = createRateLimits();
+app.use("/api", rateLimits.api);
+app.use(SIGN_IN_PATHS.map((p) => `/api${p}`), rateLimits.signIn);
 
 /* ------------------ STATIC (now behind cors + sanitization) ------------------ */
 
