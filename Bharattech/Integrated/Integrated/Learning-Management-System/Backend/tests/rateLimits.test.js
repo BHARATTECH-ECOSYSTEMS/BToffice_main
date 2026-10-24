@@ -1,7 +1,7 @@
 const { test, before, after } = require("node:test");
 const assert = require("node:assert/strict");
 const express = require("express");
-const { createRateLimits, PER_PERSON, PER_ADDRESS, SIGN_IN, SIGN_IN_PATHS } = require("../middlewares/rateLimits");
+const { createRateLimits, PER_PERSON, PER_ADDRESS, SIGN_IN, SIGN_IN_PATHS, PUBLIC_FORM, PUBLIC_FORM_WINDOW_MS } = require("../middlewares/rateLimits");
 
 let server;
 let base;
@@ -10,9 +10,10 @@ let base;
 before(async () => {
   const app = express();
   app.set("trust proxy", 1);
-  const limits = createRateLimits({ perPerson: 3, perAddress: 4, signIn: 2, windowMs: 60_000 });
+  const limits = createRateLimits({ perPerson: 3, perAddress: 4, signIn: 2, publicForm: 1, windowMs: 60_000, publicFormWindowMs: 60_000 });
   app.use("/api", limits.api);
   app.post("/api/auth/keycloak-login", limits.signIn, (_req, res) => res.json({ ok: true }));
+  app.post("/api/verification-requests", limits.publicForm, (_req, res) => res.status(201).json({ ok: true }));
   app.get("/api/thing", (_req, res) => res.json({ ok: true }));
   await new Promise((resolve) => (server = app.listen(0, "127.0.0.1", resolve)));
   base = `http://127.0.0.1:${server.address().port}/api`;
@@ -91,4 +92,25 @@ test("the real limits: generous per person and per address, strict on every rout
   for (const path of ["/auth/keycloak-login", "/auth/login", "/auth/accept-invite", "/auth/forgot-password", "/auth/reset-password", "/auth/change-password", "/auth/keycloak-change-password", "/auth/register", "/auth/signup"]) {
     assert.ok(SIGN_IN_PATHS.includes(path), path);
   }
+});
+
+const sendForm = (address) => fetch(`${base}/verification-requests`, { method: "POST", headers: { "X-Forwarded-For": address, "Content-Type": "application/json" }, body: "{}" });
+
+test("the website's verification form is limited per address on its own count, apart from sign-in and the rest", async () => {
+  // its limit (1 here) is under every other count, so only the form's own limit can refuse the second send
+  const visitor = newAddress();
+  // every request also counts toward the address's general 4, so this stays at 4: two sends, a sign-in, a page
+  assert.equal((await sendForm(visitor)).status, 201);
+  const refused = await sendForm(visitor);
+  assert.equal(refused.status, 429);
+  // the form's window is an hour, so it doesn't promise a minute
+  assert.match((await refused.json()).message, /^Too many requests from here\. Try again in an hour/);
+  assert.equal((await sendForm(newAddress())).status, 201, "another address can still send one");
+  assert.equal((await signIn(visitor)).status, 200, "the same address can still sign in");
+  assert.equal((await get(visitor)).status, 200, "and use the rest of the API");
+});
+
+test("the real form limit: 5 an hour per address", () => {
+  assert.equal(PUBLIC_FORM, 5);
+  assert.equal(PUBLIC_FORM_WINDOW_MS, 60 * 60 * 1000);
 });

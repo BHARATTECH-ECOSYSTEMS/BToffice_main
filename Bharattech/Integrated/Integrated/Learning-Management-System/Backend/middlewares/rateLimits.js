@@ -8,6 +8,7 @@ const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
  * - Not signed in: counted per address.
  * - Routes that take or set a password: strictly per address, whoever is named, against password guessing (Keycloak's
  *   own lockout still applies on top).
+ * - The website's public verification form: a few an hour per address, against floods (it needs no sign-in).
  * Counting reads the token without checking it: a forged one only gets a count of its own, and keycloakAuth still
  * refuses it on every route that needs a sign-in.
  */
@@ -16,6 +17,8 @@ const WINDOW_MS = 15 * 60 * 1000;
 const PER_PERSON = 1000;
 const PER_ADDRESS = 300;
 const SIGN_IN = 20;
+const PUBLIC_FORM = 5;
+const PUBLIC_FORM_WINDOW_MS = 60 * 60 * 1000;
 // under /api
 const SIGN_IN_PATHS = [
   "/auth/keycloak-login",
@@ -48,7 +51,14 @@ const personIn = (req) => {
 const addressOf = (req) => `address:${ipKeyGenerator(req.ip)}`;
 
 /** The limits, with their sizes as options so tests can reach them. */
-function createRateLimits({ perPerson = PER_PERSON, perAddress = PER_ADDRESS, signIn = SIGN_IN, windowMs = WINDOW_MS } = {}) {
+function createRateLimits({
+  perPerson = PER_PERSON,
+  perAddress = PER_ADDRESS,
+  signIn = SIGN_IN,
+  publicForm = PUBLIC_FORM,
+  windowMs = WINDOW_MS,
+  publicFormWindowMs = PUBLIC_FORM_WINDOW_MS,
+} = {}) {
   const shared = { windowMs, standardHeaders: "draft-8", legacyHeaders: false, message: WAIT };
   return {
     api: rateLimit({
@@ -60,7 +70,14 @@ function createRateLimits({ perPerson = PER_PERSON, perAddress = PER_ADDRESS, si
       limit: (req) => (personIn(req) ? perPerson : perAddress),
     }),
     signIn: rateLimit({ ...shared, keyGenerator: addressOf, limit: signIn }),
+    publicForm: rateLimit({
+      ...shared,
+      windowMs: publicFormWindowMs,
+      keyGenerator: addressOf,
+      limit: publicForm,
+      message: { message: "Too many requests from here. Try again in an hour, or email our HR team." },
+    }),
   };
 }
 
-module.exports = { createRateLimits, PER_PERSON, PER_ADDRESS, SIGN_IN, SIGN_IN_PATHS };
+module.exports = { createRateLimits, PER_PERSON, PER_ADDRESS, SIGN_IN, SIGN_IN_PATHS, PUBLIC_FORM, PUBLIC_FORM_WINDOW_MS };

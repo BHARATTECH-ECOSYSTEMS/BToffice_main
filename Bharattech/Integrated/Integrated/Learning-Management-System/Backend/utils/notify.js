@@ -17,12 +17,14 @@ async function emailAbout(person, { kind, title, detail, link }) {
   if ((person.mutedNotifications || []).includes(SWITCH_FOR_KIND[kind])) return false;
   try {
     const url = portalUrl(link);
+    // only kinds with an email switch say it can be switched off
+    const canMute = !!SWITCH_FOR_KIND[kind];
     await createMailTransporter().sendMail({
       from: EMAIL_FROM,
       to: person.email,
       subject: title,
-      text: `${title}\n${detail ? `${detail}\n` : ""}\nOpen the portal: ${url}\n\nYou can switch these emails off from the bell in the portal.`,
-      html: `<p><strong>${escapeHtml(title)}</strong></p>${detail ? `<p>${escapeHtml(detail)}</p>` : ""}<p><a href="${escapeHtml(url)}">Open the portal</a></p><p style="color:#777">You can switch these emails off from the bell in the portal.</p>`,
+      text: `${title}\n${detail ? `${detail}\n` : ""}\nOpen the portal: ${url}${canMute ? "\n\nYou can switch these emails off from the bell in the portal." : ""}`,
+      html: `<p><strong>${escapeHtml(title)}</strong></p>${detail ? `<p>${escapeHtml(detail)}</p>` : ""}<p><a href="${escapeHtml(url)}">Open the portal</a></p>${canMute ? '<p style="color:#777">You can switch these emails off from the bell in the portal.</p>' : ""}`,
     });
     return true;
   } catch (error) {
@@ -121,10 +123,33 @@ const noteEvent = ({ event, action, detail, actorId }) =>
 const noteCourse = ({ course, detail, actorId }) =>
   noteEveryoneElse({ note: { kind: "course", title: `New course: ${course.title}`, detail, link: `/portal/lms/course/${course._id}` }, refId: String(course._id), actorId });
 
+/** A note in every current Super Admin's and Admin's bell, without an email. */
+async function noteAdmins({ note, refId }) {
+  try {
+    const admins = await User.find({ role: { $in: ["Superadmin", "Admin"] }, isDeleted: { $ne: true }, isBanned: { $ne: true } }).select("_id");
+    await Notification.insertMany(admins.map((admin) => ({ userId: admin._id, ...note, refId })));
+  } catch (error) {
+    console.error(`Notification (${note.kind}) for admins failed:`, error.message);
+  }
+}
+
+/** Another company sent a verification request from the website: the admins who answer it are told. */
+const noteVerificationRequest = (request) =>
+  noteAdmins({
+    note: {
+      kind: "verification",
+      title: `Verification request ${request.reference}: ${request.candidate}`,
+      detail: `From ${request.requesterCompany}`,
+      link: `/portal/verification/requests?file=${request._id}`,
+    },
+    refId: String(request._id),
+  });
+
 module.exports = {
   notify,
   noteEvent,
   noteCourse,
+  noteVerificationRequest,
   forgetNotesAbout,
   notifyTaskGiven,
   notifyTaskChanged,
