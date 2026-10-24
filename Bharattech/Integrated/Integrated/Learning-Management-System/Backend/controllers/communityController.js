@@ -116,6 +116,27 @@ exports.markLeft = async (req, res) => {
   }
 };
 
+/**
+ * Brings a member back to People (the community's "Bring back", and rejoining through an internal job): their
+ * Keycloak account is switched on first, so a failure there changes nothing (502); then the record is current staff
+ * again, with the same Employee ID, plus any `alsoSet` fields. Resolves with the record and whether they need an
+ * invite (their Keycloak account was gone).
+ */
+const restoreMember = async (member, alsoSet = {}) => {
+  let hasAccount;
+  try {
+    hasAccount = await setKeycloakEnabled(member.keycloakId, true);
+  } catch (error) {
+    console.error("Bringing back: switching on the Keycloak account failed:", error.message);
+    throw new Refusal(502, "Their sign-in couldn't be switched back on right now, so they're still in the community. Try again in a minute.");
+  }
+  const back = await User.findOneAndUpdate({ _id: member._id, ...MEMBER }, { $set: { isDeleted: false, deletedAt: null, ...alsoSet }, $unset: { leftOn: 1 } }, { new: true });
+  if (!back) throw new Refusal(404, NOT_A_MEMBER);
+  return { person: back, needsInvite: !hasAccount };
+};
+exports.restoreMember = restoreMember;
+exports.MEMBER = MEMBER;
+
 // POST /api/community/members/:userId/back
 exports.bringBack = async (req, res) => {
   try {
@@ -125,18 +146,9 @@ exports.bringBack = async (req, res) => {
     if (!member) throw new Refusal(404, NOT_A_MEMBER);
     if (!canDeleteUser(req.user.role, member.role)) throw new Refusal(403, "You can't bring this person back.");
 
-    let hasAccount;
-    try {
-      hasAccount = await setKeycloakEnabled(member.keycloakId, true);
-    } catch (error) {
-      console.error("Bringing back: switching on the Keycloak account failed:", error.message);
-      throw new Refusal(502, "Their sign-in couldn't be switched back on right now, so they're still in the community. Try again in a minute.");
-    }
-
-    const back = await User.findOneAndUpdate({ _id: id, ...MEMBER }, { $set: { isDeleted: false, deletedAt: null }, $unset: { leftOn: 1 } }, { new: true });
-    if (!back) throw new Refusal(404, NOT_A_MEMBER);
+    const { person, needsInvite } = await restoreMember(member);
     // with their Keycloak account gone, they're back in People but need an invite to sign in again
-    res.json({ person: { id: String(back._id), name: back.fullName || back.email }, needsInvite: !hasAccount });
+    res.json({ person: { id: String(person._id), name: person.fullName || person.email }, needsInvite });
   } catch (error) {
     answerError(res, error, "Bring back");
   }
