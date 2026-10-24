@@ -4435,6 +4435,7 @@ a.p-cal-item-title {
 .p-att-fix {
   flex-basis: 100%;
   margin: 0;
+  white-space: pre-line;
   font-size: 13px;
   color: var(--ink-soft);
 }
@@ -5388,6 +5389,7 @@ html:has(.portal),
 .p-ijp-about {
   margin: 0;
   max-width: 72ch;
+  white-space: pre-line;
   font-size: 14.5px;
   line-height: 1.55;
   color: var(--ink-2);
@@ -5877,6 +5879,10 @@ html:has(.portal),
 .p-comm-ref {
   display: grid;
   gap: 10px;
+}
+/* the note keeps the line breaks it was typed with */
+.p-comm-ref .p-comm-main > p {
+  white-space: pre-line;
 }
 .p-comm-ref-actions {
   display: flex;

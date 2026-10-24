@@ -2,7 +2,7 @@ import { useRef, useState, type ChangeEvent, type CSSProperties, type FormEvent,
 import { Link, useSearchParams } from 'react-router';
 import type { PortalIconName } from '../data';
 import { api, ApiError, BUSY_MESSAGE } from '../api';
-import { auth, passwordHasBlockedCharacter } from '../auth';
+import { auth } from '../auth';
 import { removeMyPhoto, saveMyPhoto, useMyPhoto } from '../myPhoto';
 import { endSessionForNewSignIn, ROLE_NAME, setDisplayName, setPhoto, useSession } from '../session';
 import { Badge, btnClass, BtnLabel, initials, PageHead, PIcon, useNotice } from '../ui';
@@ -272,8 +272,6 @@ function PasswordPanel() {
     { label: `At least ${MIN_PASSWORD} characters`, ok: next.length >= MIN_PASSWORD },
     { label: 'Different from your current password', ok: !!next && next !== current },
     { label: 'Both new passwords match', ok: !!next && next === confirm },
-    // the backend would silently drop it (auth.ts passwordHasBlockedCharacter)
-    { label: 'No $ sign (not supported yet)', ok: !!next && !passwordHasBlockedCharacter(next) },
   ];
   const ready = !!current && checks.every((c) => c.ok) && !busy;
 

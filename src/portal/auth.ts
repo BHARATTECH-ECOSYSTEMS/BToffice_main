@@ -48,13 +48,6 @@ export type ChangePasswordResult =
   | { ok: false; reason: 'wrong-current' | 'signed-out' | 'busy' | 'unavailable' }
   | { ok: false; reason: 'refused'; message: string };
 
-/**
- * The backend's database cleaner (mongoSanitize) deletes `$` from everything it receives, passwords included, so a
- * new password with `$` would be saved without it and fail on Keycloak's own login page. Until that is fixed in the
- * backend, new passwords may not contain it.
- */
-export const passwordHasBlockedCharacter = (password: string) => password.includes('$');
-
 export type InviteSetupResult =
   | { ok: true; account: Account }
   | { ok: false; reason: 'credentials' | 'username-taken' | 'busy' | 'unavailable' }

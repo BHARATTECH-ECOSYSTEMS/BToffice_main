@@ -23,6 +23,10 @@ test('Help names the real admins and super admins, never the reader', () => {
   assert.deepEqual(helpAdmins([], 'dev@example.test'), []);
 });
 
+test('the password answer no longer says $ is not allowed (step 16)', () => {
+  for (const role of ROLES) assert.ok(!answers(true, role).some((a) => a.includes('$')), role);
+});
+
 test('each role sees only its own connected topics', () => {
   const employee = questions(true, 'employee');
   assert.ok(employee.includes('How do I mark myself active or inactive?'));

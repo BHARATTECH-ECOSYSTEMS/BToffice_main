@@ -1,6 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAuth, isEmployeeId, loginRedirect, passwordHasBlockedCharacter, portalRole, resetTokenFrom, type AuthConfig } from '../../src/portal/auth';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import * as authModule from '../../src/portal/auth';
+import { createAuth, isEmployeeId, loginRedirect, portalRole, resetTokenFrom, type AuthConfig } from '../../src/portal/auth';
 
 const CONFIG: AuthConfig = { api: 'http://api.test/api', keycloak: 'http://kc.test', realm: 'bharattech', clientId: 'lms-client' };
 const LOGIN_URL = 'http://api.test/api/auth/keycloak-login';
@@ -344,9 +347,21 @@ test('someone signed out cannot change a password and no request is sent', async
   assert.equal(net.calls.length, 0);
 });
 
-test('a $ in a new password is caught, because the server would silently drop it', () => {
-  assert.equal(passwordHasBlockedCharacter('Pa$$word-123'), true);
-  assert.equal(passwordHasBlockedCharacter('Pa55word-&<>"!@#%^*()'), false);
+// Step 16: the backend now receives passwords exactly as typed, so no form blocks a $ any more.
+const sourceFiles = (dir: string): string[] =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? sourceFiles(join(dir, e.name)) : /\.tsx?$/.test(e.name) ? [join(dir, e.name)] : []));
+
+test('a $ is allowed in new passwords: the old block is gone from every form', () => {
+  assert.equal('passwordHasBlockedCharacter' in authModule, false);
+  const blocking = sourceFiles('src').filter((f) => /passwordHasBlockedCharacter|contain a \$ sign|No \$ sign/.test(readFileSync(f, 'utf8')));
+  assert.deepEqual(blocking, []);
+});
+
+test('a new password with a $ is sent exactly as typed', async () => {
+  const net = network(json(200, { success: true, signedOutEverywhere: true }));
+  const auth = createAuth(CONFIG, net.request);
+  assert.deepEqual(await auth.resetPassword('token-1', 'Pa$$word-123'), { ok: true });
+  assert.equal(JSON.parse(String(net.calls[0].init?.body)).newPassword, 'Pa$$word-123');
 });
 
 // --- "Forgot password?" (controllers/passwordResetController.js); neither call needs a sign-in ---
