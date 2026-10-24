@@ -1,26 +1,21 @@
 const User = require("../models/User");
-const SignupRequest = require("../models/SignupRequest");
-const bcrypt = require("bcryptjs");
 const Course = require("../models/Course");
-const {
-    authAdminClient,
-    ensureKeycloakUser,
-    setTemporaryPassword,
-} = require("./inviteController");
-const { canCreateRole } = require("./userController");
+const { inviteSomeone } = require("./inviteController");
 
-// ✅ Create user (Admin only - stores in User collection, visible in Admin Dashboard)
+// ✅ "Add user" on the company's admin dashboard (Super Admins and Admins). It sends the same invite as the portal's
+// "Add people": before step 17 Part 2 it made a Keycloak account with a temporary password nobody was ever told, so
+// the person could never sign in. Like every invite, the person shows up in the user lists once they first sign in.
 exports.createUser = async (req, res) => {
     try {
-        const { name, email, role, status } = req.body;
+        const { name, email, role } = req.body;
 
         // Validation
         if (!name || !email || !role) {
             return res.status(400).json({ message: "Name, email, and role are required" });
         }
 
-        // Check if email already exists
-        const exists = await User.findOne({ email });
+        // someone who already has an account: an invite would reset their password to a temporary one
+        const exists = await User.findOne({ email: String(email).toLowerCase().trim() });
         if (exists && !exists.isDeleted) {
             return res.status(409).json({ message: "Email already exists" });
         }
@@ -39,52 +34,20 @@ exports.createUser = async (req, res) => {
         if (!validRoles.includes(normalizedRole)) {
             return res.status(400).json({ message: `Invalid role. Must be one of: ${validRoles.join(", ")}` });
         }
-        // the same rule as /api/user/add-user: an Admin creates Sub Admins, Employees and Interns; a Super Admin any
-        if (!canCreateRole(req.user?.role, normalizedRole)) {
-            return res.status(403).json({ message: "Your role can't create that kind of account." });
-        }
 
-        // Generate a temporary password
-        const tempPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
-        const hashedPassword = await bcrypt.hash(tempPassword, 10);
-
-        // Create the account in Keycloak first (it's the system of record for
-        // login) so the dashboard never ends up with a Mongo-only user that
-        // can't actually sign in or show up in the Keycloak user list.
-        await authAdminClient();
-        const { keycloakUserId, username: keycloakUsername } = await ensureKeycloakUser({ name, email, role: normalizedRole });
-        await setTemporaryPassword({ userId: keycloakUserId, temporaryPassword: tempPassword });
-
-        // Create user (admin-created, visible in Admin Dashboard)
-        const newUser = new User({
-            fullName: name,
-            username: keycloakUsername || email.split("@")[0],
-            email,
-            password: hashedPassword,
-            role: normalizedRole,
-            keycloakId: keycloakUserId,
-            authProvider: "keycloak",
-            isBanned: status === "Inactive" || status === "inactive",
-            isDeleted: false
-        });
-
-        await newUser.save();
-
-        console.log("✅ Admin-created user:", newUser.email, newUser.role);
-
-        // Remove password from response
-        const userResponse = newUser.toObject();
-        delete userResponse.password;
+        // the invite's own rules decide who may add whom (an Admin invites Employees and Interns; a Super Admin any)
+        const { status, body } = await inviteSomeone({ name, email, role: normalizedRole, actorRole: req.user?.role });
+        if (status >= 400) return res.status(status).json(body);
 
         res.status(201).json({
-            id: userResponse._id,
-            _id: userResponse._id,
-            name: userResponse.fullName || userResponse.username,
-            fullName: userResponse.fullName,
-            email: userResponse.email,
-            role: userResponse.role,
-            status: userResponse.isBanned ? "Inactive" : "Active",
-            createdAt: userResponse.createdAt
+            id: body.user.id,
+            _id: body.user.id,
+            name: body.user.name,
+            fullName: body.user.name,
+            email: body.user.email,
+            role: body.user.role,
+            status: "Invited",
+            inviteEmailSent: body.inviteEmailSent,
         });
     } catch (error) {
         console.error("❌ Create User Error:", error?.response?.data || error);
@@ -169,73 +132,5 @@ exports.getAssignableUsers = async (req, res) => {
 };
 
 // ✅ Get signup requests (for admin to review)
-exports.getSignupRequests = async (req, res) => {
-    try {
-        const requests = await SignupRequest.find({ status: "pending" })
-            .select("-password")
-            .sort({ createdAt: -1 });
-
-        res.status(200).json(requests);
-    } catch (error) {
-        console.error("❌ Get Signup Requests Error:", error);
-        res.status(500).json({ message: "Server Error" });
-    }
-};
-
-// ✅ Approve signup request (create user account)
-exports.approveSignupRequest = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const signupRequest = await SignupRequest.findById(id);
-
-        if (!signupRequest) {
-            return res.status(404).json({ message: "Signup request not found" });
-        }
-
-        if (signupRequest.status !== "pending") {
-            return res.status(400).json({ message: "Signup request already processed" });
-        }
-
-        // Check if user already exists
-        const userExists = await User.findOne({ email: signupRequest.email });
-        if (userExists) {
-            return res.status(409).json({ message: "User already exists" });
-        }
-
-        // Create user account
-        const newUser = new User({
-            fullName: signupRequest.name,
-            username: signupRequest.email.split("@")[0],
-            email: signupRequest.email,
-            password: signupRequest.password, // Already hashed
-            role: signupRequest.role,
-            isBanned: false,
-            isDeleted: false
-        });
-
-        await newUser.save();
-
-        // Update signup request status
-        signupRequest.status = "approved";
-        signupRequest.reviewedBy = req.user.id;
-        signupRequest.reviewedAt = new Date();
-        await signupRequest.save();
-
-        console.log("✅ Signup request approved, user created:", newUser.email);
-
-        res.status(201).json({
-            message: "Signup request approved and user account created",
-            user: {
-                id: newUser._id,
-                email: newUser.email,
-                role: newUser.role
-            }
-        });
-    } catch (error) {
-        console.error("❌ Approve Signup Request Error:", error);
-        res.status(500).json({ message: "Server Error" });
-    }
-};
-
 module.exports = exports;
 

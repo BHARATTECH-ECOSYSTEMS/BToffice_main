@@ -414,11 +414,15 @@ const sendInviteEmail = async ({ userId, name, username, email, role }) => {
   }
 };
 
-const sendInvite = async (req, res) => {
-  const { name, email, role } = req.body;
+/**
+ * Invites someone: checks the inviter's role, makes or reuses their Keycloak account (waiting for a first password)
+ * and emails them a temporary password. Answers { status, body } as POST /api/invite/send-invite replies; the company
+ * dashboard's "Add user" (adminController.createUser) uses it too. No record is made until they first sign in.
+ */
+const inviteSomeone = async ({ name, email, role, actorRole }) => {
 
   if (!name || !email) {
-    return res.status(400).json({
+    return reply(400, {
       success: false,
       message: "Name and email are required",
     });
@@ -428,11 +432,11 @@ const sendInvite = async (req, res) => {
   const normalizedEmail = normalizeEmail(email);
   const normalizedName = normalizeName(name);
 
-  if (!canInviteRole(req.user?.role, normalizedRole)) {
-    return res.status(403).json({
+  if (!canInviteRole(actorRole, normalizedRole)) {
+    return reply(403, {
       success: false,
       message:
-        normalizeRole(req.user?.role) === "Admin"
+        normalizeRole(actorRole) === "Admin"
           ? "Admins can invite only Employee and Intern users."
           : "You do not have permission to invite users with this role.",
     });
@@ -446,7 +450,7 @@ const sendInvite = async (req, res) => {
     // Someone who left still has their Keycloak account, switched off: an invite would give it a new password it can't
     // use. They come back through the Community's "Bring back" (controllers/communityController.js).
     if (existingDbUser?.isDeleted && existingDbUser.leftOn) {
-      return res.status(409).json({
+      return reply(409, {
         success: false,
         code: "left",
         message: "They've left Bharattech. Bring them back from the Community page instead.",
@@ -484,10 +488,11 @@ const sendInvite = async (req, res) => {
         ? "User restored and invite email sent successfully"
         : "Invite sent successfully";
 
-      return res.status(restored || resent ? 200 : 201).json({
+      return reply(restored || resent ? 200 : 201, {
         success: true,
         message: responseMessage,
         user: {
+          id: keycloakUserId,
           name: normalizedName,
           username,
           email: normalizedEmail,
@@ -503,7 +508,7 @@ const sendInvite = async (req, res) => {
       console.error("Invite email error:", emailError?.response?.data || emailError);
 
       // what went wrong with the mail server stays in the log above
-      return res.status(500).json({
+      return reply(500, {
         success: false,
         message: resent
           ? "User exists, but the invite email could not be re-sent."
@@ -521,16 +526,88 @@ const sendInvite = async (req, res) => {
     const upstreamStatus = error?.response?.status;
 
     if (upstreamStatus === 409) {
-      return res.status(409).json({
+      return reply(409, {
         success: false,
         message: "User already exists",
       });
     }
 
-    return res.status(500).json({
+    return reply(500, {
       success: false,
       message: "Failed to send invite",
     });
+  }
+};
+
+const reply = (status, body) => ({ status, body });
+
+// POST /api/invite/send-invite { name, email, role }
+const sendInvite = async (req, res) => {
+  const { status, body } = await inviteSomeone({ ...req.body, actorRole: req.user?.role });
+  return res.status(status).json(body);
+};
+
+// Keycloak's role names back to the portal's, highest first (an account may carry several)
+const ROLES_HIGHEST_FIRST = ["Superadmin", "Admin", "Subadmin", "Employee", "Intern"];
+const roleOfAccount = (roleNames) => ROLES_HIGHEST_FIRST.find((role) => roleNames.some((name) => normalizeRole(name) === role)) || "Employee";
+
+const waitsForFirstPassword = (account) => account.enabled !== false && (account.requiredActions || []).includes("UPDATE_PASSWORD");
+/** Whether a current (not removed) record exists for this Keycloak account: it's made at the first sign-in. */
+const hasRecord = (keycloakId) => User.exists({ keycloakId, isDeleted: { $ne: true } });
+
+/**
+ * GET /api/invite/pending: invites nobody has accepted yet. A Keycloak account still waiting for its first password
+ * with no record here (someone who already has one and was sent a fresh password isn't a new invite). An Admin sees
+ * only the roles they may invite. Newest first.
+ */
+const listPendingInvites = async (req, res) => {
+  try {
+    await authAdminClient();
+    const waiting = (await kcAdminClient.users.find({ realm: KEYCLOAK_REALM, max: 1000 })).filter(waitsForFirstPassword);
+    const recorded = new Set((await User.find({ keycloakId: { $in: waiting.map((a) => a.id) }, isDeleted: { $ne: true } }).select("keycloakId").lean()).map((u) => u.keycloakId));
+    const pending = [];
+    for (const account of waiting.filter((a) => !recorded.has(a.id))) {
+      const roles = (await kcAdminClient.users.listRealmRoleMappings({ realm: KEYCLOAK_REALM, id: account.id })) || [];
+      const role = roleOfAccount(roles.map((r) => r.name));
+      if (!canInviteRole(req.user?.role, role)) continue;
+      pending.push({
+        id: account.id,
+        name: normalizeName(`${account.firstName || ""} ${account.lastName || ""}`) || account.username || account.email,
+        email: account.email || "",
+        role,
+        invitedAt: account.createdTimestamp ? new Date(account.createdTimestamp).toISOString() : null,
+      });
+    }
+    pending.sort((a, b) => String(b.invitedAt).localeCompare(String(a.invitedAt)));
+    return res.json(pending);
+  } catch (error) {
+    console.error("Pending invites error:", error?.response?.data || error);
+    return res.status(500).json({ message: "Failed to load pending invites" });
+  }
+};
+
+/**
+ * DELETE /api/invite/pending/:id: cancels an invite by deleting its unused Keycloak account, so the emailed
+ * temporary password stops working. Only an account still waiting for its first password with no record here, and
+ * only for the roles this admin may invite.
+ */
+const cancelPendingInvite = async (req, res) => {
+  try {
+    await authAdminClient();
+    const account = await kcAdminClient.users.findOne({ realm: KEYCLOAK_REALM, id: req.params.id });
+    if (!account) return res.status(404).json({ message: "That invite isn't pending any more." });
+    if (!waitsForFirstPassword(account) || (await hasRecord(account.id))) {
+      return res.status(409).json({ message: "They've already accepted the invite, so it can't be cancelled. Remove them from People instead." });
+    }
+    const roles = (await kcAdminClient.users.listRealmRoleMappings({ realm: KEYCLOAK_REALM, id: account.id })) || [];
+    if (!canInviteRole(req.user?.role, roleOfAccount(roles.map((r) => r.name)))) {
+      return res.status(403).json({ message: "Your role can't cancel this invite." });
+    }
+    await kcAdminClient.users.del({ realm: KEYCLOAK_REALM, id: account.id });
+    return res.json({ message: "Invite cancelled" });
+  } catch (error) {
+    console.error("Cancel invite error:", error?.response?.data || error);
+    return res.status(500).json({ message: "Failed to cancel the invite" });
   }
 };
 
@@ -564,6 +641,9 @@ const getUsers = async (req, res) => {
 
 module.exports = {
   sendInvite,
+  inviteSomeone,
+  listPendingInvites,
+  cancelPendingInvite,
   getUsers,
   authAdminClient,
   ensureKeycloakUser,

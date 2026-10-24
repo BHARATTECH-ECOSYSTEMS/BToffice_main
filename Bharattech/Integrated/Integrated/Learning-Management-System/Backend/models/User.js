@@ -107,7 +107,7 @@ const UserSchema = new mongoose.Schema({
     accessLevel: {
         type: String,
         enum: ["Full Admin", "Content Manager", "Finance Manager"],
-        default: "Full Admin", // ✅ Set a default value
+        // no default since step 17 Part 2: every account was stamped "Full Admin", and nothing reads it
         required: function () { return this.role === "admin"; } // Required only for admins
     },
     // Privacy Settings

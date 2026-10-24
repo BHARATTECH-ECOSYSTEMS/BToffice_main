@@ -129,17 +129,8 @@ test("the edit route ignores forbidden fields in the body and never echoes secre
   assert.equal(String(saved.keycloakId), String(user.keycloakId));
 });
 
-test("an Admin can't create a Superadmin through add-user", async () => {
-  const res = mockRes();
-  await createUser({ user: { role: "Admin" }, body: { username: "newboss", email: "newboss@example.test", role: "Superadmin" } }, res);
-  assert.equal(res.statusCode, 403);
-  assert.equal(await User.countDocuments({ email: "newboss@example.test" }), 0);
-});
-
-test("add-user creates an allowed role and returns no secrets", async () => {
-  const res = mockRes();
-  await createUser({ user: { role: "Admin" }, body: { username: "newhire", email: "newhire@example.test", role: "Employee" } }, res);
-  assert.equal(res.statusCode, 201);
-  assert.deepEqual(leaks(res.body), []);
-  assert.equal(res.body.role, "Employee");
+// add-user (a database-only account nobody could sign in with) was removed in step 17 Part 2; adding a person goes
+// through the invite (tests/accountLifecycle.test.js, tests/pendingInvites.test.js).
+test("add-user is gone", () => {
+  assert.equal(createUser, undefined);
 });

@@ -13,13 +13,7 @@ router.get("/users", keycloakAuth, requireAdmin, adminController.getAdminUsers);
 // Get assignable users (Admin only)
 router.get("/users/assignable", keycloakAuth, requireAdmin, adminController.getAssignableUsers);
 
-// Get signup requests (Admin only)
-router.get("/signup-requests", keycloakAuth, requireAdmin, adminController.getSignupRequests);
-
 router.get("/dashboard", keycloakAuth, requireAdmin, adminController.getDashboard);
-
-// Approve signup request (Admin only)
-router.post("/signup-requests/:id/approve", keycloakAuth, requireAdmin, adminController.approveSignupRequest);
 
 // Keycloak realm bootstrap — SuperAdmin only
 // Creates/updates realm roles, disables self-registration, configures composite hierarchy.

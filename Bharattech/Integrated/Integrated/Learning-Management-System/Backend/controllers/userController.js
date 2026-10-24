@@ -503,8 +503,10 @@ const publicUser = (user) => {
 // password, tokens, keycloakId, isDeleted and the employee ID can never be set this way. The role is additionally
 // checked by canAssignRole; isBanned is how an admin blocks or unblocks an account. The photo only comes as an
 // uploaded file (storePhoto), never as an address in the body.
+// a work email or username isn't here: changing it in the database alone left the sign-in and the portal disagreeing
+// (step 17 Part 2); a new work email means inviting the new address
 const EDITABLE_USER_FIELDS = [
-  "fullName", "username", "email", "role", "phone", "phoneNumber", "workPhone",
+  "fullName", "role", "phone", "phoneNumber", "workPhone",
   "stream", "team", "joinedOn", "privacySettings", "gender", "dateOfBirth",
   "qualification", "degree", "profession", "organization", "interests",
   "socialLinks", "professionalTitle", "totalExperience", "careerDescription", "isBanned",
@@ -669,45 +671,6 @@ exports.getCurrentUser = async (req, res) => {
   }
 };
 
-exports.createUser = async (req, res) => {
-  try {
-    const { fullName, username, email, password, role } = req.body;
-
-    if (!email || !username) {
-      return res.status(400).json({ message: "Email and username are required" });
-    }
-
-    const existing = await User.findOne({
-      $or: [{ email }, { username }],
-      isDeleted: { $ne: true },
-    });
-
-    if (existing) {
-      return res.status(409).json({ message: "User already exists" });
-    }
-
-    // an Admin can't mint an Admin or Superadmin; only a Superadmin can
-    if (!canCreateRole(req.user?.role, role)) {
-      return res.status(403).json({ message: "You can't create a user with that role." });
-    }
-
-    const user = await User.create({
-      fullName: fullName || username,
-      username,
-      email,
-      password: await bcrypt.hash(password || randomUUID(), 10),
-      keycloakId: randomUUID(),
-      role: normalizeRole(role),
-      authProvider: "local",
-    });
-
-    res.status(201).json(publicUser(user));
-  } catch (error) {
-    console.error("Create user error:", error);
-    res.status(500).json({ message: "Failed to create user" });
-  }
-};
-
 exports.updateUser = async (req, res) => {
   try {
     // Only a fixed set of fields may be changed (pickEditableFields): password, tokens, keycloakId, isDeleted and the
@@ -841,9 +804,16 @@ exports.updateCurrentUser = async (req, res) => {
       try {
         await authKeycloakAdmin();
         const kcUser = await kcAdmin.users.findOne({ realm: KEYCLOAK_REALM, id: user.keycloakId });
+        // the rest of the account goes back unchanged: some Keycloak versions treat a field left out as removed
         await kcAdmin.users.update(
           { realm: KEYCLOAK_REALM, id: user.keycloakId },
           {
+            username: kcUser?.username,
+            email: kcUser?.email,
+            emailVerified: kcUser?.emailVerified,
+            enabled: kcUser?.enabled,
+            firstName: kcUser?.firstName,
+            lastName: kcUser?.lastName,
             attributes: {
               ...(kcUser?.attributes || {}),
               phone: [user.phone || ""],

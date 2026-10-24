@@ -137,6 +137,20 @@ const loginNameFor = async (typed) => {
   return person?.email || String(typed).trim();
 };
 
+/** The steps Keycloak still wants on this account (by username, else email), or null when it can't be looked up. */
+const unfinishedSteps = async (login) => {
+  try {
+    const kcAdmin = new KcAdminClient({ baseUrl: KEYCLOAK_BASE_URL, realmName: KEYCLOAK_ADMIN_REALM });
+    await kcAdmin.auth({ username: KEYCLOAK_ADMIN_USERNAME, password: KEYCLOAK_ADMIN_PASSWORD, grantType: "password", clientId: "admin-cli" });
+    const byUsername = await kcAdmin.users.find({ realm: KEYCLOAK_REALM, username: login, exact: true });
+    const [account] = byUsername.length ? byUsername : await kcAdmin.users.find({ realm: KEYCLOAK_REALM, email: login, exact: true });
+    return account ? account.requiredActions || [] : null;
+  } catch (error) {
+    console.warn("Sign-in: couldn't look up the account's unfinished steps:", error.message);
+    return null;
+  }
+};
+
 const keycloakLogin = async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -146,7 +160,8 @@ const keycloakLogin = async (req, res) => {
         .json({ message: "Username and password are required" });
     }
 
-    const result = await passwordGrantAsTyped(await loginNameFor(username), password, { resave: true });
+    const login = await loginNameFor(username);
+    const result = await passwordGrantAsTyped(login, password, { resave: true });
 
     if (!result.ok) {
       console.warn(
@@ -154,14 +169,19 @@ const keycloakLogin = async (req, res) => {
         result.errorDescription || result.error,
       );
 
-      // Temporary (invite) passwords are valid credentials but Keycloak refuses
-      // the password grant until the pending UPDATE_PASSWORD action is cleared.
-      // Treat that case as "needs a new password" rather than a bad-credentials error.
+      // Keycloak refuses a right password while the account has an unfinished step. A temporary (invite) password
+      // waits for a new one: that's the invite's "Set up your account". Any other step (a missing last name, an email
+      // to verify…) is an admin's to finish, so it isn't presented as a password change.
       if (/not fully set up/i.test(result.errorDescription || "")) {
-        return res.status(403).json({
-          requiresPasswordChange: true,
-          message: "Please set a new password to finish accepting your invite.",
-        });
+        const steps = await unfinishedSteps(login);
+        if (steps?.includes("UPDATE_PASSWORD")) {
+          return res.status(403).json({
+            requiresPasswordChange: true,
+            message: "Please set a new password to finish accepting your invite.",
+          });
+        }
+        console.warn("Sign-in: the account isn't fully set up; Keycloak still wants:", steps ? steps.join(", ") || "nothing listed" : "unknown");
+        return res.status(403).json({ message: "Your account isn't fully set up yet. Ask an admin to finish it." });
       }
 
       return res.status(401).json({ message: "Invalid username or password" });

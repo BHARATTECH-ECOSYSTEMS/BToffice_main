@@ -5,7 +5,6 @@ const {
   getKeycloakUsers,
   getUserById,
   getCurrentUser,
-  createUser,
   updateUser,
   partialUpdateUser,
   deleteUser,
@@ -28,8 +27,8 @@ router.patch("/me", keycloakAuth, updateCurrentUser);
 router.put("/me/photo", keycloakAuth, uploadUserPhoto("photo"), setMyPhoto);
 router.delete("/me/photo", keycloakAuth, removeMyPhoto);
 
-// Create new user (Admin only) - MUST come before /:id route
-router.post("/add-user", keycloakAuth, requireAdmin, createUser);
+// Adding a person is an invite (POST /api/invite/send-invite); the old add-user, which made a database-only account
+// nobody could sign in with, was removed in step 17 Part 2.
 
 // Get all users (authenticated users can view; mutations stay admin-only)
 router.get("/", keycloakAuth, getUsers);

@@ -17,6 +17,8 @@ class FakeKcAdminClient {
         keycloak.stored = args.credential.value;
       },
       logout: async (args) => keycloak.calls.push(["logout", args]),
+      // what sign-in looks up when Keycloak says "not fully set up": an invite waiting for a new password
+      find: async () => [{ id: "kc-asha", requiredActions: ["UPDATE_PASSWORD"] }],
     };
   }
   async auth() {
