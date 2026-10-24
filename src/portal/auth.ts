@@ -32,7 +32,7 @@ export interface Account {
   role: Role;
 }
 
-export type SignInResult = { ok: true; account: Account } | { ok: false; reason: 'credentials' | 'set-password' | 'busy' | 'unavailable' };
+export type SignInResult = { ok: true; account: Account } | { ok: false; reason: 'credentials' | 'set-password' | 'not-set-up' | 'busy' | 'unavailable' };
 
 export interface InviteSetup {
   /** What they signed in with: their email (or the username from the invite). */
@@ -205,6 +205,8 @@ export function createAuth(config: AuthConfig, request: typeof fetch = (input, i
     // the backend limits sign-in tries per address (429): that's a wait, not an outage or a wrong password
     if (reply.status === 429) return { ok: false, reason: 'busy' };
     if (reply.status === 403 && reply.body?.requiresPasswordChange) return { ok: false, reason: 'set-password' };
+    // a right password on an account with another unfinished step (a missing last name, say): an admin's to finish
+    if (reply.status === 403) return { ok: false, reason: 'not-set-up' };
     if (reply.status === 400 || reply.status === 401) return { ok: false, reason: 'credentials' };
     const account = reply.ok ? begin(reply.body, rememberMe, username) : null;
     return account ? { ok: true, account } : { ok: false, reason: 'unavailable' };

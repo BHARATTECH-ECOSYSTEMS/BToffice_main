@@ -15,12 +15,17 @@ import {
   NAME_MAX,
   NAME_MIN,
   inviteEmailFailed,
+  pendingInviteFailedMessage,
+  roleBadge,
   roleChoices,
   roleLabel,
   useDirectory,
+  usePendingInvites,
   type AccountRole,
   type DirectoryPerson,
+  type PendingInvite,
 } from '../people';
+import { formatDate } from '../store';
 import { useSession } from '../session';
 import { localDay } from '../eoffice';
 import { Badge, btnClass, BtnLabel, Empty, Modal, PageHead, SearchField, useListFlip, useNotice } from '../ui';
@@ -75,6 +80,7 @@ export function ConnectedPeople() {
   const people = state.kind === 'ready' ? state.people : [];
   // the account role decides what may be changed; someone not found in the directory gets the least access
   const actor: AccountRole = people.find((p) => p.email === myEmail)?.accountRole ?? 'Employee';
+  const pending = usePendingInvites(state.kind === 'ready' && inviteChoices(actor).length > 0);
   const manages = canEditDetails(actor);
   const query = q.trim().toLowerCase();
   const rows = people.filter(
@@ -269,13 +275,18 @@ export function ConnectedPeople() {
         )}
         {notice}
       </section>
+      {state.kind === 'ready' && inviteChoices(actor).length > 0 && <PendingInvites pending={pending} invite={directory.invite} notify={notify} />}
 
       {inviting && (
         <InviteModal
           roles={inviteChoices(actor)}
           listed={(email) => people.some((p) => p.email.toLowerCase() === email)}
           invite={directory.invite}
-          onClose={() => setInviting(false)}
+          onClose={() => {
+            setInviting(false);
+            // a new invite (or one whose email failed) shows up under Pending invites
+            void pending.reload();
+          }}
           onSent={(email) => notify(`Invite sent to ${email}. They’ll appear in the list after their first sign-in.`)}
         />
       )}
@@ -298,6 +309,136 @@ export function ConnectedPeople() {
         />
       )}
     </>
+  );
+}
+
+/**
+ * The invites nobody has accepted yet (admins and superadmins, for the roles they may invite): sending one again emails
+ * a new temporary password; cancelling deletes the unused login, so the emailed password stops working. Someone
+ * appears in the directory above at their first sign-in, and leaves this list then.
+ */
+function PendingInvites({
+  pending,
+  invite,
+  notify,
+}: {
+  pending: ReturnType<typeof usePendingInvites>;
+  invite: (person: { name: string; email: string; role: AccountRole }) => Promise<void>;
+  notify: (text: string) => void;
+}) {
+  const [busy, setBusy] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<PendingInvite | null>(null);
+  const { state } = pending;
+
+  const sendAgain = async (p: PendingInvite) => {
+    setBusy(p.id);
+    try {
+      await invite({ name: p.name, email: p.email, role: p.role });
+      notify(`Invite sent again to ${p.email}, with a new temporary password.`);
+    } catch (error) {
+      notify(inviteEmailFailed(error as ApiError) ? 'The invite email couldn’t be sent. Try again in a moment.' : INVITE_FAILED[(error as ApiError).kind]);
+    } finally {
+      setBusy(null);
+      void pending.reload();
+    }
+  };
+  const cancel = async (p: PendingInvite) => {
+    setCancelling(null);
+    setBusy(p.id);
+    try {
+      await pending.cancel(p.id);
+      notify(`The invite to ${p.email} was cancelled. The password we emailed them no longer works.`);
+    } catch (error) {
+      notify(pendingInviteFailedMessage(error as ApiError));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <section className="p-card" aria-labelledby="pending-invites" aria-busy={state.kind === 'loading' || undefined}>
+      <div className="p-card-head">
+        <h2 id="pending-invites" className="p-card-title">
+          Pending invites
+        </h2>
+      </div>
+      {state.kind === 'loading' || state.kind === 'off' ? (
+        <p className="p-muted" role="status">
+          Loading the invites…
+        </p>
+      ) : state.kind === 'error' ? (
+        <div role="alert">
+          <p className="p-muted">{pendingInviteFailedMessage(state.error)}</p>
+          <button type="button" className={btnClass('light', { small: true })} onClick={() => void pending.reload()}>
+            <BtnLabel icon="refresh">Try again</BtnLabel>
+          </button>
+        </div>
+      ) : state.invites.length ? (
+        <div className="p-table-wrap">
+          <table className="p-table">
+            <thead>
+              <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Role</th>
+                <th scope="col">Invited</th>
+                <th scope="col" className="is-end">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.invites.map((p) => (
+                <tr key={p.id}>
+                  <td className="is-strong">{p.name}</td>
+                  <td>{p.email}</td>
+                  <td>
+                    <Badge kind={roleBadge(p.role)}>{roleLabel(p.role)}</Badge>
+                  </td>
+                  <td>{p.invitedAt ? formatDate(localDay(p.invitedAt)) : <span className="p-dim">-</span>}</td>
+                  <td className="is-end p-row-actions">
+                    <button type="button" className={btnClass('ghost', { small: true })} disabled={busy === p.id} onClick={() => void sendAgain(p)}>
+                      <BtnLabel icon="refresh">
+                        Send again<span className="sr-only"> to {p.email}</span>
+                      </BtnLabel>
+                    </button>
+                    <button type="button" className={btnClass('ghost', { small: true })} disabled={busy === p.id} onClick={() => setCancelling(p)}>
+                      <BtnLabel>
+                        Cancel invite<span className="sr-only"> to {p.email}</span>
+                      </BtnLabel>
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="p-muted">Nobody is waiting to accept an invite.</p>
+      )}
+      {cancelling && (
+        <Modal
+          title={`Cancel the invite to ${cancelling.name}?`}
+          icon="alert"
+          onClose={() => setCancelling(null)}
+          onSubmit={() => void cancel(cancelling)}
+          footer={
+            <>
+              <button type="button" className={btnClass('ghost')} onClick={() => setCancelling(null)}>
+                <BtnLabel>Keep it</BtnLabel>
+              </button>
+              <button type="submit" className={btnClass('primary')}>
+                <BtnLabel>Cancel invite</BtnLabel>
+              </button>
+            </>
+          }
+        >
+          <p>
+            The temporary password we emailed to {cancelling.email} stops working, and their unused login is removed. You can invite them again later.
+          </p>
+        </Modal>
+      )}
+    </section>
   );
 }
 

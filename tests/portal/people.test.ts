@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { canDelete, canEditDetails, canEditPerson, cleanName, inviteChoices, inviteEmailFailed, joinDateProblem, latestJoinDate, readAccountRole, readJoinDate, roleChoices, toDirectory, type AccountRole } from '../../src/portal/people';
+import { canDelete, canEditDetails, canEditPerson, cleanName, inviteChoices, inviteEmailFailed, joinDateProblem, latestJoinDate, pendingInviteFailedMessage, readAccountRole, readJoinDate, roleChoices, toDirectory, toPendingInvites, type AccountRole } from '../../src/portal/people';
 import { ApiError } from '../../src/portal/api';
 
 // GET /api/user/directory, as the local backend returns it
@@ -139,4 +139,29 @@ test('a name is checked the way the backend checks it', () => {
   assert.equal(cleanName('x'.repeat(60)), 'x'.repeat(60));
   assert.equal(cleanName('x'.repeat(61)), null);
   assert.equal(cleanName('Bad\u0007Name'), null);
+});
+
+// --- pending invites (GET /api/invite/pending, DELETE /api/invite/pending/:id; step 17 Part 2) ---
+
+test('pending invites become rows with the role read safely and the date as a number', () => {
+  const rows = toPendingInvites([
+    { id: 'kc-1', name: 'New Hire', email: 'new.hire@example.test', role: 'Employee', invitedAt: '2026-10-20T10:00:00.000Z' },
+    { id: 'kc-2', name: '', email: 'boss@example.test', role: 'Admin', invitedAt: null },
+    { id: 'kc-3', name: 'Odd', email: 'odd@example.test', role: 'Wizard', invitedAt: 'soon' },
+    { id: '', email: 'no.id@example.test' },
+    { id: 'kc-5', name: 'No Email' },
+    null,
+  ]);
+  assert.deepEqual(rows, [
+    { id: 'kc-1', name: 'New Hire', email: 'new.hire@example.test', role: 'Employee', invitedAt: Date.parse('2026-10-20T10:00:00.000Z') },
+    { id: 'kc-2', name: 'boss@example.test', email: 'boss@example.test', role: 'Admin', invitedAt: null },
+    { id: 'kc-3', name: 'Odd', email: 'odd@example.test', role: 'Employee', invitedAt: null },
+  ]);
+  assert.throws(() => toPendingInvites({ message: 'nope' }), (e: unknown) => e instanceof ApiError && e.kind === 'unavailable');
+});
+
+test("a refused cancel shows the backend's own words; other failures a plain explanation", () => {
+  assert.equal(pendingInviteFailedMessage(new ApiError('conflict', "They've already accepted the invite, so it can't be cancelled. Remove them from People instead.")), "They've already accepted the invite, so it can't be cancelled. Remove them from People instead.");
+  assert.equal(pendingInviteFailedMessage(new ApiError('forbidden', 'Your role can’t cancel this invite.')), 'Your role can’t cancel this invite.');
+  assert.match(pendingInviteFailedMessage(new ApiError('unavailable')), /nothing was changed/i);
 });

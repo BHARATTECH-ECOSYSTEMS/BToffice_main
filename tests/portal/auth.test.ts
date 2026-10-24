@@ -95,6 +95,14 @@ test('an invited account that still has its temporary password is asked to set a
   assert.deepEqual(await auth.signIn('a@example.test', 'temp', false), { ok: false, reason: 'set-password' });
 });
 
+// step 17 Part 2: any other unfinished step (a missing last name, an email to verify…) is an admin's to finish
+test('an account that is not fully set up (and not an invite) is told to ask an admin, not that the service is down', async () => {
+  const reply = json(403, { message: "Your account isn't fully set up yet. Ask an admin to finish it." });
+  const auth = createAuth(CONFIG, network(reply).request);
+  assert.deepEqual(await auth.signIn('a@example.test', 'pw', false), { ok: false, reason: 'not-set-up' });
+  assert.equal(auth.signedIn(), false);
+});
+
 test('a backend that is down or failing reads as unavailable, not as a wrong password', async () => {
   for (const reply of [new TypeError('Failed to fetch'), json(500, { message: 'Login failed' })]) {
     const auth = createAuth(CONFIG, network(reply).request);

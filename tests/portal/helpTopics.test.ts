@@ -133,6 +133,13 @@ test('connected, admins learn how internal jobs run end to end; sub admins what 
   assert.match(saves ?? '', /internal jobs/);
 });
 
+test('admins learn how invites and pending invites work; nobody else sees it', () => {
+  assert.ok(questions(true, 'admin').includes('How do I invite someone?'));
+  assert.match(answers(true, 'admin').join(' '), /Pending invites/);
+  assert.ok(!questions(true, 'subadmin').includes('How do I invite someone?'));
+  assert.ok(!questions(true, 'employee').includes('How do I invite someone?'));
+});
+
 test('the demo keeps its own answers', () => {
   assert.ok(questions(false, 'employee').includes('Why did my changes disappear?'));
   assert.ok(!questions(true, 'employee').includes('Why did my changes disappear?'));

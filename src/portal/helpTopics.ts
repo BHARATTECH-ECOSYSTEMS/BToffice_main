@@ -139,6 +139,12 @@ const CONNECTED_HELP: HelpGroup[] = [
     topics: [
       { q: 'What can admins do?', a: 'Admins add employees and interns, change the roles of sub admins, employees and interns or remove them, give tasks, issue certificates, publish policies, add resources and run HR OPS. Only a Super Admin can add, change or remove admins.', only: 'admin' },
       {
+        q: 'How do I invite someone?',
+        a: 'On People, press “Add people” and give their name, work email and role. They get an email with a temporary password and the sign-in link, and join the People list at their first sign-in. Until then they’re under Pending invites, where you can send the invite again (with a new temporary password) or cancel it, so the emailed password stops working. Admins invite employees and interns; a Super Admin invites any role.',
+        audience: 'admin',
+        link: { to: '/portal/people', label: 'Open People' },
+      },
+      {
         q: 'How do I correct someone’s attendance?',
         a: 'Open Attendance, pick the day, open the person and press Correct on a visit that has ended. Give the times they really came in and left (India time, on that day) and why; the change and its reason stay on the visit, and the person sees them. You correct the same people you may edit in People, and yourself.',
         audience: 'admin',

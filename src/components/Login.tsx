@@ -82,6 +82,7 @@ const TOO_MANY_TRIES = 'Too many tries from here right now. Wait a minute and tr
 const SIGN_IN_FAILED: Record<Exclude<SignInResult, { ok: true }>['reason'], string> = {
   credentials: 'Those details don’t match. Check your email or Employee ID and password, and try again.',
   'set-password': 'Your account still needs a new password before you can sign in. Please ask your administrator to help you finish setting it.',
+  'not-set-up': 'Your account isn’t fully set up yet. Ask an admin to finish it, then sign in again.',
   busy: 'Too many sign-in attempts from here right now. Wait a minute and try again.',
   unavailable: 'We couldn’t reach the sign-in service. Check your connection and try again in a moment.',
 };

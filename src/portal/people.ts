@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError } from './api';
+import { api, ApiError, BUSY_MESSAGE } from './api';
 import { ROLE_LABEL, STREAMS, type PersonRole, type PersonStatus, type Stream } from './data';
 
 /**
@@ -214,3 +214,73 @@ export const inviteEmailFailed = (error: ApiError) => {
   const details = error.details as { inviteEmailSent?: unknown; keycloakSynced?: unknown } | undefined;
   return details?.inviteEmailSent === false && details.keycloakSynced === true;
 };
+
+/**
+ * An invite nobody has accepted yet (GET /api/invite/pending): a login still waiting for its first password. The
+ * backend lists only the roles this admin may invite, newest first.
+ */
+export interface PendingInvite {
+  id: string;
+  name: string;
+  email: string;
+  role: AccountRole;
+  /** ms, or null when Keycloak didn't say */
+  invitedAt: number | null;
+}
+
+export function toPendingInvites(raw: unknown): PendingInvite[] {
+  if (!Array.isArray(raw)) throw new ApiError('unavailable', 'The backend’s answer isn’t a list of invites.');
+  return raw.flatMap((entry) => {
+    const p = (entry && typeof entry === 'object' ? entry : {}) as Record<string, unknown>;
+    const id = text(p.id);
+    const email = text(p.email);
+    if (!id || !email) return [];
+    const at = typeof p.invitedAt === 'string' ? Date.parse(p.invitedAt) : NaN;
+    return [{ id, name: text(p.name) ?? email, email, role: readAccountRole(p.role), invitedAt: Number.isNaN(at) ? null : at }];
+  });
+}
+
+const PENDING_FAILED: Record<ApiError['kind'], string> = {
+  'signed-out': 'Your sign-in has ended. Sign out and sign in again, then try once more.',
+  forbidden: 'Your role can’t cancel this invite.',
+  'not-found': 'That invite isn’t pending any more. The list has been refreshed.',
+  conflict: 'They’ve already accepted the invite. The list has been refreshed.',
+  'bad-request': 'That wasn’t accepted.',
+  busy: BUSY_MESSAGE,
+  unavailable: 'We couldn’t reach the employee records, so nothing was changed. Try again in a moment.',
+};
+/** What to say when cancelling (or loading) pending invites failed; the backend's own words are clearest for refusals. */
+export const pendingInviteFailedMessage = (e: ApiError) =>
+  (e.kind === 'forbidden' || e.kind === 'not-found' || e.kind === 'conflict') && e.message !== e.kind ? e.message : PENDING_FAILED[e.kind];
+
+export type PendingInvitesState = { kind: 'off' } | { kind: 'loading' } | { kind: 'ready'; invites: PendingInvite[] } | { kind: 'error'; error: ApiError };
+
+/** The invites nobody has accepted yet; `on` false never asks (people who can't invite). */
+export function usePendingInvites(on: boolean) {
+  const [state, setState] = useState<PendingInvitesState>(api && on ? { kind: 'loading' } : { kind: 'off' });
+  const load = useCallback(async () => {
+    if (!api || !on) return setState({ kind: 'off' });
+    try {
+      setState({ kind: 'ready', invites: toPendingInvites(await api.get<unknown>('/invite/pending')) });
+    } catch (error) {
+      setState({ kind: 'error', error: asApiError(error) });
+    }
+  }, [on]);
+  useEffect(() => {
+    void load();
+  }, [load]);
+  return {
+    state,
+    reload: load,
+    /** Deletes the unused login, so the emailed password stops working; reloads either way. */
+    cancel: async (id: string) => {
+      try {
+        await api!.del(`/invite/pending/${encodeURIComponent(id)}`);
+      } catch (error) {
+        throw asApiError(error);
+      } finally {
+        await load();
+      }
+    },
+  };
+}
