@@ -43,6 +43,18 @@ export function canDelete(actor: AccountRole, target: AccountRole) {
   return actor === 'Admin' && MANAGED_BY_ADMIN.includes(target);
 }
 
+/**
+ * Why `actor` can't mark this person as left, or '' when they can. The backend's rule: whoever may delete them,
+ * never themselves, and only once their stream (which picks their community) is set.
+ */
+export function canMarkLeft(actor: AccountRole, target: { accountRole: AccountRole; stream?: Stream }, self: boolean) {
+  if (self) return "You can't mark yourself as left";
+  if (actor !== 'Superadmin' && actor !== 'Admin') return 'Only admins can mark someone as left';
+  if (!canDelete(actor, target.accountRole)) return `${roleLabel(target.accountRole)} accounts can't be marked as left by your role`;
+  if (!target.stream) return 'Set their stream in Details first: it decides which community they join';
+  return '';
+}
+
 /** The roles `actor` may invite someone as (the backend's canInviteRole). */
 export function inviteChoices(actor: AccountRole): AccountRole[] {
   if (actor === 'Superadmin') return [...ACCOUNT_ROLES];
@@ -178,6 +190,8 @@ export function useDirectory() {
     changeRole: (id: string, role: AccountRole) => act(() => api!.patch(`/user/${id}`, { role })),
     saveDetails: (id: string, details: { fullName?: string; stream: Stream | null; team: string; joinedOn?: string | null }) => act(() => api!.patch(`/user/${id}`, details)),
     remove: (id: string) => act(() => api!.del(`/user/${id}`)),
+    /** Moves them to their stream's community and switches their sign-in off (community.ts has the rest). */
+    markLeft: (id: string) => act(() => api!.post(`/community/leave/${encodeURIComponent(id)}`, {})),
     /**
      * Creates the person's login with a temporary password and emails it to them. They join the directory at their
      * first sign-in, so there's nothing to reload.

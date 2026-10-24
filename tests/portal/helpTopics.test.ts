@@ -88,6 +88,23 @@ test('connected, courses are explained as free and saved, not as samples', () =>
   assert.match(saves ?? '', /courses/);
 });
 
+test('connected, everyone learns what the Community is; only admins how to mark someone as left', () => {
+  for (const role of ['employee', 'subadmin', 'admin'] as const) assert.ok(questions(true, role).includes('What is the Community?'), role);
+  const community = helpGroups(true, 'employee', 'Community').flatMap((g) => g.topics).find((t) => t.q === 'What is the Community?');
+  assert.match(community?.a ?? '', /personal email/i);
+  assert.doesNotMatch(community?.a ?? '', /bring (them )?back/i, 'how admins undo it is for admins');
+
+  assert.ok(questions(true, 'admin').includes('How do I mark someone as left?'));
+  for (const role of ['employee', 'subadmin'] as const) assert.ok(!questions(true, role).includes('How do I mark someone as left?'), role);
+  const leaving = helpGroups(true, 'admin', 'left').flatMap((g) => g.topics).find((t) => t.q === 'How do I mark someone as left?');
+  assert.match(leaving?.a ?? '', /sign-in/i);
+  assert.match(leaving?.a ?? '', /60 days/);
+  assert.match(leaving?.a ?? '', /Bring back/);
+
+  const saves = answers(true, 'employee').find((a) => a.startsWith('People, Tasks'));
+  assert.match(saves ?? '', /the Community/);
+});
+
 test('the demo keeps its own answers', () => {
   assert.ok(questions(false, 'employee').includes('Why did my changes disappear?'));
   assert.ok(!questions(true, 'employee').includes('Why did my changes disappear?'));

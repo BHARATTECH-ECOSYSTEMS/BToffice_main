@@ -174,7 +174,7 @@ const WAVE_LABEL = 'Mark as left';
  * a hand pops in and waves twice, and the button settles into a quiet "Left" chip with a tick. Only then is the person
  * moved (see usePlayThen).
  */
-function WaveButton({ srText, disabled, title, onDone }: { srText: string; disabled?: boolean; title?: string; onDone: () => void }) {
+export function WaveButton({ srText, disabled, title, onDone }: { srText: string; disabled?: boolean; title?: string; onDone: () => void }) {
   const [waving, play] = usePlayThen(WAVE_MS);
   return (
     <button

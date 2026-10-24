@@ -118,6 +118,7 @@ const CONNECTED_HELP: HelpGroup[] = [
       { q: 'How do I change my password?', a: 'Open Settings, then Password. The checklist shows what the new password still needs (no $ sign for now). Once it’s changed, every other sign-in ends and you sign in again with the new password. Forgot it? Press “Forgot password?” on the sign-in window and we’ll email you a link that works once, for 30 minutes.', link: { to: '/portal/settings?tab=password', label: 'Open Password settings' } },
       { q: 'Can I choose which emails I get?', a: 'Yes: open the bell next to your name and press the gear. The switches are saved to your account. The bell lists everything either way; the switches only choose which emails you get.' },
       EMAIL_OR_ROLE,
+      { q: 'What is the Community?', a: 'Everyone who has left Bharattech, grouped by the stream they worked in; everyone sees their names and when they left. Your work email stops when you leave, so you can give a personal email on the Community page now: when you leave, the community reaches you there. Only admins see it, and you can change or remove it any time.', link: { to: '/portal/community', label: 'Open Community' } },
     ],
   },
   {
@@ -143,13 +144,19 @@ const CONNECTED_HELP: HelpGroup[] = [
         audience: 'admin',
         link: VERIFY_LINK,
       },
+      {
+        q: 'How do I mark someone as left?',
+        a: 'On the People page, press “Mark as left” on their row (their stream must be set first, since it picks their community). They move to the Community that day, their sign-in is switched off, and their ID documents are deleted 60 days later. Their Employee ID, tasks and certificates stay. Marked someone by mistake? Press “Bring back” on their Community card. Super Admins can mark admins as left; admins can mark sub admins, employees and interns.',
+        audience: 'admin',
+        link: { to: '/portal/people', label: 'Open People' },
+      },
     ],
   },
   {
     title: 'Good to know',
     icon: 'alert',
     topics: [
-      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, courses and your progress in them, verifications (including requests from other companies), the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload. e-Office check-ins stay in this browser for now.' },
+      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, courses and your progress in them, verifications (including requests from other companies), the Community’s members and personal emails, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload. e-Office check-ins stay in this browser for now.' },
     ],
   },
 ];

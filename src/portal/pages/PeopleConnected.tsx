@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { EMAIL_SHAPE, ROLE_LABEL, STREAM_LABEL, STREAMS, type PersonRole, type Stream } from '../data';
+import { EMAIL_SHAPE, ID_RETENTION_DAYS, ROLE_LABEL, STREAM_LABEL, STREAMS, type PersonRole, type Stream } from '../data';
 import type { ApiError } from '../api';
 import { BUSY_MESSAGE } from '../api';
 import {
   canDelete,
   canEditDetails,
+  canMarkLeft,
   canEditPerson,
   cleanName,
   inviteChoices,
@@ -23,11 +24,13 @@ import {
 import { useSession } from '../session';
 import { localDay } from '../eoffice';
 import { Badge, btnClass, BtnLabel, Empty, Modal, PageHead, SearchField, useListFlip, useNotice } from '../ui';
+import { WaveButton } from './People';
+import { communityFailedMessage } from '../community';
 
 /**
  * The People page with the real sign-in: the backend's directory, and for admins and superadmins the changes and
- * invites the backend allows them (src/portal/people.ts). Sub admins, employees and interns see the list only.
- * "Mark as left" comes with the Community feature, so it isn't offered here yet.
+ * invites the backend allows them (src/portal/people.ts), including "Mark as left", which moves someone to their
+ * stream's community. Sub admins, employees and interns see the list only.
  */
 
 const SAVE_FAILED: Record<ApiError['kind'], string> = {
@@ -65,6 +68,8 @@ export function ConnectedPeople() {
   const [inviting, setInviting] = useState(false);
   // the person whose change is being saved; their row's controls wait for it
   const [saving, setSaving] = useState<string | null>(null);
+  // the wave button ends as a "Left" chip; a refused leave gives it a fresh start (its key)
+  const [leaveTries, setLeaveTries] = useState(0);
   const [notice, notify] = useNotice();
 
   const people = state.kind === 'ready' ? state.people : [];
@@ -84,6 +89,19 @@ export function ConnectedPeople() {
       notify(done);
     } catch (error) {
       notify(saveFailedMessage(error as ApiError));
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  const markLeft = async (person: DirectoryPerson) => {
+    setSaving(person.id);
+    try {
+      await directory.markLeft(person.id);
+      notify(`${person.name} has left and joined the ${STREAM_LABEL[person.stream!]} community. Their sign-in is switched off.`);
+    } catch (error) {
+      setLeaveTries((n) => n + 1);
+      notify(communityFailedMessage(error as ApiError));
     } finally {
       setSaving(null);
     }
@@ -150,6 +168,7 @@ export function ConnectedPeople() {
                   const choices = self ? [] : roleChoices(actor, p.accountRole);
                   const deletable = !self && canDelete(actor, p.accountRole);
                   const editable = canEditPerson(actor, p.accountRole);
+                  const cantLeave = canMarkLeft(actor, p, self);
                   const busy = saving === p.id;
                   return (
                     <tr key={p.id} data-flip={p.id}>
@@ -216,6 +235,16 @@ export function ConnectedPeople() {
                               Details<span className="sr-only"> for {p.name}</span>
                             </BtnLabel>
                           </button>
+                          <WaveButton
+                            key={`${p.id}-${leaveTries}`}
+                            srText={p.name}
+                            disabled={busy || !!cantLeave}
+                            title={
+                              cantLeave ||
+                              `Moves them to the ${STREAM_LABEL[p.stream!]} community today and switches off their sign-in. Their ID documents are deleted ${ID_RETENTION_DAYS} days later.`
+                            }
+                            onDone={() => void markLeft(p)}
+                          />
                           <button
                             type="button"
                             className={btnClass('ghost', { small: true })}
@@ -353,7 +382,8 @@ export function InviteModal({
         setEmailFailed(true);
         setError('Their login was made, but the invite email couldn’t be sent. Send it again; they’ll get a new temporary password.');
       } else {
-        setError(INVITE_FAILED[failure.kind]);
+        // someone who left comes back through the Community, and the backend says so
+        setError(failure.kind === 'conflict' && (failure.details as { code?: unknown } | undefined)?.code === 'left' ? failure.message : INVITE_FAILED[failure.kind]);
       }
     } finally {
       setSending(false);

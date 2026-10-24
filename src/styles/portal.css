@@ -5660,6 +5660,12 @@ html:has(.portal),
   font-size: 12.5px;
   min-width: 0;
 }
+/* under the email, lined up with its "Change" link instead of centred in the card */
+.p-comm-back {
+  align-self: flex-start;
+  margin-top: 2px;
+  font-size: 12.5px;
+}
 .p-comm-email-text {
   display: block;
   max-width: 100%;

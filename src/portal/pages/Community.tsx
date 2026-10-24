@@ -1,10 +1,14 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import { toneStyle } from '../../components/ui';
 import type { HueName } from '../../gl/palette';
-import { EMAIL_SHAPE, STREAM_LABEL, STREAMS, type Alumnus, type Stream } from '../data';
+import type { ApiError } from '../api';
+import { communityFailedMessage, personalEmailProblem } from '../community';
+import { STREAM_LABEL, STREAMS, type Stream } from '../data';
+import { useAccountProfile } from '../profile';
 import { managesPortal, useSession } from '../session';
 import { formatDate, usePortal } from '../store';
-import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, PageHead, PIcon, SampleDataBar, useListFlip, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PageHead, PIcon, useListFlip, useNotice } from '../ui';
+import { useCommunitySource, useOwnPersonalEmail, type CommunitySource, type SourceMember } from './communitySource';
 import { InternalJobs, PostJob } from './CommunityJobs';
 
 /** Each stream's colour, for the ring round a member's initials. */
@@ -16,7 +20,8 @@ const STREAM_TONE: Record<Stream, HueName> = { tech: 'violet', operations: 'tang
  * members only. Admins and sub admins also see the referrals and the internal jobs; only admins run them: they share
  * referrals, post jobs, handle the applicants, and add the personal email each member is reached on (personal data,
  * so only admins see it). Only former colleagues are members, and nobody is added by hand: marking someone as left on
- * the People page puts them in their stream's community.
+ * the People page puts them in their stream's community. Connected to the backend (communitySource.ts), admins can
+ * also bring back someone marked as left by mistake; referrals and internal jobs stay the demo's until they connect.
  */
 // how the community works, as the three things that happen in order; worded for whoever is reading
 const STEPS = {
@@ -34,18 +39,22 @@ const STEPS = {
 
 export function Community() {
   const session = useSession()!;
-  const { alumni, referrals, removeReferral } = usePortal();
+  const { referrals, removeReferral } = usePortal();
+  const source = useCommunitySource();
   const [stream, setStream] = useState<Stream | ''>('');
   const [posting, setPosting] = useState(false);
+  const [bringing, setBringing] = useState<SourceMember | null>(null);
   const [notice, notify] = useNotice();
-  const members = alumni.filter((a) => !stream || a.stream === stream).sort((a, b) => b.left.localeCompare(a.left));
+  const all = source.members;
+  // the backend sends them newest leaver first; the demo's samples are sorted the same way here
+  const members = all.filter((a) => !stream || a.stream === stream).sort((a, b) => b.left.localeCompare(a.left));
   const shared = referrals.filter((r) => !stream || r.stream === stream);
-  const membersRef = useListFlip<HTMLUListElement>(stream);
+  const membersRef = useListFlip<HTMLUListElement>(`${stream}|${all.length}`);
   const referralsRef = useListFlip<HTMLUListElement>(`${stream}|${referrals.length}`);
   const label = stream ? `${STREAM_LABEL[stream]} community` : 'community';
   const isAdmin = session.role === 'admin';
-  // referrals are for admins and sub admins; employees see the members only
-  const showReferrals = session.role !== 'employee';
+  // referrals are for admins and sub admins; employees see the members only. Connected, they wait for Part 2.
+  const showReferrals = session.role !== 'employee' && !source.connected;
   // the wall's cards come in one after another on arrival only; later changes slide (useListFlip)
   const [entering, setEntering] = useState(true);
   useEffect(() => {
@@ -63,13 +72,12 @@ export function Community() {
             : 'Where former colleagues stay connected, and hear about roles at Bharattech first.'
         }
       >
-        {isAdmin && (
+        {isAdmin && !source.connected && (
           <button type="button" className={btnClass('primary')} onClick={() => setPosting(true)}>
             <BtnLabel icon="spark">Post an internal job</BtnLabel>
           </button>
         )}
       </PageHead>
-      <SampleDataBar />
       {notice}
 
       <ol className="p-comm-steps" aria-label="How the community works">
@@ -91,7 +99,7 @@ export function Community() {
       <div className="p-chips p-comm-streams" role="group" aria-label="Show community">
         {(['', ...STREAMS.map((s) => s.id)] as const).map((s) => (
           <button key={s || 'all'} type="button" aria-pressed={stream === s} onClick={() => setStream(s)}>
-            {s ? STREAM_LABEL[s] : 'All'} <span className="p-count">{alumni.filter((a) => !s || a.stream === s).length}</span>
+            {s ? STREAM_LABEL[s] : 'All'} <span className="p-count">{all.filter((a) => !s || a.stream === s).length}</span>
           </button>
         ))}
       </div>
@@ -107,7 +115,22 @@ export function Community() {
               {isAdmin ? ', reached on their personal email.' : '.'}
             </p>
           </header>
-          {members.length ? (
+          {source.status.kind === 'loading' ? (
+            <p className="p-muted" role="status">
+              Loading the community…
+            </p>
+          ) : source.status.kind === 'error' ? (
+            <section className="p-card" role="alert">
+              <Empty icon="alert" title="The community didn’t load">
+                {communityFailedMessage(source.status.error)}
+              </Empty>
+              {source.status.error.kind !== 'signed-out' && (
+                <button type="button" className={btnClass('light', { small: true })} onClick={source.retry}>
+                  <BtnLabel icon="refresh">Try again</BtnLabel>
+                </button>
+              )}
+            </section>
+          ) : members.length ? (
             <ul className="p-comm-grid" ref={membersRef} data-enter={entering || undefined}>
               {members.map((a, i) => (
                 <li key={a.id} className="p-comm-card" data-flip={a.id} style={toneStyle(STREAM_TONE[a.stream], { '--i': i } as CSSProperties)}>
@@ -121,8 +144,13 @@ export function Community() {
                   <small className="p-comm-left">Left {formatDate(a.left)}</small>
                   {isAdmin && (
                     <span className="p-comm-card-email">
-                      <PersonalEmail member={a} notify={notify} />
+                      <PersonalEmail member={a} source={source} notify={notify} />
                     </span>
+                  )}
+                  {isAdmin && a.canBringBack && source.bringBack && (
+                    <button type="button" className="p-text-btn p-comm-back" onClick={() => setBringing(a)}>
+                      Bring back<span className="sr-only"> {a.name}</span>
+                    </button>
                   )}
                 </li>
               ))}
@@ -193,7 +221,37 @@ export function Community() {
       </div>
 
       {/* internal job postings are run by admins and sub admins; employees don't see them */}
-      {managesPortal(session.role) && <InternalJobs stream={stream} notify={notify} isAdmin={isAdmin} />}
+      {managesPortal(session.role) &&
+        (source.connected ? (
+          <section className="p-card">
+            <Empty icon="spark" title="Referrals and internal jobs are being connected next">
+              Members and their personal emails are saved to the company system now. Sharing referrals and posting internal jobs come next.
+            </Empty>
+          </section>
+        ) : (
+          <InternalJobs stream={stream} notify={notify} isAdmin={isAdmin} />
+        ))}
+
+      {bringing && source.bringBack && (
+        <BringBackModal
+          member={bringing}
+          onClose={() => setBringing(null)}
+          onConfirm={async () => {
+            const member = bringing;
+            setBringing(null);
+            try {
+              const { needsInvite } = await source.bringBack!(member.id);
+              notify(
+                needsInvite
+                  ? `${member.name} is back in People. Their sign-in account was gone, so send them an invite from People.`
+                  : `${member.name} is back in People, and can sign in again.`,
+              );
+            } catch (error) {
+              notify(communityFailedMessage(error as ApiError));
+            }
+          }}
+        />
+      )}
 
       {posting && (
         <PostJob
@@ -215,23 +273,55 @@ export function Community() {
  * email already in place. They can change it or take it back at any time.
  */
 function JoinCommunity({ notify }: { notify: (t: string) => void }) {
-  const { me, people, alumni, joinCommunity } = usePortal();
+  const session = useSession()!;
+  const { me } = usePortal();
+  const own = useOwnPersonalEmail(true);
+  // connected, their stream comes from their own record; the demo keeps it on the sample person
+  const [profile] = useAccountProfile();
+  const myStream = profile.kind === 'off' ? me.stream : profile.kind === 'ready' ? profile.profile.stream : undefined;
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
-  const joined = me.personalEmail;
-  const community = `${STREAM_LABEL[me.stream]} community`;
+  const [saving, setSaving] = useState(false);
+  const joined = own.email;
+  const community = myStream ? `${STREAM_LABEL[myStream]} community` : 'community';
 
-  const save = () => {
+  const save = async () => {
     const email = value.trim().toLowerCase();
-    if (!EMAIL_SHAPE.test(email)) return setError('Enter an email like name@gmail.com.');
-    if (email === me.email.toLowerCase()) return setError('Your work email stops when you leave. Use a personal one.');
-    const taken = [...people, ...alumni].some((p) => p.id !== me.id && p.personalEmail?.toLowerCase() === email);
-    if (taken) return setError('Someone else already uses this email.');
-    joinCommunity(me.id, email);
-    setEditing(false);
-    notify(joined ? 'Your personal email was changed.' : `You've joined the ${community}.`);
+    const problem = email ? personalEmailProblem(email, session.email) : 'Enter an email like name@gmail.com.';
+    if (problem) return setError(problem);
+    if (own.emailTaken(email)) return setError('Someone else already uses this email.');
+    setSaving(true);
+    try {
+      await own.save(email);
+      setEditing(false);
+      notify(joined ? 'Your personal email was changed.' : `You've joined the ${community}.`);
+    } catch (e) {
+      setError(communityFailedMessage(e as ApiError));
+    } finally {
+      setSaving(false);
+    }
   };
+  const leaveList = async () => {
+    try {
+      await own.save('');
+      notify(`You've left the ${community} list.`);
+    } catch (e) {
+      notify(communityFailedMessage(e as ApiError));
+    }
+  };
+
+  // connected, nothing to show until their own email has loaded (or say why it didn't)
+  if (joined === undefined) {
+    return own.error ? (
+      <section className="p-card p-comm-join" role="alert">
+        <span className="p-comm-join-text">
+          <h2>Join the community</h2>
+          <p>{communityFailedMessage(own.error)}</p>
+        </span>
+      </section>
+    ) : null;
+  }
 
   if (joined && !editing) {
     return (
@@ -249,14 +339,7 @@ function JoinCommunity({ notify }: { notify: (t: string) => void }) {
           <button type="button" className={btnClass('ghost', { small: true })} onClick={() => (setValue(joined), setError(''), setEditing(true))}>
             <BtnLabel icon="edit">Change email</BtnLabel>
           </button>
-          <button
-            type="button"
-            className={btnClass('ghost', { small: true })}
-            onClick={() => {
-              joinCommunity(me.id, '');
-              notify(`You've left the ${community} list.`);
-            }}
-          >
+          <button type="button" className={btnClass('ghost', { small: true })} onClick={() => void leaveList()}>
             <BtnLabel>Leave</BtnLabel>
           </button>
         </span>
@@ -282,7 +365,7 @@ function JoinCommunity({ notify }: { notify: (t: string) => void }) {
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
-          save();
+          void save();
         }}
       >
         <label className="sr-only" htmlFor="join-email">
@@ -299,8 +382,8 @@ function JoinCommunity({ notify }: { notify: (t: string) => void }) {
           aria-invalid={!!error || undefined}
           aria-describedby={error ? 'join-email-err' : undefined}
         />
-        <button type="submit" className={btnClass('primary')}>
-          <BtnLabel icon={joined ? undefined : 'plus'}>{joined ? 'Save' : 'Join'}</BtnLabel>
+        <button type="submit" className={btnClass('primary')} disabled={saving}>
+          <BtnLabel icon={joined ? undefined : 'plus'}>{saving ? 'Saving…' : joined ? 'Save' : 'Join'}</BtnLabel>
         </button>
         {joined && (
           <button type="button" className={btnClass('ghost')} onClick={() => setEditing(false)}>
@@ -321,11 +404,11 @@ function JoinCommunity({ notify }: { notify: (t: string) => void }) {
  * The personal email a former colleague is reached on, shown under their name; an admin adds or changes it in place.
  * It must look like an email and can't be their old work email, which stopped working when they left.
  */
-function PersonalEmail({ member, notify }: { member: Alumnus; notify: (t: string) => void }) {
-  const { alumni, setPersonalEmail } = usePortal();
+function PersonalEmail({ member, source, notify }: { member: SourceMember; source: CommunitySource; notify: (t: string) => void }) {
   const [editing, setEditing] = useState(false);
   const [value, setValue] = useState(member.personalEmail ?? '');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
 
   if (!editing) {
     return member.personalEmail ? (
@@ -345,14 +428,21 @@ function PersonalEmail({ member, notify }: { member: Alumnus; notify: (t: string
     );
   }
 
-  const save = () => {
+  const save = async () => {
     const email = value.trim().toLowerCase();
-    if (!EMAIL_SHAPE.test(email)) return setError('Enter an email like name@gmail.com.');
-    if (email === member.email.toLowerCase()) return setError('Their work email stopped when they left. Use a personal one.');
-    if (alumni.some((a) => a.id !== member.id && a.personalEmail?.toLowerCase() === email)) return setError('Another member already uses this email.');
-    setPersonalEmail(member.id, email);
-    setEditing(false);
-    notify(`Personal email saved for ${member.name}.`);
+    const problem = email ? personalEmailProblem(email, member.workEmail ?? '') : 'Enter an email like name@gmail.com.';
+    if (problem) return setError(problem);
+    if (source.emailTaken(email, member.id)) return setError('Another member already uses this email.');
+    setSaving(true);
+    try {
+      await source.setPersonalEmail(member.id, email);
+      setEditing(false);
+      notify(`Personal email saved for ${member.name}.`);
+    } catch (e) {
+      setError(communityFailedMessage(e as ApiError));
+    } finally {
+      setSaving(false);
+    }
   };
   return (
     <form
@@ -360,7 +450,7 @@ function PersonalEmail({ member, notify }: { member: Alumnus; notify: (t: string
       noValidate
       onSubmit={(e) => {
         e.preventDefault();
-        save();
+        void save();
       }}
     >
       <label className="sr-only" htmlFor={`pe-${member.id}`}>
@@ -378,8 +468,8 @@ function PersonalEmail({ member, notify }: { member: Alumnus; notify: (t: string
         aria-invalid={!!error || undefined}
         aria-describedby={error ? `pe-${member.id}-err` : undefined}
       />
-      <button type="submit" className={btnClass('primary', { small: true })}>
-        <BtnLabel>Save</BtnLabel>
+      <button type="submit" className={btnClass('primary', { small: true })} disabled={saving}>
+        <BtnLabel>{saving ? 'Saving…' : 'Save'}</BtnLabel>
       </button>
       <button type="button" className={btnClass('ghost', { small: true })} onClick={() => setEditing(false)}>
         <BtnLabel>Cancel</BtnLabel>
@@ -390,5 +480,31 @@ function PersonalEmail({ member, notify }: { member: Alumnus; notify: (t: string
         </small>
       )}
     </form>
+  );
+}
+
+/** Asks before bringing someone back: their sign-in is switched on again and they return to People. */
+function BringBackModal({ member, onClose, onConfirm }: { member: SourceMember; onClose: () => void; onConfirm: () => void }) {
+  return (
+    <Modal
+      title={`Bring ${member.name} back?`}
+      icon="users"
+      onClose={onClose}
+      onSubmit={onConfirm}
+      footer={
+        <>
+          <button type="button" className={btnClass('ghost')} onClick={onClose}>
+            <BtnLabel>Keep them in the community</BtnLabel>
+          </button>
+          <button type="submit" className={btnClass('primary')}>
+            <BtnLabel>Bring back</BtnLabel>
+          </button>
+        </>
+      }
+    >
+      <p>
+        For someone marked as left by mistake. {member.name} goes back to People with the same Employee ID, and their sign-in is switched on again.
+      </p>
+    </Modal>
   );
 }
