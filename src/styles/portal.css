@@ -4377,6 +4377,67 @@ a.p-cal-item-title {
 .p-eoffice-actions > * {
   flex: 1;
 }
+/* connected: the person's attendance (and, for managers, how many are in now) */
+.p-eoffice-foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.p-eoffice-foot > a:only-child {
+  margin-left: auto;
+}
+
+/* ── Attendance (pages/Attendance.tsx): the day picker, and days of visits with their corrections ── */
+.p-att-pick {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.p-att-days,
+.p-att-visits {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.p-att-days > li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.p-att-days > li:last-child {
+  border-bottom: 0;
+}
+.p-att-day-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.p-att-total {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+.p-att-visits {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.p-att-visits > li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 12px;
+  padding: 2px 0;
+  font-variant-numeric: tabular-nums;
+}
+.p-att-fix {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
 
 .p-profile {
   position: relative;

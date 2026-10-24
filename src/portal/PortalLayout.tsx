@@ -73,6 +73,8 @@ const TOP: TopItem[] = [
           { to: '/portal/verification/requests', label: 'Verification Requests', icon: 'check' },
         ],
       },
+      // sub admins reach it from their dashboard's e-Office card (HR OPS is admins' menu)
+      { heading: 'Team', links: [{ to: '/portal/attendance', label: 'Attendance', icon: 'clock' }] },
     ],
   },
   // former colleagues and the openings offered to them: everyone sees it, only admins run it (Community.tsx)

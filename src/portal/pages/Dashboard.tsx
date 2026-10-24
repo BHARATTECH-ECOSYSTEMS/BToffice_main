@@ -4,7 +4,8 @@ import { CERTIFICATE_TYPES, PERSON_STATUS_LABEL, ROLE_LABEL, toolById, type Pers
 import { hasArrived, managesPortal, markArrived, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, NotConnected, PIcon, SearchField, Stat, ToolButton, useListFlip, useNotice } from '../ui';
-import { useOfficeDay } from '../eoffice';
+import { attendanceFailedMessage, indiaTime, indiaToday, useAttendanceDay } from '../attendance';
+import { useOfficeSource } from './officeSource';
 import { IdCardDialog } from '../IdCard';
 import { InviteModal } from './People';
 import { CalendarCard } from '../Calendar';
@@ -369,7 +370,10 @@ function ConnectedManaging({ arrive, certificates }: { arrive: boolean; certific
               delay={arrive ? ARRIVAL_LEAD : 0}
             />
             <NextDueCard list={list} />
-            <TaskBoard title="Team tasks" list={list} onOpen={(t) => setOpenId(t.id)} note={tasksNote(tasks, 'Loading the tasks…')} />
+            <div className="p-board-col">
+              <EOfficeCard notify={notify} team />
+              <TaskBoard title="Team tasks" list={list} onOpen={(t) => setOpenId(t.id)} note={tasksNote(tasks, 'Loading the tasks…')} />
+            </div>
             <WorkspaceCard notify={notify} />
             <CalendarCard tasks={list.filter((t) => t.status !== 'done')} joiners={people} notify={notify} />
           </div>
@@ -663,15 +667,19 @@ const duration = (ms: number) => {
 };
 
 /**
- * The employee's day in the e-Office: join checks them in and opens the virtual office in a new tab, then the card
- * shows since when they've been in, with a running time, and a way to leave. The check-in is kept per day in this
- * browser (eoffice.ts) until attendance has a backend; the office's address comes from TOOLS like the other tools.
+ * The person's day in the e-Office: join checks them in and opens the virtual office in a new tab, then the card
+ * shows since when they've been in, the day's running time, and a way to leave; joining again starts a new visit.
+ * Connected, every visit is saved to the backend (officeSource.ts) and the card links to the person's attendance; a
+ * manager's card also says how many are in now. The office's address comes from TOOLS like the other tools.
  */
-function EOfficeCard({ notify }: { notify: (t: string) => void }) {
+function EOfficeCard({ notify, team = false }: { notify: (t: string) => void; team?: boolean }) {
   const { me } = usePortal();
-  const { day, join, leave } = useOfficeDay(me.email);
+  const source = useOfficeSource(me.email);
   const office = toolById('eoffice')!;
-  const inside = !!day && !day.left;
+  const state = source.now;
+  const { inside } = state;
+  const teamDay = useAttendanceDay(indiaToday(), team && source.connected);
+  const [busy, setBusy] = useState(false);
   // the running time only needs the minute, so the card re-renders twice a minute while someone is in
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
@@ -680,18 +688,31 @@ function EOfficeCard({ notify }: { notify: (t: string) => void }) {
     const timer = window.setInterval(() => setNow(Date.now()), 30000);
     return () => window.clearInterval(timer);
   }, [inside]);
+  // the demo shows the browser's clock as it always has; the backend's days are India time
+  const time = source.connected ? indiaTime : clockTime;
 
   const open = () => office.url && window.open(office.url, '_blank', 'noopener,noreferrer');
-  const enter = () => {
-    join();
-    if (office.url) {
-      open();
-      notify('You checked in to the e-Office.');
-    } else notify("You checked in. The e-Office link isn't connected yet, so nothing opened.");
+  const act = async (change: () => Promise<void>, done: string) => {
+    setBusy(true);
+    try {
+      await change();
+      notify(done);
+      if (team) void teamDay.reload();
+      return true;
+    } catch (error) {
+      notify(attendanceFailedMessage(error as ApiError));
+      return false;
+    } finally {
+      setBusy(false);
+    }
   };
+  const enter = async () => {
+    if ((await act(source.join, office.url ? 'You checked in to the e-Office.' : "You checked in. The e-Office link isn't connected yet, so nothing opened.")) && office.url) open();
+  };
+  const loading = source.status.kind === 'loading';
 
   return (
-    <section className="p-card p-eoffice" data-state={inside ? 'in' : day ? 'left' : 'out'} aria-labelledby="eoffice-title">
+    <section className="p-card p-eoffice" data-state={inside ? 'in' : state.visited ? 'left' : 'out'} aria-labelledby="eoffice-title" aria-busy={busy || loading}>
       <div className="p-eoffice-head">
         <span className="p-tile-icon">
           <PIcon name="home" />
@@ -701,21 +722,29 @@ function EOfficeCard({ notify }: { notify: (t: string) => void }) {
             e-Office
           </h2>
           <p className="p-eoffice-sub" role="status">
-            {inside ? (
+            {source.status.kind === 'error' ? (
+              'Your day didn’t load.'
+            ) : loading ? (
+              'Loading your day…'
+            ) : state.inside ? (
               <>
-                <span className="p-eoffice-dot" aria-hidden="true" /> In since {clockTime(day.since)}
+                <span className="p-eoffice-dot" aria-hidden="true" /> In since {time(state.since)}
               </>
-            ) : day?.left ? (
-              `Left at ${clockTime(day.left)}`
+            ) : state.visited ? (
+              `Left at ${time(state.leftAt)}`
             ) : (
               'Check in to start your day.'
             )}
           </p>
         </div>
-        {day && <p className="p-eoffice-time">{duration((day.left ?? now) - day.since)}</p>}
+        {state.visited && <p className="p-eoffice-time">{duration(source.spent(now))}</p>}
       </div>
       <div className="p-eoffice-actions">
-        {inside ? (
+        {source.status.kind === 'error' ? (
+          <button type="button" className={btnClass('ghost', { small: true, wide: true })} onClick={source.retry}>
+            <BtnLabel icon="refresh">Try again</BtnLabel>
+          </button>
+        ) : inside ? (
           <>
             {office.url && (
               <button type="button" className={btnClass('primary', { small: true })} onClick={open}>
@@ -723,16 +752,28 @@ function EOfficeCard({ notify }: { notify: (t: string) => void }) {
                 <span className="sr-only">(opens in a new tab)</span>
               </button>
             )}
-            <button type="button" className={btnClass('ghost', { small: true })} onClick={() => (leave(), notify('You left the e-Office.'))}>
-              <BtnLabel icon="logout">Leave</BtnLabel>
+            <button type="button" className={btnClass('ghost', { small: true })} disabled={busy} onClick={() => void act(source.leave, 'You left the e-Office.')}>
+              <BtnLabel icon="logout">{busy ? 'Leaving…' : 'Leave'}</BtnLabel>
             </button>
           </>
         ) : (
-          <button type="button" className={btnClass('primary', { small: true, wide: true })} onClick={enter}>
-            <BtnLabel icon="home">{day ? 'Join again' : 'Join e-Office'}</BtnLabel>
+          <button type="button" className={btnClass('primary', { small: true, wide: true })} disabled={busy || loading} onClick={() => void enter()}>
+            <BtnLabel icon="home">{busy ? 'Checking in…' : state.visited ? 'Join again' : 'Join e-Office'}</BtnLabel>
           </button>
         )}
       </div>
+      {source.connected && (
+        <p className="p-eoffice-foot">
+          {team && teamDay.state.kind === 'ready' && (
+            <span>
+              {teamDay.state.value.inNow} in now
+            </span>
+          )}
+          <Link to="/portal/attendance" className="p-link">
+            {team ? 'Open attendance' : 'My attendance'}
+          </Link>
+        </p>
+      )}
     </section>
   );
 }

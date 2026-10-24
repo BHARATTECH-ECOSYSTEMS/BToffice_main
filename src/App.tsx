@@ -42,6 +42,7 @@ const loadCertificates = () => import('./portal/pages/Certificates');
 const loadPolicy = () => import('./portal/pages/Policy');
 const loadSettings = () => import('./portal/pages/Settings');
 const loadCommunity = () => import('./portal/pages/Community');
+const loadAttendance = () => import('./portal/pages/Attendance');
 const loadProfile = () => import('./portal/pages/Profile');
 const loadVerification = () => import('./portal/pages/Verification');
 const loadLmsParts = () => import('./portal/pages/lms/parts');
@@ -209,6 +210,7 @@ const router = createHashRouter([
       { index: true, lazy: page(loadDashboard, 'Dashboard') },
       { path: 'people', lazy: page(loadPeople, 'People') },
       { path: 'community', lazy: page(loadCommunity, 'Community') },
+      { path: 'attendance', lazy: page(loadAttendance, 'Attendance') },
       { path: 'profile', lazy: page(loadProfile, 'Profile') },
       { path: 'resources', lazy: page(loadResources, 'Resources') },
       { path: 'tools/:id', lazy: page(loadResources, 'ToolPage') },

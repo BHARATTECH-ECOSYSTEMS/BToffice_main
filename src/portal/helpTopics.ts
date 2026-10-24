@@ -107,6 +107,7 @@ const CONNECTED_HELP: HelpGroup[] = [
       WHERE_TO_START,
       { q: 'How do I mark myself active or inactive?', a: 'Your status comes from your company account, and your dashboard card shows it. If it’s wrong, ask an admin.', only: 'employee', link: { to: '/portal', label: 'Go to my dashboard' } },
       { q: 'How do I update a task?', a: 'Under My tasks on your dashboard, change a task’s status, or open the task to download its brief and hand in your work, which marks it Done. Whoever gave you the task is told.', only: 'employee', link: { to: '/portal', label: 'Go to my dashboard' } },
+      { q: 'How does e-Office attendance work?', a: 'Press “Join e-Office” on your dashboard when you start and “Leave” when you stop; you can join again later, and the card adds up your time for the day. It’s saved to your account, in India time. If you forget to leave, the visit ends at midnight and is marked “No check-out”; ask an admin to correct it. Your days are under My attendance. Admins and sub admins see everyone’s.', link: { to: '/portal/attendance', label: 'Open attendance' } },
     ],
   },
   {
@@ -137,6 +138,12 @@ const CONNECTED_HELP: HelpGroup[] = [
     icon: 'shield',
     topics: [
       { q: 'What can admins do?', a: 'Admins add employees and interns, change the roles of sub admins, employees and interns or remove them, give tasks, issue certificates, publish policies, add resources and run HR OPS. Only a Super Admin can add, change or remove admins.', only: 'admin' },
+      {
+        q: 'How do I correct someone’s attendance?',
+        a: 'Open Attendance, pick the day, open the person and press Correct on a visit that has ended. Give the times they really came in and left (India time, on that day) and why; the change and its reason stay on the visit, and the person sees them. You correct the same people you may edit in People, and yourself.',
+        audience: 'admin',
+        link: { to: '/portal/attendance', label: 'Open attendance' },
+      },
       { q: 'What can a sub admin do?', a: 'Sub admins see everyone in People, give tasks to employees and interns, and change or delete the tasks they gave. Adding or removing people, changing roles, certificates, policies, resources and HR OPS stay with admins.', only: 'subadmin' },
       {
         q: 'How do I verify a company or an employee?',
@@ -174,7 +181,7 @@ const CONNECTED_HELP: HelpGroup[] = [
     title: 'Good to know',
     icon: 'alert',
     topics: [
-      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, courses and your progress in them, verifications (including requests from other companies), the Community’s members, personal emails, referrals and internal jobs, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload. e-Office check-ins stay in this browser for now.' },
+      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, courses and your progress in them, verifications (including requests from other companies), the Community’s members, personal emails, referrals and internal jobs, e-Office check-ins, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload.' },
     ],
   },
 ];
