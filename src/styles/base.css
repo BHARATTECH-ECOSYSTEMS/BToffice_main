@@ -1488,6 +1488,45 @@ h3 {
     color: #6E58F5;
   }
 }
+/* Light / Dark / Auto (src/theme.ts): a quiet round key before the login button, in the site's nav and the
+   portal's top bar. It arrives with the bar's other items. */
+.nav-theme {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgb(20 19 15 / 0.05);
+  color: var(--ink);
+  transition:
+    background-color var(--dur-hover) var(--ease),
+    scale var(--dur-press) var(--ease);
+  animation: navItem 0.8s var(--ease) 1150ms backwards;
+}
+.nav-theme svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.nav-theme:active {
+  scale: 0.95;
+}
+[data-theme='dark'] .nav-theme {
+  background: rgb(255 255 255 / 0.08);
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav-theme:hover {
+    background: rgb(20 19 15 / 0.09);
+  }
+  [data-theme='dark'] .nav-theme:hover {
+    background: rgb(255 255 255 / 0.14);
+  }
+}
 .nav-burger {
   display: none;
   position: relative;
@@ -1964,13 +2003,27 @@ h3 {
   .nav-burger { display: block; }
 
 }
-/* The seven keys need ~660px, which below ~1090px runs into the brand and the login button, so there they sit a
-   little closer (the lit link's dot keeps its room on the right). */
-@media (min-width: 1025px) and (max-width: 1099px) {
-  .nav-links { gap: 3px; }
+/* The seven keys need ~660px centred on the bar, which below ~1180px runs into the brand or the theme key and
+   login button. There they sit a little closer (the lit link's dot keeps its room on the right) and are centred in
+   the room between the brand and the bar's end rather than on the whole bar; relative, so the lit key's highlight
+   (.nav-hl) is still placed inside them. */
+@media (min-width: 1025px) and (max-width: 1179px) {
+  .nav-links {
+    position: relative;
+    left: auto;
+    transform: none;
+    margin-inline: auto;
+    gap: 3px;
+  }
+  .nav-end { margin-left: 0; }
   .nav-links > a,
   .nav-links > button { padding: 0 20px 0 11px; }
   .nav-links i { right: 9px; }
+}
+@media (min-width: 1025px) and (max-width: 1059px) {
+  .nav-links > a,
+  .nav-links > button { padding: 0 18px 0 10px; }
+  .nav-links i { right: 8px; }
 }
 /* The burger can't open the sheet here, but a hidden sheet still adds ~560px to the nav's height, so the tuck
    (-100%) travelled ~650px and the bar jumped. With it gone the tuck is ~100px; the extra 40px clears the compact

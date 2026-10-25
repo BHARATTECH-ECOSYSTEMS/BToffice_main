@@ -383,6 +383,16 @@ body:has(.portal) .scene {
   font-size: 22px;
   box-shadow: 0 0 0 4px var(--paper), 0 0 0 5px var(--line);
 }
+/* Settings → Appearance: Light, Dark, Auto, each with the icon the top-bar key shows */
+.p-theme-choices svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
 .p-set-checks {
   display: grid;
   gap: 6px;

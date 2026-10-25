@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, type ComponentType } from 'react';
+import { useEffect, type ComponentType } from 'react';
 import { createHashRouter, Navigate, Outlet, RouterProvider, useLocation } from 'react-router';
 import { SceneProvider, useScene } from './gl/Scene';
 import { Nav } from './components/Nav';
@@ -9,6 +9,7 @@ import { BackToTop } from './components/BackToTop';
 import { LoginProvider } from './components/Login';
 import { usePointerBloom } from './components/usePointerBloom';
 import { useGlassMotion } from './components/useGlassMotion';
+import { useApplyTheme } from './useApplyTheme';
 // Every page but Home loads on its first visit (see `page` below), but every stylesheet stays here, in the order the
 // pages used to be imported in: styles are shared across pages (the footer's verification form uses the contact
 // form's), and loading a sheet later would change which rule wins.
@@ -123,25 +124,9 @@ function Layout() {
     return () => cancelAnimationFrame(raf);
   }, [pathname, state, scrollTo]);
 
-  // Dark mode trigger from URL: ?theme=dark, #/?theme=dark, or #/dark. The Services and Research pages are always dark:
-  // a night journey and a glowing swarm, and the whole page (nav, closing section, footer) stays with them.
-  // A layout effect, so the theme is right before any page's effects run: the hero's 3D scene reads it once when it
-  // is built, and coming from Services (always dark) it used to be built while the page was still dark.
-  useLayoutEffect(() => {
-    const searchParams = new URLSearchParams(window.location.search);
-    const searchTheme = searchParams.get('theme');
-    const hash = window.location.hash || '';
-    const isDark =
-      searchTheme === 'dark' || hash.includes('theme=dark') || hash.includes('/dark') || pathname.startsWith('/dark') || pathname === '/services' || pathname === '/research';
-
-    if (isDark) {
-      document.documentElement.setAttribute('data-theme', 'dark');
-      document.body.classList.add('dark');
-    } else {
-      document.documentElement.removeAttribute('data-theme');
-      document.body.classList.remove('dark');
-    }
-  }, [pathname]);
+  // Light, Dark or Auto, with Services and Research always dark (src/theme.ts). The whole page (nav, closing
+  // section, footer) follows.
+  useApplyTheme();
 
   // Endless decorative animations (pulses, beams, spinning dials) pause while their section is off screen;
   // the matching rule is [data-offscreen] in base.css. <main> remounts per page, so this re-runs for each.

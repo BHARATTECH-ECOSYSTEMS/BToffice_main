@@ -8,6 +8,7 @@ import { useScene } from '../gl/Scene';
 import { NavPeek, type PeekId } from './NavPeek';
 import type { HueName } from '../gl/palette';
 import { pageScroll, trackBox } from './trackBox';
+import { ThemeButton } from './ThemeSwitch';
 import { useGlassTilt } from './useGlassTilt';
 import { useNavBubble } from './useNavBubble';
 import { fine, keyAt, KeyLabel, keyPointer, MotionLink, OPENING, useKeyHighlight, type LinkFx } from './navKeys';
@@ -24,8 +25,8 @@ const LINKS: { label: string; to: string; section?: string; tone: HueName; peek?
 
 // the glass keys that lean towards the cursor (useGlassTilt): among the links only the tilt one
 const GLASS_KEYS = '.nav-brand, .nav-links > [data-fx="tilt"]';
-// every button of the bar, for the liquid drop: the brand, the links and the login button
-const BAR_BUTTONS = '.nav-brand, .nav-links > a, .nav-links > button, .nav-cta';
+// every button of the bar, for the liquid drop: the brand, the links, the theme key and the login button
+const BAR_BUTTONS = '.nav-brand, .nav-links > a, .nav-links > button, .nav-theme, .nav-cta';
 
 /** Hover intent: a short wait before the first glance opens, none between links, and a grace period on
  *  leaving so the pointer can travel down into the panel. */
@@ -316,6 +317,7 @@ export function Nav() {
         </nav>
 
         <div className="nav-end">
+          <ThemeButton />
           <button type="button" className="nav-cta" onClick={openLogin} aria-haspopup="dialog">
             <BtnText>Employee login</BtnText>
             <span className="nav-cta-icon">

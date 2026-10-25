@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { HQ, HQ_MAP } from '../content';
+import { useDocumentTheme } from '../theme';
 
 /**
  * The office card on the Contact page. The 3D diorama (gl/officeMap) loads only when the card nears the
@@ -9,6 +10,7 @@ import { HQ, HQ_MAP } from '../content';
 export function OfficeMap() {
   const host = useRef<HTMLDivElement>(null);
   const [ready, setReady] = useState(false);
+  const theme = useDocumentTheme();
 
   useEffect(() => {
     const el = host.current;
@@ -44,7 +46,8 @@ export function OfficeMap() {
       io.disconnect();
       cleanup?.();
     };
-  }, []);
+    // the map reads the theme once when built, so a theme change builds it again
+  }, [theme]);
 
   return (
     <div className="visit-map" data-ready={ready || undefined}>

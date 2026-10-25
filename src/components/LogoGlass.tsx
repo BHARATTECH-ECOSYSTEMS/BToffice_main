@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import gsap from 'gsap';
 import { Studio } from '../gl/Studio';
+import { useDocumentTheme } from '../theme';
 
 /**
  * The mark as the same piece of violet glass the home film is made of, sitting in a page. Falls back to
@@ -19,6 +20,7 @@ export function LogoGlass({
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const [gl, setGl] = useState(true);
+  const theme = useDocumentTheme();
 
   useEffect(() => {
     const cv = canvas.current!;
@@ -74,7 +76,8 @@ export function LogoGlass({
       io.disconnect();
       s.destroy();
     };
-  }, [background, entrance, bounce]);
+    // the studio reads the theme once when built, so a theme change builds it again
+  }, [background, entrance, bounce, theme]);
 
   return gl ? <canvas ref={canvas} className="logo-glass" aria-hidden="true" /> : null;
 }

@@ -7,6 +7,7 @@ import { StoryOpening } from '../components/StoryOpening';
 import { pageScroll, trackBox } from '../components/trackBox';
 import { holdWarmUntil } from '../components/warmQueue';
 import { PILLARS_PLAIN, PROBLEMS } from '../content';
+import { useDocumentTheme } from '../theme';
 
 // screens of scroll per beat (cut by a third from 1: long pins made visitors feel stuck)
 const PACE = 0.67;
@@ -49,6 +50,7 @@ export function Story() {
     studioRef.current?.setReveal(grow, draw);
   }, []);
   const hero = useCallback(() => beats.current[0], []);
+  const theme = useDocumentTheme();
 
   useEffect(() => {
     const cv = canvas.current!;
@@ -135,7 +137,8 @@ export function Story() {
       studio?.destroy();
       studioRef.current = null;
     };
-  }, []);
+    // the studio reads the theme once when built, so a theme change builds it again
+  }, [theme]);
 
   return (
     <section id="top" ref={ref} className="story" style={{ '--beats': BEATS, '--pace': PACE } as CSSProperties}>

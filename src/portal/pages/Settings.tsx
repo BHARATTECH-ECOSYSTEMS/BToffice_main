@@ -6,6 +6,7 @@ import { auth } from '../auth';
 import { removeMyPhoto, saveMyPhoto, useMyPhoto } from '../myPhoto';
 import { endSessionForNewSignIn, ROLE_NAME, setDisplayName, setPhoto, useSession } from '../session';
 import { Badge, btnClass, BtnLabel, initials, PageHead, PIcon, useNotice } from '../ui';
+import { ThemeChoices } from '../../components/ThemeSwitch';
 
 const MIN_PASSWORD = 8;
 const PHOTO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
@@ -17,6 +18,7 @@ const PHOTO_SIZE = 640;
 const SECTIONS: { id: string; label: string; icon: PortalIconName; Panel: () => React.JSX.Element }[] = [
   { id: 'profile', label: 'Profile', icon: 'users', Panel: ProfilePanel },
   { id: 'password', label: 'Password', icon: 'lock', Panel: PasswordPanel },
+  { id: 'appearance', label: 'Appearance', icon: 'eye', Panel: AppearancePanel },
 ];
 
 /**
@@ -29,7 +31,7 @@ export function Settings() {
   const current = SECTIONS[index];
   return (
     <>
-      <PageHead title="Settings" sub="Your photo, name and password." />
+      <PageHead title="Settings" sub="Your photo, name, password and how the portal looks." />
       <div className="p-settings">
         {/* one dark pill slides to the open section, so the change reads as a move rather than two blinks */}
         <nav className="p-set-nav" aria-label="Settings sections" style={{ '--i': index } as CSSProperties}>
@@ -344,6 +346,23 @@ function PasswordPanel() {
       </Row>
       <Row label="Confirm new password" htmlFor="pw-confirm">
         {field('pw-confirm', confirm, setConfirm, 'new-password')}
+      </Row>
+    </SettingsCard>
+  );
+}
+
+/** Light, Dark or Auto. It applies at once and is kept in this browser only, so each device can differ. */
+function AppearancePanel() {
+  return (
+    <SettingsCard
+      id="settings-appearance"
+      title="Appearance"
+      sub="How the site and the portal look in this browser."
+      onSubmit={(e) => e.preventDefault()}
+      footer={<p className="p-muted">Changes apply at once. Services and Research stay dark whatever you pick.</p>}
+    >
+      <Row label="Theme" hint="Auto follows your phone or computer's own setting. Saved in this browser only.">
+        <ThemeChoices />
       </Row>
     </SettingsCard>
   );

@@ -6,7 +6,9 @@ import { keyAt, KeyLabel, keyPointer, MotionLink, OPENING, useKeyHighlight, type
 import { useGlassTilt } from '../components/useGlassTilt';
 import { useNavBubble } from '../components/useNavBubble';
 import { usePointerBloom } from '../components/usePointerBloom';
+import { ThemeButton } from '../components/ThemeSwitch';
 import type { HueName } from '../gl/palette';
+import { useApplyTheme } from '../useApplyTheme';
 import { auth } from './auth';
 import { api } from './api';
 import { EMAIL_KINDS, timeAgo, useEmailSwitches, useNotifications } from './notifications';
@@ -81,8 +83,9 @@ const TOP: TopItem[] = [
   { key: 'community', label: 'Community', to: '/portal/community', tone: 'tangerine', fx: 'magnet' },
 ];
 
-// every button of the top bar, for the liquid drop: the brand, the page keys, the bell and the profile button
-const TOP_BUTTONS = '.nav-brand, .nav-links > a, .nav-links > button, .p-bell-btn, .p-user-btn';
+// every button of the top bar, for the liquid drop: the brand, the page keys, the theme key, the bell and the
+// profile button
+const TOP_BUTTONS = '.nav-brand, .nav-links > a, .nav-links > button, .nav-theme, .p-bell-btn, .p-user-btn';
 
 // hover intent for the top bar's menus: a short wait before opening, and a grace period on leaving so the
 // pointer can travel from the button down into the menu
@@ -136,6 +139,7 @@ export function PortalLayout() {
   // one liquid drop glides along the whole bar and wraps whichever button the pointer is on
   const bubbleRef = useRef<HTMLSpanElement>(null);
   useNavBubble(topRef, bubbleRef, TOP_BUTTONS);
+  useApplyTheme();
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -171,6 +175,7 @@ export function PortalLayout() {
             </MotionLink>
             <TopNav items={items} active={activeKey(items, pathname)} />
             <div className="p-top-end">
+              <ThemeButton />
               <UserMenu name={session.name} email={session.email} role={session.role} photo={photo} onHelp={() => setHelpOpen(true)} onSignOut={signOut} />
               <NotifyMenu muted={session.mutedNotifications ?? []} />
             </div>
