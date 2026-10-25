@@ -669,6 +669,24 @@
   justify-content: center;
   margin-top: 30px;
   transform: none;
+  /* depth for the buttons' lean toward the cursor (InkStrands.tsx) */
+  perspective: 800px;
+}
+/* the sticky ink strands and the hand that pulls them; never takes a click */
+.finale-ink {
+  position: absolute;
+  /* placed and sized around the buttons by InkStrands.tsx */
+  top: 0;
+  left: 0;
+  z-index: 3;
+  pointer-events: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  /* the drawn hand stands in for the cursor while it holds strands */
+  .finale-pin[data-pulling],
+  .finale-pin[data-pulling] * {
+    cursor: none;
+  }
 }
 .finale-meta {
   margin: 30px 0 0;
