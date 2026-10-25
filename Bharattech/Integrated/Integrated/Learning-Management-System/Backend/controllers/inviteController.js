@@ -14,6 +14,8 @@ const {
 
 // the backend's one Keycloak admin client; authAdminClient() reuses its login while it's still good
 const { kcAdmin: kcAdminClient, ensureKeycloakAdmin: authAdminClient, keycloakReply } = require("../utils/keycloakAdmin");
+const { forgetInvite, isExpired, recordInviteSent } = require("../utils/inviteExpiry");
+const InviteSent = require("../models/InviteSent");
 
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 
@@ -377,6 +379,8 @@ const sendInviteEmail = async ({ userId, name, username, email, role }) => {
 
   try {
     await setTemporaryPassword({ userId, temporaryPassword });
+    // the email promises 12 hours from now (utils/inviteExpiry.js)
+    await recordInviteSent({ keycloakId: userId, email, username });
     await withTimeout(
       sendBackendInviteEmail({
         name,
@@ -548,6 +552,7 @@ const listPendingInvites = async (req, res) => {
     await authAdminClient();
     const waiting = (await kcAdminClient.users.find({ realm: KEYCLOAK_REALM, max: 1000 })).filter(waitsForFirstPassword);
     const recorded = new Set((await User.find({ keycloakId: { $in: waiting.map((a) => a.id) }, isDeleted: { $ne: true } }).select("keycloakId").lean()).map((u) => u.keycloakId));
+    const sent = new Map((await InviteSent.find({ keycloakId: { $in: waiting.map((a) => a.id) } }).lean()).map((s) => [s.keycloakId, s]));
     const pending = [];
     for (const account of waiting.filter((a) => !recorded.has(a.id))) {
       const roles = (await kcAdminClient.users.listRealmRoleMappings({ realm: KEYCLOAK_REALM, id: account.id })) || [];
@@ -558,7 +563,9 @@ const listPendingInvites = async (req, res) => {
         name: normalizeName(`${account.firstName || ""} ${account.lastName || ""}`) || account.username || account.email,
         email: account.email || "",
         role,
-        invitedAt: account.createdTimestamp ? new Date(account.createdTimestamp).toISOString() : null,
+        // the last time it was emailed; older invites only know when the account was made
+        invitedAt: sent.get(account.id)?.sentAt?.toISOString() ?? (account.createdTimestamp ? new Date(account.createdTimestamp).toISOString() : null),
+        expired: isExpired(sent.get(account.id)),
       });
     }
     pending.sort((a, b) => String(b.invitedAt).localeCompare(String(a.invitedAt)));
@@ -587,6 +594,7 @@ const cancelPendingInvite = async (req, res) => {
       return res.status(403).json({ message: "Your role can't cancel this invite." });
     }
     await kcAdminClient.users.del({ realm: KEYCLOAK_REALM, id: account.id });
+    await forgetInvite(account.id);
     return res.json({ message: "Invite cancelled" });
   } catch (error) {
     console.error("Cancel invite error:", error?.response?.data || error);

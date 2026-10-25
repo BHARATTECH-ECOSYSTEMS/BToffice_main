@@ -5,6 +5,7 @@
 const User = require("../models/User");
 
 const { kcAdmin, ensureKeycloakAdmin, keycloakReply } = require("../utils/keycloakAdmin");
+const { EXPIRED, expiredInviteFor, forgetInvite } = require("../utils/inviteExpiry");
 const KEYCLOAK_BASE_URL =
   process.env.KEYCLOAK_BASE_URL || "http://localhost:8080";
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
@@ -167,6 +168,9 @@ const keycloakLogin = async (req, res) => {
       // Keycloak refuses a right password while the account has an unfinished step. A temporary (invite) password
       // waits for a new one: that's the invite's "Set up your account". Any other step (a missing last name, an email
       // to verify…) is an admin's to finish, so it isn't presented as a password change.
+      // an invite past its 12 hours: said plainly, whether its emailed password still works or was already replaced
+      if (await expiredInviteFor(login)) return res.status(410).json(EXPIRED);
+
       if (/not fully set up/i.test(result.errorDescription || "")) {
         const steps = await unfinishedSteps(login);
         if (steps?.includes("UPDATE_PASSWORD")) {
@@ -218,6 +222,8 @@ const acceptInvite = async (req, res) => {
           "Username must be 3-32 characters and contain only letters, numbers, dots, dashes, or underscores.",
       });
     }
+
+    if (await expiredInviteFor(username)) return res.status(410).json(EXPIRED);
 
     const checkResult = await passwordGrantLogin(username, temporaryPassword);
 
@@ -277,6 +283,7 @@ const acceptInvite = async (req, res) => {
       { realm: KEYCLOAK_REALM, id: kcUser.id },
       { username: trimmedNewUsername, requiredActions: [] },
     );
+    await forgetInvite(kcUser.id);
 
     const loginResult = await passwordGrantLogin(
       trimmedNewUsername,

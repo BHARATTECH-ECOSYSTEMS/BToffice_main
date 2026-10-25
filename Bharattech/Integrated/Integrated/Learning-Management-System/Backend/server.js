@@ -41,6 +41,7 @@ const idDocumentRoutes = require("./routes/idDocumentRoutes");
 const communityRoutes = require("./routes/communityRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 const { startDailyLeaverCheck } = require("./utils/leaverDocuments");
+const { startHourlyInviteCheck } = require("./utils/inviteExpiry");
 const courseProgressRoutes = require("./routes/courseProgressRoutes");
 const certificateRoutes = require("./routes/certificateRoutes");
 const adminRoutes = require("./routes/adminRoutes");
@@ -146,4 +147,6 @@ app.listen(PORT, () => {
   startSelfKeepAlive();
   // ID documents of people who left 60+ days ago: now, then daily
   startDailyLeaverCheck();
+  // invites past their 12 hours: now, then hourly
+  startHourlyInviteCheck();
 });

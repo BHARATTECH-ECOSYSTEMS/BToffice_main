@@ -112,12 +112,13 @@ test("the files nothing loads any more are gone", () => {
   assert.equal("canCreateRole" in require("../controllers/userController"), false);
 });
 
-// every package a backend file loads by name (tests excluded: they only use what the backend has)
+// every package a backend file loads by name, with require() or import() (tests excluded: they only use what the
+// backend has); import() matters: the OpenInterviewer launch loads jose that way
 const CODE = ["server.js", ...["routes", "controllers", "middlewares", "utils", "models", "config", "scripts"].flatMap(filesIn)];
 const packagesLoaded = () => {
   const found = new Set();
   for (const file of CODE) {
-    for (const [, name] of read(file).matchAll(/require\(\s*["']([^"'.][^"']*)["']\s*\)/g)) {
+    for (const [, name] of read(file).matchAll(/(?:require|import)\(\s*["']([^"'.][^"']*)["']\s*\)/g)) {
       if (name.startsWith("node:") || builtinModules.includes(name.split("/")[0])) continue;
       found.add(name.startsWith("@") ? name.split("/").slice(0, 2).join("/") : name.split("/")[0]);
     }
