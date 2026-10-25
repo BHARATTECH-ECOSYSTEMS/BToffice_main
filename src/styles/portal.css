@@ -3890,6 +3890,32 @@ a.p-cal-item-title {
   background: var(--violet);
   transform-origin: left;
 }
+
+/* the dashboard's "My learning": one row per course, its progress at the end */
+.p-learning-list {
+  display: grid;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.p-learning-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+}
+.p-learning-list .p-enrolled {
+  flex: 1;
+  min-width: 0;
+}
+.p-learning-count {
+  flex: none;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
 @media (hover: hover) and (pointer: fine) {
   .p-enrolled:hover .is-strong {
     color: var(--p-accent-text);

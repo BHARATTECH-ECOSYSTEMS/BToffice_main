@@ -13,6 +13,8 @@ export interface ToolLinks {
   coderInstaller?: string;
   /** MERN LMS, the company's course platform (signs people in on Keycloak's own page). */
   lmsPlatform?: string;
+  /** MERN LMS's server, for the dashboard's "My learning" (owner's 6A, 2026-10-26). */
+  lmsApi?: string;
 }
 
 const SETTINGS: Record<keyof ToolLinks, string> = {
@@ -22,6 +24,7 @@ const SETTINGS: Record<keyof ToolLinks, string> = {
   fileTransfer: 'VITE_FILE_TRANSFER_URL',
   coderInstaller: 'VITE_CODER_INSTALLER_URL',
   lmsPlatform: 'VITE_LMS_PLATFORM_URL',
+  lmsApi: 'VITE_LMS_API_URL',
 };
 
 /**

@@ -39,6 +39,9 @@ type Click = { button: number; ctrlKey: boolean; metaKey: boolean; shiftKey: boo
 /** With a modifier or the middle button people mean a background tab or a window: the browser's own, no hand-over. */
 export const isPlainClick = (e: Click) => e.button === 0 && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey;
 
+/** Whether a link goes to any page of the LMS Platform (its front page, a course's player, My Enrollments). */
+export const isLmsLink = (href: string, platform: string | undefined) => !!platform && originOf(href) !== null && originOf(href) === originOf(platform);
+
 export const isReady = (e: MessageLike, tab: unknown, lmsOrigin: string) =>
   e.source === tab && e.origin === lmsOrigin && (e.data as { type?: unknown } | null)?.type === HANDOFF.ready;
 
@@ -82,16 +85,16 @@ export function handOver(href: string, tokens: () => Promise<HandoffTokens | nul
   return 'opened';
 }
 
-/** Every link to the LMS Platform in the portal (top bar, phone menu, the "Learning has moved" page) hands over. */
+/** Every link to the LMS Platform in the portal (top bar, phone menu, "Learning has moved", My learning) hands over. */
 export function useLmsHandoff() {
   useEffect(() => {
     if (!LMS_PLATFORM || !auth) return;
-    const target = new URL(LMS_PLATFORM).href;
+    const platform = LMS_PLATFORM;
     const signIn = auth;
     const onClick = (e: MouseEvent) => {
       if (e.defaultPrevented || !isPlainClick(e)) return;
       const link = (e.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
-      if (!link || link.href !== target) return;
+      if (!link || !isLmsLink(link.href, platform)) return;
       if (handOver(link.href, () => signIn.handoverTokens()) === 'opened') e.preventDefault();
     };
     document.addEventListener('click', onClick);

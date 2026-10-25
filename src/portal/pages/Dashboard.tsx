@@ -16,6 +16,7 @@ import { useAccountProfile, type ProfileState } from '../profile';
 import { useMyPhoto } from '../myPhoto';
 import { certificatesByType, managerFigures, peopleByRole, toCardPerson, type CardPerson, type Figure } from '../dashboard';
 import { ConnectedCertificatesPanel, ConnectedTeamPanel } from './DashboardConnected';
+import { MyLearningPanel } from './MyLearningPanel';
 import { useTasks, type PortalTask, type TasksApi } from '../tasks';
 import { daysUntil } from '../taskDue';
 import { ConnectedTasksPanel, DueFlag, STATUS_LABEL as TASK_STATUS_LABEL, taskFailedMessage, TaskWindow, type TaskViewer } from './TasksConnected';
@@ -317,6 +318,7 @@ function ConnectedEmployeeDashboard({ arrive }: { arrive: boolean }) {
         <WorkspaceCard notify={notify} />
         <CalendarCard tasks={list.filter((t) => t.status !== 'done')} joiners={directory.state.kind === 'ready' ? directory.state.people : undefined} notify={notify} />
       </div>
+      <MyLearningPanel />
       <OpenTask id={openId} tasks={tasks} viewer={{ accountRole: 'Employee', email }} onClose={close} notify={notify} />
     </>
   );
@@ -378,6 +380,7 @@ function ConnectedManaging({ arrive, certificates }: { arrive: boolean; certific
             <WorkspaceCard notify={notify} />
             <CalendarCard tasks={list.filter((t) => t.status !== 'done')} joiners={people} notify={notify} />
           </div>
+          <MyLearningPanel />
           {certificates && <ConnectedCertificatesPanel certificates={certificates} />}
           <ConnectedTeamPanel directory={directory} />
           <ConnectedTasksPanel tasks={tasks} people={people} onOpen={(t) => setOpenId(t.id)} notify={notify} />
