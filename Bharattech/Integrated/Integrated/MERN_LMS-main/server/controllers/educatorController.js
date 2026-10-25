@@ -4,6 +4,7 @@ import Course from "../models/Course.js";
 import User from "../models/User.js";
 import Purchase from "../models/Purchase.js";
 import { isValidYouTubeUrl } from "../utils/videoHelpers.js";
+import { cleanDescription, hasVisibleText } from "../utils/courseDescription.js";
 
 const getUserId = (req) => req.user?.id;
 const hasAdminAccess = (req) =>
@@ -130,9 +131,9 @@ const normalizeCourseData = (courseData) => {
     courseTitle: String(courseData.courseTitle || "")
       .trim()
       .slice(0, 200),
-    courseDescription: String(courseData.courseDescription || "")
-      .trim()
-      .slice(0, 5000),
+    courseDescription: cleanDescription(
+      String(courseData.courseDescription || "").slice(0, 5000),
+    ),
     coursePrice: Number(courseData.coursePrice) || 0,
     discount: Number(courseData.discount) || 0,
     courseContent: normalizedChapters,
@@ -141,7 +142,7 @@ const normalizeCourseData = (courseData) => {
 
 const validateCourseData = (courseData) => {
   if (!courseData.courseTitle) return "Course title is required";
-  if (!courseData.courseDescription) return "Course description is required";
+  if (!hasVisibleText(courseData.courseDescription)) return "Course description is required";
   if (
     !Array.isArray(courseData.courseContent) ||
     courseData.courseContent.length === 0

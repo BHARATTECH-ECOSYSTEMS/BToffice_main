@@ -47,40 +47,7 @@ export const protect = (roles = []) => {
         .json({ success: false, message: "Authentication required" });
     }
 
-    // First try local JWT secret if configured (for development / local tokens)
-    if (process.env.JWT_SECRET) {
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const rolesFromToken = (
-          Array.isArray(decoded.roles)
-            ? decoded.roles
-            : [decoded.role || "student"]
-        ).map((r) => String(r).toLowerCase());
-
-        req.user = {
-          id: decoded.id || decoded.sub || decoded.userId,
-          username: decoded.username || decoded.name || "user",
-          email: decoded.email,
-          roles: rolesFromToken,
-        };
-
-        if (roles.length) {
-          const allowed = roles.map((r) => r.toLowerCase());
-          const hasAccess =
-            rolesFromToken.includes("admin") ||
-            rolesFromToken.includes("superadmin") ||
-            rolesFromToken.some((r) => allowed.includes(r));
-
-          if (!hasAccess) {
-            return res.status(403).json({ success: false, message: "Forbidden" });
-          }
-        }
-        return next();
-      } catch {
-        // Fall back to Keycloak RS256 JWKS verification
-      }
-    }
-
+    // Only Keycloak-signed tokens: a token signed with a shared secret could be made by anyone who knows it, with any role.
     jwt.verify(
       token,
       getKey,
@@ -94,11 +61,14 @@ export const protect = (roles = []) => {
           console.error("Token verification failed:", err.message);
           return res
             .status(401)
-            .json({
-              success: false,
-              message: "Invalid or expired token",
-              error: err.message,
-            });
+            .json({ success: false, message: "Invalid or expired token" });
+        }
+
+        // The realm signs tokens for every company app; only the LMS's own may be used here.
+        if (!KEYCLOAK_CLIENT_IDS.includes(decoded?.azp)) {
+          return res
+            .status(401)
+            .json({ success: false, message: "Invalid or expired token" });
         }
 
         const clientRoles = KEYCLOAK_CLIENT_IDS.flatMap(

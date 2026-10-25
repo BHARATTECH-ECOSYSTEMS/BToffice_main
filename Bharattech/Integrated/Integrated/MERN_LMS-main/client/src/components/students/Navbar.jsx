@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import EducatorNavbar from "../educator/Navbar";
 import logo from "../../assets/BHARATTECH ORIGIN Logo-01.png";
+import SignOutButton from "../auth/SignOutButton";
 
 function Navbar() {
   const navigate = useNavigate();
@@ -43,7 +44,7 @@ function Navbar() {
         </Link>
 
         {/* Actions */}
-        <div className="flex shrink-0 items-center">
+        <div className="flex shrink-0 items-center gap-2">
           {isAdmin() && (
             <button
               type="button"
@@ -72,6 +73,7 @@ function Navbar() {
               View as Educator
             </button>
           )}
+          <SignOutButton />
         </div>
       </div>
     </nav>

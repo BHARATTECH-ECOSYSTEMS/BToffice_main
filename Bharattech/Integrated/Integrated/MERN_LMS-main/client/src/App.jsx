@@ -48,7 +48,7 @@ function App() {
        <Route
   path="/educator/*"
   element={
-    <RequireRole allow={["Admin", "Super-admin"]}>
+    <RequireRole allow={["Admin", "Super-admin", "Subadmin"]}>
       <Educator />
     </RequireRole>
   }

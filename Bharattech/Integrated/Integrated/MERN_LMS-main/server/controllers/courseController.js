@@ -17,7 +17,7 @@ export const getAllCourses = async (req, res) => {
       isPublished: true,
     })
       .select("-courseContent -enrolledStudents")
-      .populate({ path: "educator", select: "name imageUrl email" })
+      .populate({ path: "educator", select: "name imageUrl" })
       .lean();
 
     if (limit) {
@@ -41,10 +41,11 @@ export const getAllCourses = async (req, res) => {
 export const getCourseId = async (req, res) => {
   try {
     const { id } = req.params;
-    const course = await Course.findById(id)
+    // Unpublished courses are not public.
+    const course = await Course.findOne({ _id: id, isPublished: true })
       .populate({
         path: "educator",
-        select: "name imageUrl email",
+        select: "name imageUrl",
       })
       .lean();
 

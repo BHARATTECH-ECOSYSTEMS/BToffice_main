@@ -14,7 +14,6 @@ import {
 import { useSidebar } from "../contexts/SidebarContext";
 import { useAuth } from "../LMS/context/AuthContext";
 import api from "../api/axios";
-import keycloak from "../auth/keycloak";
 import { buildFallbackLaunchUrl } from "../utils/openInterviewer";
 
 const LOCAL_HOSTS = ["localhost", "127.0.0.1"];
@@ -33,51 +32,16 @@ const getExternalUrl = (configuredUrl, localUrl, deployedUrl = "") => {
   return isLocalHost ? localUrl : deployedUrl;
 };
 
-const buildLmsPlatformUrl = (baseUrl, user, explicitToken, explicitRefresh) => {
-  if (!baseUrl) return baseUrl;
-
-  const params = new URLSearchParams();
-  if (user?.role) params.set("role", user.role);
-  if (user?.email) params.set("email", user.email);
-  if (user?.fullName || user?.username)
-    params.set("name", user.fullName || user.username);
-
-  const token =
-    explicitToken ||
-    localStorage.getItem("token") ||
-    localStorage.getItem("accessToken") ||
-    sessionStorage.getItem("token");
-  if (token) params.set("token", token);
-
-  const refreshToken =
-    explicitRefresh ||
-    localStorage.getItem("refresh_token") ||
-    sessionStorage.getItem("refresh_token");
-  if (refreshToken) params.set("refresh_token", refreshToken);
-
-  if (!params.toString()) return baseUrl;
-
-  try {
-    const url = new URL(baseUrl);
-    params.forEach((value, key) => url.searchParams.set(key, value));
-    return url.toString();
-  } catch {
-    const separator = baseUrl.includes("?") ? "&" : "?";
-    return `${baseUrl}${separator}${params.toString()}`;
-  }
-};
-
 export default function Sidebar() {
   const { sidebarOpen, toggleSidebar } = useSidebar();
-  const { hasRole, loading, user } = useAuth();
+  const { hasRole, loading } = useAuth();
   const [launchingInterview, setLaunchingInterview] = useState(false);
-  const lmsUrl = buildLmsPlatformUrl(
-    getExternalUrl(
-      import.meta.env.VITE_LMS_URL,
-      "http://localhost:5175",
-      LMS_PLATFORM_URL,
-    ),
-    user,
+  // A plain address: the LMS signs people in on Keycloak's own page. Tokens in a link end up in browser history,
+  // server logs and the LMS's storage.
+  const lmsUrl = getExternalUrl(
+    import.meta.env.VITE_LMS_URL,
+    "http://localhost:5175",
+    LMS_PLATFORM_URL,
   );
   const workspaceUrl =
     import.meta.env.VITE_WORKSPACE_URL ||
@@ -124,42 +88,9 @@ export default function Sidebar() {
     }
   };
 
-  const handleLmsLaunch = async () => {
+  const handleLmsLaunch = () => {
     handleLinkClick();
-
-    let activeToken =
-      localStorage.getItem("token") || localStorage.getItem("accessToken");
-    let activeRefresh = localStorage.getItem("refresh_token");
-
-    if (keycloak?.authenticated) {
-      try {
-        await keycloak.updateToken(30);
-        activeToken = keycloak.token || activeToken;
-        activeRefresh = keycloak.refreshToken || activeRefresh;
-        if (activeToken) {
-          localStorage.setItem("token", activeToken);
-          localStorage.setItem("accessToken", activeToken);
-        }
-        if (activeRefresh) {
-          localStorage.setItem("refresh_token", activeRefresh);
-        }
-      } catch (err) {
-        console.warn("Keycloak token refresh before LMS launch failed:", err);
-      }
-    }
-
-    const targetUrl = buildLmsPlatformUrl(
-      getExternalUrl(
-        import.meta.env.VITE_LMS_URL,
-        "http://localhost:5175",
-        LMS_PLATFORM_URL,
-      ),
-      user,
-      activeToken,
-      activeRefresh,
-    );
-
-    window.open(targetUrl, "_blank", "noopener,noreferrer");
+    window.open(lmsUrl, "_blank", "noopener,noreferrer");
   };
 
   const MENU_TOP = [

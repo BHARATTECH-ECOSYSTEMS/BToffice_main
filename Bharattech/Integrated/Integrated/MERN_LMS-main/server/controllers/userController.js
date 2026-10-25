@@ -50,7 +50,8 @@ export const getUserData = async (req, res) => {
       data: { user },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("getUserData error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -72,7 +73,8 @@ export const userEnrolledCourses = async (req, res) => {
       data: { enrolledCourses: userData.enrolledCourses },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    console.error("userEnrolledCourses error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -102,7 +104,7 @@ export const purchaseCourse = async (req, res) => {
       return res.status(409).json({ success: false, message: "Already enrolled" });
     }
 
-    const courseData = await Course.findById(courseId)
+    const courseData = await Course.findOne({ _id: courseId, isPublished: true })
       .select("coursePrice discount enrolledStudents")
       .lean();
     if (!courseData) {
@@ -142,7 +144,7 @@ export const purchaseCourse = async (req, res) => {
     console.error("purchaseCourse error:", error);
     res.status(500).json({
       success: false,
-      message: error.message || "Failed to enroll in course",
+      message: "Failed to enroll in course",
     });
   }
 };
@@ -177,7 +179,7 @@ export const updateUserCourseProgress = async (req, res) => {
       message: "Lecture marked as completed",
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: "Internal server error" });
     console.error("Update course progress error:", error);
   }
 };
@@ -201,7 +203,7 @@ export const getUserCourseProgress = async (req, res) => {
       data: { progressData },
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: "Internal server error" });
     console.error("Get course progress error:", error);
   }
 };
@@ -251,7 +253,7 @@ export const addUserRating = async (req, res) => {
       message: "Rating added/updated successfully",
     });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: "Internal server error" });
     console.error("Add user rating error:", error);
   }
 };

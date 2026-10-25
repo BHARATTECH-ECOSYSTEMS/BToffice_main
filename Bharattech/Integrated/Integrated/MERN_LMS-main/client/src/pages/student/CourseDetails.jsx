@@ -10,6 +10,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import { useAppConfig } from "../../context/AppContext";
+import { safeDescription } from "../../utils/safeDescription";
 
 import Loading from "../../components/students/Loading";
 import RatingStars from "../../components/common/RatingStars";
@@ -134,7 +135,7 @@ function CourseDetails() {
                   {showFullDesc ? (
                     <p
                       dangerouslySetInnerHTML={{
-                        __html: courseData.courseDescription,
+                        __html: safeDescription(courseData.courseDescription),
                       }}
                     />
                   ) : (

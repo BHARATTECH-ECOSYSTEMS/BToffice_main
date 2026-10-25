@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import logo from "../../assets/BHARATTECH ORIGIN Logo-01.png";
+import SignOutButton from "../auth/SignOutButton";
 
 function EducatorNavbar() {
   const navigate = useNavigate();
@@ -38,7 +39,7 @@ function EducatorNavbar() {
         </Link>
 
         {/* Actions */}
-        <div className="flex shrink-0 items-center">
+        <div className="flex shrink-0 items-center gap-2">
           {isAdmin() && (
             <button
               type="button"
@@ -67,6 +68,7 @@ function EducatorNavbar() {
               View as Student
             </button>
           )}
+          <SignOutButton />
         </div>
       </div>
     </nav>

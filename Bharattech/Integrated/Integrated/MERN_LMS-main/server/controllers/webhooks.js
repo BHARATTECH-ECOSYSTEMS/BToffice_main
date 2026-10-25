@@ -51,7 +51,8 @@ export const clerkwebhook = async (req, res) => {
         break;
     }
   } catch (error) {
-    res.json({ success: false, message: error.message });
+    console.error("Clerk webhook error:", error);
+    res.json({ success: false, message: "Internal server error" });
   }
 };
 
@@ -72,7 +73,7 @@ export const stripeWebhooks = async (req, res) => {
     );
   } catch (err) {
     console.error("Webhook signature verification failed:", err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    return res.status(400).send("Webhook Error");
   }
 
   // Handle the event
