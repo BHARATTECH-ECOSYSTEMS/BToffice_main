@@ -1,130 +1,37 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
-import axios from "axios";
 import { assets } from "../../assets/assets";
 import { isValidYouTubeUrl } from "../../utils/VideoHelpers";
 
+// Lectures are YouTube videos only (owner's 4A, 2026-10-26): uploading needs the company's Cloudinary keys, which
+// the LMS doesn't have, so the "Upload" choice is gone.
+const EMPTY_LECTURE = { lectureTitle: "", lectureDuration: "", lectureUrl: "", isPreviewFree: false };
+
 const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
-  const [lectureDetails, setLectureDetails] = useState({
-    lectureTitle: "",
-    lectureDuration: "",
-    lectureUrl: "",
-    videoSource: "youtube",
-    isPreviewFree: false,
-  });
+  const [lectureDetails, setLectureDetails] = useState(EMPTY_LECTURE);
 
-  const [videoFile, setVideoFile] = useState(null);
-  const [uploadingVideo, setUploadingVideo] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const cloudName = import.meta.env.VITE_CLOUDINARY_NAME;
-  const uploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-
-  const handleAddLecture = async () => {
-    try {
-      // Validation
-      if (!lectureDetails.lectureTitle || !lectureDetails.lectureDuration) {
-        toast.error("Please fill in all required fields");
-        return;
-      }
-
-      // YouTube validation
-      if (lectureDetails.videoSource === "youtube") {
-        if (!lectureDetails.lectureUrl) {
-          toast.error("Please provide a YouTube URL");
-          return;
-        }
-        if (!isValidYouTubeUrl(lectureDetails.lectureUrl)) {
-          toast.error("Invalid YouTube URL");
-          return;
-        }
-      }
-
-      // Cloudinary validation
-      if (lectureDetails.videoSource === "cloudinary" && !videoFile) {
-        toast.error("Please select a video file");
-        return;
-      }
-
-      let finalLectureUrl = lectureDetails.lectureUrl;
-
-      // Handle Cloudinary upload
-      if (lectureDetails.videoSource === "cloudinary" && videoFile) {
-        setUploadingVideo(true);
-        setUploadProgress(0);
-
-        try {
-          const formData = new FormData();
-          formData.append("file", videoFile);
-          formData.append("upload_preset", uploadPreset);
-          formData.append("resource_type", "video");
-          formData.append("folder", "courses/videos");
-
-          const response = await axios.post(
-            `https://api.cloudinary.com/v1_1/${cloudName}/video/upload`,
-            formData,
-            {
-              onUploadProgress: (progressEvent) => {
-                const percentCompleted = Math.round(
-                  (progressEvent.loaded * 100) / progressEvent.total
-                );
-                setUploadProgress(percentCompleted);
-              },
-            }
-          );
-
-          if (response.data.secure_url) {
-            finalLectureUrl = response.data.secure_url;
-            toast.success("Video uploaded successfully!");
-          } else {
-            throw new Error("Upload failed");
-          }
-        } catch (error) {
-          console.error("Upload error:", error);
-          toast.error(
-            error.response?.data?.error?.message || "Failed to upload video"
-          );
-          setUploadingVideo(false);
-          setUploadProgress(0);
-          return;
-        }
-      }
-
-      // Create lecture object
-      const newLecture = {
-        lectureTitle: lectureDetails.lectureTitle,
-        lectureDuration: lectureDetails.lectureDuration,
-        lectureUrl: finalLectureUrl,
-        videoSource: lectureDetails.videoSource,
-        isPreviewFree: lectureDetails.isPreviewFree,
-      };
-
-      // Call parent callback
-      onAddLecture(newLecture);
-
-      // Reset and close
-      resetModal();
-    } catch (error) {
-      console.error("Error adding lecture:", error);
-      toast.error("Failed to add lecture");
-      setUploadingVideo(false);
-      setUploadProgress(0);
+  const handleAddLecture = () => {
+    if (!lectureDetails.lectureTitle || !lectureDetails.lectureDuration) {
+      toast.error("Please fill in all required fields");
+      return;
     }
+    if (!lectureDetails.lectureUrl) {
+      toast.error("Please provide a YouTube URL");
+      return;
+    }
+    if (!isValidYouTubeUrl(lectureDetails.lectureUrl)) {
+      toast.error("Invalid YouTube URL");
+      return;
+    }
+    onAddLecture({ ...lectureDetails, videoSource: "youtube" });
+    resetModal();
   };
 
   const resetModal = () => {
-    setLectureDetails({
-      lectureTitle: "",
-      lectureDuration: "",
-      lectureUrl: "",
-      videoSource: "youtube",
-      isPreviewFree: false,
-    });
-    setVideoFile(null);
-    setUploadingVideo(false);
-    setUploadProgress(0);
+    setLectureDetails(EMPTY_LECTURE);
     onClose();
   };
+
 
   if (!isOpen) return null;
 
@@ -137,7 +44,6 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
           <button
             onClick={resetModal}
             className="text-gray-400 hover:text-gray-600 transition-colors"
-            disabled={uploadingVideo}
           >
             <img src={assets.cross_icon} alt="close" className="w-5 h-5" />
           </button>
@@ -161,7 +67,6 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
                   lectureTitle: e.target.value,
                 })
               }
-              disabled={uploadingVideo}
             />
           </div>
 
@@ -181,67 +86,11 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
                   lectureDuration: e.target.value,
                 })
               }
-              disabled={uploadingVideo}
             />
           </div>
 
-          {/* Video Source Selection */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Video Source *
-            </label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setLectureDetails({
-                    ...lectureDetails,
-                    videoSource: "youtube",
-                    lectureUrl: "",
-                  });
-                  setVideoFile(null);
-                }}
-                className={`p-4 border-2 rounded-lg transition-all ${
-                  lectureDetails.videoSource === "youtube"
-                    ? "border-indigo-600 bg-indigo-50 ring-2 ring-indigo-200"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-                disabled={uploadingVideo}
-              >
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-3xl">📺</span>
-                  <span className="font-medium text-sm">YouTube</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setLectureDetails({
-                    ...lectureDetails,
-                    videoSource: "cloudinary",
-                    lectureUrl: "",
-                  });
-                  setVideoFile(null);
-                }}
-                className={`p-4 border-2 rounded-lg transition-all ${
-                  lectureDetails.videoSource === "cloudinary"
-                    ? "border-indigo-600 bg-indigo-50 ring-2 ring-indigo-200"
-                    : "border-gray-200 hover:border-gray-300"
-                }`}
-                disabled={uploadingVideo}
-              >
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-3xl">☁️</span>
-                  <span className="font-medium text-sm">Upload</span>
-                </div>
-              </button>
-            </div>
-          </div>
-
           {/* YouTube URL Input */}
-          {lectureDetails.videoSource === "youtube" && (
-            <div>
+          <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 YouTube Video URL *
               </label>
@@ -256,98 +105,8 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
                     lectureUrl: e.target.value,
                   })
                 }
-                disabled={uploadingVideo}
               />
             </div>
-          )}
-
-          {/* Cloudinary Upload */}
-          {lectureDetails.videoSource === "cloudinary" && (
-            <div className="space-y-3">
-              {!videoFile && !uploadingVideo && (
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-indigo-400 transition-colors">
-                  <input
-                    type="file"
-                    id="videoUpload"
-                    accept="video/mp4,video/webm,video/ogg"
-                    hidden
-                    onChange={(e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        if (file.size > 500 * 1024 * 1024) {
-                          toast.error("Video must be less than 500MB");
-                          return;
-                        }
-                        setVideoFile(file);
-                      }
-                    }}
-                  />
-                  <label
-                    htmlFor="videoUpload"
-                    className="cursor-pointer flex flex-col items-center gap-3"
-                  >
-                    <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center">
-                      <span className="text-3xl">📤</span>
-                    </div>
-                    <span className="font-medium text-gray-700">
-                      Click to upload video
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      MP4, WebM (max 500MB)
-                    </span>
-                  </label>
-                </div>
-              )}
-
-              {videoFile && !uploadingVideo && (
-                <div className="border-2 border-indigo-200 bg-indigo-50 rounded-lg p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded bg-indigo-600 flex items-center justify-center">
-                      <span className="text-white">🎥</span>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-gray-800 truncate">
-                        {videoFile.name}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {(videoFile.size / (1024 * 1024)).toFixed(2)} MB
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setVideoFile(null)}
-                      className="text-gray-400 hover:text-red-600"
-                    >
-                      <img
-                        src={assets.cross_icon}
-                        className="w-4 h-4"
-                        alt="remove"
-                      />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {uploadingVideo && (
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-700 font-medium">
-                      Uploading...
-                    </span>
-                    <span className="text-indigo-600 font-semibold">
-                      {uploadProgress}%
-                    </span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div
-                      className="bg-gradient-to-r from-indigo-600 to-blue-600 h-2 transition-all"
-                      style={{ width: `${uploadProgress}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           {/* Free Preview Toggle */}
           <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
@@ -368,7 +127,6 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
                     isPreviewFree: e.target.checked,
                   })
                 }
-                disabled={uploadingVideo}
               />
               <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
             </label>
@@ -380,7 +138,6 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
           <button
             onClick={resetModal}
             type="button"
-            disabled={uploadingVideo}
             className="flex-1 border-2 border-gray-300 text-gray-700 font-medium py-2.5 rounded-lg hover:bg-gray-100 disabled:opacity-50"
           >
             Cancel
@@ -388,17 +145,10 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
           <button
             onClick={handleAddLecture}
             type="button"
-            disabled={
-              uploadingVideo ||
-              !lectureDetails.lectureTitle ||
-              !lectureDetails.lectureDuration ||
-              (lectureDetails.videoSource === "youtube" &&
-                !lectureDetails.lectureUrl) ||
-              (lectureDetails.videoSource === "cloudinary" && !videoFile)
-            }
+            disabled={!lectureDetails.lectureTitle || !lectureDetails.lectureDuration || !lectureDetails.lectureUrl}
             className="flex-1 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-medium py-2.5 rounded-lg disabled:opacity-50"
           >
-            {uploadingVideo ? "Uploading..." : "Add Lecture"}
+            Add Lecture
           </button>
         </div>
       </div>

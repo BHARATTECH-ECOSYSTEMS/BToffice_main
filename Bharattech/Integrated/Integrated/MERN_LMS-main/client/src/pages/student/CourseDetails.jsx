@@ -29,19 +29,19 @@ import VideoPlayer from "../../components/common/VideoPlayer";
 import { useAuth } from "../../context/AuthContext";
 import { useEnrollments } from "../../context/EnrollmentContext";
 
+// only what the LMS really gives (owner's 2A 3A): no certificate, downloads or Q&A exist
 const WHATS_INCLUDED = [
-  "Lifetime access to all course materials",
-  "Certificate of completion",
-  "Downloadable resources and assignments",
-  "Access to instructor Q&A and community",
-  "Regular course updates and new content",
+  "Free, with no time limit",
+  "Watch on any device",
+  "Your progress is saved lecture by lecture",
+  "Rate the course once you've enrolled",
 ];
 
 function CourseDetails() {
   const { id } = useParams();
   const { courseData } = useCourseData(id);
 
-  const { backendUrl, currency } = useAppConfig();
+  const { backendUrl } = useAppConfig();
   const { enrolledCourses, refetchEnrollments } = useEnrollments();
   const { getToken, userData } = useAuth();
   const navigate = useNavigate();
@@ -284,26 +284,7 @@ function CourseDetails() {
                 />
 
                 <div className="p-5">
-                  <div className="mb-3 inline-flex items-center gap-1.5 rounded-full bg-red-50 px-3 py-1 text-xs font-semibold text-red-600">
-                    <Clock className="h-3.5 w-3.5" />5 days left at this price!
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-2xl font-bold text-slate-900 md:text-3xl">
-                      {currency}
-                      {(
-                        courseData.coursePrice -
-                        (courseData.discount * courseData.coursePrice) / 100
-                      ).toFixed(2)}
-                    </p>
-                    <p className="text-sm text-slate-400 line-through md:text-base">
-                      {currency}
-                      {courseData.coursePrice}
-                    </p>
-                    <p className="rounded-full bg-green-50 px-2 py-0.5 text-xs font-semibold text-green-600">
-                      {courseData.discount}% off
-                    </p>
-                  </div>
+                  <p className="text-2xl font-bold text-slate-900 md:text-3xl">Free</p>
 
                   <div className="mt-3 flex items-center gap-3 text-xs text-slate-500 md:text-sm">
                     <div className="flex items-center gap-1">

@@ -76,10 +76,8 @@ const normalizeCourseData = (courseData) => {
                     .slice(0, 200),
                   lectureDuration: Number(lecture.lectureDuration) || 1,
                   lectureUrl: String(lecture.lectureUrl || "").trim(),
-                  videoSource:
-                    lecture.videoSource === "cloudinary"
-                      ? "cloudinary"
-                      : "youtube",
+                  // YouTube only (owner's 4A): uploads need the company's Cloudinary keys
+                  videoSource: "youtube",
                   isPreviewFree: Boolean(lecture.isPreviewFree),
                   lectureOrder:
                     Number(lecture.lectureOrder) || lectureIndex + 1,
@@ -97,8 +95,9 @@ const normalizeCourseData = (courseData) => {
     courseDescription: cleanDescription(
       String(courseData.courseDescription || "").slice(0, 5000),
     ),
-    coursePrice: Number(courseData.coursePrice) || 0,
-    discount: Number(courseData.discount) || 0,
+    // every course is free (owner's 2A): whatever price or discount is sent
+    coursePrice: 0,
+    discount: 0,
     courseContent: normalizedChapters,
   };
 };
@@ -119,15 +118,9 @@ const validateCourseData = (courseData) => {
   ) {
     return "At least one lecture with a video URL is required";
   }
-  if (courseData.discount < 0 || courseData.discount > 100) {
-    return "Discount must be between 0 and 100";
-  }
   for (const chapter of courseData.courseContent) {
     for (const lecture of chapter.chapterContent) {
-      if (
-        lecture.videoSource === "youtube" &&
-        !isValidYouTubeUrl(lecture.lectureUrl)
-      ) {
+      if (!isValidYouTubeUrl(lecture.lectureUrl)) {
         return `Invalid YouTube URL for lecture: "${lecture.lectureTitle || "Untitled Lecture"}"`;
       }
     }
@@ -242,7 +235,7 @@ export const getEducatorCourses = async (req, res) => {
 
 /* =====================================================
    EDUCATOR DASHBOARD DATA
-   (total courses, total earnings, enrolled students)
+   (total courses and enrolled students; courses are free, so no earnings)
 ==================================================== */
 export const educatorDashboardData = async (req, res) => {
   try {
@@ -264,11 +257,6 @@ export const educatorDashboardData = async (req, res) => {
 
     const purchases = await getCompletedEnrollmentPurchases(courseIds);
 
-    const totalEarnings = purchases.reduce(
-      (sum, purchase) => sum + (purchase.amount || 0),
-      0,
-    );
-
     const enrolledStudentsData = purchases
       .filter((purchase) => purchase.userId && purchase.courseId)
       .map((purchase) => ({
@@ -281,7 +269,6 @@ export const educatorDashboardData = async (req, res) => {
       status: "success",
       data: {
         totalCourses,
-        totalEarnings,
         enrolledStudentsData,
       },
     });

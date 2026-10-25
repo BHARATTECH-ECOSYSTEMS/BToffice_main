@@ -81,22 +81,16 @@ export const purchaseCourse = async (req, res) => {
     }
 
     const courseData = await Course.findOne({ _id: courseId, isPublished: true })
-      .select("coursePrice discount enrolledStudents")
+      .select("_id")
       .lean();
     if (!courseData) {
       return res.status(404).json({ success: false, message: "Course not found" });
     }
 
-    const coursePrice = Number(courseData.coursePrice) || 0;
-    const discount = Number(courseData.discount) || 0;
-    const amount = Math.max(
-      0,
-      Number((coursePrice - (discount * coursePrice) / 100).toFixed(2))
-    );
-
+    // every course is free (owner's 2A), older ones with a price on file included
     await Purchase.findOneAndUpdate(
       { userId, courseId: courseData._id },
-      { $set: { amount, status: "completed" } },
+      { $set: { amount: 0, status: "completed" } },
       { new: true, upsert: true }
     );
 

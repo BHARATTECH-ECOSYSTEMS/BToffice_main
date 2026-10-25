@@ -8,7 +8,7 @@ import EmptySection from "../../components/common/EmptySection";
 import { assets } from "../../assets/assets";
 
 function MyCourses() {
-  const { currency, backendUrl } = useAppConfig();
+  const { backendUrl } = useAppConfig();
   const navigate = useNavigate();
   const { isEducator, getToken } = useAuth();
   const [courses, setCourses] = useState(null);
@@ -63,8 +63,7 @@ function MyCourses() {
             )}
           </div>
           <p className="text-sm text-slate-500 mt-1">
-            Manage your published courses, monitor enrollments, and track
-            earnings.
+            Your published courses and how many have enrolled in each.
           </p>
         </div>
 
@@ -88,9 +87,6 @@ function MyCourses() {
                   Course Title
                 </th>
                 <th className="py-3.5 px-6 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">
-                  Total Earnings
-                </th>
-                <th className="py-3.5 px-6 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">
                   Enrolled Students
                 </th>
                 <th className="py-3.5 px-6 text-xs font-bold uppercase tracking-wider text-slate-500 text-center">
@@ -101,7 +97,7 @@ function MyCourses() {
             <tbody className="divide-y divide-slate-100 text-sm">
               {courses.length === 0 ? (
                 <tr>
-                  <td colSpan="4" className="py-12">
+                  <td colSpan="3" className="py-12">
                     <EmptySection
                       imageSrc={assets.playfull_cat_vase}
                       title="No Courses Created"
@@ -114,11 +110,8 @@ function MyCourses() {
                 </tr>
               ) : (
                 courses.map((course) => {
+                  // courses are free (owner's 2A): students, not earnings
                   const studentCount = course.enrolledStudents?.length || 0;
-                  const price = course.coursePrice || 0;
-                  const discount = course.discount || 0;
-                  const effectivePrice = price - (discount * price) / 100;
-                  const earnings = Math.floor(studentCount * effectivePrice);
 
                   const formattedDate = course.createdAt
                     ? new Date(course.createdAt).toLocaleDateString("en-US", {
@@ -148,11 +141,6 @@ function MyCourses() {
                             {course.courseTitle || "Untitled Course"}
                           </span>
                         </div>
-                      </td>
-
-                      {/* Earnings */}
-                      <td className="py-4 px-6 text-center font-semibold text-slate-900">
-                        {currency || "$"} {earnings.toLocaleString()}
                       </td>
 
                       {/* Students */}

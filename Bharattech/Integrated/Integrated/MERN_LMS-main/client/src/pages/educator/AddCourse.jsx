@@ -147,8 +147,6 @@ function AddCourse() {
       const courseData = {
         courseTitle,
         courseDescription,
-        coursePrice: Number(formState.coursePrice),
-        discount: Number(formState.discount),
         courseContent: formState.chapters,
       };
 
@@ -242,28 +240,8 @@ function AddCourse() {
           </div>
         </div>
 
-        {/* Price + Thumbnail */}
+        {/* Thumbnail (courses are free, owner's 2A: no price or discount to enter) */}
         <div className="flex flex-wrap gap-6 items-center justify-between">
-
-          {/* Price */}
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-gray-700">
-              Course Price *
-            </label>
-            <input
-              type="number"
-              placeholder="0"
-              value={formState.coursePrice}
-              onChange={(e) =>
-                dispatch({
-                  type: COURSE_ACTIONS.SET_COURSE_PRICE,
-                  payload: +e.target.value,
-                })
-              }
-              className="px-4 py-2 w-32 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-400"
-            />
-          </div>
-
           {/* Thumbnail */}
           <div className="flex flex-col items-center gap-2">
             <label className="text-sm font-medium text-gray-700">
@@ -301,24 +279,6 @@ function AddCourse() {
               }
             />
           </div>
-        </div>
-
-        {/* Discount */}
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">
-            Discount % *
-          </label>
-          <input
-            type="number"
-            value={formState.discount}
-            onChange={(e) =>
-              dispatch({
-                type: COURSE_ACTIONS.SET_DISCOUNT,
-                payload: +e.target.value,
-              })
-            }
-            className="px-4 py-2 w-32 rounded-lg border border-gray-300 focus:ring-2 focus:ring-indigo-400"
-          />
         </div>
 
         {/* Course Content */}

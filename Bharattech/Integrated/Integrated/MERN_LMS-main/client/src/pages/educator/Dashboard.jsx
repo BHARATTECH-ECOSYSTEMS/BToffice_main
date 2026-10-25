@@ -10,11 +10,10 @@ import EmptySection from "../../components/common/EmptySection";
 const emptyDashboard = {
   enrolledStudentsData: [],
   totalCourses: 0,
-  totalEarnings: 0,
 };
 
 function Dashboard() {
-  const { currency, backendUrl } = useAppConfig();
+  const { backendUrl } = useAppConfig();
   const { isEducator, getToken } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -63,10 +62,8 @@ function Dashboard() {
 
   if (loading || !dashboardData) return <Loading />;
 
-  const formattedEarnings =
-    typeof dashboardData.totalEarnings === "number"
-      ? dashboardData.totalEarnings.toLocaleString()
-      : dashboardData.totalEarnings;
+  // courses are free (owner's 2A): the third figure is how many different people learn, not money
+  const learners = new Set((dashboardData.enrolledStudentsData || []).map((e) => e.student?._id).filter(Boolean)).size;
 
   return (
     <div className="min-h-screen bg-slate-50/50 p-4 pt-6 md:p-8 space-y-8">
@@ -77,7 +74,7 @@ function Dashboard() {
             Overview Dashboard
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            Monitor your course engagement, student enrollments, and revenue.
+            Your courses, who has enrolled, and how many are learning.
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:self-auto bg-white px-3 py-1.5 rounded-full border border-slate-200/80 shadow-xs">
@@ -133,22 +130,22 @@ function Dashboard() {
           </div>
         </div>
 
-        {/* Total Earnings */}
+        {/* Learners */}
         <div className="group relative overflow-hidden bg-white rounded-2xl border border-slate-200/80 p-5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md transition-all duration-200">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition-transform group-hover:scale-105">
               <img
-                src={assets.earning_icon}
-                alt="Earnings"
+                src={assets.person_tick_icon}
+                alt="Learners"
                 className="h-6 w-6"
               />
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                Total Earnings
+                Learners
               </p>
               <p className="text-2xl md:text-3xl font-bold tracking-tight text-slate-900 mt-0.5">
-                {currency || "$"} {formattedEarnings || 0}
+                {learners}
               </p>
             </div>
           </div>

@@ -1,18 +1,12 @@
 import { Link } from "react-router-dom";
 import { Eye, Star } from "lucide-react";
-import { useAppConfig } from "../../context/AppContext";
 import { calculateRatings } from "../../utils/courseHelpers";
 import RatingStars from "../common/RatingStars";
 
 function CourseCard({ course }) {
-  const { currency } = useAppConfig();
   const educatorName =
     course.educator?.name || course.educator?.email || "BharatTech";
   const rating = calculateRatings(course);
-  const finalPrice = (
-    course.coursePrice -
-    (course.coursePrice * course.discount) / 100
-  ).toFixed(2);
 
   return (
     <div className="group h-full will-change-transform">
@@ -66,11 +60,8 @@ function CourseCard({ course }) {
               </p>
             </div>
 
-            {/* Price */}
-            <p className="text-lg font-bold text-slate-900">
-              {currency}
-              {finalPrice}
-            </p>
+            {/* every course is free (owner's 2A) */}
+            <p className="text-lg font-bold text-slate-900">Free</p>
 
             {/* View button — full width, own row */}
             <Link

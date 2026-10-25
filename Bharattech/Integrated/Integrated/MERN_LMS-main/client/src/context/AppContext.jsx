@@ -5,17 +5,8 @@ import { getBackendUrl } from "../utils/backendUrl";
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  const currency = import.meta.env.VITE_CURRENCY || "$";
-  const backendUrl = getBackendUrl();
-  const cloudinaryName = import.meta.env.VITE_CLOUDINARY_NAME;
-  const cloudinaryUploadPreset = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
-
-  const value = {
-    currency,
-    backendUrl,
-    cloudinaryName,
-    cloudinaryUploadPreset,
-  };
+  // courses are free and lectures are YouTube links (owner's 2A 4A): no currency or upload settings
+  const value = { backendUrl: getBackendUrl() };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };

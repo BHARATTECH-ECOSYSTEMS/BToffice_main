@@ -1,8 +1,6 @@
 // Action types
 export const COURSE_ACTIONS = {
   SET_COURSE_TITLE: "SET_COURSE_TITLE",
-  SET_COURSE_PRICE: "SET_COURSE_PRICE",
-  SET_DISCOUNT: "SET_DISCOUNT",
   SET_IMAGE: "SET_IMAGE",
 
   // Chapter actions
@@ -21,8 +19,6 @@ export const COURSE_ACTIONS = {
 // Initial state
 export const initialCourseFormState = {
   courseTitle: "",
-  coursePrice: "",
-  discount: 0,
   image: null,
   chapters: [],
 };
@@ -32,12 +28,6 @@ export const courseFormReducer = (state, action) => {
   switch (action.type) {
     case COURSE_ACTIONS.SET_COURSE_TITLE:
       return { ...state, courseTitle: action.payload };
-
-    case COURSE_ACTIONS.SET_COURSE_PRICE:
-      return { ...state, coursePrice: action.payload };
-
-    case COURSE_ACTIONS.SET_DISCOUNT:
-      return { ...state, discount: action.payload };
 
     case COURSE_ACTIONS.SET_IMAGE:
       return { ...state, image: action.payload };
