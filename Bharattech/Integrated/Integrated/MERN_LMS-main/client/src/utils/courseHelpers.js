@@ -20,6 +20,17 @@ export function ownRating(course, user) {
 /** How many enrolled: public pages send a count, educator pages still send the list. */
 export const enrolledCountOf = (course) => course?.enrolledCount ?? course?.enrolledStudents?.length ?? 0;
 
+/** A student's progress as Students Enrolled shows it: "2 / 5 lectures" or "Completed", with a percentage. */
+export function progressLabel(progress) {
+  if (!progress?.total) return { text: "-", percent: 0, completed: false };
+  if (progress.completed) return { text: "Completed", percent: 100, completed: true };
+  return {
+    text: `${progress.done} / ${progress.total} ${progress.total === 1 ? "lecture" : "lectures"}`,
+    percent: Math.round((progress.done / progress.total) * 100),
+    completed: false,
+  };
+}
+
 // Function to calculate course chapter time:
 export const calculateChapterTime = (chapter) => {
   const totalSeconds = chapter.chapterContent.reduce(

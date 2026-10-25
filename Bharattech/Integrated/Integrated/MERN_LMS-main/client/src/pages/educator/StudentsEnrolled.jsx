@@ -3,6 +3,7 @@ import axios from "axios";
 import { useAppConfig } from "../../context/AppContext";
 import { useAuth } from "../../context/AuthContext";
 import { refreshWhileVisible } from "../../utils/visibleRefresh";
+import { progressLabel } from "../../utils/courseHelpers";
 import Loading from "../../components/students/Loading";
 import EmptySection from "../../components/common/EmptySection";
 import { assets } from "../../assets/assets";
@@ -94,8 +95,7 @@ function StudentsEnrolled() {
             </div>
 
             <p className="mt-1 text-sm text-slate-500">
-              View students enrolled in your courses and their enrollment
-              details.
+              Who is enrolled in your courses, and how far each one is.
             </p>
           </div>
         </div>
@@ -119,6 +119,10 @@ function StudentsEnrolled() {
                   Course Title
                 </th>
 
+                <th className="px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Progress
+                </th>
+
                 <th className="px-6 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-slate-500">
                   Enrollment Date
                 </th>
@@ -128,7 +132,7 @@ function StudentsEnrolled() {
             <tbody className="divide-y divide-slate-100 text-sm">
               {studentCount === 0 ? (
                 <tr>
-                  <td colSpan={4} className="py-12">
+                  <td colSpan={5} className="py-12">
                     <EmptySection
                       imageSrc={assets.student}
                       title="No Students Enrolled Yet"
@@ -141,6 +145,7 @@ function StudentsEnrolled() {
                 enrolledStudents.map((item, index) => {
                   const student = item?.student || {};
                   const studentName = student.name || "Unknown Student";
+                  const progress = progressLabel(item.progress);
 
                   return (
                     <tr
@@ -193,6 +198,22 @@ function StudentsEnrolled() {
                         >
                           {item.courseTitle || "Untitled Course"}
                         </p>
+                      </td>
+
+                      {/* Progress */}
+                      <td className="whitespace-nowrap px-6 py-4">
+                        {progress.completed ? (
+                          <span className="inline-flex items-center rounded-full border border-green-100 bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
+                            Completed
+                          </span>
+                        ) : (
+                          <div className="w-32">
+                            <p className="text-xs font-medium text-slate-600">{progress.text}</p>
+                            <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100" aria-hidden="true">
+                              <div className="h-1.5 rounded-full bg-indigo-500" style={{ width: `${progress.percent}%` }} />
+                            </div>
+                          </div>
+                        )}
                       </td>
 
                       {/* Enrollment Date */}

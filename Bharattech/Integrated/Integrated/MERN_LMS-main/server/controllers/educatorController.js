@@ -2,9 +2,11 @@ import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
 import Course from "../models/Course.js";
 import Purchase from "../models/Purchase.js";
+import CourseProgress from "../models/CourseProgress.js";
 import { isValidYouTubeUrl } from "../utils/videoHelpers.js";
 import { cleanDescription, hasVisibleText } from "../utils/courseDescription.js";
 import { ensureUser } from "../utils/currentUser.js";
+import { progressIn } from "../utils/lectures.js";
 
 const getUserId = (req) => req.user?.id;
 const hasAdminAccess = (req) =>
@@ -295,19 +297,27 @@ export const getEnrolledStudentsData = async (req, res) => {
     await ensureUser(req);
 
     const courses = await Course.find(getEducatorCourseFilter(req))
-      .select("_id")
+      .select("_id courseContent")
       .lean();
     const courseIds = courses.map((course) => course._id);
+    const courseById = new Map(courses.map((course) => [String(course._id), course]));
 
     const purchases = await getCompletedEnrollmentPurchases(courseIds);
+    // how far each student is: one read for every enrollment on the page
+    const progressRecords = await CourseProgress.find({ courseId: { $in: courseIds.map(String) } }).lean();
+    const lecturesDone = new Map(progressRecords.map((p) => [`${p.userId}:${p.courseId}`, p.lectureCompleted || []]));
 
     const enrolledStudents = purchases
       .filter((purchase) => purchase.userId && purchase.courseId)
-      .map((purchase) => ({
-        student: purchase.userId,
-        courseTitle: purchase.courseId.courseTitle,
-        purchaseDate: purchase.updatedAt || purchase.createdAt,
-      }));
+      .map((purchase) => {
+        const courseId = String(purchase.courseId._id);
+        return {
+          student: purchase.userId,
+          courseTitle: purchase.courseId.courseTitle,
+          purchaseDate: purchase.updatedAt || purchase.createdAt,
+          progress: progressIn(courseById.get(courseId), lecturesDone.get(`${purchase.userId._id}:${courseId}`)),
+        };
+      });
 
     return res.status(200).json({
       status: "success",

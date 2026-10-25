@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { enrolledCountOf, ownRating } from "../src/utils/courseHelpers.js";
+import { enrolledCountOf, ownRating, progressLabel } from "../src/utils/courseHelpers.js";
 
 // Group C Part 1 (2026-10-26): a student's own rating shows again (the signed-in user has `id`, not `_id`), and the
 // public course page's student count comes from enrolledCount now that it no longer lists who enrolled.
@@ -25,3 +25,10 @@ test("the student count reads enrolledCount, or the list where an educator page 
   assert.equal(enrolledCountOf({}), 0);
 });
 
+// Group C Part 4: Students Enrolled shows how far each student is.
+test("a student's progress reads as lectures done out of the course's, or Completed", () => {
+  assert.deepEqual(progressLabel({ done: 1, total: 3, completed: false }), { text: "1 / 3 lectures", percent: 33, completed: false });
+  assert.deepEqual(progressLabel({ done: 1, total: 1, completed: true }), { text: "Completed", percent: 100, completed: true });
+  assert.deepEqual(progressLabel({ done: 0, total: 1, completed: false }), { text: "0 / 1 lecture", percent: 0, completed: false });
+  assert.deepEqual(progressLabel(undefined), { text: "-", percent: 0, completed: false });
+});
