@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { ApiError, ApiErrorKind } from '../api';
 import { BUSY_MESSAGE } from '../api';
-import { certificateTitle, useCertificates, type IssuedCertificate } from '../certificates';
+import { certificateTitle, matchesCertificate, useCertificates, type IssuedCertificate } from '../certificates';
 import { PdfModal } from '../PdfModal';
 import { useDirectory } from '../people';
 import { useSession } from '../session';
@@ -111,8 +111,7 @@ function History({ canManage, certificates, notify }: { canManage: boolean; cert
   const [deleting, setDeleting] = useState<IssuedCertificate | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const list = state.kind === 'ready' ? state.certificates : [];
-  const query = q.trim().toLowerCase();
-  const rows = list.filter((c) => !query || [c.title, c.recipient?.name ?? '', c.issuedBy ?? '', c.number].some((v) => v.toLowerCase().includes(query)));
+  const rows = list.filter((c) => matchesCertificate(c, q));
   const latest = list[0];
 
   const remove = async (c: IssuedCertificate) => {
@@ -145,7 +144,7 @@ function History({ canManage, certificates, notify }: { canManage: boolean; cert
             <p className="p-muted">{canManage ? 'View and manage issued certificates.' : 'View the certificates issued to you.'}</p>
           </div>
         </div>
-        <SearchField value={q} onChange={setQ} label="Search certificates" placeholder="Search by type, person or number" />
+        <SearchField value={q} onChange={setQ} label="Search certificates" placeholder="Search by type, person, email or number" />
         {state.kind === 'loading' ? (
           <p className="p-muted" role="status">
             Loading certificates…
@@ -205,7 +204,13 @@ function History({ canManage, certificates, notify }: { canManage: boolean; cert
           </div>
         ) : (
           <Empty icon="award" title={list.length ? 'Nothing matches that search' : 'No certificates yet'}>
-            {!list.length && !canManage ? 'Certificates an admin issues to you will be listed here.' : undefined}
+            {list.length ? (
+              <button type="button" className="p-text-btn" onClick={() => setQ('')}>
+                Clear search
+              </button>
+            ) : !canManage ? (
+              'Certificates an admin issues to you will be listed here.'
+            ) : undefined}
           </Empty>
         )}
       </section>

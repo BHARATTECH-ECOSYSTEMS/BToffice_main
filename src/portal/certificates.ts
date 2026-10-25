@@ -24,6 +24,12 @@ export interface IssuedCertificate {
   issuedAt: string;
 }
 
+/** Whether a search (any case) finds this certificate: its title, person, their email, issuer or number. */
+export function matchesCertificate(c: IssuedCertificate, search: string) {
+  const query = search.trim().toLowerCase();
+  return !query || [c.title, c.recipient?.name ?? '', c.recipient?.email ?? '', c.issuedBy ?? '', c.number].some((v) => v.toLowerCase().includes(query));
+}
+
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
 const record = (value: unknown) => (value && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : undefined);
 const day = (value: unknown) => {

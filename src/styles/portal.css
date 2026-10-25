@@ -4429,6 +4429,11 @@ a.p-cal-item-title {
   align-items: center;
   gap: 8px;
 }
+.p-att-range {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+}
 .p-att-days,
 .p-att-visits {
   margin: 0;

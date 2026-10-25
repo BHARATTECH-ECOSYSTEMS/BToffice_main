@@ -240,9 +240,31 @@ function useLoaded<T>(path: string | null, read: (raw: unknown) => T) {
   return { state, setState, reload: load };
 }
 
+export type DayRange = { from: string; to: string };
+
+// the backend's limit (attendanceController RANGE_MAX_DAYS)
+const RANGE_MAX_DAYS = 400;
+const isDay = (value: string) => {
+  const at = /^\d{4}-\d{2}-\d{2}$/.test(value) ? Date.parse(`${value}T00:00:00Z`) : NaN;
+  // a made-up day (2026-02-31) rolls over into the next month, so it must come back as itself
+  return !Number.isNaN(at) && new Date(at).toISOString().startsWith(value);
+};
+
+/** Why these dates can't be shown, or null when they can (both real days, in order, not after today, ≤ 400 days). */
+export function rangeProblem(range: DayRange, today: string): string | null {
+  if (!isDay(range.from) || !isDay(range.to)) return 'Pick both dates.';
+  if (range.to < range.from) return 'Pick a start date before the end date.';
+  if (range.to > today) return 'Pick an end date up to today.';
+  if ((Date.parse(range.to) - Date.parse(range.from)) / 864e5 > RANGE_MAX_DAYS) return `Pick at most ${RANGE_MAX_DAYS} days at a time.`;
+  return null;
+}
+
+/** An attendance address with the dates asked for. */
+export const withRange = (path: string, range?: DayRange) => (range ? `${path}?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}` : path);
+
 /** Your own attendance: today (no range) or the days between `from` and `to`. `off` with the demo sign-in. */
-export function useMyAttendance(range?: { from: string; to: string }) {
-  const path = range ? `/attendance/me?from=${encodeURIComponent(range.from)}&to=${encodeURIComponent(range.to)}` : '/attendance/me';
+export function useMyAttendance(range?: DayRange) {
+  const path = withRange('/attendance/me', range);
   const { state, setState, reload } = useLoaded(path, toMyAttendance);
   // join and leave answer with today's attendance; they throw an ApiError when refused, after reloading
   const act = async (path: string) => {
@@ -262,9 +284,9 @@ export function useAttendanceDay(day: string, on: boolean) {
   return { state, retry: () => void reload(), reload };
 }
 
-/** One person's last 30 days (managers); null asks for nobody. */
-export function usePersonHistory(personId: string | null) {
-  const { state, reload } = useLoaded(personId ? `/attendance/people/${encodeURIComponent(personId)}` : null, toPersonHistory);
+/** One person's days between `from` and `to` (managers); null asks for nobody. */
+export function usePersonHistory(personId: string | null, range?: DayRange) {
+  const { state, reload } = useLoaded(personId ? withRange(`/attendance/people/${encodeURIComponent(personId)}`, range) : null, toPersonHistory);
   return { state, retry: () => void reload(), reload };
 }
 

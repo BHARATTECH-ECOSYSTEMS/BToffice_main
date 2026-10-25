@@ -8,11 +8,13 @@ import {
   indiaClock,
   indiaTime,
   indiaToday,
+  rangeProblem,
   REASON_MAX,
   useAttendanceDay,
   useMyAttendance,
   usePersonHistory,
   type AttendanceDay,
+  type DayRange,
   type DayRow,
   type Loaded,
   type Visit,
@@ -22,7 +24,8 @@ import { formatDate } from '../store';
 import { Badge, btnClass, BtnLabel, Empty, Modal, PageHead, Stat, useNotice } from '../ui';
 
 /**
- * e-Office attendance (attendance.ts): everyone sees their own last 30 days; admins and sub admins also see everyone's
+ * e-Office attendance (attendance.ts): everyone sees their own days (the last 30, or any dates they pick, up to 400
+ * at a time); admins and sub admins also see everyone's
  * day (who's in now, first in, last out, time in) and one person's history; admins correct a finished visit's times
  * with a reason, where the backend says they may. Times are India time, as the backend keeps its days. The demo keeps
  * check-ins in the browser only, so it has no history to show.
@@ -47,7 +50,7 @@ export function Attendance() {
 
   return (
     <>
-      <PageHead title="Attendance" sub={manager ? 'Who’s in the e-Office, day by day, and each person’s visits. Times are India time.' : 'Your visits to the e-Office over the last 30 days, in India time.'}>
+      <PageHead title="Attendance" sub={manager ? 'Who’s in the e-Office, day by day, and each person’s visits. Times are India time.' : 'Your visits to the e-Office, in India time. Pick any dates to look further back.'}>
         {manager && (
           <div className="p-tabs" role="tablist" aria-label="Attendance">
             <button type="button" role="tab" aria-selected={tab === 'team'} onClick={() => setTab('team')}>
@@ -79,19 +82,54 @@ function LoadFailed({ what, error, retry }: { what: string; error: ApiError; ret
   );
 }
 
-function MyDays() {
+const lastThirtyDays = (): DayRange => ({ from: shiftDay(indiaToday(), -30), to: indiaToday() });
+
+/** From and to for a history (owner's 4A); the list follows as soon as the two make a range the backend takes. */
+function RangePicker({ range, onChange, label }: { range: DayRange; onChange: (range: DayRange) => void; label: string }) {
   const today = indiaToday();
-  const [range] = useState(() => ({ from: shiftDay(today, -30), to: today }));
+  const [draft, setDraft] = useState(range);
+  const problem = rangeProblem(draft, today);
+  const set = (next: DayRange) => {
+    setDraft(next);
+    if (!rangeProblem(next, today)) onChange(next);
+  };
+  return (
+    <div className="p-att-range">
+      <div className="p-att-pick" role="group" aria-label={label}>
+        <label className="p-field is-tight">
+          <span className="sr-only">From</span>
+          <input type="date" value={draft.from} max={draft.to || today} aria-invalid={!!problem || undefined} onChange={(e) => set({ ...draft, from: e.target.value })} />
+        </label>
+        <span className="p-dim" aria-hidden="true">
+          to
+        </span>
+        <label className="p-field is-tight">
+          <span className="sr-only">To</span>
+          <input type="date" value={draft.to} min={draft.from || undefined} max={today} aria-invalid={!!problem || undefined} onChange={(e) => set({ ...draft, to: e.target.value })} />
+        </label>
+      </div>
+      {problem && (
+        <p className="p-error" role="alert">
+          {problem}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function MyDays() {
+  const [range, setRange] = useState(lastThirtyDays);
   const mine = useMyAttendance(range);
   const { state } = mine;
   return (
     <section className="p-card" aria-labelledby="my-days" aria-busy={state.kind === 'loading' || undefined}>
       <div className="p-card-head">
         <h2 id="my-days" className="p-card-title">
-          My last 30 days
+          My attendance
         </h2>
+        <RangePicker range={range} onChange={setRange} label="Show my attendance between" />
       </div>
-      <Days state={state} retry={mine.retry} what="Your attendance" empty="No visits in the last 30 days. Join the e-Office from your dashboard to start." />
+      <Days state={state} retry={mine.retry} what="Your attendance" empty="No visits between these dates. Join the e-Office from your dashboard to start." />
     </section>
   );
 }
@@ -185,7 +223,8 @@ function TeamDay() {
 }
 
 function PersonDays({ person, onCorrected, onClose }: { person: DayRow; onCorrected: () => void; onClose: () => void }) {
-  const history = usePersonHistory(person.id);
+  const [range, setRange] = useState(lastThirtyDays);
+  const history = usePersonHistory(person.id, range);
   const [fixing, setFixing] = useState<{ visit: Visit; day: string } | null>(null);
   const [notice, notify] = useNotice();
   const ref = useRef<HTMLElement>(null);
@@ -199,18 +238,21 @@ function PersonDays({ person, onCorrected, onClose }: { person: DayRow; onCorrec
     <section ref={ref} className="p-card" aria-labelledby="person-days" aria-busy={state.kind === 'loading' || undefined}>
       <div className="p-card-head">
         <h2 id="person-days" className="p-card-title">
-          {person.name}: last 30 days
+          {person.name}
         </h2>
-        <button type="button" className={btnClass('ghost', { small: true })} onClick={onClose}>
-          <BtnLabel>Close</BtnLabel>
-        </button>
+        <div className="p-att-pick">
+          <RangePicker range={range} onChange={setRange} label={`Show ${person.name}’s attendance between`} />
+          <button type="button" className={btnClass('ghost', { small: true })} onClick={onClose}>
+            <BtnLabel>Close</BtnLabel>
+          </button>
+        </div>
       </div>
       {notice}
       <Days
         state={state.kind === 'ready' ? { kind: 'ready', value: state.value.days } : state}
         retry={history.retry}
         what="Their attendance"
-        empty="No visits in the last 30 days."
+        empty="No visits between these dates."
         onCorrect={canCorrect ? (visit, day) => setFixing({ visit, day }) : undefined}
       />
       {fixing && (
