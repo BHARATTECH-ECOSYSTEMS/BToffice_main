@@ -1,12 +1,13 @@
 const Verification = require("../models/Verification");
-const { CHECKS, UPLOAD_CHECKS, NAME_MAX } = Verification;
+const { DOCUMENTS, DOCUMENT_KINDS, NAME_MAX } = Verification;
 const { imageStore } = require("../utils/userPhotos");
 const { Refusal, answerError, isAdmin, isObjectId } = require("../utils/refusal");
 
 /*
- * An employee's government IDs for their HR OPS verification (/api/verification-documents; server.js signs everyone
- * in). These are the most sensitive files the portal keeps:
- * - Only the employee uploads them, and only while HR has a verification of theirs pending. Uploading again replaces
+ * An employee's own part of their HR OPS verification (/api/verification-documents; server.js signs everyone in):
+ * the files they upload (Aadhaar, PAN, up to three education certificates, a previous employer's letter) and "This
+ * is my first job". These are the most sensitive records the portal keeps:
+ * - Only the employee adds them, and only while HR has a verification of theirs pending. Uploading again replaces
  *   the file, and the old one is deleted at once.
  * - The employee can open their own; Super Admins and Admins can open anyone's, and every such opening is written
  *   to the request's log. Nobody else gets them.
@@ -16,18 +17,18 @@ const { Refusal, answerError, isAdmin, isObjectId } = require("../utils/refusal"
 
 // the same GridFS helper as photos and covers, in a bucket of its own
 const store = imageStore("idDocuments");
-const LABEL = Object.fromEntries(CHECKS.employee.filter((c) => UPLOAD_CHECKS.includes(c.id)).map((c) => [c.id, c.label]));
+const LABEL = Object.fromEntries(DOCUMENTS.map((d) => [d.id, d.label]));
 const isPdf = (buffer) => buffer?.subarray(0, 5).toString("latin1") === "%PDF-";
 const nameOf = (user) => user.fullName || user.email || "Someone";
 
 /** The documents as they are shown: never the store's own file id. */
 const documentsView = (request) =>
   [...(request?.documents ?? [])]
-    .sort((a, b) => UPLOAD_CHECKS.indexOf(a.kind) - UPLOAD_CHECKS.indexOf(b.kind))
+    .sort((a, b) => DOCUMENT_KINDS.indexOf(a.kind) - DOCUMENT_KINDS.indexOf(b.kind))
     .map((d) => ({ kind: d.kind, fileName: d.fileName, size: d.size, uploadedAt: d.uploadedAt }));
 
 const readKind = (kind) => {
-  if (!UPLOAD_CHECKS.includes(kind)) throw new Refusal(400, "Upload an Aadhaar card or a PAN card.");
+  if (!DOCUMENT_KINDS.includes(kind)) throw new Refusal(400, `Upload one of these: ${DOCUMENTS.map((d) => d.label).join(", ")}.`);
   return kind;
 };
 
@@ -52,7 +53,12 @@ const findMine = async (userId) =>
 const mineView = (request) => ({
   request: request ? { id: String(request._id), status: request.status, openedAt: request.createdAt } : null,
   documents: documentsView(request),
+  // which checks are skipped, and whether it was their own "first job"; HR's reasons are HR's own notes
+  notApplicable: (request?.notApplicable ?? []).map((n) => ({ check: n.check, byYou: !!n.byEmployee })),
 });
+
+const findPending = (userId) => Verification.findOne({ kind: "employee", person: userId, status: "pending" });
+const NOT_ASKED = "HR hasn't asked for your documents, or your verification is already decided.";
 
 const streamFile = (res, doc) => {
   res.setHeader("Content-Type", "application/pdf");
@@ -80,8 +86,11 @@ exports.uploadMine = async (req, res) => {
     const kind = readKind(req.params.kind);
     if (!req.file?.buffer?.length) throw new Refusal(400, "Choose a PDF to upload.");
     if (!isPdf(req.file.buffer)) throw new Refusal(400, "Only PDF files can be uploaded.");
-    const request = await Verification.findOne({ kind: "employee", person: req.user.id, status: "pending" });
-    if (!request) throw new Refusal(409, "HR hasn't asked for your documents, or your verification is already decided.");
+    const request = await findPending(req.user.id);
+    if (!request) throw new Refusal(409, NOT_ASKED);
+    if (kind === "experience" && request.notApplicable.some((n) => n.check === "employment")) {
+      throw new Refusal(409, "Previous employment is marked as your first job. Undo that first, then upload the letter.");
+    }
 
     const old = request.documents.find((d) => d.kind === kind);
     const fileId = await store.save(req.file.buffer, {
@@ -107,6 +116,51 @@ exports.uploadMine = async (req, res) => {
     return res.status(200).json(mineView(updated));
   } catch (error) {
     return answerError(res, error, "Upload verification document");
+  }
+};
+
+// PUT /api/verification-documents/mine/first-job { firstJob: true | false }
+// Yes marks previous employment not applicable (it counts toward verifying); no takes back their own yes.
+exports.setFirstJob = async (req, res) => {
+  try {
+    const { firstJob } = req.body ?? {};
+    if (typeof firstJob !== "boolean") throw new Refusal(400, "Say whether this is your first job (true or false).");
+    const request = await findPending(req.user.id);
+    if (!request) throw new Refusal(409, NOT_ASKED);
+    const marked = request.notApplicable.find((n) => n.check === "employment");
+    if (firstJob) {
+      if (marked) return res.status(200).json(mineView(request));
+      if (request.documents.some((d) => d.kind === "experience")) {
+        throw new Refusal(409, "You've uploaded a letter from a previous job, so it isn't your first job.");
+      }
+    } else {
+      if (!marked) return res.status(200).json(mineView(request));
+      if (!marked.byEmployee) throw new Refusal(409, "HR marked previous employment as not needed. Ask them if that should change.");
+    }
+    const now = new Date();
+    const updated = await Verification.findOneAndUpdate(
+      // nothing changed in between: no letter arrived, and the mark is still as it was read
+      firstJob
+        ? { _id: request._id, status: "pending", "documents.kind": { $ne: "experience" }, "notApplicable.check": { $ne: "employment" } }
+        : { _id: request._id, status: "pending", notApplicable: { $elemMatch: { check: "employment", byEmployee: true } } },
+      firstJob
+        ? {
+            $addToSet: { done: "employment" },
+            $push: {
+              notApplicable: { check: "employment", reason: "This is their first job", by: nameOf(req.user), byEmployee: true, at: now },
+              log: { at: now, by: nameOf(req.user), text: "Said this is their first job" },
+            },
+          }
+        : {
+            $pull: { done: "employment", notApplicable: { check: "employment" } },
+            $push: { log: { at: now, by: nameOf(req.user), text: "Said it isn't their first job after all" } },
+          },
+      { returnDocument: "after" }
+    );
+    if (!updated) throw new Refusal(409, "Your verification changed a moment ago. Reload the page and try again.");
+    return res.status(200).json(mineView(updated));
+  } catch (error) {
+    return answerError(res, error, "Set first job");
   }
 };
 

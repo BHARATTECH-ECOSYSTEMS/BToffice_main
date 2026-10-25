@@ -4,9 +4,9 @@ const { removeFilesOf } = require("../controllers/idDocumentController");
 const { todayInIndia } = require("./days");
 
 /*
- * The 60-day rule: an employee's Aadhaar and PAN files are deleted ID_RETENTION_DAYS after their leaving day, and the
- * deletion is written to the request's log. Their name, dates and verification result stay. server.js runs the check
- * when the backend starts and then once a day.
+ * The 60-day rule: an employee's uploaded verification files (Aadhaar, PAN, education, previous employer's letter) are
+ * deleted ID_RETENTION_DAYS after their leaving day, and the deletion is written to the request's log. Their name,
+ * dates and verification result stay. server.js runs the check when the backend starts and then once a day.
  */
 
 const ID_RETENTION_DAYS = 60;
@@ -33,7 +33,7 @@ const deleteDueIdDocuments = async ({ today = todayInIndia() } = {}) => {
       { _id: request._id, "documents.0": { $exists: true } },
       {
         $set: { documents: [] },
-        $push: { log: { at: new Date(), by: "System", text: `Deleted the ID documents automatically, ${ID_RETENTION_DAYS} days after they left` } },
+        $push: { log: { at: new Date(), by: "System", text: `Deleted the uploaded documents automatically, ${ID_RETENTION_DAYS} days after they left` } },
       }
     );
     if (updated) cleared += 1;

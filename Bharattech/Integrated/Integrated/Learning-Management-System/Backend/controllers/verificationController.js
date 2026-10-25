@@ -1,6 +1,6 @@
 const Verification = require("../models/Verification");
 const User = require("../models/User");
-const { KINDS, CHECKS, UPLOAD_CHECKS, NAME_MAX, REGISTRATION_MAX, EMAIL_MAX, URL_MAX, NOTE_MAX } = Verification;
+const { KINDS, CHECKS, DOCUMENTS, SKIPPABLE_CHECKS, REASON_MAX, NAME_MAX, REGISTRATION_MAX, EMAIL_MAX, URL_MAX, NOTE_MAX } = Verification;
 const { Refusal, answerError, isAdmin, isObjectId } = require("../utils/refusal");
 const { forgetNotesAbout, notify } = require("../utils/notify");
 const { sendAnswer } = require("../utils/verificationMail");
@@ -14,8 +14,10 @@ const { documentsView, removeFilesOf } = require("./idDocumentController");
  * - Admins tick off each check, then mark the request verified (every check ticked) or rejected (with a note
  *   saying why); a decision can be reopened. Only a pending request can be deleted: a decided one is the record.
  * - Every change is written to the request's log, here and nowhere else, so the trail can't be skipped.
- * - The employee's Aadhaar and PAN are their own uploads (controllers/idDocumentController.js): those two checks can
- *   be ticked once the file is there. Opening an employee request tells that employee (bell and email) to upload them.
+ * - An employee check waits for the employee's upload (controllers/idDocumentController.js): Aadhaar and PAN their
+ *   file, education at least one certificate, previous employment their letter. Previous employment may instead be
+ *   marked "Not applicable" with a reason (by HR, or by the employee saying it's their first job), which counts as
+ *   ticked. References is a plain tick. Opening an employee request tells that employee (bell and email) what to upload.
  * - Company requests send no bell notes or emails: they're the admins' working records. An employment decision is
  *   emailed to the requester (utils/verificationMail.js), and the log says whether it went.
  */
@@ -138,7 +140,11 @@ const view = (request, leads = new Map()) => ({
     ? { company: request.company, registration: request.registration, contactEmail: request.contactEmail, website: request.website || "" }
     : request.kind === "employment"
       ? employmentView(request, leads)
-      : { person: personView(request), documents: documentsView(request) }),
+      : {
+          person: personView(request),
+          documents: documentsView(request),
+          notApplicable: request.notApplicable.map((n) => ({ check: n.check, reason: n.reason, by: n.by, byEmployee: !!n.byEmployee, at: n.at })),
+        }),
 });
 /** One request as the admins see it, with its directory lead when it's an employment request. */
 const viewOne = async (request) => view(request, await leadsFor([request]));
@@ -159,6 +165,21 @@ const applyIf = async (id, expected, change, stale) => {
 };
 
 const DUPLICATE = { company: "This company already has a pending request.", employee: "They already have a pending verification." };
+
+// What each employee check waits for before it can be ticked (a file proving it), and what to say while it waits.
+// A check without an entry (References) is a plain tick.
+const PROVIDED = {
+  aadhaar: (r) => r.documents.some((d) => d.kind === "aadhaar"),
+  pan: (r) => r.documents.some((d) => d.kind === "pan"),
+  education: (r) => r.documents.some((d) => DOCUMENTS.find((x) => x.id === d.kind)?.check === "education"),
+  employment: (r) => r.documents.some((d) => d.kind === "experience"),
+};
+const WAITING = {
+  aadhaar: "The Aadhaar card can be ticked once the employee has uploaded it.",
+  pan: "The PAN card can be ticked once the employee has uploaded it.",
+  education: "Education certificates can be ticked once the employee has uploaded at least one.",
+  employment: "Previous employment can be ticked once the employee has uploaded their letter, or mark it not applicable.",
+};
 
 // GET /api/verifications?kind=company|employee
 exports.listRequests = async (req, res) => {
@@ -205,7 +226,7 @@ exports.openRequest = async (req, res) => {
         userId: request.person._id,
         kind: "verification",
         title: "HR started your verification",
-        detail: "Upload your Aadhaar and PAN in Profile, under Verification documents.",
+        detail: "Upload your Aadhaar and PAN, your education certificates and a previous employer's letter in Profile, under Verification documents.",
         link: "/portal/profile?docs=1",
         refId: request._id,
       });
@@ -225,19 +246,54 @@ exports.setCheck = async (req, res) => {
     if (!CHECKS[request.kind].some((c) => c.id === check)) throw new Refusal(400, "That isn't one of this request's checks.");
     if (typeof done !== "boolean") throw new Refusal(400, "Say whether the check is done (true or false).");
     if (request.status !== "pending") throw new Refusal(409, "This request is decided. Reopen it to change the checks.");
-    if (request.kind === "employee" && UPLOAD_CHECKS.includes(check) && done && !request.documents.some((d) => d.kind === check)) {
-      throw new Refusal(409, `The ${labelOf("employee", check)} can be ticked once the employee has uploaded it.`);
-    }
-    // one atomic change each, so two admins ticking at the same moment both count
+    const skipped = request.notApplicable?.some((n) => n.check === check);
+    if (request.kind === "employee" && done && !skipped && PROVIDED[check] && !PROVIDED[check](request)) throw new Refusal(409, WAITING[check]);
+    // one atomic change each, so two admins ticking at the same moment both count; unticking also clears "Not applicable"
     const updated = await applyIf(
       request._id,
       { status: "pending" },
-      { [done ? "$addToSet" : "$pull"]: { done: check }, $push: { log: entry(req.user, `${done ? "Checked" : "Unchecked"} ${labelOf(request.kind, check)}`) } },
+      {
+        ...(done
+          ? { $addToSet: { done: check } }
+          : { $pull: { done: check, ...(SKIPPABLE_CHECKS.includes(check) ? { notApplicable: { check } } : {}) } }),
+        $push: { log: entry(req.user, `${done ? "Checked" : "Unchecked"} ${labelOf(request.kind, check)}`) },
+      },
       "This request was decided a moment ago. Reopen it to change the checks."
     );
     return res.status(200).json(await viewOne(updated));
   } catch (error) {
     return answerError(res, error, "Set verification check");
+  }
+};
+
+// POST /api/verifications/:id/not-applicable { check: "employment", reason }
+exports.markNotApplicable = async (req, res) => {
+  try {
+    requireAdmin(req.user);
+    const request = await findRequest(req.params.id);
+    const { check } = req.body ?? {};
+    if (request.kind !== "employee") throw new Refusal(400, "Only an employee's checks can be marked not applicable.");
+    if (!SKIPPABLE_CHECKS.includes(check)) throw new Refusal(400, "Only Previous employment can be marked not applicable.");
+    const reason = typeof req.body.reason === "string" ? req.body.reason.trim().replace(/\s+/g, " ") : "";
+    if (!reason || reason.length > REASON_MAX) throw new Refusal(400, `Say why it doesn't apply, up to ${REASON_MAX} characters.`);
+    if (request.status !== "pending") throw new Refusal(409, "This request is decided. Reopen it to change the checks.");
+    if (request.notApplicable.some((n) => n.check === check)) throw new Refusal(409, "It's already marked not applicable.");
+    const now = new Date();
+    const updated = await applyIf(
+      request._id,
+      { status: "pending", "notApplicable.check": { $ne: check } },
+      {
+        $addToSet: { done: check },
+        $push: {
+          notApplicable: { check, reason, by: nameOf(req.user), byEmployee: false, at: now },
+          log: entry(req.user, `Marked ${labelOf("employee", check)} not applicable: ${reason}`),
+        },
+      },
+      "Someone changed this request a moment ago. Reload it and try again."
+    );
+    return res.status(200).json(view(updated));
+  } catch (error) {
+    return answerError(res, error, "Mark verification check not applicable");
   }
 };
 

@@ -30,8 +30,20 @@ const CHECKS = {
     { id: "consent", label: "Candidate consent on file" },
   ],
 };
-// Checks that are the employee's own uploads: they can't be ticked before the file is there.
-const UPLOAD_CHECKS = ["aadhaar", "pan"];
+// The files an employee uploads for their verification (controllers/idDocumentController.js), each with the check it
+// proves; ids match the portal's (src/portal/data.ts) and labels go into the log. Education takes up to three.
+const DOCUMENTS = [
+  { id: "aadhaar", check: "aadhaar", label: "Aadhaar card" },
+  { id: "pan", check: "pan", label: "PAN card" },
+  { id: "degree", check: "education", label: "Degree certificate" },
+  { id: "marksheet", check: "education", label: "Final marksheet" },
+  { id: "class12", check: "education", label: "Class 12 marksheet" },
+  { id: "experience", check: "employment", label: "Relieving or experience letter" },
+];
+const DOCUMENT_KINDS = DOCUMENTS.map((d) => d.id);
+// Checks HR may mark "Not applicable" with a reason (a first job); it then counts as done.
+const SKIPPABLE_CHECKS = ["employment"];
+const REASON_MAX = 300;
 
 const NAME_MAX = 120;
 const REGISTRATION_MAX = 40;
@@ -58,11 +70,23 @@ const LogEntrySchema = new mongoose.Schema(
 
 const IdDocumentSchema = new mongoose.Schema(
   {
-    kind: { type: String, enum: UPLOAD_CHECKS, required: true },
+    kind: { type: String, enum: DOCUMENT_KINDS, required: true },
     fileId: { type: mongoose.Schema.Types.ObjectId, required: true },
     fileName: { type: String, maxlength: NAME_MAX, required: true },
     size: { type: Number, required: true },
     uploadedAt: { type: Date, required: true },
+  },
+  { _id: false }
+);
+
+const NotApplicableSchema = new mongoose.Schema(
+  {
+    check: { type: String, enum: SKIPPABLE_CHECKS, required: true },
+    reason: { type: String, maxlength: REASON_MAX, required: true },
+    by: { type: String, required: true },
+    // the employee's own "This is my first job", which only they may take back
+    byEmployee: { type: Boolean, default: false },
+    at: { type: Date, required: true },
   },
   { _id: false }
 );
@@ -84,8 +108,10 @@ const VerificationSchema = new mongoose.Schema(
 
     // employee requests
     person: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-    // the employee's own uploads (Aadhaar, PAN), kept in GridFS "idDocuments" (controllers/idDocumentController.js)
+    // the employee's own uploads (DOCUMENTS), kept in GridFS "idDocuments" (controllers/idDocumentController.js)
     documents: { type: [IdDocumentSchema], default: [] },
+    // checks marked "Not applicable", at most one entry per check
+    notApplicable: { type: [NotApplicableSchema], default: [] },
 
     // requests from other companies, as they sent them; `reference` (VR-0001…) is what they were told
     reference: { type: String },
@@ -127,7 +153,10 @@ Object.assign(module.exports, {
   KINDS,
   STATUSES,
   CHECKS,
-  UPLOAD_CHECKS,
+  DOCUMENTS,
+  DOCUMENT_KINDS,
+  SKIPPABLE_CHECKS,
+  REASON_MAX,
   NAME_MAX,
   REGISTRATION_MAX,
   EMAIL_MAX,

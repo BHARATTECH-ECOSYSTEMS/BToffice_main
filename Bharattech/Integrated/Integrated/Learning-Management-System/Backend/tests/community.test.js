@@ -397,7 +397,7 @@ test(`ID documents are deleted ${ID_RETENTION_DAYS} days after someone leaves, l
 
   const after = await Verification.findById(dueRequest._id).lean();
   assert.deepEqual(after.documents, []);
-  assert.deepEqual([after.log.at(-1).by, after.log.at(-1).text], ["System", `Deleted the ID documents automatically, ${ID_RETENTION_DAYS} days after they left`]);
+  assert.deepEqual([after.log.at(-1).by, after.log.at(-1).text], ["System", `Deleted the uploaded documents automatically, ${ID_RETENTION_DAYS} days after they left`]);
   assert.deepEqual((await storedFileIds()).sort(), keptFiles.sort(), "the files are gone from the store, the others stay");
   for (const r of kept) assert.equal((await Verification.findById(r._id).lean()).documents.length, 2);
 

@@ -97,12 +97,13 @@ test("opening an employee's verification tells them in the bell and by email; a 
 
 test("an employee sees their own pending verification, with nothing uploaded yet; others see none", async () => {
   const p = await people();
-  assert.deepEqual((await call(p.asha, "GET", "/verification-documents/mine")).body, { request: null, documents: [] });
+  const nothing = { request: null, documents: [], notApplicable: [] };
+  assert.deepEqual((await call(p.asha, "GET", "/verification-documents/mine")).body, nothing);
   const id = await startFor(p, p.asha);
   const mine = await call(p.asha, "GET", "/verification-documents/mine");
   assert.equal(mine.status, 200);
   assert.deepEqual([mine.body.request.id, mine.body.request.status, mine.body.documents], [id, "pending", []]);
-  assert.deepEqual((await call(p.kabir, "GET", "/verification-documents/mine")).body, { request: null, documents: [] });
+  assert.deepEqual((await call(p.kabir, "GET", "/verification-documents/mine")).body, nothing);
 });
 
 test("the employee uploads a PDF: it's stored, listed and logged under their name", async () => {
@@ -207,6 +208,9 @@ test("admins see the uploads on the request, and can tick Aadhaar and PAN only o
   assert.deepEqual(listed.documents.map((d) => [d.kind, d.size]), [["aadhaar", PDF.length], ["pan", PDF.length]]);
   for (const d of listed.documents) assert.ok(!("fileId" in d));
 
+  // education and previous employment wait for their own uploads (tests/backgroundChecks.test.js)
+  await upload(p.asha, "degree");
+  await upload(p.asha, "experience");
   for (const check of ["aadhaar", "pan", "education", "employment", "references"]) {
     assert.equal((await call(p.admin, "PATCH", `/verifications/${id}/checks`, { check, done: true })).status, 200, check);
   }
@@ -238,7 +242,7 @@ test("deleting a pending request deletes its files and the employee's bell note"
   assert.equal((await call(p.admin, "DELETE", `/verifications/${id}`)).status, 200);
   assert.equal((await storedFiles()).length, 0);
   assert.equal(await Notification.countDocuments({ refId: id }), 0);
-  assert.deepEqual((await call(p.asha, "GET", "/verification-documents/mine")).body, { request: null, documents: [] });
+  assert.deepEqual((await call(p.asha, "GET", "/verification-documents/mine")).body, { request: null, documents: [], notApplicable: [] });
 });
 
 test("a file name is cleaned on its own too: either slash is a folder, control characters and quotes go", () => {

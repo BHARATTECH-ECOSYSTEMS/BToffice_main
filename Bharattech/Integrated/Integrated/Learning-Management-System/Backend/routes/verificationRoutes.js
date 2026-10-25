@@ -14,6 +14,9 @@ router.post("/", verificationController.openRequest);
 // Tick or untick one check of a pending request
 router.patch("/:id/checks", verificationController.setCheck);
 
+// Mark Previous employment not applicable, with a reason (employee requests)
+router.post("/:id/not-applicable", verificationController.markNotApplicable);
+
 // Verify, reject (with a note) or reopen
 router.post("/:id/decision", verificationController.decide);
 

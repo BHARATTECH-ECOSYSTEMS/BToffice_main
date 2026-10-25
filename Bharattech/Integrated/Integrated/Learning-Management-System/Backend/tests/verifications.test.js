@@ -194,7 +194,8 @@ test("only the request's own checks can be ticked, with a yes or no", async () =
   assert.equal((await tick(p.admin, company.id, "anything")).status, 400);
   assert.equal((await send(p.admin, "PATCH", `/${company.id}/checks`, { check: "tax", done: "yes" })).status, 400);
   const employee = await open(p.admin, { kind: "employee", personId: String(p.asha._id) });
-  assert.equal((await tick(p.admin, employee.id, "education")).status, 200);
+  // its own check, so not a 400: it waits for the employee's upload (tests/backgroundChecks.test.js)
+  assert.equal((await tick(p.admin, employee.id, "education")).status, 409);
   assert.equal((await tick(p.admin, employee.id, "registration")).status, 400, "a company check on an employee");
 });
 
