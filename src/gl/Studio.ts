@@ -7,6 +7,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { SCULPTURE_FS, SCULPTURE_VS } from './sculpture.glsl';
 import { SAMPLED_THREADS } from './threads';
 import { primePrograms, whenLinked } from './shaderWarmup';
+import { IDLE_AFTER_MS, shouldDraw } from './idlePace';
 
 /**
  * The home page's film: the logo as one piece of glass in a paper studio, changing as the story is told.
@@ -17,6 +18,8 @@ import { primePrograms, whenLinked } from './shaderWarmup';
  */
 
 export const BEATS = 8;
+/** input that counts as someone using the page (the pointer has its own listener) */
+const INPUTS = ['wheel', 'scroll', 'keydown', 'touchstart'] as const;
 
 const CENTER = new THREE.Vector3(0, 1.5, 0);
 const PAPER = new THREE.Color('#F8F7F3');
@@ -301,6 +304,9 @@ export class Studio {
   private tmp = { a: new THREE.Color(), b: new THREE.Color() };
   /** frame-time samples: a GPU that cannot keep up gets fewer pixels rather than fewer frames */
   private perf = { n: 0, sum: 0 };
+  /** the last pointer, wheel, scroll, key or touch input, and the last frame drawn: at rest it draws at 30 (idlePace.ts) */
+  private lastInput = performance.now();
+  private lastDraw = 0;
 
   /** which forms play, in order, one per beat; the camera's shots; where the form sits on screen */
   private seq: number[];
@@ -471,9 +477,15 @@ export class Studio {
     this.camPos.copy(this.orbit(this.shots[0], 7));
     this.resize();
     window.addEventListener('pointermove', this.onPointer, { passive: true });
+    for (const type of INPUTS) window.addEventListener(type, this.onInput, { passive: true });
   }
 
+  private onInput = () => {
+    this.lastInput = performance.now();
+  };
+
   private onPointer = (e: PointerEvent) => {
+    this.lastInput = performance.now();
     this.pointer.set((e.clientX / window.innerWidth) * 2 - 1, (e.clientY / window.innerHeight) * 2 - 1);
     // only a mouse hovers; a touch would leave the logo stuck in its hover
     if (e.pointerType === 'mouse') this.mouse.set(e.clientX, e.clientY);
@@ -591,9 +603,20 @@ export class Studio {
   private frame = (now: number) => {
     if (!this.running) return;
     this.raf = requestAnimationFrame(this.frame);
+    // the entrance, the first big hop and a scroll between beats stay fluid even with nobody touching the page
+    const busy =
+      this.reveal.grow < 0.999 || this.reveal.draw < 0.999 || Math.abs(this.shown - this.beat) > 0.001 || (this.formedAt !== null && this.time - this.formedAt < 2);
+    if (!shouldDraw(now, this.lastInput, this.lastDraw, busy)) return;
+    const pacing = !busy && now - this.lastInput >= IDLE_AFTER_MS;
+    this.lastDraw = now;
     const dt = Math.min(0.05, Math.max(0, (now - this.last) / 1000));
     this.last = now;
-    this.adapt(dt);
+    // 30 a second on purpose isn't a GPU falling behind: the frame-rate check starts its samples again afterwards
+    if (!pacing) this.adapt(dt);
+    else {
+      this.perf.n = Math.min(this.perf.n, 20);
+      this.perf.sum = 0;
+    }
     this.shown = this.reduced ? this.beat : damp(this.shown, this.beat, 6, dt);
     const b = this.shown;
     const { a, n, m } = this.shapes(b);
@@ -754,6 +777,7 @@ export class Studio {
     this.destroyed = true;
     this.stop();
     window.removeEventListener('pointermove', this.onPointer);
+    for (const type of INPUTS) window.removeEventListener(type, this.onInput);
     this.trash.forEach((t) => t.dispose());
     // the composer frees only its own targets, not the passes added to it (bloom holds a chain of render targets)
     this.composer.passes.forEach((p) => p.dispose());

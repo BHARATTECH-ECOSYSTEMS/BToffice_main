@@ -380,10 +380,40 @@ main:focus {
   display: none;
 }
 
-/* Off screen, a section's animations hold still (marked by Layout in App.tsx). */
-[data-offscreen] *,
-[data-offscreen] *::before,
-[data-offscreen] *::after {
+/* Off screen, a section's endless animations hold still (Layout in App.tsx marks the section). Only these are named:
+   a catch-all [data-offscreen] * restyled every element of a section (up to 540, 26 ms) each time it crossed the
+   screen's edge. A new endless animation goes on this list too (tests/site/speed.test.ts checks). */
+[data-offscreen] .footer-connect:hover::after,
+[data-offscreen] .careers-glow i,
+[data-offscreen] .careers-count em i::after,
+[data-offscreen] .opening-spark::after,
+[data-offscreen] .marquee-track,
+[data-offscreen] .typewriter::after,
+[data-offscreen] .ui-live i,
+[data-offscreen] .flow-edge-live,
+[data-offscreen] .beam-orbit.is-inner,
+[data-offscreen] .beam-light,
+[data-offscreen] .beams-pulse,
+[data-offscreen] .art-0 .ring,
+[data-offscreen] .art-0 .orbit-dot,
+[data-offscreen] .art-1 .route,
+[data-offscreen] .art-2 .link,
+[data-offscreen] .ping,
+[data-offscreen] .art-3 .contour,
+[data-offscreen] .art-4 .sweep,
+[data-offscreen] .art-4 .blip,
+[data-offscreen] .art-5 .die,
+[data-offscreen] .art-5 .pin,
+[data-offscreen] .svc-glass::before,
+[data-offscreen] .notfound-num span,
+[data-offscreen] .p-del[data-going],
+[data-offscreen] .p-logout:not([data-leaving]):hover .p-logout-fig,
+[data-offscreen] .svc-caption__hint::before,
+[data-offscreen] .scene-learn .is-ping,
+[data-offscreen] .cover .cv-ping,
+[data-offscreen] .faq-ask-glow i,
+[data-offscreen] .faq-mark-thread,
+[data-offscreen] .faq-mark-origin {
   animation-play-state: paused !important;
 }
 
