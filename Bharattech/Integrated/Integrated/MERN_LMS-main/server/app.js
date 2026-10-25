@@ -6,7 +6,6 @@ import mongoSanitize from "express-mongo-sanitize";
 import hpp from "hpp";
 import path from "path";
 import { fileURLToPath } from "url";
-import { stripeWebhooks } from "./controllers/webhooks.js";
 import educatorRouter from "./routes/educatorRoutes.js";
 import courseRouter from "./routes/courseRoutes.js";
 import userRouter from "./routes/userRoutes.js";
@@ -116,13 +115,6 @@ const sanitizeMiddleware = (req, res, next) => {
 
 app.use(sanitizeMiddleware);
 app.use(hpp({ whitelist: ["sort", "page", "limit"] }));
-
-// === STRIPE WEBHOOK (raw body) ===
-app.post(
-  "/api/stripe",
-  express.raw({ type: "application/json" }),
-  stripeWebhooks
-);
 
 // === HEALTH CHECK ===
 app.get("/health", (req, res) => {

@@ -54,8 +54,6 @@ export async function startApp() {
   // Set on purpose: a token signed with it must still be refused.
   process.env.JWT_SECRET = LOCAL_SECRET;
   process.env.NODE_ENV = "test";
-  // Stripe refuses to load without a key; enrolling never calls it.
-  process.env.STRIPE_SECRET_KEY = "sk_test_placeholder";
 
   await mongoose.connect(testDatabaseUri(), { dbName: "lms_test" });
   const { default: app } = await import("../app.js");
