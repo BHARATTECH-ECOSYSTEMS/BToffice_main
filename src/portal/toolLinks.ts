@@ -26,7 +26,7 @@ const SETTINGS: Record<keyof ToolLinks, string> = {
 
 /**
  * Opens the BharatTech desktop app. Deliberately without a sign-in token: the company frontend puts the token in this
- * link, where the operating system can keep or log it; the app signs in by itself instead.
+ * link, where the operating system can keep or log it. The app doesn't read the link or sign in at all (it only opens).
  */
 export const CODER_APP_URL = 'bharattech://open?source=portal';
 

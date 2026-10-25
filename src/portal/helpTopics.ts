@@ -195,9 +195,9 @@ const CONNECTED_HELP: HelpGroup[] = [
 
 // When courses live in the LMS Platform (owner's 3B), its answers replace the ones about the portal's own Learning pages.
 const PLATFORM_STUDENT =
-  'Courses are in the LMS Platform, which opens in a new tab when you choose Learning in the top bar. Sign in there with your work email and your portal password. Every course is free: open one and enroll; lectures marked Preview are open before that. The LMS Platform keeps your enrollments and progress.';
+  'Courses are in the LMS Platform, which opens in a new tab, already signed in as you, when you choose Learning in the top bar. If it ever asks you to sign in, use your work email (not your Employee ID) and your portal password. Every course is free: open one and enroll; lectures marked Preview are open before that. The LMS Platform keeps your enrollments and progress.';
 const PLATFORM_MANAGER =
-  'Courses are in the LMS Platform, which opens in a new tab when you choose Learning in the top bar. Sign in there with your work email and your portal password. Every course is free. To publish one, choose View as Educator, then Add Course: it goes live at once. Courses can’t be changed or removed there yet, so check a course before you publish it.';
+  'Courses are in the LMS Platform, which opens in a new tab, already signed in as you, when you choose Learning in the top bar. If it ever asks you to sign in, use your work email (not your Employee ID) and your portal password. Every course is free. To publish one, choose View as Educator, then Add Course: it goes live at once. Courses can’t be changed or removed there yet, so check a course before you publish it.';
 
 function onPlatform(t: HelpTopic, href: string): HelpTopic {
   if (t.q === 'How do courses work?')

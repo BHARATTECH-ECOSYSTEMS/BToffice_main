@@ -77,17 +77,20 @@ const RESET_LINK_GONE = 'That reset link has expired or was already used. Ask fo
 const RESET_LINK_BROKEN = 'That reset link isn’t complete. Ask for a new one here.';
 const RESET_SAVE_FAILED = 'We couldn’t reach the sign-in service, so your password wasn’t changed. Try again in a moment.';
 const RESET_DONE = 'Your password was changed, and you were signed out everywhere else. Sign in with the new one.';
-// the backend limits password tries per address (429): a short wait, not an outage
-const TOO_MANY_TRIES = 'Too many tries from here right now. Wait a minute and try again.';
+// the backend limits password tries per address (429), counted over 15 minutes: a wait, not an outage
+const TOO_MANY_TRIES = 'Too many tries from here right now. Wait a few minutes and try again.';
+const INVITE_EXPIRED = 'This invite has expired: invites last 12 hours. Ask your admin to send it again from People.';
 const SIGN_IN_FAILED: Record<Exclude<SignInResult, { ok: true }>['reason'], string> = {
   credentials: 'Those details don’t match. Check your email or Employee ID and password, and try again.',
   'set-password': 'Your account still needs a new password before you can sign in. Please ask your administrator to help you finish setting it.',
   'not-set-up': 'Your account isn’t fully set up yet. Ask an admin to finish it, then sign in again.',
-  busy: 'Too many sign-in attempts from here right now. Wait a minute and try again.',
+  'invite-expired': INVITE_EXPIRED,
+  busy: 'Too many sign-in attempts from here right now. Wait a few minutes and try again.',
   unavailable: 'We couldn’t reach the sign-in service. Check your connection and try again in a moment.',
 };
 const SETUP_FAILED = {
   credentials: 'Your temporary password didn’t work any more. Go back and sign in again with the one from your invite email.',
+  'invite-expired': INVITE_EXPIRED,
   busy: TOO_MANY_TRIES,
   unavailable: 'We couldn’t finish setting up your account. Check your connection and try again in a moment.',
 };

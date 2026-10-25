@@ -153,9 +153,9 @@ test('pending invites become rows with the role read safely and the date as a nu
     null,
   ]);
   assert.deepEqual(rows, [
-    { id: 'kc-1', name: 'New Hire', email: 'new.hire@example.test', role: 'Employee', invitedAt: Date.parse('2026-10-20T10:00:00.000Z') },
-    { id: 'kc-2', name: 'boss@example.test', email: 'boss@example.test', role: 'Admin', invitedAt: null },
-    { id: 'kc-3', name: 'Odd', email: 'odd@example.test', role: 'Employee', invitedAt: null },
+    { id: 'kc-1', name: 'New Hire', email: 'new.hire@example.test', role: 'Employee', invitedAt: Date.parse('2026-10-20T10:00:00.000Z'), expired: false },
+    { id: 'kc-2', name: 'boss@example.test', email: 'boss@example.test', role: 'Admin', invitedAt: null, expired: false },
+    { id: 'kc-3', name: 'Odd', email: 'odd@example.test', role: 'Employee', invitedAt: null, expired: false },
   ]);
   assert.throws(() => toPendingInvites({ message: 'nope' }), (e: unknown) => e instanceof ApiError && e.kind === 'unavailable');
 });

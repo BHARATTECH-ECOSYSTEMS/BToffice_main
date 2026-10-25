@@ -393,7 +393,7 @@ function PhonesForm({ saved: initial }: { saved: AccountProfile }) {
 const CHANGE_FAILED: Record<'wrong-current' | 'signed-out' | 'busy' | 'unavailable', string> = {
   'wrong-current': 'Your current password is incorrect. After 5 wrong tries your account is locked for a minute or more.',
   'signed-out': 'Your sign-in has ended. Sign out and sign in again, then try once more.',
-  busy: "Too many tries right now, so your password wasn't changed. Wait a minute and try again.",
+  busy: "Too many tries right now, so your password wasn't changed. Wait a few minutes and try again.",
   unavailable: "We couldn't reach the server, so your password wasn't changed. Try again in a moment.",
 };
 // long enough to read the confirmation before the portal closes for the new sign-in

@@ -206,7 +206,8 @@ export interface Tool {
   navLabel?: string;
   category: string;
   body: string;
-  tags: [string, string];
+  /** One or two short facts under the buttons. */
+  tags: [string] | [string, string];
   url: string;
   icon: PortalIconName;
   /** The main button's label on its Resources card ("Open" or "Open Platform"). */
@@ -228,7 +229,7 @@ const web = (icon: PortalIconName) => ({ label: 'Direct Web Access', url: '', ic
 const BASE_TOOLS: Tool[] = [
   { id: 'eoffice', name: 'e-Office', category: 'Virtual office', body: 'The online office the team works from during the day.', tags: ['Daily check-in', 'Team rooms'], url: '', icon: 'home', openLabel: 'Open' },
   { id: 'huly', name: 'Huly.io', navLabel: 'Workspace', category: 'Team workspace', body: 'Projects, chat and documents for the whole team in one place.', tags: ['Projects & chat', 'Documents'], url: '', icon: 'users', inNav: true, openLabel: 'Open', secondary: web('users') },
-  { id: 'coder', name: 'Coder', category: 'Tool', body: 'Open the BharatTech coding workspace.', tags: ['Windows', 'macOS'], url: '', icon: 'code', openLabel: 'Open', caption: "Don't have an app yet?", secondary: { label: 'Install / Update app', url: '', icon: 'download' } },
+  { id: 'coder', name: 'Coder', category: 'Tool', body: 'Open the BharatTech coding workspace. Its AI needs an AI key: ask your admin for one.', tags: ['Windows'], url: '', icon: 'code', openLabel: 'Open', caption: "Don't have an app yet?", secondary: { label: 'Install / Update app', url: '', icon: 'download' } },
   { id: 'filesync', name: 'File Transfer', category: 'Files', body: 'Send large files with WeTransfer, a public service outside the company.', tags: ['Large files', 'Public service'], url: '', icon: 'transfer', inNav: true, navOnly: true },
   { id: 'plane', name: 'Plane', navLabel: 'Projects (Plane)', category: 'Project management', body: 'Agile project management with issues, cycles and modules.', tags: ['Kanban & cycles', 'SSO ready'], url: '', icon: 'kanban', inNav: true, caption: 'Self-Hosted Workspace Suite', secondary: web('kanban') },
   { id: 'securo', name: 'Securo', navLabel: 'Securo (Finance)', category: 'Personal finance', body: 'Track accounts, spending, budgets and transactions.', tags: ['Accounts & budgets', 'SSO ready'], url: '', icon: 'shield', inNav: true, caption: 'Self-Hosted Finance Suite', secondary: web('shield') },

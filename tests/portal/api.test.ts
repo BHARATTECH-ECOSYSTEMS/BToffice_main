@@ -216,6 +216,6 @@ test('a refusal for too many requests says to wait, wherever it shows', async ()
   const { BUSY_MESSAGE } = await import('../../src/portal/api');
   const { eventFailedMessage } = await import('../../src/portal/events');
   const { learningFailedMessage } = await import('../../src/portal/learning');
-  assert.match(BUSY_MESSAGE, /wait a minute/i);
+  assert.match(BUSY_MESSAGE, /wait a few minutes/i);
   for (const message of [eventFailedMessage(new ApiError('busy')), learningFailedMessage(new ApiError('busy'))]) assert.equal(message, BUSY_MESSAGE);
 });

@@ -224,8 +224,10 @@ export interface PendingInvite {
   name: string;
   email: string;
   role: AccountRole;
-  /** ms, or null when Keycloak didn't say */
+  /** When it was last emailed (ms), or null when Keycloak didn't say */
   invitedAt: number | null;
+  /** Past its 12 hours: the emailed password no longer works until it's sent again. */
+  expired: boolean;
 }
 
 export function toPendingInvites(raw: unknown): PendingInvite[] {
@@ -236,7 +238,7 @@ export function toPendingInvites(raw: unknown): PendingInvite[] {
     const email = text(p.email);
     if (!id || !email) return [];
     const at = typeof p.invitedAt === 'string' ? Date.parse(p.invitedAt) : NaN;
-    return [{ id, name: text(p.name) ?? email, email, role: readAccountRole(p.role), invitedAt: Number.isNaN(at) ? null : at }];
+    return [{ id, name: text(p.name) ?? email, email, role: readAccountRole(p.role), invitedAt: Number.isNaN(at) ? null : at, expired: p.expired === true }];
   });
 }
 

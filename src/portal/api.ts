@@ -9,7 +9,7 @@ import { auth, authConfig } from './auth';
 export type ApiErrorKind = 'signed-out' | 'forbidden' | 'not-found' | 'conflict' | 'bad-request' | 'busy' | 'unavailable';
 
 /** What every page says when the backend asks to slow down (429): nothing is wrong, it just needs a moment. */
-export const BUSY_MESSAGE = 'Too many requests right now. Wait a minute and try again.';
+export const BUSY_MESSAGE = 'Too many requests right now. Wait a few minutes and try again.';
 
 export class ApiError extends Error {
   kind: ApiErrorKind;

@@ -395,7 +395,10 @@ function PendingInvites({
                   <td>
                     <Badge kind={roleBadge(p.role)}>{roleLabel(p.role)}</Badge>
                   </td>
-                  <td>{p.invitedAt ? formatDate(localDay(p.invitedAt)) : <span className="p-dim">-</span>}</td>
+                  <td>
+                    {p.invitedAt ? formatDate(localDay(p.invitedAt)) : <span className="p-dim">-</span>}
+                    {p.expired && <span className="p-due-flag is-late">Expired: send again</span>}
+                  </td>
                   <td className="is-end p-row-actions">
                     <button type="button" className={btnClass('ghost', { small: true })} disabled={busy === p.id} onClick={() => void sendAgain(p)}>
                       <BtnLabel icon="refresh">

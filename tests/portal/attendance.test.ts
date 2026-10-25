@@ -160,7 +160,7 @@ test("a refusal shows the backend's own words; other failures a plain explanatio
   assert.equal(attendanceFailedMessage(new ApiError('bad-request', 'Both times must be on 2026-10-23 (India time).')), 'Both times must be on 2026-10-23 (India time).');
   assert.match(attendanceFailedMessage(new ApiError('forbidden', 'forbidden')), /role/i);
   assert.match(attendanceFailedMessage(new ApiError('unavailable')), /nothing was saved/i);
-  assert.match(attendanceFailedMessage(new ApiError('busy')), /wait a minute/i);
+  assert.match(attendanceFailedMessage(new ApiError('busy')), /wait a few minutes/i);
 });
 
 test('Help says check-ins are saved, and explains attendance to everyone and corrections to admins', () => {
