@@ -4,6 +4,8 @@ import { Brand } from './ui';
 import { useOpenLogin } from './Login';
 import { EMAIL_HREF, INSTAGRAM_URL, LINKEDIN_URL } from '../content';
 import { VerifyRequestButton } from './VerifyRequest';
+import { useLaunch } from './launch/useLaunch';
+import type { Net } from './launch/launchPlan';
 
 const COLS: { title: string; links: { label: string; to?: string; login?: boolean }[] }[] = [
   {
@@ -36,9 +38,9 @@ const COLS: { title: string; links: { label: string; to?: string; login?: boolea
 const LINKEDIN_ICON = <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.02-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.13 2.06 2.06 0 0 1 0 4.13zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.73v20.54C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.73C24 .77 23.2 0 22.22 0z" />;
 
 // The CONNECT pill's icons (.footer-connect in base.css), in the reel's order; each glows in its own colour on
-// hover (data-net). Only those with an `href` are links: GitHub, X, YouTube and Discord are shown as icons only
-// until the company has accounts there.
-type Social = { net: string; label: string; href?: string; icon: ReactNode };
+// hover (data-net). Only those with an `href` are links: GitHub, X, YouTube and Discord are buttons that play the
+// launch and say "coming soon" until the company has accounts there.
+type Social = { net: Net; label: string; href?: string; icon: ReactNode };
 const SOCIALS: Social[] = [
   {
     net: 'github',
@@ -115,6 +117,9 @@ function useFooterSeen() {
 export function Footer() {
   const openLogin = useOpenLogin();
   const { ref, seen } = useFooterSeen();
+  // every icon opens with an app-launch animation (launch/launchPlan.ts); the scene is made while the
+  // mouse is on the pill, so a click draws at once
+  const { prepare, launch } = useLaunch();
   return (
     // its parts rise in one after another when it comes into view (base.css)
     <footer ref={ref} className="footer" data-in={seen || undefined}>
@@ -127,7 +132,7 @@ export function Footer() {
             <p>Building the operating system for intelligence. Made in Bharat.</p>
             {/* The reel's "connect" pill: it spells CONNECT; hovering it flips the letters one after another into the
                 icons, and back on leave (base.css). Touch screens, which can't hover, always show the icons. */}
-            <nav className="footer-connect" aria-label="Follow and contact us">
+            <nav className="footer-connect" aria-label="Follow and contact us" onPointerEnter={() => prepare()}>
               {[...CONNECT].map((ch, i) => {
                 const s = SOCIALS[i];
                 const inner = (
@@ -141,20 +146,20 @@ export function Footer() {
                     {/* the name that pops up above the icon; on a link it is also the accessible name */}
                     <span className="footer-connect-tip">
                       {s.label}
-                      {s.href && <span className="sr-only"> (opens in a new tab)</span>}
+                      <span className="sr-only">{s.href ? ' (opens in a new tab)' : ' (coming soon)'}</span>
                     </span>
                   </>
                 );
                 const style = { '--k': i } as CSSProperties;
                 return s.href ? (
-                  <a key={s.net} className="footer-connect-slot" style={style} data-net={s.net} href={s.href} target="_blank" rel="noopener noreferrer">
+                  <a key={s.net} className="footer-connect-slot" style={style} data-net={s.net} href={s.href} target="_blank" rel="noopener noreferrer" onClick={(e) => launch(e, s.net, s.label)}>
                     {inner}
                   </a>
                 ) : (
-                  // not a link yet: an icon only, kept out of the tab order and away from screen readers
-                  <span key={s.net} className="footer-connect-slot is-icon-only" style={style} data-net={s.net} aria-hidden="true">
+                  // no address yet: the launch ends on a "coming soon" note instead of a tab
+                  <button key={s.net} type="button" className="footer-connect-slot" style={style} data-net={s.net} onClick={(e) => launch(e, s.net, s.label)}>
                     {inner}
-                  </span>
+                  </button>
                 );
               })}
             </nav>
