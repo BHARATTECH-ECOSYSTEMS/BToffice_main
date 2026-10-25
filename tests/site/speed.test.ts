@@ -57,3 +57,21 @@ test("the hero's own slow-machine check doesn't run while it draws at 30 on purp
   assert.match(studio, /shouldDraw\(/);
   assert.match(studio, /if \(!pacing\) this\.adapt\(dt\)/);
 });
+
+// The small round logo (top bar, back-to-top orb) keeps drawing while the page scrolls: frozen mid-thread on every
+// scroll, then jumping on, it read as lag (owner's B, 2026-10-25). The big marks inside sections still hold still.
+test('while scrolling, the top-bar and back-to-top logo keep moving; the other endless loops still pause', () => {
+  const base = styles('base.css');
+  const scrollRules = rules(base).filter(([sel]) => sel.includes('[data-scrolling]'));
+  const paused = scrollRules.filter(([, decl]) => /animation-play-state:\s*paused/.test(decl));
+  const running = scrollRules.filter(([, decl]) => /animation-play-state:\s*running/.test(decl));
+  assert.ok(paused.some(([sel]) => sel.includes('.faq-mark-thread')), 'the marks inside sections no longer pause');
+  assert.ok(paused.some(([sel]) => sel.includes('.beam-light')), 'the other loops no longer pause');
+  const resumed = running.map(([sel]) => sel).join(' ');
+  for (const where of ['.nav-orb', '.to-top-well']) assert.ok(resumed.includes(where), `${where}'s logo still pauses while scrolling`);
+  for (const part of ['.faq-mark-thread', '.faq-mark-origin']) assert.ok(resumed.includes(part), `${part} still pauses in the small logo`);
+  // a hidden back-to-top orb keeps its own pause (.to-top:not([data-shown]) *)
+  assert.ok(resumed.includes('.to-top[data-shown]'), 'the hidden back-to-top orb would draw while scrolling');
+  // the resume rule must come after the pause rule, which it ties with
+  assert.ok(base.lastIndexOf('animation-play-state: running') > base.indexOf('[data-scrolling]'), 'the resume rule comes before the pause');
+});

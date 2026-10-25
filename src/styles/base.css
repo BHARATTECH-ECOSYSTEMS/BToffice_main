@@ -445,6 +445,12 @@ main:focus {
 [data-scrolling] .svc-caption__hint::before {
   animation-play-state: paused !important;
 }
+/* …except the small round logo in the top bar and the back-to-top orb: frozen mid-thread on every scroll, then
+   jumping on, it read as lag. Each copy is small and on its own layer (.faq-mark), so drawing it while scrolling is
+   cheap; the bigger marks inside sections still pause. Only a shown orb: a hidden one keeps its pause below. */
+[data-scrolling] :is(.nav-orb, .to-top[data-shown] .to-top-well) :is(.faq-mark-thread, .faq-mark-origin) {
+  animation-play-state: running !important;
+}
 
 /* The nav glance and the back-to-top orb sit outside #main, so they get the same pause while they are hidden. */
 .nav-peek:not([data-open]) *,
