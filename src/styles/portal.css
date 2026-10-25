@@ -3581,8 +3581,11 @@ a.p-cal-item-title {
   margin-top: auto;
 }
 .p-thumb {
+  /* the cover is clipped to the frame: an image taller than it spilled over the course title below */
+  position: relative;
   display: grid;
   place-items: center;
+  overflow: hidden;
   border-radius: var(--r-sm);
   color: var(--tone);
   background:
@@ -3961,6 +3964,8 @@ a.p-cal-item-title {
   margin: 4px 0 0;
 }
 .p-thumb img {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -5252,7 +5257,7 @@ html:has(.portal),
   color: var(--ink-soft);
 }
 
-/* ── Smaller screens (desktop comes first; phones are not designed yet) ── */
+/* ── Smaller screens (desktop comes first; tablets and phones follow further down) ── */
 
 @media (max-width: 1100px) {
   .p-stats {
@@ -5303,8 +5308,293 @@ html:has(.portal),
 }
 @media (max-width: 560px) {
   .p-stats,
-  .p-stats.is-two {
+  .p-stats.is-two,
+  .p-stats.is-three {
     grid-template-columns: 1fr;
+  }
+}
+
+/* ── Tablets and phones (roadmap step 20, Part 2). Everything here is below desktop widths only. ── */
+
+/* the phone menu (PortalMenu in PortalLayout.tsx) exists only on phones (the :has one outranks the top-bar
+   menus' two-column rule, .p-menu:has(...)) */
+.p-burger,
+.p-sheet,
+.p-sheet:has(.p-menu-group + .p-menu-group) {
+  display: none;
+}
+@media (max-width: 1024px) {
+  /* two columns; the task board takes a full row under the cards, with its own scroll instead of matching rows */
+  .p-bento {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+  }
+  .p-bento > .p-board,
+  .p-bento > .p-board-col,
+  .p-bento > .p-cal {
+    grid-column: 1 / -1;
+    grid-row: auto;
+    contain: none;
+  }
+  .p-bento > .p-board,
+  .p-board-col > .p-board {
+    max-height: 520px;
+  }
+  /* a top-bar menu never wider than the screen */
+  .p-menu {
+    max-width: calc(100vw - 32px);
+  }
+  /* tables keep each value on one line and scroll inside their card; phones get cards instead (below). The box
+     ignores its table's width, or it would grow with it and widen the page instead of scrolling; positioned, so the
+     absolutely placed bits inside its buttons (screen-reader text, the "Left" chip) stay inside it too. */
+  .p-table-wrap {
+    position: relative;
+    contain: inline-size;
+  }
+  .p-table td {
+    white-space: nowrap;
+  }
+  /* a card's title and its buttons share a line only while they fit; buttons never shrink below their label */
+  .p-card-head,
+  .p-cal-tools,
+  .p-file-foot,
+  .p-file-actions {
+    flex-wrap: wrap;
+  }
+  :is(.p-card-head, .p-cal-tools, .p-file-actions) .btn {
+    flex: none;
+  }
+  /* the Learning pages' own tabs scroll sideways when they don't fit */
+  .p-lms-nav {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .p-lms-tab {
+    flex: none;
+  }
+}
+@media (max-width: 760px) {
+  /* the page keys don't fit: a menu button opens them all, and the theme choices move into it */
+  .p-top .nav-links,
+  .p-top::after,
+  .p-top .nav-theme,
+  .p-top > .p-menu:not(.p-sheet) {
+    display: none;
+  }
+  /* the profile button and the bell share the site's login-button style, which the site hides on phones */
+  .p-top .nav-cta {
+    display: inline-flex;
+  }
+  /* brand and buttons on one row */
+  .p-top {
+    flex-wrap: nowrap;
+  }
+  /* the profile menu and the notifications hang from the whole bar instead of their button, full width, so they
+     don't run off the screen's left edge */
+  .p-user,
+  .p-notify {
+    position: static;
+  }
+  .p-top .p-top-menu {
+    left: 0;
+    right: 0;
+    width: auto;
+  }
+  /* the dashboard's four figures in two rows of two, each under its label */
+  .p-figures {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 18px;
+  }
+  .p-figures > div {
+    justify-items: start;
+  }
+  /* a course's chapters and lectures: the title takes the line, its count, time and Watch button go under it,
+     lined up with the title (past the 16px icon and its 10px gap) */
+  .p-chapter-title button,
+  .p-lectures li {
+    flex-wrap: wrap;
+    row-gap: 2px;
+    padding-block: 10px;
+  }
+  .p-chapter-title button {
+    padding-inline: 14px;
+  }
+  .p-lectures li {
+    padding-inline: 14px;
+  }
+  .p-chapter-name,
+  .p-lecture-title {
+    flex: 1 1 calc(100% - 26px);
+  }
+  .p-chapter-title button > .p-dim,
+  .p-lectures li > :nth-child(3) {
+    margin-left: 26px;
+  }
+  /* the Learning educator pages' heading: the button goes under the title, as the other pages' headings do */
+  .p-edu-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  /* a case file's decision stamp moves under its title */
+  .p-file-head {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .p-file-head > :nth-child(n + 3) {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .p-burger {
+    position: relative;
+    display: block;
+    flex: none;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: rgb(20 19 15 / 0.05);
+  }
+  [data-theme='dark'] .p-burger {
+    background: rgb(255 255 255 / 0.08);
+  }
+  .p-burger span {
+    position: absolute;
+    left: 15px;
+    right: 15px;
+    height: 1.6px;
+    border-radius: 2px;
+    background: var(--ink);
+    transition: transform 0.5s var(--ease-expo);
+  }
+  .p-burger span:first-child {
+    top: 19px;
+  }
+  .p-burger span:last-child {
+    top: 25px;
+  }
+  .p-burger[aria-expanded='true'] span:first-child {
+    transform: translateY(3px) rotate(45deg);
+  }
+  .p-burger[aria-expanded='true'] span:last-child {
+    transform: translateY(-3px) rotate(-45deg);
+  }
+  /* the top bar's own menus, full width under the bar */
+  .p-sheet,
+  .p-sheet:has(.p-menu-group + .p-menu-group) {
+    display: block;
+    left: 0;
+    right: 0;
+    width: auto;
+    min-width: 0;
+    max-height: calc(100dvh - 130px);
+  }
+  .p-sheet .p-menu-link {
+    min-height: 46px;
+  }
+  .p-sheet-theme {
+    padding: 0 8px 6px;
+  }
+  .p-sheet-theme .segmented {
+    display: flex;
+  }
+  .p-sheet-theme .segmented button {
+    flex: 1;
+    justify-content: center;
+  }
+
+  /* one column */
+  .p-bento,
+  .p-settings,
+  .p-set-row,
+  .p-desk,
+  .p-cal-body,
+  .p-detail,
+  .p-player,
+  .p-comm-steps,
+  .p-comm-wall-layout[data-aside],
+  .p-comm-join,
+  .p-comm-join.is-joined,
+  .p-file-facts.p-task-facts,
+  .p-modal-foot:has(> :nth-child(3)) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .p-desk-filters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  /* Settings: its sections side by side above the card; the open one is dark, as the sliding pill is on desktop */
+  .p-set-nav {
+    position: static;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+  .p-set-pill {
+    display: none;
+  }
+  .p-set-tab {
+    justify-content: center;
+  }
+  .p-set-tab[aria-current='page'] {
+    background: var(--ink);
+  }
+}
+/* narrow phones: the brand is its glass mark alone (its link keeps the name for screen readers), so the profile
+   button, the bell and the menu fit beside it */
+@media (max-width: 420px) {
+  .p-top .brand-word {
+    display: none;
+  }
+}
+/* Tables: each row is a small card, each value under its column's name (the names come from tableLabels.ts) */
+@media (max-width: 640px) {
+  .p-table-wrap {
+    margin: 0;
+  }
+  .p-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .p-table,
+  .p-table tbody,
+  .p-table tr,
+  .p-table td {
+    display: block;
+  }
+  .p-table tbody tr {
+    padding: 10px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .p-table tbody tr:last-child {
+    border-bottom: 0;
+  }
+  .p-table td {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px 12px;
+    padding: 5px 0;
+    border-bottom: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
+  }
+  /* the name takes the left and pushes the value's parts (a name and its ID, say) together on the right */
+  .p-table td[data-label]::before {
+    margin-right: auto;
+    content: attr(data-label);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--muted);
+  }
+  .p-table td[colspan] {
+    justify-content: center;
+    text-align: center;
   }
 }
 /* ── Community (pages/Community.tsx): former colleagues by stream, and the referrals shared with them ── */

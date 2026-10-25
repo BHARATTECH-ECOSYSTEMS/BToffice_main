@@ -2,12 +2,11 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from 'react-router';
 import { motion, useReducedMotion } from 'motion/react';
 import { Arrow, Brand, BtnText, ThreadMark, toneStyle } from '../components/ui';
-import { keyAt, KeyLabel, keyPointer, MotionLink, OPENING, useKeyHighlight, type LinkFx } from '../components/navKeys';
+import { keyAt, KeyLabel, keyPointer, MotionLink, OPENING, useKeyHighlight } from '../components/navKeys';
 import { useGlassTilt } from '../components/useGlassTilt';
 import { useNavBubble } from '../components/useNavBubble';
 import { usePointerBloom } from '../components/usePointerBloom';
-import { ThemeButton } from '../components/ThemeSwitch';
-import type { HueName } from '../gl/palette';
+import { ThemeButton, ThemeChoices } from '../components/ThemeSwitch';
 import { useApplyTheme } from '../useApplyTheme';
 import { auth } from './auth';
 import { api } from './api';
@@ -16,23 +15,11 @@ import { CERTIFICATE_TYPES, TOOLS, type PortalIconName } from './data';
 import { didSignOut, endSession, managesPortal, NOTIFICATION_KINDS, ROLE_NAME, setMutedNotifications, setRole, useSession, type NotificationKind, type Role } from './session';
 import { HelpModal } from './Help';
 import { useMyPhoto } from './myPhoto';
+import { menuGroups, type TopItem } from './portalMenu';
+import { useTableLabels } from './tableLabels';
 import { formatDate, PortalDataProvider, usePortal } from './store';
 import { initials, PIcon } from './ui';
 import '../styles/portal.css';
-
-interface MenuLink {
-  to: string;
-  label: string;
-  icon: PortalIconName;
-  adminOnly?: boolean;
-  /** An external tool's address: the link opens the tool itself, in a new tab. */
-  href?: string;
-}
-
-/** A top-bar key: either a page, or a menu of pages grouped under small headings. Like the site nav's links, each
- *  key has a colour and its own hover effect. */
-type TopKey = { key: string; label: string; tone: HueName; fx: LinkFx; adminOnly?: boolean };
-type TopItem = (TopKey & { to: string }) | (TopKey & { sections: { heading: string; links: MenuLink[] }[] });
 
 const TOP: TopItem[] = [
   { key: 'overview', label: 'Overview', to: '/portal', tone: 'saffron', fx: 'drop' },
@@ -140,6 +127,9 @@ export function PortalLayout() {
   const bubbleRef = useRef<HTMLSpanElement>(null);
   useNavBubble(topRef, bubbleRef, TOP_BUTTONS);
   useApplyTheme();
+  // phones show each table row as a card; its cells need their column names (tableLabels.ts)
+  const mainRef = useRef<HTMLElement>(null);
+  useTableLabels(mainRef);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -178,10 +168,11 @@ export function PortalLayout() {
               <ThemeButton />
               <UserMenu name={session.name} email={session.email} role={session.role} photo={photo} onHelp={() => setHelpOpen(true)} onSignOut={signOut} />
               <NotifyMenu muted={session.mutedNotifications ?? []} />
+              <PortalMenu items={items} />
             </div>
           </motion.header>
           {helpOpen && <HelpModal onClose={() => setHelpOpen(false)} />}
-          <main id="portal-main" className="p-main" tabIndex={-1}>
+          <main id="portal-main" className="p-main" tabIndex={-1} ref={mainRef}>
             {/* keyed by page, so each page's cards rise in again when it opens */}
             <div className="p-page" key={pathname}>
               <Outlet />
@@ -354,6 +345,86 @@ function PillMenu({
         </div>
       ))}
     </div>
+  );
+}
+
+/**
+ * Phones (portal.css, max-width 760px): the row of page keys doesn't fit, so this button opens every page the person
+ * may reach in one panel under the bar, with the theme choices at its foot. It closes on a page change, on Escape
+ * (focus returns to the button) and on a press outside it.
+ */
+function PortalMenu({ items }: { items: TopItem[] }) {
+  const [open, setOpen] = useState(false);
+  const { pathname } = useLocation();
+  const button = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const groups = useMemo(() => menuGroups(items), [items]);
+
+  useEffect(() => setOpen(false), [pathname]);
+  useEffect(() => {
+    if (!open) return;
+    // the panel only turns visible a frame or two after opening (its reveal transition), and a hidden link can't
+    // take focus, so focus waits for it (about 20 frames at most)
+    let raf = 0;
+    const focusFirst = (tries: number) => {
+      const first = panel.current?.querySelector<HTMLElement>('a, button');
+      if (!first) return;
+      if (getComputedStyle(first).visibility === 'visible' || tries > 20) first.focus({ preventScroll: true });
+      else raf = requestAnimationFrame(() => focusFirst(tries + 1));
+    };
+    raf = requestAnimationFrame(() => focusFirst(0));
+    const away = (e: PointerEvent) => !panel.current?.contains(e.target as Node) && !button.current?.contains(e.target as Node) && setOpen(false);
+    const esc = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      button.current?.focus();
+    };
+    document.addEventListener('pointerdown', away);
+    document.addEventListener('keydown', esc);
+    return () => {
+      cancelAnimationFrame(raf);
+      document.removeEventListener('pointerdown', away);
+      document.removeEventListener('keydown', esc);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button ref={button} type="button" className="p-burger" aria-expanded={open} aria-controls="p-sheet" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen((o) => !o)}>
+        <span />
+        <span />
+      </button>
+      {/* always mounted, so it can animate closed too; hidden from pointer, keyboard and screen readers while closed */}
+      <nav id="p-sheet" ref={panel} className="p-menu p-sheet" aria-label="Portal pages" data-open={open || undefined} data-lenis-prevent>
+        {groups.map((g, n) => (
+          <div key={g.heading ?? 'pages'} className="p-menu-group">
+            {g.heading && <p className="p-menu-label">{g.heading}</p>}
+            <ul>
+              {g.links.map((l, k) => (
+                <li key={l.to} style={{ '--k': k + n } as CSSProperties}>
+                  {l.href ? (
+                    <a href={l.href} target="_blank" rel="noreferrer" className="p-menu-link">
+                      {l.icon && <PIcon name={l.icon} size={16} />}
+                      <span>{l.label}</span>
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                  ) : (
+                    <NavLink to={l.to} end={l.end} className="p-menu-link">
+                      {l.icon && <PIcon name={l.icon} size={16} />}
+                      <span>{l.label}</span>
+                    </NavLink>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        <div className="p-menu-group p-sheet-theme">
+          <p className="p-menu-label">Theme</p>
+          <ThemeChoices />
+        </div>
+      </nav>
+    </>
   );
 }
 

@@ -2006,9 +2006,9 @@ h3 {
 /* The seven keys need ~660px centred on the bar, which below ~1180px runs into the brand or the theme key and
    login button. There they sit a little closer (the lit link's dot keeps its room on the right) and are centred in
    the room between the brand and the bar's end rather than on the whole bar; relative, so the lit key's highlight
-   (.nav-hl) is still placed inside them. */
+   (.nav-hl) is still placed inside them. Only the site's nav: the portal's top bar has its own layout. */
 @media (min-width: 1025px) and (max-width: 1179px) {
-  .nav-links {
+  .nav .nav-links {
     position: relative;
     left: auto;
     transform: none;
@@ -2016,14 +2016,14 @@ h3 {
     gap: 3px;
   }
   .nav-end { margin-left: 0; }
-  .nav-links > a,
-  .nav-links > button { padding: 0 20px 0 11px; }
-  .nav-links i { right: 9px; }
+  .nav .nav-links > a,
+  .nav .nav-links > button { padding: 0 20px 0 11px; }
+  .nav .nav-links i { right: 9px; }
 }
 @media (min-width: 1025px) and (max-width: 1059px) {
-  .nav-links > a,
-  .nav-links > button { padding: 0 18px 0 10px; }
-  .nav-links i { right: 8px; }
+  .nav .nav-links > a,
+  .nav .nav-links > button { padding: 0 18px 0 10px; }
+  .nav .nav-links i { right: 8px; }
 }
 /* The burger can't open the sheet here, but a hidden sheet still adds ~560px to the nav's height, so the tuck
    (-100%) travelled ~650px and the bar jumped. With it gone the tuck is ~100px; the extra 40px clears the compact
