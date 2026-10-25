@@ -20,6 +20,8 @@ import './styles/research.css';
 import './styles/contact.css';
 import './styles/portal.css';
 import './styles/id-card.css';
+// the public site's phone rules, after every page's own styles so they can lift them
+import './styles/phone.css';
 
 /** A route whose component is loaded on its first visit: `name` is the component's export in the module. */
 const page =
