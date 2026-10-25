@@ -8,6 +8,8 @@ const userSchema = new mongoose.Schema(
     // Keycloak tokens carry no picture, so a first-time educator has none.
     imageUrl: { type: String, default: "" },
     enrolledCourses: [{ type: mongoose.Schema.Types.ObjectId, ref: "Course" }],
+    // set on an old record while its history moves to the person's new sign-in account (utils/currentUser.js)
+    movedTo: { type: String, index: true, sparse: true },
   },
   { timestamps: true }
 );
