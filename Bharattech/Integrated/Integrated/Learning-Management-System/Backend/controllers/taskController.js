@@ -152,6 +152,7 @@ function normalizeTask(task) {
     assignedRole: task.assignedRole,
     createdBy: task.createdBy || "subadmin",
     dueDate: task.dueDate,
+    completedAt: task.completedAt ?? null,
     priority: task.priority,
     projectFile,
     // older replies had a fileUrl; it now mirrors the project document

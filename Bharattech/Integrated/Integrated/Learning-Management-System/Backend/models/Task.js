@@ -19,6 +19,8 @@ const TaskSchema = new mongoose.Schema({
         default: "Normal"
     },
     dueDate: { type: Date },
+    // When the task was finished; set and cleared by the save hook below, never by a request
+    completedAt: { type: Date },
     // Project document (uploaded by subadmin when creating task). Either a web link (url) or a file kept in MongoDB
     // (fileId, in the "taskFiles" GridFS bucket: utils/taskFiles.js).
     projectFile: {
@@ -43,6 +45,13 @@ const TaskSchema = new mongoose.Schema({
     createdAt: { type: Date, default: Date.now },
     updatedAt: { type: Date, default: Date.now }
 }, { timestamps: true });
+
+// Every way a task reaches "completed" (status change, hand-in, the edit form, creating it done) goes through save, so
+// the finish time is kept here once: the first time it's finished, and gone again if it's reopened.
+TaskSchema.pre("save", function () {
+    if (this.status !== "completed") this.completedAt = undefined;
+    else if (!this.completedAt) this.completedAt = new Date();
+});
 
 // Indexes for faster queries
 TaskSchema.index({ assignedBy: 1 });
