@@ -288,6 +288,24 @@ export const EMPLOYEE_CHECKS = [
   { id: 'employment', label: 'Previous employment' },
   { id: 'references', label: 'References' },
 ];
+/**
+ * Connected, the employee also uploads education certificates (at least one of three) and a previous employer's
+ * letter; each file has the check it proves. Ids and checks match the backend's (models/Verification.js DOCUMENTS).
+ * The demo keeps only Aadhaar and PAN (ID_DOCS).
+ */
+export const VERIFICATION_FILES = [
+  ...ID_DOCS.map((d) => ({ ...d, check: d.id, required: true })),
+  { id: 'degree', check: 'education', label: 'Degree certificate', hint: 'Your highest degree or diploma.', required: false },
+  { id: 'marksheet', check: 'education', label: 'Final marksheet', hint: 'The final year’s marksheet of that degree.', required: false },
+  { id: 'class12', check: 'education', label: 'Class 12 marksheet', hint: 'Your 12th standard marksheet.', required: false },
+  { id: 'experience', check: 'employment', label: 'Relieving or experience letter', hint: 'From your last employer.', required: false },
+] as const;
+export type FileKind = (typeof VERIFICATION_FILES)[number]['id'];
+/** Checks that may be marked "Not applicable" with a reason (HR), or as a first job (the employee). */
+export const SKIPPABLE_CHECKS = ['employment'] as const;
+export type SkippableCheck = (typeof SKIPPABLE_CHECKS)[number];
+export const NA_REASON_MAX = 300;
+
 export const ID_DOC_MAX_MB = 1;
 export const ID_RETENTION_DAYS = 60;
 export interface IdDocument {

@@ -1,15 +1,34 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, BUSY_MESSAGE } from './api';
-import { COMPANY_CHECKS, EMPLOYEE_CHECKS, EMPLOYMENT_CHECKS, type Verification, type VerificationStatus } from './data';
+import {
+  COMPANY_CHECKS,
+  EMPLOYEE_CHECKS,
+  EMPLOYMENT_CHECKS,
+  NA_REASON_MAX,
+  VERIFICATION_FILES,
+  type SkippableCheck,
+  type Verification,
+  type VerificationStatus,
+} from './data';
 import { localDay } from './eoffice';
-import { toMyDocumentList, type MyDocument } from './myDocuments';
+import { isSkippable, toMyDocumentList, type MyDocument } from './myDocuments';
 import { readAccountRole, roleLabel } from './people';
 
 /**
  * HR OPS verifications on the backend (/api/verifications; Super Admins and Admins only): companies, employees, and
- * requests from other companies sent from the website's footer form (inbox.ts). The employee's own uploads aren't
- * connected yet.
+ * requests from other companies sent from the website's footer form (inbox.ts). An employee request also carries the
+ * employee's uploads (myDocuments.ts) and which checks are marked not applicable.
  */
+
+/** A check marked "Not applicable": HR's reason, or the employee's own "first job". */
+export interface NotApplicableMark {
+  check: SkippableCheck;
+  reason: string;
+  by: string;
+  byEmployee: boolean;
+  /** When it was marked, as the backend sent it. */
+  at: string;
+}
 
 export type RemoteKind = 'company' | 'employee' | 'employment';
 /** Who in our records an outside request seems to be about: a lead for the "Found in our records" check, never a decision. */
@@ -37,8 +56,9 @@ export type RemoteVerification = Verification & {
   reference?: string;
   answerEmailed?: boolean;
   lead?: DirectoryLead | null;
-  /** Employee requests: the Aadhaar and PAN they've uploaded (opened through the backend, never as links). */
+  /** Employee requests: the files they've uploaded (opened through the backend, never as links), and the skipped checks. */
   documents?: MyDocument[];
+  notApplicable?: NotApplicableMark[];
 };
 export type VerificationDraft =
   | { kind: 'company'; company: string; registration: string; website: string; contactEmail: string }
@@ -133,8 +153,31 @@ export function toVerification(raw: unknown): RemoteVerification | null {
   const person = readPerson(raw.person);
   if (!person) return null;
   const { id: personId, ...shown } = person;
-  return { kind, ...base, personId, person: shown, documents: toMyDocumentList(raw.documents) };
+  const notApplicable = (Array.isArray(raw.notApplicable) ? raw.notApplicable : []).flatMap((n): NotApplicableMark[] =>
+    isRecord(n) && isSkippable(n.check) && str(n.reason) && str(n.by) && dayOf(n.at)
+      ? [{ check: n.check, reason: str(n.reason), by: str(n.by), byEmployee: n.byEmployee === true, at: String(n.at) }]
+      : [],
+  );
+  return { kind, ...base, personId, person: shown, documents: toMyDocumentList(raw.documents), notApplicable };
 }
+
+const checkOfFile = new Map<string, string>(VERIFICATION_FILES.map((f) => [f.id, f.check]));
+const fileChecks = new Set(checkOfFile.values());
+/**
+ * Whether an employee check may be ticked (the backend's rule): a check proved by a file waits for one, unless it's
+ * marked not applicable; any other check (References) is a plain tick.
+ */
+export function checkReady(v: RemoteVerification, check: string) {
+  if (!fileChecks.has(check) || v.notApplicable?.some((n) => n.check === check)) return true;
+  return (v.documents ?? []).some((d) => checkOfFile.get(d.kind) === check);
+}
+
+/** What's wrong with a not-applicable reason, or '' when it can be sent. */
+export const notApplicableProblem = (reason: string) => {
+  const r = reason.trim();
+  if (!r) return 'Say why it doesn’t apply.';
+  return r.length > NA_REASON_MAX ? `Keep the reason under ${NA_REASON_MAX} characters.` : '';
+};
 
 /** The list the backend sent, broken entries left out; an answer that isn't a list is an error. */
 export function toVerifications(raw: unknown): RemoteVerification[] {
@@ -217,6 +260,8 @@ export function useRemoteVerifications(kind: RemoteKind, on = true) {
         return made.id;
       }),
     setCheck: (id: string, check: string, done: boolean) => act(async () => replace(toVerification(await api!.patch(`${path(id)}/checks`, { check, done })))),
+    markNotApplicable: (id: string, check: SkippableCheck, reason: string) =>
+      act(async () => replace(toVerification(await api!.post(`${path(id)}/not-applicable`, { check, reason: reason.trim() })))),
     /** Resolves with the request as it now is (for an outside request: whether the answer email went). */
     decide: (id: string, status: VerificationStatus, note: string) =>
       act(async () => {

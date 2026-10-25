@@ -1,13 +1,29 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { Fragment, useState, type CSSProperties, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { ApiError } from '../api';
-import { COMPANY_CHECKS, EMAIL_SHAPE, EMPLOYEE_CHECKS, EMPLOYMENT_CHECKS, ID_DOCS, ID_RETENTION_DAYS, VERIFICATION_STALE_DAYS, type IdDocKind, type Verification, type VerificationKind, type VerificationStatus } from '../data';
+import {
+  COMPANY_CHECKS,
+  EMAIL_SHAPE,
+  EMPLOYEE_CHECKS,
+  EMPLOYMENT_CHECKS,
+  ID_DOCS,
+  ID_RETENTION_DAYS,
+  SKIPPABLE_CHECKS,
+  VERIFICATION_FILES,
+  VERIFICATION_STALE_DAYS,
+  type FileKind,
+  type SkippableCheck,
+  type Verification,
+  type VerificationKind,
+  type VerificationStatus,
+} from '../data';
 import { PdfModal } from '../PdfModal';
 import { useDirectory } from '../people';
 import { useSession } from '../session';
-import { documentsDeleteOn, formatDate, formatSize, usePortal } from '../store';
+import { documentsDeleteOn, formatDate, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PageHead, PIcon, PortalNotFound, SampleDataBar, SearchField, useNotice } from '../ui';
 import { verificationFailedMessage } from '../verifications';
+import { EvidenceDetail, EvidenceSummary, NotApplicableWindow } from './CheckEvidence';
 import { useVerificationSource, type VerificationSource } from './verificationSource';
 
 const STATUS_LABEL: Record<VerificationStatus, string> = { pending: 'Pending', verified: 'Verified', rejected: 'Rejected' };
@@ -15,6 +31,9 @@ const STATUS_LABEL: Record<VerificationStatus, string> = { pending: 'Pending', v
 const STATUS_BADGE: Record<VerificationStatus, string> = { pending: 'todo', verified: 'done', rejected: 'rejected' };
 const CHECKS: Record<VerificationKind, readonly { id: string; label: string }[]> = { company: COMPANY_CHECKS, employee: EMPLOYEE_CHECKS, employment: EMPLOYMENT_CHECKS };
 const FILTERS: (VerificationStatus | '')[] = ['', 'pending', 'verified', 'rejected'];
+const CHECK_OF_FILE = new Map<string, string>(VERIFICATION_FILES.map((f) => [f.id, f.check]));
+const FILE_CHECKS = new Set(CHECK_OF_FILE.values());
+const isSkippable = (check: string): check is SkippableCheck => (SKIPPABLE_CHECKS as readonly string[]).includes(check);
 
 const COPY = {
   company: {
@@ -206,7 +225,9 @@ function CaseFile({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   // the upload open in the PDF window (connected)
-  const [viewing, setViewing] = useState<IdDocKind | null>(null);
+  const [viewing, setViewing] = useState<FileKind | null>(null);
+  // the check being marked not applicable (connected)
+  const [skipping, setSkipping] = useState<SkippableCheck | null>(null);
   const checks = CHECKS[request.kind];
   const allDone = checks.every((c) => request.done.includes(c.id));
   const pending = request.status === 'pending';
@@ -215,6 +236,9 @@ function CaseFile({
   // the employee's own uploads (employee files only), and when the 60-day rule removes them
   const ids = source.uploadsOf(request);
   const idsComplete = ID_DOCS.every((d) => ids.some((u) => u.kind === d.id));
+  // a check can't be ticked off before the employee has provided what it needs (or it's marked not applicable)
+  const waitingFor = (check: string) => request.kind === 'employee' && !request.done.includes(check) && !source.checkReady(request, check);
+  const marks = source.notApplicableOf(request);
   const leftOn = source.leftOn(request);
   const deletedOn = source.deletedOn(request);
   /** Runs one change; a refusal shows in the file instead of a notice that says it worked. */
@@ -346,59 +370,53 @@ function CaseFile({
             ))}
           </span>
           {checks.map((c) => {
-            const isUpload = request.kind === 'employee' && ID_DOCS.some((d) => d.id === c.id);
-            const file = isUpload ? ids.find((u) => u.kind === c.id) : undefined;
-            // an ID can't be ticked off before the employee has uploaded it
-            const waiting = isUpload && !file && !request.done.includes(c.id);
+            // connected, every check proved by an upload shows its files or what it's waiting for; the demo only its two
+            // IDs; References is a plain tick either way
+            const shown = request.kind === 'employee' && (source.connected ? FILE_CHECKS.has(c.id) : ID_DOCS.some((d) => d.id === c.id));
             const fileId = `${request.id}-${c.id}-file`;
+            const mark = marks.find((n) => n.check === c.id);
+            const evidence = {
+              check: c.id,
+              files: ids.filter((u) => CHECK_OF_FILE.get(u.kind) === c.id),
+              mark,
+              // the file needs the sign-in, so it opens in the portal's PDF window (and the opening is logged)
+              onOpen: source.openUpload ? setViewing : null,
+            };
+            const missing = deletedOn ? 'Deleted' : !source.uploadsConnected ? 'Uploads aren’t connected yet' : pending ? 'Not uploaded yet' : 'No file on record';
+            const canSkip = !!source.markNotApplicable && pending && isSkippable(c.id) && !mark && !request.done.includes(c.id);
             return (
-              <div key={c.id} className="p-doc-line">
-                <label className="p-doc">
-                  <input
-                    type="checkbox"
-                    checked={request.done.includes(c.id)}
-                    disabled={waiting}
-                    aria-describedby={isUpload ? fileId : undefined}
-                    onChange={(e) => {
-                      const done = e.target.checked;
-                      void save(() => source.setCheck(request.id, c.id, done));
-                    }}
-                  />
-                  <span className="p-doc-box" aria-hidden="true">
-                    <PIcon name="check" size={12} />
-                  </span>
-                  <span>{c.label}</span>
-                </label>
-                {isUpload && (
-                  <span id={fileId} className="p-doc-file" data-missing={file ? undefined : ''}>
-                    {file ? (
-                      <>
-                        {source.openUpload ? (
-                          // the file needs the sign-in, so it opens in the portal's PDF window (and the opening is logged)
-                          <button type="button" className="p-link" title={file.fileName} onClick={() => setViewing(c.id as IdDocKind)}>
-                            {file.fileName}
-                            <span className="sr-only"> (opens the PDF)</span>
-                          </button>
-                        ) : (
-                          <a href={file.url} target="_blank" rel="noreferrer" title={file.fileName}>
-                            {file.fileName}
-                            <span className="sr-only"> (opens in a new tab)</span>
-                          </a>
-                        )}
-                        <span>{formatSize(file.size)}</span>
-                      </>
-                    ) : (
-                      <>
-                        <PIcon name="clock" size={13} />
-                        {deletedOn ? 'Deleted' : !source.uploadsConnected ? 'Uploads aren’t connected yet' : pending ? 'Not uploaded yet' : 'No file on record'}
-                      </>
-                    )}
-                  </span>
-                )}
-              </div>
+              <Fragment key={c.id}>
+                <div className="p-doc-line">
+                  <label className="p-doc">
+                    <input
+                      type="checkbox"
+                      checked={request.done.includes(c.id)}
+                      disabled={waitingFor(c.id)}
+                      aria-describedby={shown ? fileId : undefined}
+                      onChange={(e) => {
+                        const done = e.target.checked;
+                        void save(() => source.setCheck(request.id, c.id, done));
+                      }}
+                    />
+                    <span className="p-doc-box" aria-hidden="true">
+                      <PIcon name="check" size={12} />
+                    </span>
+                    <span>{c.label}</span>
+                  </label>
+                  {shown && <EvidenceSummary id={fileId} missing={missing} {...evidence} />}
+                  {canSkip && (
+                    <button type="button" className={`${btnClass('ghost', { small: true })} p-skip`} onClick={() => setSkipping(c.id as SkippableCheck)}>
+                      <BtnLabel>
+                        Not applicable<span className="sr-only">: {c.label}</span>
+                      </BtnLabel>
+                    </button>
+                  )}
+                </div>
+                {shown && <EvidenceDetail {...evidence} />}
+              </Fragment>
             );
           })}
-          {request.kind === 'employee' && (deletedOn || (leftOn && ids.length > 0) || (pending && !idsComplete)) && (
+          {request.kind === 'employee' && (deletedOn || (leftOn && ids.length > 0) || (pending && (source.connected ? checks.some((c) => waitingFor(c.id)) : !idsComplete))) && (
             <p className="p-file-docs-note">
               {deletedOn ? (
                 <span>
@@ -410,8 +428,8 @@ function CaseFile({
                 </span>
               ) : source.openUpload ? (
                 <span>
-                  {subject} was asked in their bell and by email to upload the Aadhaar and PAN in their Profile. Each shows here once it’s uploaded, and can be ticked
-                  then.
+                  {subject} was asked in their bell and by email to upload their documents in their Profile. Each check can be ticked once its file is here;
+                  Previous employment can also be marked not applicable.
                 </span>
               ) : (
                 <>
@@ -499,7 +517,7 @@ function CaseFile({
       </footer>
       {viewing && source.openUpload && (
         <PdfModal
-          title={`${subject}: ${ID_DOCS.find((d) => d.id === viewing)?.label}`}
+          title={`${subject}: ${VERIFICATION_FILES.find((d) => d.id === viewing)?.label}`}
           fileName={ids.find((u) => u.kind === viewing)?.fileName ?? `${viewing}.pdf`}
           load={() => source.openUpload!(request, viewing)}
           failure={(kind) => (kind === 'not-found' ? 'That file isn’t there any more.' : verificationFailedMessage(new ApiError(kind)))}
@@ -507,6 +525,18 @@ function CaseFile({
           // the backend logged the opening: load the request again so the activity shows it
           onOpened={source.retry}
           onClose={() => setViewing(null)}
+        />
+      )}
+      {skipping && source.markNotApplicable && (
+        <NotApplicableWindow
+          check={EMPLOYEE_CHECKS.find((c) => c.id === skipping)?.label ?? skipping}
+          subject={subject}
+          onClose={() => setSkipping(null)}
+          onSave={async (reason) => {
+            await source.markNotApplicable!(request.id, skipping, reason);
+            setSkipping(null);
+            notify(`${EMPLOYEE_CHECKS.find((c) => c.id === skipping)?.label} was marked not applicable.`);
+          }}
         />
       )}
       {deleting && (
@@ -598,7 +628,7 @@ function NewRequest({
       return void start(
         { kind, personId },
         source.connected
-          ? `Verification started for ${name}. They were asked in their bell and by email to upload their Aadhaar and PAN.`
+          ? `Verification started for ${name}. They were asked in their bell and by email to upload their documents.`
           : `Verification started for ${name}. Email isn't connected yet, so copy the upload link from the request and send it to them.`,
       );
     }

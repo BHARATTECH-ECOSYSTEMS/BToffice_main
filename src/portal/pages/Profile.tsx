@@ -2,13 +2,28 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { ApiErrorKind } from '../api';
 import { ApiError, BUSY_MESSAGE } from '../api';
-import { ID_DOC_MAX_MB, ID_DOCS, ID_RETENTION_DAYS, PERSON_STATUS_LABEL, ROLE_LABEL, STREAM_LABEL, type IdDocKind, type IdDocument, type PersonRole } from '../data';
-import { myDocumentsFailedMessage, useMyDocuments } from '../myDocuments';
+import {
+  ID_DOC_MAX_MB,
+  ID_RETENTION_DAYS,
+  PERSON_STATUS_LABEL,
+  ROLE_LABEL,
+  STREAM_LABEL,
+  VERIFICATION_FILES,
+  type FileKind,
+  type IdDocument,
+  type PersonRole,
+} from '../data';
+import { myDocumentsFailedMessage, useMyDocuments, type MyDocuments } from '../myDocuments';
 import { useMyPhoto } from '../myPhoto';
 import { PdfModal } from '../PdfModal';
 import { emailParts, useAccountProfile, type ProfileState } from '../profile';
 import { formatDate, formatSize, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, Empty, initials, PageHead, PIcon, SampleDataBar, useNotice } from '../ui';
+import '../../styles/check-evidence.css';
+
+// Connected, the files beyond Aadhaar and PAN, grouped by the check they prove
+const EDUCATION_FILES = VERIFICATION_FILES.filter((f) => f.check === 'education');
+const LETTER = VERIFICATION_FILES.find((f) => f.id === 'experience')!;
 
 const LOAD_FAILED: Record<ApiErrorKind, string> = {
   'signed-out': 'Your sign-in has ended. Sign out and sign in again to see your details.',
@@ -25,8 +40,9 @@ const NOT_SET = 'Not set yet';
  * The signed-in person's own profile, opened from their name in the top bar. With the real sign-in, the details come
  * from the backend's account record (src/portal/profile.ts); with the demo sign-in, from the demo directory. Its
  * documents section is where an employee verification's bell note and email land (?docs=1): the employee uploads
- * their Aadhaar and PAN here (connected: src/portal/myDocuments.ts), and only they and admins can open them.
- * Name and photo are changed in Settings.
+ * their Aadhaar and PAN here, and connected (src/portal/myDocuments.ts) also their education certificates and a
+ * previous employer's letter (or says it's their first job). Only they and admins can open them. Name and photo are
+ * changed in Settings.
  */
 export function Profile() {
   const photo = useMyPhoto();
@@ -36,7 +52,22 @@ export function Profile() {
   const docsRef = useRef<HTMLElement>(null);
   const [notice, notify] = useNotice();
   const docs = useVerificationDocuments();
-  const [viewing, setViewing] = useState<IdDocKind | null>(null);
+  const [viewing, setViewing] = useState<FileKind | null>(null);
+  const fileRow = (d: (typeof VERIFICATION_FILES)[number]) => (
+    <DocRow
+      key={d.id}
+      label={d.label}
+      hint={d.hint}
+      required={d.required}
+      doc={docs.list.find((m) => m.kind === d.id)}
+      canUpload={docs.canUpload}
+      onOpen={docs.open ? () => setViewing(d.id) : undefined}
+      onPick={async (file) => {
+        await docs.upload(d.id, file);
+        notify(`${d.label} uploaded. HR can see it now.`);
+      }}
+    />
+  );
 
   // the upload link opens straight onto the documents
   useEffect(() => {
@@ -111,23 +142,34 @@ export function Profile() {
               </button>
             </Empty>
           ) : docs.canUpload || docs.list.length ? (
-            <fieldset className="p-docs" disabled={!docs.canUpload}>
-              <legend>Government ID</legend>
-              {ID_DOCS.map((d) => (
-                <DocRow
-                  key={d.id}
-                  label={d.label}
-                  hint={d.hint}
-                  doc={docs.list.find((m) => m.kind === d.id)}
-                  canUpload={docs.canUpload}
-                  onOpen={docs.open ? () => setViewing(d.id) : undefined}
-                  onPick={async (file) => {
-                    await docs.upload(d.id, file);
-                    notify(`${d.label} uploaded. HR can see it now.`);
-                  }}
-                />
-              ))}
-            </fieldset>
+            <>
+              <fieldset className="p-docs" disabled={!docs.canUpload}>
+                <legend>Government ID</legend>
+                {VERIFICATION_FILES.filter((d) => d.required).map(fileRow)}
+              </fieldset>
+              {docs.mine && (
+                <>
+                  <fieldset className="p-docs" disabled={!docs.canUpload}>
+                    <legend>
+                      Education <span className="p-dim">(upload at least one)</span>
+                    </legend>
+                    {EDUCATION_FILES.map(fileRow)}
+                  </fieldset>
+                  <fieldset className="p-docs" disabled={!docs.canUpload}>
+                    <legend>Previous employment</legend>
+                    <PreviousEmployment
+                      mine={docs.mine}
+                      canEdit={docs.canUpload}
+                      letterRow={fileRow(LETTER)}
+                      onFirstJob={async (firstJob) => {
+                        await docs.setFirstJob(firstJob);
+                        notify(firstJob ? 'Marked as your first job. HR can see it now.' : 'Your first-job answer was taken back. Upload the letter instead.');
+                      }}
+                    />
+                  </fieldset>
+                </>
+              )}
+            </>
           ) : (
             <Empty icon="shield" title="Nothing requested">
               When HR starts your verification, you'll upload your documents here.
@@ -141,7 +183,7 @@ export function Profile() {
         </section>
         {viewing && docs.open && (
           <PdfModal
-            title={ID_DOCS.find((d) => d.id === viewing)?.label ?? 'Document'}
+            title={VERIFICATION_FILES.find((d) => d.id === viewing)?.label ?? 'Document'}
             fileName={docs.list.find((m) => m.kind === viewing)?.fileName ?? `${viewing}.pdf`}
             load={() => docs.open!(viewing)}
             failure={(kind) => (kind === 'not-found' ? 'That file isn’t there any more.' : myDocumentsFailedMessage(new ApiError(kind)))}
@@ -239,8 +281,11 @@ function useVerificationDocuments() {
       headline: request ? 'HR has asked for your documents. Upload both to finish your verification.' : 'Documents HR asks for appear here.',
       canUpload: !!request,
       list: documents.filter((d) => d.personId === me.id) as ShownDocument[],
-      upload: async (kind: IdDocKind, file: File) => uploadDocument(kind, file),
-      open: null as ((kind: IdDocKind) => Promise<Blob>) | null,
+      // the demo only shows its two ID rows
+      upload: async (kind: FileKind, file: File) => uploadDocument(kind as IdDocument['kind'], file),
+      open: null as ((kind: FileKind) => Promise<Blob>) | null,
+      mine: null as MyDocuments | null,
+      setFirstJob: async (_firstJob: boolean) => {},
     };
   }
   const ready = remote.state.kind === 'ready' ? remote.state.mine : null;
@@ -251,20 +296,84 @@ function useVerificationDocuments() {
     errorText: remote.state.kind === 'error' ? myDocumentsFailedMessage(remote.state.error) : '',
     retry: remote.retry,
     headline: pending
-      ? 'HR has asked for your documents. Upload both to finish your verification.'
+      ? 'HR has asked for your documents. Fill in each part below to finish your verification.'
       : ready?.request
         ? `Your verification is ${ready.request.status}. Your files stay on record; you can still open them.`
         : 'Documents HR asks for appear here.',
     canUpload: pending,
     list: (ready?.documents ?? []) as ShownDocument[],
     upload: remote.upload,
-    open: remote.open as ((kind: IdDocKind) => Promise<Blob>) | null,
+    open: remote.open as ((kind: FileKind) => Promise<Blob>) | null,
+    // only once HR has asked: before that the card says nothing was requested
+    mine: ready?.request ? ready : null,
+    setFirstJob: remote.setFirstJob,
   };
+}
+
+/**
+ * Previous employment (connected): the letter's row, or "This is my first job", which marks it not applicable until
+ * they take it back. If HR marked it not needed, that's all it says.
+ */
+function PreviousEmployment({ mine, canEdit, letterRow, onFirstJob }: { mine: MyDocuments; canEdit: boolean; letterRow: ReactNode; onFirstJob: (firstJob: boolean) => Promise<void> }) {
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const mark = mine.notApplicable.find((n) => n.check === 'employment');
+  const hasLetter = mine.documents.some((d) => d.kind === 'experience');
+  const answer = async (firstJob: boolean) => {
+    setSaving(true);
+    setError('');
+    try {
+      await onFirstJob(firstJob);
+    } catch (e) {
+      setError(myDocumentsFailedMessage(e instanceof ApiError ? e : new ApiError('unavailable')));
+    } finally {
+      setSaving(false);
+    }
+  };
+  const failure = error && (
+    <span className="p-error" role="alert">
+      {error}
+    </span>
+  );
+  if (mark && !mark.byYou) return <p className="p-muted">HR marked previous employment as not needed for your verification.</p>;
+  if (mark) {
+    return (
+      <div className="p-doc-row" data-done="">
+        <span className="p-doc-mark" aria-hidden="true">
+          <PIcon name="check" size={16} />
+        </span>
+        <div className="p-doc-main">
+          <strong>This is my first job</strong>
+          <span>You said so, so no letter is needed.</span>
+          {failure}
+        </div>
+        {canEdit && (
+          <button type="button" className={btnClass('ghost', { small: true })} onClick={() => void answer(false)} disabled={saving}>
+            <BtnLabel>Undo</BtnLabel>
+          </button>
+        )}
+      </div>
+    );
+  }
+  return (
+    <>
+      {letterRow}
+      {canEdit && !hasLetter && (
+        <div className="p-docs-foot">
+          <button type="button" className={btnClass('ghost', { small: true })} onClick={() => void answer(true)} disabled={saving}>
+            <BtnLabel>This is my first job</BtnLabel>
+          </button>
+          {failure}
+        </div>
+      )}
+    </>
+  );
 }
 
 function DocRow({
   label,
   hint,
+  required,
   doc,
   canUpload,
   onPick,
@@ -272,6 +381,7 @@ function DocRow({
 }: {
   label: string;
   hint: string;
+  required: boolean;
   doc?: ShownDocument;
   canUpload: boolean;
   /** Resolves when saved; a refusal shows under the row. */
@@ -304,7 +414,7 @@ function DocRow({
       </span>
       <div className="p-doc-main">
         <strong>
-          {label} <span className="p-dim">(required, PDF up to {ID_DOC_MAX_MB} MB)</span>
+          {label} <span className="p-dim">({required ? 'required, ' : ''}PDF up to {ID_DOC_MAX_MB} MB)</span>
         </strong>
         {doc ? (
           <span>

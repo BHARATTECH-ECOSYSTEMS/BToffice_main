@@ -1,13 +1,16 @@
 import { api, type ApiError } from '../api';
-import { ROLE_LABEL, type IdDocKind, type IdDocument, type Verification, type VerificationKind, type VerificationStatus } from '../data';
+import { ID_DOCS, ROLE_LABEL, type FileKind, type IdDocument, type SkippableCheck, type Verification, type VerificationKind, type VerificationStatus } from '../data';
 import { usePeopleById, usePortal } from '../store';
-import { useRemoteVerifications, type DirectoryLead, type RemoteVerification, type VerificationDraft } from '../verifications';
+import { checkReady, useRemoteVerifications, type DirectoryLead, type NotApplicableMark, type RemoteVerification, type VerificationDraft } from '../verifications';
 
 /**
  * Where the HR OPS desk gets one kind of request and sends what admins do: the demo's in-browser samples, or the
- * backend (verifications.ts) once the portal is connected. The employee's own uploads aren't on the backend yet, so
- * those stay the demo's either way.
+ * backend (verifications.ts) once the portal is connected. Connected, an employee request also has education
+ * certificates, a previous employer's letter and "Not applicable"; the demo keeps Aadhaar and PAN only.
  */
+
+/** One uploaded file as the desk lists it (the demo's own carry an in-tab `url`). */
+export type Upload = Omit<IdDocument, 'kind'> & { kind: FileKind };
 export interface VerificationSource {
   connected: boolean;
   status: { kind: 'ready' } | { kind: 'loading' } | { kind: 'error'; error: ApiError };
@@ -19,9 +22,15 @@ export interface VerificationSource {
   personOf: (v: Verification) => { email: string; roleLabel: string; team: string } | undefined;
   /** Whether employees can upload their IDs (connected, and in the demo within this tab). */
   uploadsConnected: boolean;
-  uploadsOf: (v: Verification) => IdDocument[];
+  uploadsOf: (v: Verification) => Upload[];
   /** Connected: fetches an upload with the sign-in, for the PDF window (the backend logs the opening). The demo links straight to its in-tab file. */
-  openUpload: ((v: Verification, kind: IdDocKind) => Promise<Blob>) | null;
+  openUpload: ((v: Verification, kind: FileKind) => Promise<Blob>) | null;
+  /** Connected: the checks marked not applicable (the demo has none). */
+  notApplicableOf: (v: Verification) => NotApplicableMark[];
+  /** Whether an employee check may be ticked: what it waits for is there, or it's marked not applicable. */
+  checkReady: (v: Verification, check: string) => boolean;
+  /** Connected only: marks Previous employment not applicable, with a reason. */
+  markNotApplicable: ((id: string, check: SkippableCheck, reason: string) => Promise<void>) | null;
   /** The demo's 60-day rule: when the person left, and when their files were deleted. */
   leftOn: (v: Verification) => string | undefined;
   deletedOn: (v: Verification) => string | undefined;
@@ -68,6 +77,9 @@ export function useVerificationSource(kind: VerificationKind, enabled: boolean):
           ? ((v as RemoteVerification).documents ?? []).map((d) => ({ personId: v.personId, kind: d.kind, fileName: d.fileName, size: d.size, url: '', uploaded: d.uploaded }))
           : [],
       openUpload: (v, kind) => api!.getFile(`/verification-documents/${encodeURIComponent(v.id)}/${kind}/file`),
+      notApplicableOf: (v) => (v as RemoteVerification).notApplicable ?? [],
+      checkReady: (v, check) => v.kind !== 'employee' || checkReady(v as RemoteVerification, check),
+      markNotApplicable: remote.markNotApplicable,
       leftOn: () => undefined,
       deletedOn: () => undefined,
       canDelete: (v) => v.status === 'pending',
@@ -96,6 +108,10 @@ export function useVerificationSource(kind: VerificationKind, enabled: boolean):
     uploadsConnected: true,
     uploadsOf: (v) => (v.kind === 'employee' ? documents.filter((d) => d.personId === v.personId) : []),
     openUpload: null,
+    notApplicableOf: () => [],
+    // the demo's only rule: an ID waits for its upload
+    checkReady: (v, check) => !ID_DOCS.some((d) => d.id === check) || documents.some((d) => d.personId === personId(v) && d.kind === check),
+    markNotApplicable: null,
     leftOn: (v) => alumni.find((a) => a.id === personId(v))?.left,
     deletedOn: (v) => deleted[personId(v)],
     canDelete: () => true,

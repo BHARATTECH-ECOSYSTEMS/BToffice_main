@@ -15,8 +15,9 @@ test("the employee's own verification and uploads become the Profile card's, dat
   assert.deepEqual(toMyDocuments(mine), {
     request: { id: '6ad8bc3dd430c9b545aa3002', status: 'pending' },
     documents: [{ kind: 'aadhaar', fileName: 'aadhaar scan.pdf', size: 52_000, uploaded: localDay(Date.parse(UPLOADED)) }],
+    notApplicable: [],
   });
-  assert.deepEqual(toMyDocuments({ request: null, documents: [] }), { request: null, documents: [] });
+  assert.deepEqual(toMyDocuments({ request: null, documents: [] }), { request: null, documents: [], notApplicable: [] });
   // 20:00 UTC is 01:30 the next morning in India: the day the employee saw
   const late = '2026-10-24T20:00:00.000Z';
   assert.equal(toMyDocuments({ ...mine, documents: [{ ...mine.documents[0], uploadedAt: late }] }).documents[0].uploaded, localDay(Date.parse(late)));

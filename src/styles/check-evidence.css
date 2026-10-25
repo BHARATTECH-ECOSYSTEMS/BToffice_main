@@ -1,0 +1,37 @@
+/* What the employee uploaded for each check, under the check's row in the HR OPS case file (CheckEvidence.tsx), and
+   the "This is my first job" button under the letter in Profile. */
+
+/* lines up with the check's name: the row's side padding + the 20px tick box + its 12px gap */
+.p-evidence {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin: -6px 0 8px;
+  padding: 0 10px 0 42px;
+  list-style: none;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+@media (min-width: 901px) {
+  .p-evidence {
+    margin-inline: -10px;
+  }
+}
+.p-evidence li {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.p-evidence .p-link {
+  font-weight: 600;
+}
+.p-doc-line .p-skip {
+  flex: none;
+}
+
+.p-docs-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
