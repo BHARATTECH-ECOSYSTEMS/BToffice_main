@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import axios from "axios";
 import { useAppConfig } from "../../context/AppContext";
 import { useAuth } from "../../context/AuthContext";
+import { refreshWhileVisible } from "../../utils/visibleRefresh";
 import Loading from "../../components/students/Loading";
 import EmptySection from "../../components/common/EmptySection";
 import { assets } from "../../assets/assets";
@@ -54,20 +55,8 @@ function StudentsEnrolled() {
 
     fetchEnrolledStudents({ showLoader: true });
 
-    const refreshOnFocus = () => {
-      fetchEnrolledStudents();
-    };
-
-    const refreshInterval = window.setInterval(() => {
-      fetchEnrolledStudents();
-    }, 15000);
-
-    window.addEventListener("focus", refreshOnFocus);
-
-    return () => {
-      window.removeEventListener("focus", refreshOnFocus);
-      window.clearInterval(refreshInterval);
-    };
+    // only while this tab is in view (a hidden one asks the server nothing)
+    return refreshWhileVisible(() => fetchEnrolledStudents());
   }, [fetchEnrolledStudents, isEducator]);
 
   if (loading || !enrolledStudents) {

@@ -1,7 +1,6 @@
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
-import rateLimit from "express-rate-limit";
 import mongoSanitize from "express-mongo-sanitize";
 import hpp from "hpp";
 import path from "path";
@@ -9,6 +8,7 @@ import { fileURLToPath } from "url";
 import educatorRouter from "./routes/educatorRoutes.js";
 import courseRouter from "./routes/courseRoutes.js";
 import userRouter from "./routes/userRoutes.js";
+import { createRateLimits } from "./middlewares/rateLimits.js";
 
 // The app without a database connection or a listening port, so tests can start it on their own.
 
@@ -47,21 +47,8 @@ const corsOptions = {
   maxAge: 86400,
 };
 
-// === RATE LIMITING ===
-const isProd = process.env.NODE_ENV === "production";
-const standardLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: isProd ? 100 : 2000,
-  message: { status: "fail", message: "Too many requests" },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-const authLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000,
-  max: isProd ? 15 : 500,
-  message: { status: "fail", message: "Too many auth attempts" },
-});
+// === RATE LIMITING === (middlewares/rateLimits.js: per person when signed in, per address otherwise)
+const rateLimits = createRateLimits();
 
 // === HELMET SECURITY HEADERS ===
 const helmetConfig = helmet({
@@ -98,7 +85,7 @@ const hideOpenApis = (req, res, next) => {
 app.use(helmetConfig);
 app.use(hideOpenApis);
 app.use(cors(corsOptions));
-app.use(standardLimiter);
+app.use(rateLimits.api);
 app.use(express.json({ limit: "50kb" }));
 app.use(express.urlencoded({ extended: true, limit: "50kb" }));
 
@@ -122,7 +109,7 @@ app.get("/health", (req, res) => {
 });
 
 // === PROTECTED ROUTES ===
-app.use("/api/educator", authLimiter, educatorRouter);
+app.use("/api/educator", educatorRouter);
 app.use("/api/courses", courseRouter);
 app.use("/api/user", userRouter);
 
