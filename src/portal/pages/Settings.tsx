@@ -4,6 +4,7 @@ import type { PortalIconName } from '../data';
 import { api, ApiError, BUSY_MESSAGE } from '../api';
 import { auth } from '../auth';
 import { removeMyPhoto, saveMyPhoto, useMyPhoto } from '../myPhoto';
+import { phoneProblem, saveMyPhones, useAccountProfile, type AccountProfile } from '../profile';
 import { endSessionForNewSignIn, ROLE_NAME, setDisplayName, setPhoto, useSession } from '../session';
 import { Badge, btnClass, BtnLabel, initials, PageHead, PIcon, useNotice } from '../ui';
 import { ThemeChoices } from '../../components/ThemeSwitch';
@@ -16,7 +17,7 @@ const PHOTO_MAX_MB = 5;
 const PHOTO_SIZE = 640;
 
 const SECTIONS: { id: string; label: string; icon: PortalIconName; Panel: () => React.JSX.Element }[] = [
-  { id: 'profile', label: 'Profile', icon: 'users', Panel: ProfilePanel },
+  { id: 'profile', label: 'Profile', icon: 'users', Panel: ProfileSection },
   { id: 'password', label: 'Password', icon: 'lock', Panel: PasswordPanel },
   { id: 'appearance', label: 'Appearance', icon: 'eye', Panel: AppearancePanel },
 ];
@@ -249,6 +250,141 @@ function ProfilePanel() {
         <p className="p-set-value">
           <Badge kind={session.role}>{ROLE_NAME[session.role]}</Badge>
         </p>
+      </Row>
+    </SettingsCard>
+  );
+}
+
+/** Profile, then (connected) your phone numbers. */
+function ProfileSection() {
+  return (
+    <>
+      <ProfilePanel />
+      {api && <PhonesCard />}
+    </>
+  );
+}
+
+const PHONES_FAILED: Partial<Record<ApiError['kind'], string>> = {
+  busy: BUSY_MESSAGE,
+  'signed-out': 'Your sign-in has ended, so your numbers weren’t saved. Sign in again and try once more.',
+  unavailable: 'We couldn’t reach the server, so your numbers weren’t saved. Try again in a moment.',
+};
+
+/** Your own phone numbers and whether colleagues see them (owner's 1A 2A). Saved to your account. */
+function PhonesCard() {
+  const [account, retry] = useAccountProfile();
+  if (account.kind !== 'ready') {
+    return (
+      <section className="p-card p-set-card" aria-labelledby="settings-phones" aria-busy={account.kind === 'loading' || undefined}>
+        <header className="p-set-head">
+          <h2 id="settings-phones" className="p-card-title">
+            Phone numbers
+          </h2>
+          {account.kind === 'error' ? (
+            <p role="alert">
+              Your numbers didn’t load.{' '}
+              <button type="button" className="p-text-btn" onClick={retry}>
+                Try again
+              </button>
+            </p>
+          ) : (
+            <p>Loading your numbers…</p>
+          )}
+        </header>
+      </section>
+    );
+  }
+  return <PhonesForm saved={account.profile} />;
+}
+
+function PhonesForm({ saved: initial }: { saved: AccountProfile }) {
+  const [saved, setSaved] = useState({ phone: initial.phone ?? '', workPhone: initial.workPhone ?? '', showPhone: initial.showPhone });
+  const [form, setForm] = useState(saved);
+  const [problems, setProblems] = useState<{ phone?: string; workPhone?: string }>({});
+  const [busy, setBusy] = useState(false);
+  const [notice, notify] = useNotice();
+  const dirty = form.phone.trim() !== saved.phone || form.workPhone.trim() !== saved.workPhone || form.showPhone !== saved.showPhone;
+
+  const save = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!dirty || busy) return;
+    const found = { phone: phoneProblem(form.phone) ?? undefined, workPhone: phoneProblem(form.workPhone) ?? undefined };
+    setProblems(found);
+    if (found.phone || found.workPhone) return;
+    setBusy(true);
+    try {
+      const p = await saveMyPhones(form);
+      const next = { phone: p.phone ?? '', workPhone: p.workPhone ?? '', showPhone: p.showPhone };
+      setSaved(next);
+      setForm(next);
+      notify('Your phone numbers were saved.');
+    } catch (error) {
+      const failed = error instanceof ApiError ? error : new ApiError('unavailable');
+      notify(failed.kind === 'bad-request' && failed.message !== failed.kind ? failed.message : (PHONES_FAILED[failed.kind] ?? PHONES_FAILED.unavailable!));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const phoneRow = (key: 'phone' | 'workPhone', label: string, hint: string, example: string) => (
+    <Row label={label} hint={hint} htmlFor={`settings-${key}`}>
+      <input
+        id={`settings-${key}`}
+        className="p-set-input"
+        type="tel"
+        inputMode="tel"
+        autoComplete={key === 'phone' ? 'tel' : 'off'}
+        maxLength={20}
+        placeholder={example}
+        value={form[key]}
+        disabled={busy}
+        onChange={(e) => (setForm({ ...form, [key]: e.target.value }), setProblems({ ...problems, [key]: undefined }))}
+        aria-invalid={!!problems[key] || undefined}
+        aria-describedby={problems[key] ? `settings-${key}-err` : undefined}
+      />
+      {problems[key] && (
+        <p id={`settings-${key}-err`} className="p-error" role="alert">
+          {problems[key]}
+        </p>
+      )}
+    </Row>
+  );
+
+  return (
+    <SettingsCard
+      id="settings-phones"
+      title="Phone numbers"
+      sub="Where colleagues can reach you. Leave a box empty to remove that number."
+      onSubmit={save}
+      footer={
+        <>
+          {notice}
+          <span className="p-set-foot-actions">
+            {dirty && !busy && (
+              <button type="button" className={btnClass('ghost')} onClick={() => (setForm(saved), setProblems({}))}>
+                <BtnLabel>Reset</BtnLabel>
+              </button>
+            )}
+            <button type="submit" className={btnClass('primary')} disabled={!dirty || busy}>
+              <BtnLabel>{busy ? 'Saving…' : 'Save numbers'}</BtnLabel>
+            </button>
+          </span>
+        </>
+      }
+    >
+      {phoneRow('phone', 'Phone', 'A 10-digit Indian number.', '+91 98765 43210')}
+      {phoneRow('workPhone', 'Work phone', 'Your desk or office line, if you have one.', '+91 80 4000 1234')}
+      <Row label="Show to colleagues" hint="On People and your colleague card. Off hides both numbers." htmlFor="settings-showPhone">
+        <input
+          id="settings-showPhone"
+          type="checkbox"
+          role="switch"
+          className="p-switch"
+          checked={form.showPhone}
+          disabled={busy}
+          onChange={(e) => setForm({ ...form, showPhone: e.target.checked })}
+        />
       </Row>
     </SettingsCard>
   );

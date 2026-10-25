@@ -42,6 +42,7 @@ test("the backend's profile becomes what the page shows", () => {
     status: 'active',
     phone: undefined,
     workPhone: undefined,
+    showPhone: true,
     photo: undefined,
   });
 });

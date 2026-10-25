@@ -289,6 +289,9 @@ body:has(.portal) .scene {
 .p-set-panel {
   animation: p-set-in 220ms var(--ease);
 }
+.p-set-panel > .p-set-card + .p-set-card {
+  margin-top: 20px;
+}
 @keyframes p-set-in {
   from {
     opacity: 0;

@@ -22,7 +22,27 @@ export interface AccountProfile {
   status: PersonStatus;
   phone?: string;
   workPhone?: string;
+  /** Whether colleagues see the phone numbers (People, colleague view); yes unless the person said no. */
+  showPhone: boolean;
   photo?: PhotoSource;
+}
+
+// the backend's rule (userController readPhone): 10 digits, typed with spaces or hyphens, +91 or a leading 0 in front
+const INDIAN_NUMBER = /^(?:\+91|0)?\d{10}$/;
+const PHONE_FORMAT = /^\+?[\d\s-]+$/;
+
+/** Why a typed phone number would be refused, or null when it's fine (an empty box clears the number). */
+export function phoneProblem(value: string): string | null {
+  const typed = value.trim();
+  if (!typed) return null;
+  const ok = typed.length <= 20 && PHONE_FORMAT.test(typed) && INDIAN_NUMBER.test(typed.replace(/[\s-]/g, ''));
+  return ok ? null : 'Enter a 10-digit Indian number, like +91 98765 43210.';
+}
+
+/** Saves the signed-in person's own phone numbers and whether colleagues see them. */
+export async function saveMyPhones(change: { phone: string; workPhone: string; showPhone: boolean }) {
+  if (!api) throw new ApiError('unavailable');
+  return toAccountProfile(await api.patch<unknown>('/user/me', { phone: change.phone.trim(), workPhone: change.workPhone.trim(), showPhone: change.showPhone }));
 }
 
 /**
@@ -69,6 +89,7 @@ export function toAccountProfile(raw: unknown): AccountProfile {
     status: p.isBanned === true ? 'inactive' : 'active',
     phone: text(p.phone) ?? text(p.phoneNumber),
     workPhone: text(p.workPhone),
+    showPhone: (p.privacySettings as { showPhone?: unknown } | undefined)?.showPhone !== false,
     photo: photoSource(p.profilePicture),
   };
 }
