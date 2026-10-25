@@ -2541,6 +2541,11 @@ a.p-cal-item-title {
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.p-lms-moved {
+  display: flex;
+  justify-content: center;
+  margin: 0 0 36px;
+}
 
 /* ── Resources ── */
 

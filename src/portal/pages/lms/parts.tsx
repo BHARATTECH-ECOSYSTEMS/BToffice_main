@@ -5,7 +5,8 @@ import { finalPrice, formatMinutes, formatPrice, plural, totalMinutes, type Chap
 import { managesPortal, useSession } from '../../session';
 import { api } from '../../api';
 import { learningFailedMessage } from '../../learning';
-import { btnClass, BtnLabel, Empty, PIcon, SampleDataBar } from '../../ui';
+import { LMS_PLATFORM } from '../../lmsPlatform';
+import { btnClass, BtnLabel, Empty, PageHead, PIcon, SampleDataBar } from '../../ui';
 import { DemoLearning, RemoteLearning, useLearning } from './source';
 
 const STUDENT_TABS: [string, string, PortalIconName][] = [
@@ -32,11 +33,32 @@ export function useCanTeach() {
 
 /** The learning platform's pages, on the backend's courses when connected and the demo's samples otherwise. */
 export function LmsShell() {
+  if (LMS_PLATFORM) return <LearningMoved href={LMS_PLATFORM} />;
   const Source = api ? RemoteLearning : DemoLearning;
   return (
     <Source>
       <LmsFrame />
     </Source>
+  );
+}
+
+/** Old Learning addresses (bookmarks, earlier bell notes) once courses live in the LMS Platform. */
+function LearningMoved({ href }: { href: string }) {
+  return (
+    <>
+      <PageHead title="Learning" sub="Courses for everyone at Bharattech." />
+      <section className="p-card">
+        <Empty icon="cap" title="Learning has moved to the LMS Platform">
+          Courses, enrollments and progress are kept there now. Sign in with your work email and your portal password.
+        </Empty>
+        <p className="p-lms-moved">
+          <a href={href} target="_blank" rel="noreferrer" className={btnClass('primary')}>
+            <BtnLabel arrow="up-right">Open the LMS Platform</BtnLabel>
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        </p>
+      </section>
+    </>
   );
 }
 

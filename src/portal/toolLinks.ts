@@ -11,6 +11,8 @@ export interface ToolLinks {
   hrms?: string;
   fileTransfer?: string;
   coderInstaller?: string;
+  /** MERN LMS, the company's course platform (signs people in on Keycloak's own page). */
+  lmsPlatform?: string;
 }
 
 const SETTINGS: Record<keyof ToolLinks, string> = {
@@ -19,6 +21,7 @@ const SETTINGS: Record<keyof ToolLinks, string> = {
   hrms: 'VITE_HRMS_URL',
   fileTransfer: 'VITE_FILE_TRANSFER_URL',
   coderInstaller: 'VITE_CODER_INSTALLER_URL',
+  lmsPlatform: 'VITE_LMS_PLATFORM_URL',
 };
 
 /**
@@ -38,6 +41,12 @@ const webAddress = (value: string | undefined) => {
     return undefined;
   }
 };
+
+/**
+ * Where Learning goes: the LMS Platform when the portal is connected and has its address (owner's 3B, 2026-10-25), else
+ * undefined and the portal's own course pages. The demo has no Keycloak accounts to sign in to the platform with.
+ */
+export const learningPlatform = (links: ToolLinks, connected: boolean): string | undefined => (connected ? links.lmsPlatform : undefined);
 
 export function readToolLinks(env: Record<string, string | undefined> | undefined): ToolLinks {
   const links: ToolLinks = {};

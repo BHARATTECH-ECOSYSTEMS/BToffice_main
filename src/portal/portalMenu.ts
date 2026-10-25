@@ -14,7 +14,7 @@ export interface MenuLink {
 /** A top-bar key: either a page, or a menu of pages grouped under small headings. Like the site nav's links, each
  *  key has a colour and its own hover effect. */
 type TopKey = { key: string; label: string; tone: HueName; fx: LinkFx; adminOnly?: boolean };
-export type TopItem = (TopKey & { to: string }) | (TopKey & { sections: { heading: string; links: MenuLink[] }[] });
+export type TopItem = (TopKey & { to: string; /** opens this address in a new tab instead of `to` */ href?: string }) | (TopKey & { sections: { heading: string; links: MenuLink[] }[] });
 
 export type MenuGroup = { heading: string | null; links: { to: string; label: string; icon?: PortalIconName; href?: string; end: boolean }[] };
 
@@ -27,7 +27,7 @@ export function menuGroups(items: TopItem[]): MenuGroup[] {
   const sections: MenuGroup[] = [];
   for (const item of items) {
     // Overview is the portal's root, so it is current only on the dashboard itself
-    if ('to' in item) pages.links.push({ to: item.to, label: item.label, end: item.to === '/portal' });
+    if ('to' in item) pages.links.push({ to: item.to, label: item.label, href: item.href, end: item.to === '/portal' });
     else
       for (const s of item.sections) sections.push({ heading: `${item.label} · ${s.heading}`, links: s.links.map((l) => ({ to: l.to, label: l.label, icon: l.icon, href: l.href, end: false })) });
   }

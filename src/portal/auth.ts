@@ -264,6 +264,13 @@ export function createAuth(config: AuthConfig, request: typeof fetch = (input, i
     return renewing;
   }
 
+  /** The sign-in to hand to the LMS Platform tab (lmsHandoff.ts), renewed first if it is near expiry; null when
+   *  signed out. */
+  async function handoverTokens(): Promise<{ access: string; refresh: string; id?: string } | null> {
+    if (!(await accessToken()) || !tokens) return null;
+    return { access: tokens.access, refresh: tokens.refresh, id: tokens.id };
+  }
+
   async function signOut() {
     const current = tokens;
     keep(null);
@@ -333,7 +340,7 @@ export function createAuth(config: AuthConfig, request: typeof fetch = (input, i
     return () => expireListeners.delete(listener);
   };
 
-  return { signIn, acceptInvite, changePassword, requestPasswordReset, resetPassword, signOut, accessToken, signedIn, onExpire };
+  return { signIn, acceptInvite, changePassword, requestPasswordReset, resetPassword, signOut, accessToken, handoverTokens, signedIn, onExpire };
 }
 
 function configFromEnv(): AuthConfig | null {

@@ -10,7 +10,9 @@ import { ThemeButton, ThemeChoices } from '../components/ThemeSwitch';
 import { useApplyTheme } from '../useApplyTheme';
 import { auth } from './auth';
 import { api } from './api';
-import { EMAIL_KINDS, timeAgo, useEmailSwitches, useNotifications } from './notifications';
+import { emailKinds, timeAgo, useEmailSwitches, useNotifications } from './notifications';
+import { LMS_PLATFORM } from './lmsPlatform';
+import { useLmsHandoff } from './lmsHandoff';
 import { CERTIFICATE_TYPES, TOOLS, type PortalIconName } from './data';
 import { didSignOut, endSession, managesPortal, NOTIFICATION_KINDS, ROLE_NAME, setMutedNotifications, setRole, useSession, type NotificationKind, type Role } from './session';
 import { HelpModal } from './Help';
@@ -24,7 +26,8 @@ import '../styles/portal.css';
 const TOP: TopItem[] = [
   { key: 'overview', label: 'Overview', to: '/portal', tone: 'saffron', fx: 'drop' },
   { key: 'people', label: 'People', to: '/portal/people', tone: 'violet', fx: 'sweep' },
-  { key: 'learning', label: 'Learning', to: '/portal/lms', tone: 'tangerine', fx: 'tilt' },
+  // with the LMS Platform set up, Learning opens it in a new tab (owner's 3B)
+  { key: 'learning', label: 'Learning', to: '/portal/lms', href: LMS_PLATFORM, tone: 'tangerine', fx: 'tilt' },
   {
     key: 'resources',
     label: 'Resources',
@@ -118,6 +121,8 @@ export function PortalLayout() {
   const { pathname } = useLocation();
   const [helpOpen, setHelpOpen] = useState(false);
   const signOut = useSignOut();
+  // Learning opens the LMS Platform already signed in, whichever link it is clicked from (lmsHandoff.ts)
+  useLmsHandoff();
   const topRef = useRef<HTMLElement>(null);
   const reduceMotion = useReducedMotion();
   usePointerBloom();
@@ -237,6 +242,13 @@ function TopNav({ items, active }: { items: TopItem[]; active?: string }) {
               <KeyLabel label={i.label} fx={i.fx} />
             </>
           );
+          if ('to' in i && i.href)
+            return (
+              <a key={i.key} href={i.href} target="_blank" rel="noreferrer" {...key} onPointerEnter={() => setHover(n)}>
+                {label}
+                <span className="sr-only"> (opens in a new tab)</span>
+              </a>
+            );
           if ('to' in i)
             return (
               <NavLink key={i.key} to={i.to} end={i.to === '/portal'} {...key} onPointerEnter={() => setHover(n)}>
@@ -596,7 +608,7 @@ const useDemoSwitches = (muted: NotificationKind[]): EmailSwitches => ({
 
 function useConnectedSwitches(): EmailSwitches {
   const { muted, toggle, problem } = useEmailSwitches();
-  return { kinds: EMAIL_KINDS, muted, toggle, problem, foot: 'Saved to your account. The bell shows everything either way; these choose only the emails.' };
+  return { kinds: emailKinds(!!LMS_PLATFORM), muted, toggle, problem, foot: 'Saved to your account. The bell shows everything either way; these choose only the emails.' };
 }
 
 // `api` is fixed for the page's whole life, so the bell always calls the same hooks

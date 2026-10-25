@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { api } from './api';
 import { helpAdmins, helpGroups } from './helpTopics';
+import { LMS_PLATFORM } from './lmsPlatform';
 import { useDirectory } from './people';
 import { useSession } from './session';
 import { usePortal } from './store';
@@ -26,7 +27,7 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
   const role = useSession()!.role;
   const [q, setQ] = useState('');
   const query = q.trim();
-  const groups = helpGroups(!!api, role, query);
+  const groups = helpGroups(!!api, role, query, LMS_PLATFORM);
   // real names to ask, taken from the directory instead of a made-up support address
   const admins = useAdmins();
 
@@ -57,10 +58,17 @@ export function HelpModal({ onClose }: { onClose: () => void }) {
                     <PIcon name="chevron" size={14} />
                   </summary>
                   <p>{t.a}</p>
-                  {t.link && (
-                    <Link to={t.link.to} className="p-help-link" onClick={onClose}>
+                  {t.link?.href ? (
+                    <a href={t.link.href} target="_blank" rel="noreferrer" className="p-help-link">
                       {t.link.label} <PIcon name="chevron" size={12} />
-                    </Link>
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                  ) : (
+                    t.link && (
+                      <Link to={t.link.to} className="p-help-link" onClick={onClose}>
+                        {t.link.label} <PIcon name="chevron" size={12} />
+                      </Link>
+                    )
                   )}
                 </details>
               ))}

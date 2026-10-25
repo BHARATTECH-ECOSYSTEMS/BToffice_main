@@ -73,8 +73,9 @@ export function timeAgo(iso: string, now = Date.now()) {
   return DATE.format(at);
 }
 
-/** The email switches offered when connected: all of them, now that Learning is connected too. */
-export const EMAIL_KINDS = NOTIFICATION_KINDS;
+/** The email switches offered when connected: all of them, except course emails while courses live in the LMS Platform. */
+export const emailKinds = (platform: boolean) => (platform ? NOTIFICATION_KINDS.filter((k) => k.id !== 'courses') : NOTIFICATION_KINDS);
+export const EMAIL_KINDS = emailKinds(false);
 
 const POLL_MS = 60_000;
 

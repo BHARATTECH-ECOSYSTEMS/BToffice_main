@@ -427,3 +427,19 @@ test('the reset link in the email is read from the site address, and only there'
   assert.equal(resetTokenFrom('/reset-password', '?token=short'), null);
   assert.equal(resetTokenFrom('/portal', `?token=${TOKEN}`), null);
 });
+test('the sign-in handed to the LMS Platform is renewed first when it is about to expire', async () => {
+  const renewed = jwt(300, 'new');
+  const refresh2 = jwt(1800, 'r2');
+  const net = network(loginOk(jwt(10)), json(200, { access_token: renewed, refresh_token: refresh2, id_token: jwt(300, 'id2') }));
+  const auth = createAuth(CONFIG, net.request);
+  await auth.signIn('test.employee@example.test', 'pw-123', false);
+  const handed = await auth.handoverTokens();
+  assert.equal(net.calls[1].url, TOKEN_URL, 'renewed with Keycloak before handing over');
+  assert.equal(handed?.access, renewed);
+  assert.equal(handed?.refresh, refresh2);
+});
+
+test('signed out, nothing is handed to the LMS Platform', async () => {
+  const auth = createAuth(CONFIG, network().request);
+  assert.equal(await auth.handoverTokens(), null);
+});

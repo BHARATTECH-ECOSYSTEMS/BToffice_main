@@ -13,7 +13,8 @@ type Audience = 'manager' | 'admin';
 export interface HelpTopic {
   q: string;
   a: string;
-  link?: { to: string; label: string };
+  /** `href`: an outside address, opened in a new tab instead of the portal page `to`. */
+  link?: { to: string; label: string; href?: string };
   audience?: Audience;
   /** Only for the role named here (e.g. the employee's own status switch). */
   only?: Role;
@@ -192,13 +193,31 @@ const CONNECTED_HELP: HelpGroup[] = [
   },
 ];
 
+// When courses live in the LMS Platform (owner's 3B), its answers replace the ones about the portal's own Learning pages.
+const PLATFORM_STUDENT =
+  'Courses are in the LMS Platform, which opens in a new tab when you choose Learning in the top bar. Sign in there with your work email and your portal password. Every course is free: open one and enroll; lectures marked Preview are open before that. The LMS Platform keeps your enrollments and progress.';
+const PLATFORM_MANAGER =
+  'Courses are in the LMS Platform, which opens in a new tab when you choose Learning in the top bar. Sign in there with your work email and your portal password. Every course is free. To publish one, choose View as Educator, then Add Course: it goes live at once. Courses can’t be changed or removed there yet, so check a course before you publish it.';
+
+function onPlatform(t: HelpTopic, href: string): HelpTopic {
+  if (t.q === 'How do courses work?')
+    return { ...t, a: t.audience === 'manager' ? PLATFORM_MANAGER : PLATFORM_STUDENT, link: { to: '/portal/lms', label: 'Open the LMS Platform', href } };
+  if (t.q === 'Which pages save my changes?')
+    return { ...t, a: `${t.a.replace('courses and your progress in them, ', '')} The LMS Platform keeps your courses, enrollments and progress itself.` };
+  return t;
+}
+
 const visibleTo = (t: HelpTopic, role: Role) =>
   (!t.only || t.only === role) && (!t.audience || (t.audience === 'manager' ? managesPortal(role) : role === 'admin'));
 
-/** The groups `role` sees, narrowed to the topics matching `query` (question or answer); empty groups are dropped. */
-export function helpGroups(connected: boolean, role: Role, query: string): HelpGroup[] {
+/**
+ * The groups `role` sees, narrowed to the topics matching `query` (question or answer); empty groups are dropped.
+ * `platform`: the LMS Platform's address when Learning opens it (connected only).
+ */
+export function helpGroups(connected: boolean, role: Role, query: string, platform?: string): HelpGroup[] {
   const q = query.trim().toLowerCase();
-  return (connected ? CONNECTED_HELP : DEMO_HELP)
+  const groups = connected ? CONNECTED_HELP : DEMO_HELP;
+  return (platform && connected ? groups.map((g) => ({ ...g, topics: g.topics.map((t) => onPlatform(t, platform)) })) : groups)
     .map((g) => ({ ...g, topics: g.topics.filter((t) => visibleTo(t, role) && (!q || `${t.q} ${t.a}`.toLowerCase().includes(q))) }))
     .filter((g) => g.topics.length);
 }
