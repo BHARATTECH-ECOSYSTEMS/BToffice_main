@@ -128,7 +128,7 @@ test("an Admin can't set a Super Admin's join date", async () => {
 test("nobody sets their own join date through their profile", async () => {
   const { employee } = await people();
 
-  const res = await send(employee, "PATCH", "/me", { joinedOn: "2024-03-01", phone: "+91 1" });
+  const res = await send(employee, "PATCH", "/me", { joinedOn: "2024-03-01", phone: "+91 98765 43210" });
 
   assert.equal(res.status, 200);
   assert.equal(await storedJoinDate(employee), undefined);

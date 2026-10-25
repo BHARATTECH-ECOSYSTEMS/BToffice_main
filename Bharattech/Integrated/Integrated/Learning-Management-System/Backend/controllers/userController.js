@@ -758,12 +758,39 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
+// A 10-digit Indian number (owner's 2A), kept as typed: spaces and hyphens allowed, with +91 or a leading 0 in front.
+// Landlines with their area code count too, since a work phone is often one.
+const INDIAN_NUMBER = /^(?:\+91|0)?\d{10}$/;
+const PHONE_FORMAT = /^\+?[\d\s-]+$/;
+
+/** The number to store ("" clears it), or null when it isn't one. */
+const readPhone = (value) => {
+  if (typeof value !== "string") return null;
+  const typed = value.trim();
+  if (!typed) return "";
+  if (typed.length > 20 || !PHONE_FORMAT.test(typed)) return null;
+  return INDIAN_NUMBER.test(typed.replace(/[\s-]/g, "")) ? typed : null;
+};
+
 exports.updateCurrentUser = async (req, res) => {
   try {
-    const { phone, workPhone } = req.body;
+    const { phone, workPhone, showPhone } = req.body;
     const updates = {};
-    if (phone !== undefined) updates.phone = phone;
-    if (workPhone !== undefined) updates.workPhone = workPhone;
+    // everything is checked before anything is saved, so a refused field never leaves half an edit behind
+    if (phone !== undefined) {
+      updates.phone = readPhone(phone);
+      if (updates.phone === null) return res.status(400).json({ message: "Enter your phone as a 10-digit Indian number, like +91 98765 43210." });
+    }
+    if (workPhone !== undefined) {
+      updates.workPhone = readPhone(workPhone);
+      if (updates.workPhone === null) return res.status(400).json({ message: "Enter your work phone as a 10-digit Indian number, like +91 80 4000 1234." });
+    }
+    if (showPhone !== undefined) {
+      if (typeof showPhone !== "boolean") return res.status(400).json({ message: "Say whether colleagues may see your phone numbers (true or false)." });
+      // the one field only, so the person's other privacy choices stay as they are
+      updates["privacySettings.showPhone"] = showPhone;
+    }
+    const phonesChanged = "phone" in updates || "workPhone" in updates;
 
     const user = await User.findOneAndUpdate(
       { keycloakId: req.user?.keycloakId, isDeleted: { $ne: true } },
@@ -773,7 +800,7 @@ exports.updateCurrentUser = async (req, res) => {
 
     if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (user.keycloakId && user.authProvider === "keycloak") {
+    if (phonesChanged && user.keycloakId && user.authProvider === "keycloak") {
       try {
         await authKeycloakAdmin();
         const kcUser = await kcAdmin.users.findOne({ realm: KEYCLOAK_REALM, id: user.keycloakId });
