@@ -16,6 +16,7 @@ import Loading from "../../components/students/Loading";
 import RatingStars from "../../components/common/RatingStars";
 import {
   calculateRatings,
+  enrolledCountOf,
   calculateChapterTime,
   calculateCourseDuration,
   calculateNumOfLectures,
@@ -176,10 +177,8 @@ function CourseDetails() {
                   </p>
                 </div>
                 <p className="text-gray-500">
-                  {courseData.enrolledStudents.length}{" "}
-                  {courseData.enrolledStudents.length > 1
-                    ? "students"
-                    : "student"}
+                  {enrolledCountOf(courseData)}{" "}
+                  {enrolledCountOf(courseData) === 1 ? "student" : "students"}
                 </p>
                 <p className="text-gray-500">
                   Course by{" "}

@@ -45,6 +45,27 @@ function Navbar() {
 
         {/* Actions */}
         <div className="flex shrink-0 items-center gap-2">
+          {/* the way back to your courses: the company's link bar for it was never placed in the page */}
+          <Link
+            to="/my-enrollments"
+            className="
+              inline-flex items-center justify-center
+              whitespace-nowrap
+              rounded-full
+              px-3 py-1.5
+              text-xs font-medium text-gray-700
+              transition-all duration-200
+              hover:bg-gray-100
+              hover:text-gray-900
+              focus:outline-none
+              focus:ring-2 focus:ring-blue-500/30
+              active:scale-95
+              sm:px-4 sm:py-2
+              sm:text-sm
+            "
+          >
+            My Enrollments
+          </Link>
           {isAdmin() && (
             <button
               type="button"

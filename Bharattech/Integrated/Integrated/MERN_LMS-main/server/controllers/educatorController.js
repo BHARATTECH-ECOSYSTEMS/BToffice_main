@@ -1,10 +1,10 @@
 import fs from "fs";
 import { v2 as cloudinary } from "cloudinary";
 import Course from "../models/Course.js";
-import User from "../models/User.js";
 import Purchase from "../models/Purchase.js";
 import { isValidYouTubeUrl } from "../utils/videoHelpers.js";
 import { cleanDescription, hasVisibleText } from "../utils/courseDescription.js";
+import { ensureUser } from "../utils/currentUser.js";
 
 const getUserId = (req) => req.user?.id;
 const hasAdminAccess = (req) =>
@@ -25,43 +25,6 @@ const getCompletedEnrollmentPurchases = async (courseIds) =>
     .sort({ updatedAt: -1, createdAt: -1 })
     .lean();
 
-const ensureEducatorUser = async (req) => {
-  const userId = getUserId(req);
-  const email = req.user?.email;
-
-  const fallbackName =
-    req.user?.name ||
-    req.user?.fullName ||
-    req.user?.username ||
-    email ||
-    "BharatTech Educator";
-
-  // First use the authenticated ID; otherwise reuse the existing email record.
-  let user = await User.findById(userId);
-
-  if (!user && email) {
-    user = await User.findOne({ email });
-  }
-
-  if (user) return user;
-
-  try {
-    return await User.create({
-      _id: userId,
-      name: fallbackName,
-      email: email || `${userId}@bharattech.local`,
-      imageUrl: req.user?.imageUrl || "",
-      enrolledCourses: [],
-    });
-  } catch (error) {
-    // Another request may have created this email simultaneously.
-    if (error?.code === 11000 && email) {
-      const existingUser = await User.findOne({ email });
-      if (existingUser) return existingUser;
-    }
-    throw error;
-  }
-};
 const getLocalImageDataUrl = async (filePath, mimeType = "image/png") => {
   const imageBuffer = await fs.promises.readFile(filePath);
   return `data:${mimeType};base64,${imageBuffer.toString("base64")}`;
@@ -175,84 +138,77 @@ const validateCourseData = (courseData) => {
 /* =====================================================
    ADD NEW COURSE (Educator + Admin)
 ==================================================== */
-export const addCourse = async (req, res) => {
+/** Checks and saves a new course; answers [status, reply] so addCourse can tidy up before replying. */
+const createCourse = async (req) => {
+  const userId = getUserId(req);
+  if (!userId) {
+    return [401, { success: false, message: "Unauthenticated" }];
+  }
+
+  const educatorUser = await ensureUser(req);
+
+  const { courseData } = req.body;
+  const imageFile = req.file;
+
+  if (!imageFile) {
+    return [400, { success: false, message: "Thumbnail is required" }];
+  }
+
+  // Validate file type against whitelist
+  const allowedMimes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+  if (!allowedMimes.includes(imageFile.mimetype)) {
+    return [400, { success: false, message: "Invalid image" }];
+  }
+
+  // Validate file size (5MB maximum)
+  if (imageFile.size > 5 * 1024 * 1024) {
+    return [400, { success: false, message: "Image too large" }];
+  }
+
+  let parsedCourseData;
   try {
-    const userId = getUserId(req);
-    if (!userId) {
-      return res
-        .status(401)
-        .json({ success: false, message: "Unauthenticated" });
-    }
+    parsedCourseData = JSON.parse(courseData);
+  } catch {
+    return [400, { success: false, message: "Invalid course data format" }];
+  }
 
-    const educatorUser = await ensureEducatorUser(req);
+  parsedCourseData = normalizeCourseData(parsedCourseData);
 
-    const { courseData } = req.body;
-    const imageFile = req.file;
+  const validationMessage = validateCourseData(parsedCourseData);
+  if (validationMessage) {
+    return [400, { success: false, message: validationMessage }];
+  }
 
-    if (!imageFile) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Thumbnail is required" });
-    }
+  parsedCourseData.educator = educatorUser._id;
+  parsedCourseData.isPublished = true;
 
-    // Validate file type against whitelist
-    const allowedMimes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
-    if (!allowedMimes.includes(imageFile.mimetype)) {
-      return res.status(400).json({ success: false, message: "Invalid image" });
-    }
+  parsedCourseData.courseThumbnail = await getCourseThumbnailUrl(imageFile);
 
-    // Validate file size (5MB maximum)
-    if (imageFile.size > 5 * 1024 * 1024) {
-      return res
-        .status(400)
-        .json({ success: false, message: "Image too large" });
-    }
+  const newCourse = await Course.create(parsedCourseData);
 
-    let parsedCourseData;
-    try {
-      parsedCourseData = JSON.parse(courseData);
-    } catch {
-      return res
-        .status(400)
-        .json({ success: false, message: "Invalid course data format" });
-    }
+  return [201, {
+    success: true,
+    message: "Course created successfully",
+    data: newCourse,
+  }];
+};
 
-    parsedCourseData = normalizeCourseData(parsedCourseData);
-
-    const validationMessage = validateCourseData(parsedCourseData);
-    if (validationMessage) {
-      return res
-        .status(400)
-        .json({ success: false, message: validationMessage });
-    }
-
-    parsedCourseData.educator = educatorUser._id;
-    parsedCourseData.isPublished = true;
-
-    parsedCourseData.courseThumbnail = await getCourseThumbnailUrl(imageFile);
-
-    const newCourse = await Course.create(parsedCourseData);
-
-    if (imageFile.path) {
-      fs.promises.unlink(imageFile.path).catch((cleanupError) => {
-        console.warn(
-          "Could not remove uploaded course thumbnail temp file:",
-          cleanupError.message,
-        );
-      });
-    }
-
-    return res.status(201).json({
-      success: true,
-      message: "Course created successfully",
-      data: newCourse,
-    });
+export const addCourse = async (req, res) => {
+  let status;
+  let reply;
+  try {
+    [status, reply] = await createCourse(req);
   } catch (error) {
     console.error("addCourse error:", error);
-    return res
-      .status(500)
-      .json({ success: false, message: "Internal server error" });
+    [status, reply] = [500, { success: false, message: "Internal server error" }];
   }
+  // the cover is read into the course (or refused) by now: the uploaded file goes before the reply does
+  if (req.file?.path) {
+    await fs.promises.unlink(req.file.path).catch((cleanupError) => {
+      console.warn("Could not remove an uploaded course cover:", cleanupError.code);
+    });
+  }
+  return res.status(status).json(reply);
 };
 
 /* =====================================================
@@ -266,6 +222,8 @@ export const getEducatorCourses = async (req, res) => {
         .status(401)
         .json({ success: false, message: "Unauthenticated" });
     }
+    // keeps the educator's name as it is in their sign-in
+    await ensureUser(req);
 
     const courses = await Course.find(getEducatorCourseFilter(req)).lean();
 
@@ -294,6 +252,8 @@ export const educatorDashboardData = async (req, res) => {
         .status(401)
         .json({ success: false, message: "Unauthenticated" });
     }
+    // keeps the educator's name as it is in their sign-in
+    await ensureUser(req);
 
     const courses = await Course.find(getEducatorCourseFilter(req))
       .select("_id")
@@ -344,6 +304,8 @@ export const getEnrolledStudentsData = async (req, res) => {
         .status(401)
         .json({ success: false, message: "Unauthenticated" });
     }
+    // keeps the educator's name as it is in their sign-in
+    await ensureUser(req);
 
     const courses = await Course.find(getEducatorCourseFilter(req))
       .select("_id")

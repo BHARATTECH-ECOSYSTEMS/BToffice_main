@@ -1,5 +1,8 @@
 import Course from "../models/Course.js";
 
+// public pages show how a course was rated, never who rated or enrolled
+const ratingsOnly = (ratings) => (ratings || []).map(({ rating }) => ({ rating }));
+
 // Pagination helper (prevents excessive data loading when limit/page is passed)
 const getPagination = (req) => {
   const page = Math.max(parseInt(req.query.page, 10) || 1, 1);
@@ -24,7 +27,8 @@ export const getAllCourses = async (req, res) => {
       query = query.skip(skip).limit(limit);
     }
 
-    const courses = await query;
+    // ratings without who gave them
+    const courses = (await query).map((course) => ({ ...course, courseRatings: ratingsOnly(course.courseRatings) }));
 
     res.status(200).json({
       status: "success",
@@ -66,10 +70,11 @@ export const getCourseId = async (req, res) => {
       });
     }
 
+    const { enrolledStudents, courseRatings, ...shown } = course;
     res.status(200).json({
       success: true,
       data: {
-        course,
+        course: { ...shown, enrolledCount: (enrolledStudents || []).length, courseRatings: ratingsOnly(courseRatings) },
       },
     });
   } catch (error) {

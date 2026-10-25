@@ -11,6 +11,15 @@ export function calculateRatings(course) {
   return +(totalRating / course.courseRatings.length).toFixed(1);
 }
 
+/** The signed-in person's own rating of a course (the user from the sign-in carries `id`), or 0. */
+export function ownRating(course, user) {
+  if (!user?.id) return 0;
+  return course?.courseRatings?.find((rating) => rating.userId === user.id)?.rating ?? 0;
+}
+
+/** How many enrolled: public pages send a count, educator pages still send the list. */
+export const enrolledCountOf = (course) => course?.enrolledCount ?? course?.enrolledStudents?.length ?? 0;
+
 // Function to calculate course chapter time:
 export const calculateChapterTime = (chapter) => {
   const totalSeconds = chapter.chapterContent.reduce(

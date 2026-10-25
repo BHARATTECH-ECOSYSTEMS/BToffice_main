@@ -3,34 +3,10 @@ import Course from "../models/Course.js";
 import Purchase from "../models/Purchase.js";
 import User from "../models/User.js";
 import CourseProgress from "../models/CourseProgress.js";
+import { ensureUser } from "../utils/currentUser.js";
+import { lectureIdsOf } from "../utils/lectures.js";
 
 const getUserId = (req) => req.user?.id;
-
-const ensureCurrentUser = async (req) => {
-  const userId = getUserId(req);
-  if (!userId) return null;
-
-  const fallbackName =
-    req.user?.name ||
-    req.user?.fullName ||
-    req.user?.username ||
-    req.user?.email ||
-    "BharatTech User";
-
-  return User.findByIdAndUpdate(
-    userId,
-    {
-      $setOnInsert: {
-        _id: userId,
-        name: fallbackName,
-        email: req.user?.email || `${userId}@bharattech.local`,
-        imageUrl: req.user?.imageUrl || "",
-        enrolledCourses: [],
-      },
-    },
-    { new: true, upsert: true }
-  );
-};
 
 export const getUserData = async (req, res) => {
   try {
@@ -39,7 +15,7 @@ export const getUserData = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthenticated" });
     }
 
-    const user = await ensureCurrentUser(req);
+    const user = await ensureUser(req);
 
     if (!user) {
       return res.status(404).json({ success: false, message: "User not found" });
@@ -62,7 +38,7 @@ export const userEnrolledCourses = async (req, res) => {
       return res.status(401).json({ success: false, message: "Unauthenticated" });
     }
 
-    await ensureCurrentUser(req);
+    await ensureUser(req);
     const userData = await User.findById(userId).populate("enrolledCourses").lean();
     if (!userData) {
       return res.status(404).json({ success: false, message: "User not found" });
@@ -90,7 +66,7 @@ export const purchaseCourse = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid ID" });
     }
 
-    await ensureCurrentUser(req);
+    await ensureUser(req);
     const userData = await User.findById(userId).populate("enrolledCourses").lean();
     if (!userData) {
       return res.status(404).json({ success: false, message: "User not found" });
@@ -161,22 +137,42 @@ export const updateUserCourseProgress = async (req, res) => {
       return res.status(400).json({ success: false, message: "Invalid ID" });
     }
 
-    // Sanitize lectureId to prevent injection
     const safeLectureId = String(lectureId || "").slice(0, 100);
     if (!safeLectureId) {
       return res.status(400).json({ success: false, message: "Invalid lecture ID" });
     }
 
+    const [course, user] = await Promise.all([
+      Course.findById(courseId).select("courseContent").lean(),
+      User.findById(userId).select("enrolledCourses").lean(),
+    ]);
+    if (!course) {
+      return res.status(404).json({ success: false, message: "Course not found" });
+    }
+    if (!user?.enrolledCourses?.some((c) => String(c) === String(courseId))) {
+      return res.status(403).json({ success: false, message: "Enroll in this course first." });
+    }
+    const lectureIds = lectureIdsOf(course);
+    if (!lectureIds.includes(safeLectureId)) {
+      return res.status(400).json({ success: false, message: "That lecture isn't in this course." });
+    }
+
     // Atomic update with $addToSet to avoid race conditions and duplicates
-    await CourseProgress.findOneAndUpdate(
+    const progress = await CourseProgress.findOneAndUpdate(
       { userId, courseId },
       { $addToSet: { lectureCompleted: safeLectureId } },
       { upsert: true, new: true }
     );
+    // finished once every lecture of the course is done
+    const completed = lectureIds.every((id) => progress.lectureCompleted.includes(id));
+    if (completed !== progress.completed) {
+      await CourseProgress.updateOne({ _id: progress._id }, { $set: { completed } });
+    }
 
     res.status(200).json({
       status: "success",
       message: "Lecture marked as completed",
+      completed,
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Internal server error" });

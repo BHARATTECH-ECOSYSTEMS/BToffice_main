@@ -82,6 +82,8 @@ export const protect = (roles = []) => {
         req.user = {
           id: decoded.sub,
           username: decoded.preferred_username,
+          // the person's real name (the portal keeps it in Keycloak), so the LMS never shows a username instead
+          name: decoded.name || [decoded.given_name, decoded.family_name].filter(Boolean).join(" ") || undefined,
           email: decoded.email,
           roles: rolesFromToken,
         };

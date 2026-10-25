@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useEnrollments } from "../context/EnrollmentContext";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { ownRating } from "../utils/courseHelpers";
 
 export const useCourseData = (courseId, source = "all_courses") => {
   const { backendUrl } = useAppConfig();
@@ -39,11 +40,9 @@ export const useCourseData = (courseId, source = "all_courses") => {
         );
         if (course) {
           setCourseData(course);
-          const userRating = course.courseRatings.find(
-            (rating) => rating.userId === userData._id
-          );
-          if (userRating) {
-            setInitRating(userRating.rating);
+          const rating = ownRating(course, userData);
+          if (rating) {
+            setInitRating(rating);
           }
           return; // Blaa man7taaj backend data ✅;
         }
@@ -60,7 +59,7 @@ export const useCourseData = (courseId, source = "all_courses") => {
     } catch (error) {
       toast.error(error.message);
     }
-  }, [source, enrolledCourses, courseId, backendUrl]);
+  }, [source, enrolledCourses, courseId, backendUrl, userData]);
 
   useEffect(() => {
     fetchCourseData();

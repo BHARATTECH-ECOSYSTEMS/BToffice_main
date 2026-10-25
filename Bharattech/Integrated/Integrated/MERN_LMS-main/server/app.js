@@ -146,6 +146,13 @@ app.use((req, res) => {
 
 // === SAFE ERROR HANDLER ===
 app.use((err, req, res, next) => {
+  // a cover bigger than configs/multer.js allows: the person's to fix, not a server error
+  if (err?.code === "LIMIT_FILE_SIZE") {
+    return res.status(400).json({ success: false, message: "Choose a cover image under 5 MB." });
+  }
+  if (err?.code === "LIMIT_FILE_COUNT" || err?.code === "LIMIT_UNEXPECTED_FILE") {
+    return res.status(400).json({ success: false, message: "Send one cover image." });
+  }
   console.error("ERROR:", err);
   const statusCode = err.status || err.statusCode || 500;
   const message =
