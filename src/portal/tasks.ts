@@ -26,6 +26,15 @@ export interface PortalTask extends Task {
   givenBy?: { name: string; email: string };
   projectFile?: TaskFile;
   submissions: TaskSubmission[];
+  /** When it was marked done; older finished tasks have none. */
+  completedAt?: string;
+}
+
+/** How many tasks have each status, for the filter on Task management. */
+export function countByStatus(tasks: readonly { status: TaskStatus }[]) {
+  const counts = { all: tasks.length, todo: 0, doing: 0, done: 0 };
+  for (const t of tasks) counts[t.status] += 1;
+  return counts;
 }
 
 const BOARD_STATUS: Record<string, TaskStatus> = { pending: 'todo', 'in-progress': 'doing', completed: 'done' };
@@ -78,6 +87,7 @@ export function toTasks(raw: unknown): PortalTask[] {
       givenBy: by ? { name: text(by.fullName) ?? text(by.email) ?? 'Unknown', email: text(by.email) ?? '' } : undefined,
       projectFile,
       submissions,
+      ...(t.status === 'completed' && text(t.completedAt) ? { completedAt: text(t.completedAt) } : {}),
     });
   }
   return rows;

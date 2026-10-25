@@ -17,7 +17,8 @@ import { useMyPhoto } from '../myPhoto';
 import { certificatesByType, managerFigures, peopleByRole, toCardPerson, type CardPerson, type Figure } from '../dashboard';
 import { ConnectedCertificatesPanel, ConnectedTeamPanel } from './DashboardConnected';
 import { useTasks, type PortalTask, type TasksApi } from '../tasks';
-import { ConnectedTasksPanel, STATUS_LABEL as TASK_STATUS_LABEL, taskFailedMessage, TaskWindow, type TaskViewer } from './TasksConnected';
+import { daysUntil } from '../taskDue';
+import { ConnectedTasksPanel, DueFlag, STATUS_LABEL as TASK_STATUS_LABEL, taskFailedMessage, TaskWindow, type TaskViewer } from './TasksConnected';
 import type { ApiError } from '../api';
 import type { DirectoryPerson } from '../people';
 
@@ -620,8 +621,6 @@ function ProgressCard({ title, done, total, empty, delay = 0 }: { title: string;
   );
 }
 
-const daysUntil = (iso: string) => Math.round((new Date(`${iso}T00:00`).getTime() - new Date().setHours(0, 0, 0, 0)) / 864e5);
-
 /** Today's date, and the open task due soonest. Without a task list (tasks aren't connected yet) just the date. */
 function NextDueCard({ list }: { list?: Task[] }) {
   const byId = usePeopleById();
@@ -850,6 +849,7 @@ function TaskBoard({
                     {t.due ? formatDate(t.due) : 'No due date'}
                     {!editable && ` · ${t.assigneeName ?? byId.get(t.assigneeId)?.name ?? 'Removed user'}`}
                   </span>
+                  <DueFlag task={t} />
                 </div>
               </div>
             </li>

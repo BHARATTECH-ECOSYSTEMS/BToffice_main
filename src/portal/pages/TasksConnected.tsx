@@ -7,6 +7,7 @@ import { formatDate } from '../store';
 import {
   assignablePeople,
   canChangeTask,
+  countByStatus,
   TASK_FILE_ACCEPT,
   TASK_FILE_MAX_MB,
   TASK_PRIORITIES,
@@ -17,6 +18,7 @@ import {
   type TaskPriority,
   type TasksApi,
 } from '../tasks';
+import { dueFlag } from '../taskDue';
 import { Badge, btnClass, BtnLabel, Empty, Modal, SearchField, useListFlip } from '../ui';
 
 /**
@@ -47,6 +49,12 @@ export interface TaskViewer {
 
 const isDoer = (viewer: TaskViewer, task: PortalTask) => task.assigneeEmail.toLowerCase() === viewer.email.toLowerCase();
 const dueText = (due: string) => (due ? formatDate(due) : 'No due date');
+
+/** "Overdue by 2 days", "Due today", "3 days left" for an open task with a due day; nothing otherwise. */
+export function DueFlag({ task }: { task: { due: string; status: TaskStatus } }) {
+  const flag = dueFlag(task);
+  return flag && <span className={`p-due-flag${flag.late ? ' is-late' : ''}`}>{flag.label}</span>;
+}
 
 /** Opens a task file: a web link in a new tab, a stored file downloaded with the sign-in. */
 function FileButton({ file, tasks, notify }: { file: TaskFile; tasks: TasksApi; notify: (t: string) => void }) {
@@ -228,8 +236,16 @@ export function TaskWindow({
         </div>
         <div>
           <dt>Due</dt>
-          <dd>{dueText(task.due)}</dd>
+          <dd>
+            {dueText(task.due)} <DueFlag task={task} />
+          </dd>
         </div>
+        {task.status === 'done' && task.completedAt && (
+          <div>
+            <dt>Finished</dt>
+            <dd>{new Date(task.completedAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</dd>
+          </div>
+        )}
         <div>
           <dt>For</dt>
           <dd>{task.assigneeName}</dd>
@@ -434,11 +450,13 @@ export function ConnectedTasksPanel({
 }) {
   const { state } = tasks;
   const [q, setQ] = useState('');
+  const [shown, setShown] = useState<TaskStatus | 'all'>('all');
   const [creating, setCreating] = useState(false);
   const list = state.kind === 'ready' ? state.tasks : [];
+  const counts = countByStatus(list);
   const query = q.trim().toLowerCase();
-  const rows = list.filter((t) => !query || t.title.toLowerCase().includes(query) || t.assigneeName.toLowerCase().includes(query));
-  const taskRows = useListFlip<HTMLTableSectionElement>(`${query}|${rows.map((t) => t.id).join()}`);
+  const rows = list.filter((t) => (shown === 'all' || t.status === shown) && (!query || t.title.toLowerCase().includes(query) || t.assigneeName.toLowerCase().includes(query)));
+  const taskRows = useListFlip<HTMLTableSectionElement>(`${shown}|${query}|${rows.map((t) => t.id).join()}`);
 
   return (
     <section className="p-card" aria-labelledby="task-mgmt" aria-busy={state.kind === 'loading' || undefined}>
@@ -456,7 +474,16 @@ export function ConnectedTasksPanel({
           </button>
         )}
       </div>
-      <SearchField value={q} onChange={setQ} label="Search tasks" placeholder="Search by task or person" />
+      <div className="p-toolbar is-split">
+        <div className="p-chips" role="group" aria-label="Show status">
+          {(['all', 'todo', 'doing', 'done'] as const).map((s) => (
+            <button key={s} type="button" aria-pressed={shown === s} onClick={() => setShown(s)}>
+              {s === 'all' ? 'All' : STATUS_LABEL[s]} <span className="p-chip-count">{counts[s]}</span>
+            </button>
+          ))}
+        </div>
+        <SearchField value={q} onChange={setQ} label="Search tasks" placeholder="Search by task or person" />
+      </div>
       {state.kind === 'loading' ? (
         <p className="p-muted" role="status">
           Loading the tasks…
@@ -493,7 +520,10 @@ export function ConnectedTasksPanel({
                     </button>
                   </td>
                   <td>{t.assigneeName}</td>
-                  <td>{dueText(t.due)}</td>
+                  <td>
+                    {dueText(t.due)}
+                    <DueFlag task={t} />
+                  </td>
                   <td>{t.priority}</td>
                   <td>
                     <Badge kind={t.status}>{STATUS_LABEL[t.status]}</Badge>
@@ -505,7 +535,7 @@ export function ConnectedTasksPanel({
         </div>
       ) : (
         <Empty icon="clipboard" title={list.length ? 'No tasks found' : 'No tasks yet'}>
-          {list.length ? 'Try clearing the search.' : 'Click "Create task" to give one.'}
+          {list.length ? (shown === 'all' ? 'Try clearing the search.' : 'Try another status, or clear the search.') : 'Click "Create task" to give one.'}
         </Empty>
       )}
       {creating && people && (

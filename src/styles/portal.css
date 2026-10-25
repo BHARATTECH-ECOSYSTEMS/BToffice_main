@@ -3416,6 +3416,11 @@ a.p-cal-item-title {
   color: var(--paper);
   background: var(--ink);
 }
+.p-chip-count {
+  margin-left: 2px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.6;
+}
 @media (hover: hover) and (pointer: fine) {
   .p-chips button[aria-pressed='false']:hover {
     color: var(--ink);
@@ -4904,6 +4909,26 @@ a.p-cal-item-title {
 .p-board-tag.is-doing {
   color: #fff;
   background: var(--violet);
+}
+
+/* how an open task's due day stands ("Overdue by 2 days", "3 days left") */
+.p-due-flag {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.p-due-flag.is-late {
+  color: var(--p-danger-text);
+}
+.p-table .p-due-flag {
+  display: block;
+}
+/* the board is dark in both themes, so it always takes the dark theme's tints */
+.p-board .p-due-flag {
+  color: rgb(255 255 255 / 0.8);
+}
+.p-board .p-due-flag.is-late {
+  color: #ff9b6b;
 }
 .p-board-empty {
   margin: auto 0;
