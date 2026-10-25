@@ -4,7 +4,7 @@ import Purchase from "../models/Purchase.js";
 import User from "../models/User.js";
 import CourseProgress from "../models/CourseProgress.js";
 import { ensureUser } from "../utils/currentUser.js";
-import { lectureIdsOf } from "../utils/lectures.js";
+import { lectureIdsOf, progressIn } from "../utils/lectures.js";
 
 const getUserId = (req) => req.user?.id;
 
@@ -50,6 +50,39 @@ export const userEnrolledCourses = async (req, res) => {
     });
   } catch (error) {
     console.error("userEnrolledCourses error:", error);
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};
+
+/**
+ * GET /api/user/learning: the signed-in person's courses with how far they are, unfinished first, for the portal's
+ * "My learning" card (owner's 6A). Titles and numbers only: no covers or lecture lists.
+ */
+export const myLearning = async (req, res) => {
+  try {
+    const me = await ensureUser(req);
+    if (!me) {
+      return res.status(401).json({ success: false, message: "Unauthenticated" });
+    }
+    const courses = await Course.find({ _id: { $in: me.enrolledCourses } })
+      .select("courseTitle courseContent educator")
+      .populate({ path: "educator", select: "name" })
+      .lean();
+    const progress = await CourseProgress.find({ userId: me._id, courseId: { $in: courses.map((c) => String(c._id)) } }).lean();
+    const doneIn = new Map(progress.map((p) => [p.courseId, p.lectureCompleted || []]));
+    const order = me.enrolledCourses.map(String);
+    const summary = courses
+      .map((course) => ({
+        courseId: String(course._id),
+        courseTitle: course.courseTitle,
+        educatorName: course.educator?.name || "",
+        ...progressIn(course, doneIn.get(String(course._id))),
+      }))
+      .sort((a, b) => Number(a.completed) - Number(b.completed) || order.indexOf(a.courseId) - order.indexOf(b.courseId));
+
+    res.status(200).json({ status: "success", data: { courses: summary } });
+  } catch (error) {
+    console.error("myLearning error:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 };

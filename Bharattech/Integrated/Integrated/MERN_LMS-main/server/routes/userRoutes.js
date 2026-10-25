@@ -4,6 +4,7 @@ import {
   addUserRating,
   getUserCourseProgress,
   getUserData,
+  myLearning,
   purchaseCourse,
   updateUserCourseProgress,
   userEnrolledCourses,
@@ -13,6 +14,7 @@ const userRouter = express.Router();
 
 userRouter.get("/profile", protect(), getUserData);
 userRouter.get("/enrolled-courses", protect(), userEnrolledCourses);
+userRouter.get("/learning", protect(), myLearning);
 userRouter.post("/purchase", protect(), purchaseCourse);
 userRouter.post("/update-course-progress", protect(), updateUserCourseProgress);
 userRouter.post("/get-course-progress", protect(), getUserCourseProgress);
