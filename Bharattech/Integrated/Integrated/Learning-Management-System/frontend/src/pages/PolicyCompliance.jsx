@@ -292,7 +292,7 @@ export default function PolicyCompliance() {
 
     try {
       setAccepting(true);
-      await api.post(`/policies/${selectedPdf._id}/accept`);
+      await api.post(`/policies/${selectedPdf._id}/accept`, { readConfirmed: isAgreed });
       await fetchPolicies();
       setToast({ message: "Policy accepted", type: "success" });
       setSelectedPdf(null);

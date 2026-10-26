@@ -165,6 +165,10 @@ exports.getPolicies = async (req, res) => {
 
 exports.acceptPolicy = async (req, res) => {
   try {
+    // the person's own "I have read and understood this policy" tick (owner's 4A), so no app accepts for them without it
+    if (req.body?.readConfirmed !== true) {
+      return res.status(400).json({ message: "Tick “I have read and understood this policy” first." });
+    }
     const policy = await Policy.findById(req.params.id);
 
     if (!policy) {
