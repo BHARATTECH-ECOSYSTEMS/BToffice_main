@@ -1,13 +1,15 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
 import { learningPlatform, readToolLinks } from '../../src/portal/toolLinks';
 import { menuGroups, type TopItem } from '../../src/portal/portalMenu';
-import { emailKinds } from '../../src/portal/notifications';
-import { NOTIFICATION_KINDS, type Role } from '../../src/portal/session';
+import { EMAIL_KINDS } from '../../src/portal/notifications';
+import { type Role } from '../../src/portal/session';
 import { helpGroups } from '../../src/portal/helpTopics';
 
 // Owner's 3B (2026-10-25): when the portal is connected and the LMS Platform (MERN LMS) has an address, Learning opens
-// it in a new tab instead of the portal's own course pages. The demo keeps its own pages.
+// it in a new tab. Its own course pages were deleted on 2026-10-26 (owner's 2-1A): without the LMS Platform, Learning
+// says courses are there and it isn't connected.
 
 const PLATFORM = 'https://lms.example.test';
 const ROLES: Role[] = ['admin', 'subadmin', 'employee'];
@@ -36,11 +38,8 @@ test('a top-bar page with an address of its own keeps it, so the phone menu open
   assert.equal(pages.links.find((l) => l.label === 'Overview')?.href, undefined);
 });
 
-test('the "Course updates" email switch is offered only while courses are the portal’s own', () => {
-  assert.deepEqual(emailKinds(false), NOTIFICATION_KINDS);
-  const kinds = emailKinds(true).map((k) => k.id);
-  assert.ok(!kinds.includes('courses'));
-  assert.equal(kinds.length, NOTIFICATION_KINDS.length - 1);
+test('there is no "Course updates" email switch: the portal has no courses of its own', () => {
+  assert.ok(!EMAIL_KINDS.some((k) => String(k.id) === 'courses'));
 });
 
 test('Help sends everyone to the LMS Platform for courses, with its address', () => {
@@ -64,11 +63,33 @@ test('"Which pages save" no longer counts courses as saved by the portal when th
   }
 });
 
-test('without the LMS Platform, Help is as before', () => {
+test('without the LMS Platform, Help says courses are there and it isn’t connected, in the demo too', () => {
   for (const role of ROLES) {
-    assert.deepEqual(topics(role), topics(role, undefined));
-    const saves = topics(role).find((t) => t.q === 'Which pages save my changes?')!;
-    assert.ok(saves.a.includes('courses and your progress in them'), role);
-    assert.ok(topics(role).filter((t) => t.q === 'How do courses work?').every((t) => t.link?.to === '/portal/lms' && !t.link.href), role);
+    for (const connected of [true, false]) {
+      const all = helpGroups(connected, role, '').flatMap((g) => g.topics);
+      const courses = all.filter((t) => t.q === 'How do courses work?');
+      assert.equal(courses.length, 1, role);
+      assert.match(courses[0].a, /LMS Platform/, role);
+      assert.match(courses[0].a, /isn’t connected here/, role);
+      assert.equal(courses[0].link?.to, '/portal/lms', role);
+      assert.equal(courses[0].link?.href, undefined, role);
+      assert.ok(!all.some((t) => /courses and your progress|Every course in Learning/.test(t.a)), role);
+    }
   }
+});
+
+test('the old Learning pages are gone: no files, no routes, no styles, no calls to /api/learning', () => {
+  for (const file of ['src/portal/pages/lms', 'src/portal/learning.ts', 'src/portal/lmsData.ts']) assert.equal(existsSync(file), false, file);
+  const app = readFileSync('src/App.tsx', 'utf8');
+  assert.doesNotMatch(app, /pages\/lms/);
+  // every /portal/lms address (old bell notes link to courses) lands on the note saying where courses are
+  assert.match(app, /\{ path: 'lms\/\*', lazy: page\(loadResources, 'LearningElsewhere'\) \}/);
+  const note = readFileSync('src/portal/pages/Resources.tsx', 'utf8');
+  assert.match(note, /LMS_PLATFORM\s*\?\s*'Choose Learning in the top bar/);
+  const css = readFileSync('src/styles/portal.css', 'utf8');
+  for (const cls of ['p-player', 'p-course-grid', 'p-lms-hero', 'p-buy', 'p-stars', 'p-draft-chapter']) assert.doesNotMatch(css, new RegExp(`\\.${cls}(?![\\w-])`), cls);
+  assert.doesNotMatch(css, /@keyframes (p-done-in|p-check-draw)/);
+  const store = readFileSync('src/portal/store.tsx', 'utf8');
+  assert.doesNotMatch(store, /SEED_COURSES|rateCourse|setLectureDone/);
+  for (const file of ['src/portal/api.ts', 'src/portal/myLearning.ts', 'src/portal/pages/MyLearningPanel.tsx']) assert.doesNotMatch(readFileSync(file, 'utf8'), /['`]\/learning\//, file);
 });

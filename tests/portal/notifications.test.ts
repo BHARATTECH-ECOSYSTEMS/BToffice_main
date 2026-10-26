@@ -64,12 +64,11 @@ test('times read as "just now", minutes, hours, days, then the date', () => {
   assert.equal(timeAgo('not a date', now), '');
 });
 
-test('connected, every email switch is offered, course updates included', () => {
+test('connected, every email switch is offered (no course switch: courses are in the LMS Platform)', () => {
   assert.deepEqual(
     EMAIL_KINDS.map((k) => k.id),
-    ['tasks', 'certificates', 'policies', 'courses', 'events'],
+    ['tasks', 'certificates', 'policies', 'events'],
   );
-  assert.match(EMAIL_KINDS.find((k) => k.id === 'courses')!.hint, /new course/i);
 });
 
 test('a new course note shows in the bell with the course icon and links to the course', () => {

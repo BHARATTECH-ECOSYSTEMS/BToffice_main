@@ -2,7 +2,9 @@ import { CERTIFICATE_TYPES, ROLE_LABEL, STREAM_LABEL, type PersonRole, type Pers
 import { ACCOUNT_ROLES, roleLabel, type DirectoryPerson } from './people';
 import type { AccountProfile } from './profile';
 import type { IssuedCertificate } from './certificates';
-import { plural } from './lmsData';
+
+/** "1 item", "3 items". */
+export const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 /**
  * The dashboard's numbers and the ID card's person, worked out from the backend's records (the directory, the

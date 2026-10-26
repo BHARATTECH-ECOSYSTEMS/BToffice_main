@@ -38,7 +38,6 @@ import {
   type Verification,
   type VerificationStatus,
 } from './data';
-import { SEED_COMPLETED, SEED_COURSES, SEED_ENROLLMENTS, SEED_RATINGS, type Course, type Enrollment, type Rating } from './lmsData';
 import { localMinute, receivedRequests } from './inbox';
 import type { Session } from './session';
 
@@ -295,42 +294,6 @@ function usePortalState(session: Session) {
     [applications, rejoin]
   );
 
-  // Learning platform. Completed lectures are stored as "personId:lectureId" so a lookup is one Set check.
-  const [courses, setCourses] = useState<Course[]>(SEED_COURSES);
-  const [enrollments, setEnrollments] = useState<Enrollment[]>(SEED_ENROLLMENTS);
-  const [completed, setCompleted] = useState<Set<string>>(() => new Set(SEED_COMPLETED.map((c) => `${c.personId}:${c.lectureId}`)));
-  const [ratings, setRatings] = useState<Rating[]>(SEED_RATINGS);
-
-  const enroll = useCallback(
-    (courseId: string) =>
-      setEnrollments((list) => (list.some((e) => e.courseId === courseId && e.personId === me.id) ? list : [...list, { courseId, personId: me.id, date: today() }])),
-    [me.id]
-  );
-  const setLectureDone = useCallback(
-    (lectureId: string, done: boolean) =>
-      setCompleted((set) => {
-        const next = new Set(set);
-        if (done) next.add(`${me.id}:${lectureId}`);
-        else next.delete(`${me.id}:${lectureId}`);
-        return next;
-      }),
-    [me.id]
-  );
-  /** Publishes a course taught by the signed-in person; returns it so the caller can link to it. */
-  const addCourse = useCallback(
-    (draft: Omit<Course, 'id' | 'educatorId' | 'published'>) => {
-      const course: Course = { ...draft, id: nextId('course-'), educatorId: me.id, published: today() };
-      setCourses((list) => [course, ...list]);
-      return course;
-    },
-    [me.id]
-  );
-  const rateCourse = useCallback(
-    (courseId: string, stars: number) =>
-      setRatings((list) => [...list.filter((r) => !(r.courseId === courseId && r.personId === me.id)), { courseId, personId: me.id, stars }]),
-    [me.id]
-  );
-
   return {
     me,
     people,
@@ -378,14 +341,6 @@ function usePortalState(session: Session) {
     documents,
     deleted,
     uploadDocument,
-    courses,
-    enrollments,
-    completed,
-    ratings,
-    enroll,
-    setLectureDone,
-    rateCourse,
-    addCourse,
   };
 }
 

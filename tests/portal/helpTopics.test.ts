@@ -78,20 +78,6 @@ test('connected, everyone learns that an admin sets the join date, and that it s
   assert.match(saves ?? '', /join dates/);
 });
 
-test('connected, courses are explained as free and saved, not as samples', () => {
-  const topic = (role: Role) => helpGroups(true, role, 'courses work').flatMap((g) => g.topics).find((t) => t.q === 'How do courses work?');
-  for (const role of ['employee', 'subadmin', 'admin'] as const) {
-    const a = topic(role)?.a ?? '';
-    assert.match(a, /free/i, role);
-    assert.match(a, /saved to your account/i, role);
-    assert.doesNotMatch(a, /samples|isn’t connected/i, role);
-  }
-  assert.match(topic('subadmin')?.a ?? '', /publish/i);
-  assert.doesNotMatch(topic('employee')?.a ?? '', /publish/i);
-  const saves = answers(true, 'employee').find((a) => a.startsWith('People, Tasks'));
-  assert.match(saves ?? '', /courses/);
-});
-
 test('connected, everyone learns what the Community is; only admins how to mark someone as left', () => {
   for (const role of ['employee', 'subadmin', 'admin'] as const) assert.ok(questions(true, role).includes('What is the Community?'), role);
   const community = helpGroups(true, 'employee', 'Community').flatMap((g) => g.topics).find((t) => t.q === 'What is the Community?');

@@ -2,13 +2,12 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router';
 import { EVENT_KINDS, VERIFICATION_STALE_DAYS, type EventKind, type Task, type TaskStatus } from './data';
 import { localDay } from './eoffice';
-import { plural } from './lmsData';
 import { managesPortal, useSession } from './session';
 import { usePeopleById, usePortal } from './store';
 import { btnClass, BtnLabel, Modal, PIcon } from './ui';
 import { api, ApiError } from './api';
 import { eventFailedMessage, useEvents, type EventDraft } from './events';
-import { workAnniversaries, type Joiner } from './dashboard';
+import { plural, workAnniversaries, type Joiner } from './dashboard';
 import { useRemoteVerifications, type RemoteVerification } from './verifications';
 
 /**

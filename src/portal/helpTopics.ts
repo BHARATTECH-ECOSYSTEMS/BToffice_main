@@ -31,6 +31,12 @@ const OPEN_POLICIES: HelpTopic = {
   a: 'Open Policy & Compliance and read each document. Then press Accept, tick “I have read and understood this policy” and accept it. Documents waiting for you are marked To review.',
   link: { to: '/portal/policy', label: 'Open Policy & Compliance' },
 };
+// the portal's own course pages were removed (owner, 2026-10-26); Learning opens the LMS Platform once it is set
+const COURSES_ELSEWHERE: HelpTopic = {
+  q: 'How do courses work?',
+  a: 'Courses are in the company’s LMS Platform. Learning opens it in a new tab, signed in as you, once it is connected to this portal; it isn’t connected here.',
+  link: { to: '/portal/lms', label: 'Open Learning' },
+};
 const NOT_CONNECTED_TOOL: HelpTopic = {
   q: 'A tool says “Not connected yet”',
   a: 'Its web address hasn’t been set up yet. Once it is, the button opens the tool directly in a new tab.',
@@ -77,7 +83,7 @@ const DEMO_HELP: HelpGroup[] = [
     topics: [
       NOT_CONNECTED_TOOL,
       WORKSPACE,
-      { q: 'How do courses work?', a: 'In the LMS Platform, open a course and enroll. Preview lectures are open to everyone; the rest unlock once you enroll. Mark lectures as done to track your progress, and rate the course when you finish.', link: { to: '/portal/lms', label: 'Open the LMS' } },
+      COURSES_ELSEWHERE,
       OPEN_POLICIES,
     ],
   },
@@ -129,8 +135,7 @@ const CONNECTED_HELP: HelpGroup[] = [
     topics: [
       NOT_CONNECTED_TOOL,
       WORKSPACE,
-      { q: 'How do courses work?', a: 'Every course in Learning is free. Open one and enroll; lectures marked Preview are open before that. Mark lectures as done and rate the course from the player: your enrollments, progress and rating are saved to your account.', only: 'employee', link: { to: '/portal/lms', label: 'Open Learning' } },
-      { q: 'How do courses work?', a: 'Every course in Learning is free. Enroll in any course; your progress and rating are saved to your account. You can publish courses too (View as educator, then Add course); a new course goes live at once and everyone is told in their bell. You change, unpublish or delete your own courses from My courses; admins can change any.', audience: 'manager', link: { to: '/portal/lms', label: 'Open Learning' } },
+      COURSES_ELSEWHERE,
       OPEN_POLICIES,
     ],
   },
@@ -200,22 +205,22 @@ const CONNECTED_HELP: HelpGroup[] = [
     title: 'Good to know',
     icon: 'alert',
     topics: [
-      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, courses and your progress in them, verifications (including requests from other companies), the Community’s members, personal emails, referrals and internal jobs, e-Office check-ins, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload.' },
+      { q: 'Which pages save my changes?', a: 'People, Tasks, Certificates, Policy & Compliance, Resources, calendar events, join dates, verifications (including requests from other companies), the Community’s members, personal emails, referrals and internal jobs, e-Office check-ins, the bell, your photo and your password are saved to the company system. Pages marked “Sample data” last only until you reload.' },
     ],
   },
 ];
 
-// When courses live in the LMS Platform (owner's 3B), its answers replace the ones about the portal's own Learning pages.
+// When Learning opens the LMS Platform (owner's 3B), these answers replace the one saying it isn't connected.
 const PLATFORM_STUDENT =
   'Courses are in the LMS Platform, which opens in a new tab, already signed in as you, when you choose Learning in the top bar. If it ever asks you to sign in, use your work email (not your Employee ID) and your portal password. Every course is free: open one and enroll; lectures marked Preview are open before that. The LMS Platform keeps your enrollments and progress.';
 const PLATFORM_MANAGER =
   'Courses are in the LMS Platform, which opens in a new tab, already signed in as you, when you choose Learning in the top bar. If it ever asks you to sign in, use your work email (not your Employee ID) and your portal password. Every course is free. To publish one, choose View as Educator, then Add Course: it goes live at once. Courses can’t be changed or removed there yet, so check a course before you publish it.';
 
-function onPlatform(t: HelpTopic, href: string): HelpTopic {
+function onPlatform(t: HelpTopic, href: string, role: Role): HelpTopic {
   if (t.q === 'How do courses work?')
-    return { ...t, a: t.audience === 'manager' ? PLATFORM_MANAGER : PLATFORM_STUDENT, link: { to: '/portal/lms', label: 'Open the LMS Platform', href } };
+    return { ...t, a: managesPortal(role) ? PLATFORM_MANAGER : PLATFORM_STUDENT, link: { to: '/portal/lms', label: 'Open the LMS Platform', href } };
   if (t.q === 'Which pages save my changes?')
-    return { ...t, a: `${t.a.replace('courses and your progress in them, ', '')} The LMS Platform keeps your courses, enrollments and progress itself.` };
+    return { ...t, a: `${t.a} The LMS Platform keeps your courses, enrollments and progress itself.` };
   return t;
 }
 
@@ -229,7 +234,7 @@ const visibleTo = (t: HelpTopic, role: Role) =>
 export function helpGroups(connected: boolean, role: Role, query: string, platform?: string): HelpGroup[] {
   const q = query.trim().toLowerCase();
   const groups = connected ? CONNECTED_HELP : DEMO_HELP;
-  return (platform && connected ? groups.map((g) => ({ ...g, topics: g.topics.map((t) => onPlatform(t, platform)) })) : groups)
+  return (platform && connected ? groups.map((g) => ({ ...g, topics: g.topics.map((t) => onPlatform(t, platform, role)) })) : groups)
     .map((g) => ({ ...g, topics: g.topics.filter((t) => visibleTo(t, role) && (!q || `${t.q} ${t.a}`.toLowerCase().includes(q))) }))
     .filter((g) => g.topics.length);
 }

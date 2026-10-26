@@ -103,7 +103,3 @@ test('the dashboard, Settings and the verification desk are one column on phones
   for (const sel of ['.p-bento', '.p-settings', '.p-desk', '.p-set-row'])
     assert.match(phone, new RegExp(`${sel.replace('.', '\\.')}[^{]*\\{[^}]*grid-template-columns:\\s*(minmax\\(0, 1fr\\)|1fr)`), `${sel} isn't one column on phones`);
 });
-
-test('course covers are clipped to their frame', () => {
-  assert.match(css, /\.p-thumb\s*\{[^}]*overflow:\s*hidden/);
-});

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useParams } from 'react-router';
 import { api } from '../api';
 import { TOOLS, toolById, type LinkResource, type Tool } from '../data';
+import { LMS_PLATFORM } from '../lmsPlatform';
 import { managesPortal, useSession, type Role } from '../session';
 import { usePeopleById, usePortal } from '../store';
 import { btnClass, BtnLabel, DeleteButton, Empty, Modal, NotConnected, PageHead, PIcon, PortalNotFound, ToolButton, useNotice } from '../ui';
@@ -232,6 +233,25 @@ export function ToolPage() {
 }
 
 /** A section that is planned but not built yet. */
+/**
+ * /portal/lms and anything under it (older bell notes link to courses): the portal's own course pages were removed
+ * (owner, 2026-10-26), so this says where courses are.
+ */
+export function LearningElsewhere() {
+  return (
+    <>
+      <PageHead title="Learning" sub="Courses in the company’s LMS Platform." />
+      <section className="p-card">
+        <Empty icon="cap" title="Courses are in the LMS Platform">
+          {LMS_PLATFORM
+            ? 'Choose Learning in the top bar: it opens the LMS Platform in a new tab, signed in as you.'
+            : 'Learning opens it in a new tab, signed in as you, once it is connected to this portal. It isn’t connected here.'}
+        </Empty>
+      </section>
+    </>
+  );
+}
+
 export function Soon({ title, sub, body }: { title: string; sub: string; body: string }) {
   return (
     <>

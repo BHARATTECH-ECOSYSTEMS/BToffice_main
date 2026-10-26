@@ -48,12 +48,6 @@ const loadCommunity = () => import('./portal/pages/Community');
 const loadAttendance = () => import('./portal/pages/Attendance');
 const loadProfile = () => import('./portal/pages/Profile');
 const loadVerification = () => import('./portal/pages/Verification');
-const loadLmsParts = () => import('./portal/pages/lms/parts');
-const loadCatalogue = () => import('./portal/pages/lms/Catalogue');
-const loadCourseDetail = () => import('./portal/pages/lms/CourseDetail');
-const loadLearning = () => import('./portal/pages/lms/Learning');
-const loadEducator = () => import('./portal/pages/lms/Educator');
-const loadAddCourse = () => import('./portal/pages/lms/AddCourse');
 
 /**
  * Once the first page is up and the browser is idle, the other pages are fetched one at a time, so moving between
@@ -209,28 +203,8 @@ const router = createHashRouter([
       { path: 'certificates', lazy: page(loadCertificates, 'Certificates') },
       { path: 'policy', lazy: page(loadPolicy, 'Policy') },
       { path: 'settings', lazy: page(loadSettings, 'Settings') },
-      {
-        path: 'lms',
-        lazy: page(loadLmsParts, 'LmsShell'),
-        children: [
-          { index: true, lazy: page(loadCatalogue, 'LmsHome') },
-          { path: 'courses', lazy: page(loadCatalogue, 'CourseList') },
-          { path: 'course/:id', lazy: page(loadCourseDetail, 'CourseDetail') },
-          { path: 'enrollments', lazy: page(loadLearning, 'MyEnrollments') },
-          { path: 'player/:id', lazy: page(loadLearning, 'Player') },
-          {
-            path: 'educator',
-            lazy: page(loadEducator, 'EducatorOnly'),
-            children: [
-              { index: true, lazy: page(loadEducator, 'EducatorDashboard') },
-              { path: 'add', lazy: page(loadAddCourse, 'AddCourse') },
-              { path: 'edit/:id', lazy: page(loadAddCourse, 'EditCourse') },
-              { path: 'courses', lazy: page(loadEducator, 'MyCourses') },
-              { path: 'students', lazy: page(loadEducator, 'StudentsEnrolled') },
-            ],
-          },
-        ],
-      },
+      // the portal's own course pages were removed; this says where courses are (older bell notes link under it)
+      { path: 'lms/*', lazy: page(loadResources, 'LearningElsewhere') },
       {
         path: 'interview',
         lazy: async () => {

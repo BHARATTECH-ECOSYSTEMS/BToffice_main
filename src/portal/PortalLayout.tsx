@@ -10,7 +10,7 @@ import { ThemeButton, ThemeChoices } from '../components/ThemeSwitch';
 import { useApplyTheme } from '../useApplyTheme';
 import { auth } from './auth';
 import { api } from './api';
-import { emailKinds, timeAgo, useEmailSwitches, useNotifications } from './notifications';
+import { EMAIL_KINDS, timeAgo, useEmailSwitches, useNotifications } from './notifications';
 import { LMS_PLATFORM } from './lmsPlatform';
 import { useLmsHandoff } from './lmsHandoff';
 import { CERTIFICATE_TYPES, TOOLS, type PortalIconName } from './data';
@@ -608,7 +608,7 @@ const useDemoSwitches = (muted: NotificationKind[]): EmailSwitches => ({
 
 function useConnectedSwitches(): EmailSwitches {
   const { muted, toggle, problem } = useEmailSwitches();
-  return { kinds: emailKinds(!!LMS_PLATFORM), muted, toggle, problem, foot: 'Saved to your account. The bell shows everything either way; these choose only the emails.' };
+  return { kinds: EMAIL_KINDS, muted, toggle, problem, foot: 'Saved to your account. The bell shows everything either way; these choose only the emails.' };
 }
 
 // `api` is fixed for the page's whole life, so the bell always calls the same hooks
