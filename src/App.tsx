@@ -134,8 +134,13 @@ function Layout() {
   // the matching rule is [data-offscreen] in base.css. <main> remounts per page, so this re-runs for each.
   useEffect(() => {
     const io = new IntersectionObserver((entries) => entries.forEach((e) => e.target.toggleAttribute('data-offscreen', !e.isIntersecting)));
-    document.querySelectorAll('#main section, .footer').forEach((s) => io.observe(s));
-    return () => io.disconnect();
+    const watch = () => document.querySelectorAll('#main section, .footer').forEach((s) => io.observe(s));
+    watch();
+    // the home page adds its lower sections after its first paint (Home.tsx), so those are watched as they arrive
+    const added = new MutationObserver(watch);
+    const main = document.getElementById('main');
+    if (main) added.observe(main, { childList: true });
+    return () => (io.disconnect(), added.disconnect());
   }, [pathname]);
 
   usePointerBloom();
