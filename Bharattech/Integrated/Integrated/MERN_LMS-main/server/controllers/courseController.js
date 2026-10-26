@@ -1,4 +1,5 @@
 import Course from "../models/Course.js";
+import { courseSize } from "../utils/lectures.js";
 
 // public pages show how a course was rated, never who rated or enrolled
 const ratingsOnly = (ratings) => (ratings || []).map(({ rating }) => ({ rating }));
@@ -19,7 +20,7 @@ export const getAllCourses = async (req, res) => {
     let query = Course.find({
       isPublished: true,
     })
-      .select("-courseContent -enrolledStudents")
+      .select("-enrolledStudents")
       .populate({ path: "educator", select: "name imageUrl" })
       .lean();
 
@@ -27,8 +28,12 @@ export const getAllCourses = async (req, res) => {
       query = query.skip(skip).limit(limit);
     }
 
-    // ratings without who gave them
-    const courses = (await query).map((course) => ({ ...course, courseRatings: ratingsOnly(course.courseRatings) }));
+    // ratings without who gave them, and the content as a size only
+    const courses = (await query).map(({ courseContent, ...course }) => ({
+      ...course,
+      ...courseSize({ courseContent }),
+      courseRatings: ratingsOnly(course.courseRatings),
+    }));
 
     res.status(200).json({
       status: "success",

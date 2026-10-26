@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
-import humanizeDuration from "humanize-duration";
+import { Link, useParams } from "react-router-dom";
+import { ArrowLeft, ChevronDown, CheckCircle2, PlayCircle } from "lucide-react";
 
-import { assets } from "../../assets/assets";
 import { useCourseData } from "../../hooks/useCourseData";
 import { useCourseProgress } from "../../hooks/useCourseProgress";
-import { calculateChapterTime } from "../../utils/courseHelpers";
+import { lessonsLabel, minutesLabel, nextLectureAfter } from "../../utils/courseHelpers";
 import { useAuth } from "../../context/AuthContext";
 import { useAppConfig } from "../../context/AppContext";
 
@@ -13,6 +12,7 @@ import Loading from "../../components/students/Loading";
 import Footer from "../../components/students/Footer";
 import Rating from "../../components/students/Rating";
 import VideoPlayer from "../../components/common/VideoPlayer";
+import ProgressBar from "../../components/students/ProgressBar";
 
 function Player() {
   const { id } = useParams();
@@ -28,7 +28,7 @@ function Player() {
 
   // UI state
   const [playerData, setPlayerData] = useState(null);
-  const [openSections, setOpenSections] = useState(new Set());
+  const [openSections, setOpenSections] = useState(new Set([0]));
 
   // Fetch progress on mount
   useEffect(() => {
@@ -44,6 +44,8 @@ function Player() {
   };
 
   const handlePlayLecture = (lecture, chapterIndex, lectureIndex) => {
+    // "Next lesson" can move into a closed chapter: open it, so the list shows where you are
+    setOpenSections((prev) => (prev.has(chapterIndex) ? prev : new Set(prev).add(chapterIndex)));
     setPlayerData({
       ...lecture,
       chapter: chapterIndex + 1,
@@ -56,132 +58,102 @@ function Player() {
     return <Loading />;
   }
 
+  const completed = courseProgress?.lectureCompleted || [];
+  const lectures = courseData.courseContent.flatMap((chapter) => chapter.chapterContent || []);
+  const done = lectures.filter((lecture) => completed.includes(lecture.lectureId)).length;
+  const percent = lectures.length ? Math.round((done / lectures.length) * 100) : 0;
+  // the lesson the video window offers once this one is marked watched (owner's refinement A)
+  const next = playerData ? nextLectureAfter(courseData, playerData.lectureId) : null;
+
   return (
     <>
-      <div className="flex flex-col-reverse p-4 sm:p-10 md:grid md:grid-cols-2 gap-10 md:px-36 bg-gradient-to-b from-indigo-100/70 via-blue-50/30 to-white">
-        {/* Left Column - Course Structure */}
-        <div className="text-gray-800">
-          <h2 className="text-xl font-semibold mb-5">Course Structure</h2>
+      <main className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-6 pb-20 pt-10 text-left lg:grid-cols-[1fr_340px]">
+        <div className="min-w-0">
+          <Link to="/my-enrollments" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors duration-150 ease-snappy mhover:text-ink">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            My courses
+          </Link>
+          <h1 className="mt-3 font-display text-[40px] font-bold leading-[1.08] tracking-[-0.02em] text-ink">
+            {courseData.courseTitle}
+          </h1>
+          <div className="mt-4 flex items-center gap-3">
+            <ProgressBar percent={percent} label="Course progress" className="max-w-sm" />
+            <p className="shrink-0 text-sm tabular-nums text-muted">
+              {lectures.length && done === lectures.length ? "Completed" : `${done} of ${lessonsLabel(lectures.length)} watched`}
+            </p>
+          </div>
 
-          <div className="space-y-2">
-            {courseData.courseContent.map((chapter, chapterIndex) => (
-              <div
-                key={chapterIndex}
-                className="border border-gray-300 bg-white rounded"
-              >
-                {/* Chapter Header */}
-                <div
-                  className="flex items-center justify-between px-4 py-3 cursor-pointer select-none hover:bg-gray-50 transition-colors"
-                  onClick={() => toggleSection(chapterIndex)}
-                >
-                  <div className="flex items-center gap-2">
-                    <img
-                      src={assets.down_arrow_icon}
-                      alt="toggle"
-                      className={`transition-transform ${
-                        openSections.has(chapterIndex) ? "rotate-180" : ""
-                      }`}
-                    />
-                    <p className="font-medium md:text-base text-sm">
-                      {chapter.chapterTitle}
-                    </p>
-                  </div>
-                  <p className="text-sm md:text-base text-gray-500">
-                    {chapter.chapterContent?.length} lectures ·{" "}
-                    {calculateChapterTime(chapter)}
-                  </p>
-                </div>
+          <ul className="mt-8 overflow-hidden rounded-2xl border border-line bg-card">
+            {courseData.courseContent.map((chapter, chapterIndex) => {
+              const isOpen = openSections.has(chapterIndex);
+              return (
+                <li key={chapterIndex} className="border-b border-line last:border-b-0">
+                  <button
+                    type="button"
+                    onClick={() => toggleSection(chapterIndex)}
+                    aria-expanded={isOpen}
+                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors duration-150 ease-snappy mhover:bg-ink/[0.02]"
+                  >
+                    <span className="flex items-center gap-3">
+                      <ChevronDown className={`h-4 w-4 shrink-0 text-muted transition-transform duration-200 ease-snappy ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+                      <span className="font-semibold text-ink">{chapter.chapterTitle}</span>
+                    </span>
+                    <span className="shrink-0 text-[13px] text-muted">{lessonsLabel(chapter.chapterContent?.length || 0)}</span>
+                  </button>
+                  {isOpen && (
+                    <ul className="pb-3 motion-safe:animate-chapter-in">
+                      {chapter.chapterContent.map((lecture, lectureIndex) => {
+                        const watched = completed.includes(lecture.lectureId);
+                        const Icon = watched ? CheckCircle2 : PlayCircle;
+                        const row = (
+                          <>
+                            <Icon className={`h-4 w-4 shrink-0 ${watched ? "text-tangerine" : "text-muted"}`} aria-hidden="true" />
+                            <span className="min-w-0 flex-1 truncate">{lecture.lectureTitle}</span>
+                            {watched && <span className="sr-only">(watched)</span>}
+                            <span className="shrink-0 text-[13px] text-muted">{minutesLabel(lecture.lectureDuration)}</span>
+                          </>
+                        );
+                        return (
+                          <li key={lectureIndex}>
+                            {lecture.lectureUrl ? (
+                              <button
+                                type="button"
+                                onClick={() => handlePlayLecture(lecture, chapterIndex, lectureIndex)}
+                                className="flex w-full items-center gap-3 px-5 py-2 pl-12 text-left text-[15px] text-ink-soft transition-colors duration-150 ease-snappy mhover:bg-act-wash mhover:text-ink"
+                              >
+                                {row}
+                              </button>
+                            ) : (
+                              <div className="flex items-center gap-3 px-5 py-2 pl-12 text-[15px] text-muted">{row}</div>
+                            )}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
 
-                {/* Chapter Lectures */}
-                <div
-                  className={`overflow-hidden transition-all duration-300 ${
-                    openSections.has(chapterIndex) ? "max-h-96" : "max-h-0"
-                  }`}
-                >
-                  <ul className="border-t border-gray-300 divide-y divide-gray-100">
-                    {chapter.chapterContent.map((lecture, lectureIndex) => (
-                      <li
-                        key={lectureIndex}
-                        className="px-4 py-3 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="flex items-start gap-3">
-                          {/* Status Icon */}
-                          <img
-                            src={
-                              courseProgress?.lectureCompleted.includes(
-                                lecture.lectureId
-                              )
-                                ? assets.green_check
-                                : assets.play_icon
-                            }
-                            alt="status"
-                            className="w-4 h-4 mt-1 flex-shrink-0"
-                          />
-
-                          {/* Lecture Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-4">
-                              <p className="text-sm md:text-base text-gray-800 truncate">
-                                {lecture.lectureTitle}
-                              </p>
-                              <div className="flex items-center gap-3 flex-shrink-0">
-                                {lecture.lectureUrl && (
-                                  <button
-                                    onClick={() =>
-                                      handlePlayLecture(
-                                        lecture,
-                                        chapterIndex,
-                                        lectureIndex
-                                      )
-                                    }
-                                    className="text-blue-600 hover:text-blue-700 font-medium text-sm transition-colors"
-                                  >
-                                    Watch
-                                  </button>
-                                )}
-                                <span className="text-sm text-gray-500">
-                                  {humanizeDuration(
-                                    lecture.lectureDuration * 60 * 1000,
-                                    ["h", "m"]
-                                  )}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <div className="overflow-hidden rounded-2xl border border-line bg-card">
+            <div className="aspect-video bg-ink/5">
+              <img src={courseData.courseThumbnail} alt="" className="h-full w-full object-cover" />
+            </div>
+            <div className="p-5">
+              <p className="text-[15px] text-ink-soft">Pick a lesson from the list to watch it. Mark it as watched when you're done, and your progress is saved.</p>
+              <div className="mt-5 border-t border-line pt-5">
+                <h2 className="text-sm font-semibold text-ink">Rate this course</h2>
+                <div className="mt-2">
+                  <Rating initialRating={initRating} onRate={handleRate} />
                 </div>
               </div>
-            ))}
-          </div>
-
-          {/* Rating Section */}
-          <div className="flex items-center gap-3 py-6 mt-10 border-t">
-            <h3 className="text-lg font-bold text-gray-800">
-              Rate this Course:
-            </h3>
-            <Rating initialRating={initRating} onRate={handleRate} />
-          </div>
-        </div>
-
-        {/* Right Column - Video Player */}
-        <div className="md:mt-10">
-          <div className="rounded-lg overflow-hidden shadow-lg">
-            <img
-              src={courseData.courseThumbnail}
-              alt="Course thumbnail"
-              className="w-full h-auto"
-            />
-            <div className="p-6 bg-white">
-              <p className="text-center text-gray-600">
-                Select a lecture to start watching
-              </p>
             </div>
           </div>
-        </div>
-      </div>
+        </aside>
+      </main>
 
       {/* Video Player Modal */}
       {playerData && (
@@ -193,6 +165,7 @@ function Player() {
           isCompleted={courseProgress?.lectureCompleted?.includes(
             playerData.lectureId
           )}
+          onNext={next ? () => handlePlayLecture(next.lecture, next.chapterIndex, next.lectureIndex) : undefined}
         />
       )}
       <Footer />

@@ -1,13 +1,25 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import EducatorNavbar from "../educator/Navbar";
 import logo from "../../assets/BHARATTECH ORIGIN Logo-01.png";
-import SignOutButton from "../auth/SignOutButton";
+import { quietButton } from "./ui";
+
+const PORTAL_URL = import.meta.env.VITE_PORTAL_URL;
+
+const tab = ({ isActive }) =>
+  `relative px-1 py-5 text-sm font-medium transition-colors duration-150 ease-snappy ${
+    isActive ? "text-ink after:absolute after:inset-x-1 after:bottom-0 after:h-0.5 after:rounded-full after:bg-act" : "text-muted mhover:text-ink"
+  }`;
+const quiet = `${quietButton} px-4 py-1.5 text-sm`;
 
 function Navbar() {
   const navigate = useNavigate();
-  const { viewRole, switchViewRole, isAdmin } = useAuth();
+  const { pathname } = useLocation();
+  const { viewRole, switchViewRole, isAdmin, signOut } = useAuth();
+  // the course list and a course's page belong to Courses; a course you're taking (the player) to My courses
+  const onMine = pathname.startsWith("/my-enrollments") || pathname.startsWith("/player");
+  const onCourses = !onMine && (pathname === "/" || pathname.startsWith("/course"));
 
   if (viewRole === "educator") {
     return <EducatorNavbar />;
@@ -15,86 +27,41 @@ function Navbar() {
 
   const handleEducatorView = () => {
     switchViewRole("educator");
-    toast.success("Switched to Educator View");
+    toast.success("You're now seeing Learning as an educator.");
     navigate("/educator/dashboard");
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-gray-200 bg-white">
-      <div className="mx-auto flex min-h-[64px] w-full items-center justify-between gap-3 px-3 sm:px-5 md:px-6 lg:px-8">
-        {/* Logo */}
-        <Link
-          to="/"
-          aria-label="BharatTech home"
-          className="flex min-w-0 shrink-0 items-center"
-        >
-          <img
-            src={logo}
-            alt="BharatTech Logo"
-            className="
-              h-14 w-auto
-              object-contain
-              transition-transform duration-200
-              hover:scale-105
-              sm:h-16
-              md:h-[72px]
-              lg:h-20
-            "
-          />
-        </Link>
-
-        {/* Actions */}
-        <div className="flex shrink-0 items-center gap-2">
-          {/* the way back to your courses: the company's link bar for it was never placed in the page */}
-          <Link
-            to="/my-enrollments"
-            className="
-              inline-flex items-center justify-center
-              whitespace-nowrap
-              rounded-full
-              px-3 py-1.5
-              text-xs font-medium text-gray-700
-              transition-all duration-200
-              hover:bg-gray-100
-              hover:text-gray-900
-              focus:outline-none
-              focus:ring-2 focus:ring-blue-500/30
-              active:scale-95
-              sm:px-4 sm:py-2
-              sm:text-sm
-            "
-          >
-            My Enrollments
+    <nav className="sticky top-0 z-50 w-full border-b border-line bg-paper/90 backdrop-blur">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-6 px-6">
+        <div className="flex items-center gap-8">
+          <Link to="/" aria-label="Learning home" className="flex shrink-0 items-center py-2">
+            <img src={logo} alt="Bharattech" className="h-14 w-auto object-contain" />
           </Link>
+          <div className="flex items-center gap-5">
+            <Link to="/" className={tab({ isActive: onCourses })} aria-current={onCourses ? "page" : undefined}>
+              Courses
+            </Link>
+            <Link to="/my-enrollments" className={tab({ isActive: onMine })} aria-current={onMine ? "page" : undefined}>
+              My courses
+            </Link>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          {PORTAL_URL && (
+            <a href={PORTAL_URL} className="px-3 py-1.5 text-sm font-medium text-muted transition-colors duration-150 ease-snappy mhover:text-ink">
+              Back to the portal
+            </a>
+          )}
           {isAdmin() && (
-            <button
-              type="button"
-              onClick={handleEducatorView}
-              className="
-                inline-flex items-center justify-center
-                whitespace-nowrap
-                rounded-full
-                border border-blue-200
-                bg-blue-50
-                px-3 py-1.5
-                text-xs font-medium text-blue-700
-                shadow-sm
-                transition-all duration-200
-                hover:border-blue-300
-                hover:bg-blue-100
-                hover:text-blue-800
-                hover:shadow
-                focus:outline-none
-                focus:ring-2 focus:ring-blue-500/30
-                active:scale-95
-                sm:px-4 sm:py-2
-                sm:text-sm
-              "
-            >
-              View as Educator
+            <button type="button" onClick={handleEducatorView} className={quiet}>
+              View as educator
             </button>
           )}
-          <SignOutButton />
+          <button type="button" onClick={signOut} className={quiet}>
+            Sign out
+          </button>
         </div>
       </div>
     </nav>

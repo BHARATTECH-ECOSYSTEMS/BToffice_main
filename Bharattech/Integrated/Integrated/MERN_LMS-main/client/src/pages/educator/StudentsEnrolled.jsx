@@ -1,244 +1,67 @@
-import { useCallback, useEffect, useState } from "react";
-import axios from "axios";
-import { useAppConfig } from "../../context/AppContext";
-import { useAuth } from "../../context/AuthContext";
-import { refreshWhileVisible } from "../../utils/visibleRefresh";
-import { progressLabel } from "../../utils/courseHelpers";
-import Loading from "../../components/students/Loading";
-import EmptySection from "../../components/common/EmptySection";
-import { assets } from "../../assets/assets";
+import { useEducatorFetch } from "../../hooks/useEducatorFetch";
+import { educatorFigures, plural, progressLabel, shortDate } from "../../utils/courseHelpers";
+import ProgressBar from "../../components/students/ProgressBar";
+import { FirstLoad, LearnerCell, PageHead, bodyCell, headCell, tableClass } from "../../components/educator/parts";
 
+const readEnrollments = (data) => data?.enrolledStudents || [];
+
+// Everyone enrolled in the educator's courses and how far each is (owner's 3A, 2026-10-26), newest first, kept fresh
+// every 15 s while the page is in view.
 function StudentsEnrolled() {
-  const { backendUrl } = useAppConfig();
-  const { isEducator, getToken } = useAuth();
-
-  const [enrolledStudents, setEnrolledStudents] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  const fetchEnrolledStudents = useCallback(
-    async ({ showLoader = false } = {}) => {
-      try {
-        if (showLoader) {
-          setLoading(true);
-        }
-
-        const token = await getToken();
-
-        const { data } = await axios.get(
-          `${backendUrl}/api/educator/enrolled-students`,
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
-
-        if (data.status === "success") {
-          setEnrolledStudents(data.data?.enrolledStudents || []);
-        } else {
-          setEnrolledStudents([]);
-        }
-      } catch {
-        setEnrolledStudents([]);
-      } finally {
-        setLoading(false);
-      }
-    },
-    [backendUrl, getToken],
-  );
-
-  useEffect(() => {
-    if (!isEducator) {
-      setEnrolledStudents([]);
-      setLoading(false);
-      return;
-    }
-
-    fetchEnrolledStudents({ showLoader: true });
-
-    // only while this tab is in view (a hidden one asks the server nothing)
-    return refreshWhileVisible(() => fetchEnrolledStudents());
-  }, [fetchEnrolledStudents, isEducator]);
-
-  if (loading || !enrolledStudents) {
-    return <Loading />;
-  }
-
-  const studentCount = enrolledStudents.length;
-
-  const formatDate = (date) => {
-    if (!date) return "—";
-
-    return new Date(date).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  };
+  const enrollments = useEducatorFetch("/api/educator/enrolled-students", readEnrollments, { refresh: true });
+  const list = enrollments.data || [];
+  const figures = educatorFigures(0, list);
 
   return (
-    <div className="min-h-screen bg-slate-50/50 p-4 pt-6 md:p-8 space-y-6">
-      {/* Top Header */}
-      <div className="border-b border-slate-200/80 pb-6">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-                Enrolled Students
-              </h1>
+    <>
+      <PageHead title="Learners">
+        {enrollments.status === "ready" &&
+          list.length > 0 &&
+          `${plural(figures.enrollments, "enrollment")} from ${plural(figures.learners, "learner")} in your courses.`}
+      </PageHead>
 
-              {studentCount > 0 && (
-                <span className="inline-flex items-center rounded-full border border-indigo-100/80 bg-indigo-50 px-2.5 py-0.5 text-xs font-semibold text-indigo-700">
-                  {studentCount} {studentCount === 1 ? "Student" : "Students"}
-                </span>
-              )}
-            </div>
-
-            <p className="mt-1 text-sm text-slate-500">
-              Who is enrolled in your courses, and how far each one is.
-            </p>
-          </div>
+      {enrollments.status !== "ready" ? (
+        <FirstLoad status={enrollments.status} retry={enrollments.retry} what="learners" />
+      ) : list.length === 0 ? (
+        <div className="mt-8 rounded-2xl border border-line bg-card p-6">
+          <p className="text-ink">No one has enrolled in your courses yet.</p>
+          <p className="mt-1 text-sm text-muted">Learners show up here, with how far they are, as soon as they enroll.</p>
         </div>
-      </div>
-
-      {/* Students Table Card */}
-      <div className="w-full max-w-6xl overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[680px] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-slate-200/80 bg-slate-50/75">
-                <th className="w-16 px-6 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-slate-500">
-                  #
-                </th>
-
-                <th className="px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Student
-                </th>
-
-                <th className="px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Course Title
-                </th>
-
-                <th className="px-6 py-3.5 text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Progress
-                </th>
-
-                <th className="px-6 py-3.5 text-center text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Enrollment Date
-                </th>
+      ) : (
+        <div className="mt-8 overflow-hidden rounded-2xl border border-line bg-card">
+          <table className={tableClass}>
+            <thead className="border-b border-line">
+              <tr>
+                <th scope="col" className={headCell}>Learner</th>
+                <th scope="col" className={headCell}>Course</th>
+                <th scope="col" className={headCell}>Progress</th>
+                <th scope="col" className={`${headCell} text-right`}>Enrolled</th>
               </tr>
             </thead>
-
-            <tbody className="divide-y divide-slate-100 text-sm">
-              {studentCount === 0 ? (
-                <tr>
-                  <td colSpan={5} className="py-12">
-                    <EmptySection
-                      imageSrc={assets.student}
-                      title="No Students Enrolled Yet"
-                      description="No students have enrolled in your courses yet. Keep creating quality content and they will come!"
-                      size="md"
-                    />
-                  </td>
-                </tr>
-              ) : (
-                enrolledStudents.map((item, index) => {
-                  const student = item?.student || {};
-                  const studentName = student.name || "Unknown Student";
-                  const progress = progressLabel(item.progress);
-
-                  return (
-                    <tr
-                      key={`${student._id || student.id || studentName}-${item.courseTitle}-${item.purchaseDate}`}
-                      className="transition-colors duration-150 hover:bg-slate-50/70"
-                    >
-                      {/* Number */}
-                      <td className="px-6 py-4 text-center text-xs font-medium text-slate-400">
-                        {String(index + 1).padStart(2, "0")}
-                      </td>
-
-                      {/* Student */}
-                      <td className="px-6 py-4">
-                        <div className="flex min-w-0 items-center gap-3.5">
-                          {student.imageUrl ? (
-                            <img
-                              src={student.imageUrl}
-                              alt={studentName}
-                              loading="lazy"
-                              className="h-10 w-10 flex-shrink-0 rounded-full border border-slate-200/80 object-cover bg-slate-100"
-                              onError={(e) => {
-                                e.currentTarget.style.display = "none";
-                              }}
-                            />
-                          ) : (
-                            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border border-slate-200/80 bg-slate-100 text-sm font-semibold text-slate-500">
-                              {studentName.charAt(0).toUpperCase()}
-                            </div>
-                          )}
-
-                          <div className="min-w-0">
-                            <p className="truncate font-semibold text-slate-800">
-                              {studentName}
-                            </p>
-
-                            {student.email && (
-                              <p className="mt-0.5 truncate text-xs text-slate-400">
-                                {student.email}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-
-                      {/* Course */}
-                      <td className="max-w-md px-6 py-4">
-                        <p
-                          title={item.courseTitle}
-                          className="line-clamp-2 font-medium leading-snug text-slate-700"
-                        >
-                          {item.courseTitle || "Untitled Course"}
-                        </p>
-                      </td>
-
-                      {/* Progress */}
-                      <td className="whitespace-nowrap px-6 py-4">
-                        {progress.completed ? (
-                          <span className="inline-flex items-center rounded-full border border-green-100 bg-green-50 px-2.5 py-1 text-xs font-semibold text-green-700">
-                            Completed
-                          </span>
-                        ) : (
-                          <div className="w-32">
-                            <p className="text-xs font-medium text-slate-600">{progress.text}</p>
-                            <div className="mt-1 h-1.5 w-full rounded-full bg-slate-100" aria-hidden="true">
-                              <div className="h-1.5 rounded-full bg-indigo-500" style={{ width: `${progress.percent}%` }} />
-                            </div>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Enrollment Date */}
-                      <td className="whitespace-nowrap px-6 py-4 text-center text-xs font-medium text-slate-500">
-                        {formatDate(item.purchaseDate)}
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
+            <tbody className="divide-y divide-line">
+              {list.map((item) => {
+                const progress = progressLabel(item.progress);
+                return (
+                  <tr key={`${item.student?._id}-${item.courseTitle}-${item.purchaseDate}`}>
+                    <td className={bodyCell}>
+                      <LearnerCell student={item.student} />
+                    </td>
+                    <td className={`${bodyCell} text-ink-soft`}>{item.courseTitle}</td>
+                    <td className={bodyCell}>
+                      <div className="flex items-center gap-3">
+                        <ProgressBar percent={progress.percent} label={`${item.student?.name || "Learner"}'s progress`} className="w-24" />
+                        <span className="whitespace-nowrap text-[13px] tabular-nums text-muted">{progress.text}</span>
+                      </div>
+                    </td>
+                    <td className={`${bodyCell} text-right text-[13px] tabular-nums text-muted`}>{shortDate(item.purchaseDate)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
-
-        {/* Footer */}
-        {studentCount > 0 && (
-          <div className="border-t border-slate-200/70 bg-slate-50/40 px-6 py-3">
-            <p className="text-xs font-medium text-slate-400">
-              Showing {studentCount}{" "}
-              {studentCount === 1 ? "enrolled student" : "enrolled students"}
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+      )}
+    </>
   );
 }
 

@@ -1,77 +1,63 @@
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import SearchBar from "../../components/students/SearchBar";
 import CourseCard from "../../components/students/CourseCard";
-import { useCourses } from "../../context/CourseContext";
-import { useEffect, useState } from "react";
-import { assets } from "../../assets/assets";
+import { CourseGridPlaceholder } from "../../components/students/CourseCardPlaceholder";
 import Footer from "../../components/students/Footer";
+import { useCourses } from "../../context/CourseContext";
+import { useMyLearning } from "../../hooks/useMyLearning";
+import { useEffect } from "react";
 
 function CoursesList() {
-  const navigate = useNavigate();
   const { query } = useParams();
-  const { allCourses } = useCourses();
-  const [filteredCourses, setFilteredCourses] = useState(allCourses || []);
+  const { allCourses, loading } = useCourses();
+  const mine = useMyLearning();
+  const enrolledIds = new Set(mine.courses.map((c) => c.courseId));
 
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
-  useEffect(() => {
-    if (allCourses && allCourses.length > 0) {
-      query
-        ? setFilteredCourses(
-            allCourses.filter((course) =>
-              course.courseTitle.toLowerCase().includes(query.toLowerCase())
-            )
-          )
-        : setFilteredCourses(allCourses);
-    }
-  }, [allCourses, query]);
+  const words = (query || "").trim().toLowerCase();
+  const shown = words ? allCourses.filter((course) => course.courseTitle.toLowerCase().includes(words)) : allCourses;
+
   return (
     <>
-      <div className="relative md:px-36 px-8 pt-8 pb-16 text-left bg-gradient-to-b from-indigo-100/70 via-blue-50/30 to-white">
-        <div className="bharat-hero-banner px-6 py-10 md:px-12 md:py-14 mb-10">
-          <div className="bharat-hero-glow" />
-          <div className="bharat-hero-beams" />
-          <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-white/60 mb-2">
-                BharatTech LMS
-              </p>
-              <h1 className="text-3xl md:text-4xl font-extrabold text-white leading-tight">
-                Explore Our <span className="text-indigo-300">Courses</span>
-              </h1>
-              <p className="text-sm text-white/70 mt-2">
-                <span
-                  className="text-white hover:underline cursor-pointer"
-                  onClick={() => navigate("/")}
-                >
-                  Home
-                </span>{" "}
-                / <span>Course List</span>
-              </p>
-            </div>
-            <SearchBar data={query} />
+      <main className="mx-auto w-full max-w-6xl px-6 pb-20 pt-12 text-left">
+        <header className="flex flex-wrap items-end justify-between gap-6">
+          <div>
+            <h1 className="font-display text-[44px] font-bold leading-[1.05] tracking-[-0.02em] text-ink">
+              {words ? "Search results" : "All courses"}
+            </h1>
+            <p className="mt-2 text-[15px] text-muted">
+              {words
+                ? `${shown.length} ${shown.length === 1 ? "course matches" : "courses match"} “${query.trim()}”.`
+                : `${allCourses.length} ${allCourses.length === 1 ? "course" : "courses"}, all free.`}
+              {words && (
+                <>
+                  {" "}
+                  <Link to="/course-list" className="font-medium text-act-deep underline-offset-2 mhover:underline">
+                    Show all courses
+                  </Link>
+                </>
+              )}
+            </p>
           </div>
-        </div>
-        {query && (
-          <div className="inline-flex items-center gap-4 px-4 py-2 border mt-8 -mb-8 text-gray-600">
-            <p>{query}</p>
-            <img
-              src={assets.cross_icon}
-              alt=""
-              className="cursor-pointer"
-              onClick={() => navigate("/course-list")}
-            />
+          <SearchBar data={query} />
+        </header>
+
+        {!loading && shown.length === 0 ? (
+          <p className="mt-10 text-muted">No course title has those words. Try a shorter search.</p>
+        ) : (
+          <div className="mt-10 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5">
+            {loading ? (
+              <CourseGridPlaceholder />
+            ) : (
+              shown.map((course) => <CourseCard key={course._id} course={course} enrolled={enrolledIds.has(String(course._id))} />)
+            )}
           </div>
         )}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 my-16 gap-3 px-2 md:p-0">
-          {filteredCourses.map((course) => (
-            <CourseCard key={course._id} course={course} />
-          ))}
-        </div>
-      </div>
-    
+      </main>
+      <Footer />
     </>
   );
 }

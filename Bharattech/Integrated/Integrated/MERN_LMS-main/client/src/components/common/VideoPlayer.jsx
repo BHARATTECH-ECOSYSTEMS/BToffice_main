@@ -2,6 +2,8 @@ import YouTube from "react-youtube";
 import { extractYouTubeId } from "../../utils/VideoHelpers";
 import React, { useEffect } from "react";
 import { assets } from "../../assets/assets";
+import { minutesLabel } from "../../utils/courseHelpers";
+import { primaryButton, quietButton } from "../students/ui";
 
 const VideoPlayer = ({
   lecture,
@@ -9,6 +11,7 @@ const VideoPlayer = ({
   showMarkComplete,
   onMarkComplete,
   isCompleted,
+  onNext,
 }) => {
   const renderPlayer = () => {
     if (!lecture || !lecture.lectureUrl) {
@@ -93,20 +96,22 @@ const VideoPlayer = ({
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fadeIn"
       onClick={handleBackdropClick}
     >
-      <div className="relative w-full max-w-5xl bg-white rounded-lg shadow-2xl animate-slideUp overflow-hidden">
+      <div className="relative w-full max-w-5xl overflow-hidden rounded-2xl bg-card shadow-2xl animate-slideUp">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b bg-gray-50 ">
-          <h3 className="text-lg font-semibold text-gray-800 truncate pr-4">
+        <div className="flex items-center justify-between border-b border-line p-4">
+          <h3 className="truncate pr-4 text-lg font-semibold text-ink">
             {lecture.lectureTitle}
           </h3>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 rounded-full hover:bg-gray-200 transition-colors flex-shrink-0"
+            aria-label="Close the video"
+            className="flex-shrink-0 rounded-full p-2 transition-colors duration-150 ease-snappy mhover:bg-ink/5"
           >
             <img
               src={assets.cross_icon}
-              alt="hide"
-              className="cursor-pointer w-4 h-4"
+              alt=""
+              className="h-4 w-4"
             />
           </button>
         </div>
@@ -114,21 +119,22 @@ const VideoPlayer = ({
         <div className="relative bg-black">{renderPlayer()}</div>
 
         {/* Footer */}
-        <div className="p-4 bg-gray-50 border-t">
+        <div className="border-t border-line p-4">
           <div className="flex items-center justify-between">
-            <p className="text-sm text-gray-600 font-medium">
-              Duration: {lecture.lectureDuration} minutes
+            <p className="text-sm text-muted">
+              {minutesLabel(lecture.lectureDuration)}
             </p>
             {showMarkComplete && !isCompleted && (
               <button
+                type="button"
                 onClick={() => onMarkComplete(lecture.lectureId)}
-                className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                className={`px-5 py-2 text-sm ${primaryButton}`}
               >
-                Mark as Complete
+                Mark as watched
               </button>
             )}
             {isCompleted && (
-              <div className="flex items-center gap-2 text-green-600">
+              <div className="flex items-center gap-2 text-tangerine-text">
                 <svg
                   className="w-5 h-5"
                   fill="currentColor"
@@ -140,7 +146,17 @@ const VideoPlayer = ({
                     clipRule="evenodd"
                   />
                 </svg>
-                <span className="font-medium">Completed</span>
+                <span className="font-medium">Watched</span>
+                {/* once watched, carry on in the same window (owner's refinement A); the last lesson just closes */}
+                {showMarkComplete && (
+                  <button
+                    type="button"
+                    onClick={onNext || onClose}
+                    className={`ml-3 px-5 py-2 text-sm ${onNext ? primaryButton : quietButton}`}
+                  >
+                    {onNext ? "Next lesson" : "Done"}
+                  </button>
+                )}
               </div>
             )}
           </div>

@@ -1,11 +1,12 @@
 import { useReducer, useRef, useEffect, useState } from "react";
+import { PageHead } from "../../components/educator/parts";
+import { primaryButton, quietButton } from "../../components/students/ui";
 import uniqid from "uniqid";
 import Quill from "quill";
 import { toast } from "react-toastify";
 import axios from "axios";
 import "quill/dist/quill.snow.css";
 import { useNavigate } from "react-router-dom";
-import { assets } from "../../assets/assets";
 import { useAuth } from "../../context/AuthContext";
 import { useAppConfig } from "../../context/AppContext";
 import { useCourses } from "../../context/CourseContext";
@@ -16,6 +17,8 @@ import {
   initialCourseFormState,
   COURSE_ACTIONS,
 } from "../../reducers/courseFormReducer";
+
+const field = "h-11 rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink outline-none transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act";
 
 function AddCourse() {
   // Refs
@@ -40,6 +43,18 @@ function AddCourse() {
   const [currentChapterId, setCurrentChapterId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // one preview address per chosen file, given back when it changes (it used to make a new one on every render)
+  const [coverPreview, setCoverPreview] = useState("");
+  useEffect(() => {
+    if (!formState.image) {
+      setCoverPreview("");
+      return undefined;
+    }
+    const url = URL.createObjectURL(formState.image);
+    setCoverPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [formState.image]);
+
   // Chapter handlers
   const handleAddChapter = (title) => {
     if (title) {
@@ -62,10 +77,6 @@ function AddCourse() {
     dispatch({ type: COURSE_ACTIONS.REMOVE_CHAPTER, payload: chapterId });
   };
 
-  const handleToggleChapter = (chapterId) => {
-    dispatch({ type: COURSE_ACTIONS.TOGGLE_CHAPTER, payload: chapterId });
-  };
-
   // Lecture handlers
   const handleOpenLectureModal = (chapterId) => {
     setCurrentChapterId(chapterId);
@@ -86,7 +97,7 @@ function AddCourse() {
         lecture: newLecture,
       },
     });
-    toast.success("Lecture added successfully!");
+    toast.success("Lesson added.");
 
     setShowLectureModal(false);
     setCurrentChapterId(null);
@@ -113,22 +124,22 @@ function AddCourse() {
     const plainDescription = quillRef.current?.getText?.().trim() || "";
 
     if (!courseTitle) {
-      toast.error("Please enter a course title");
+      toast.error("Add a title for the course.");
       return;
     }
 
     if (!plainDescription) {
-      toast.error("Please enter a course description");
+      toast.error("Add a description of the course.");
       return;
     }
 
     if (!formState.image) {
-      toast.error("Please select a course thumbnail");
+      toast.error("Choose a cover image.");
       return;
     }
 
     if (formState.chapters.length === 0) {
-      toast.error("Please add at least one chapter");
+      toast.error("Add at least one chapter.");
       return;
     }
 
@@ -137,7 +148,7 @@ function AddCourse() {
     );
 
     if (!hasLecture) {
-      toast.error("Please add at least one lecture");
+      toast.error("Add at least one lesson to a chapter.");
       return;
     }
 
@@ -164,7 +175,7 @@ function AddCourse() {
       );
 
       if (data.success) {
-        toast.success(data.message);
+        toast.success("Published. It's live in Learning now.");
         await refetchCourses();
 
         // Reset form
@@ -174,11 +185,11 @@ function AddCourse() {
         }
         navigate("/educator/my-courses");
       } else {
-        toast.error(data.message || "Failed to create course");
+        toast.error(data.message || "Couldn't publish the course. Try again.");
       }
     } catch (error) {
       console.error("Error creating course:", error);
-      toast.error(error.response?.data?.message || "Failed to create course");
+      toast.error(error.response?.data?.message || "Couldn't publish the course. Check your connection and try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -194,31 +205,18 @@ function AddCourse() {
   }, []);
 
   return (
-    <div className="min-h-screen flex justify-center items-start bg-gray-50 py-10 px-4">
+    <>
+      <PageHead title="Add a course">It goes live for everyone in Learning as soon as you publish it. Every course is free.</PageHead>
 
-      <form
-        onSubmit={handleSubmit}
-        noValidate
-        className="w-full max-w-3xl bg-white p-8 rounded-2xl shadow-lg border border-gray-100 flex flex-col gap-6"
-      >
-        {/* Title */}
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800">
-            Create New Course
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Add details, structure your content, and publish your course.
-          </p>
-        </div>
-
-        {/* Course Title */}
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-gray-700">
-            Course Title *
+      <form onSubmit={handleSubmit} noValidate className="mt-10 grid max-w-3xl gap-8">
+        <div className="grid gap-2">
+          <label htmlFor="course-title" className="text-sm font-medium text-ink">
+            Title
           </label>
           <input
+            id="course-title"
             type="text"
-            placeholder="Enter course title..."
+            placeholder="e.g. Introduction to JavaScript"
             value={formState.courseTitle}
             onChange={(e) =>
               dispatch({
@@ -226,147 +224,114 @@ function AddCourse() {
                 payload: e.target.value,
               })
             }
-            className="px-4 py-3 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all outline-none"
+            className={field}
           />
         </div>
 
-        {/* Description */}
-        <div className="flex flex-col gap-2">
-          <label className="text-sm font-medium text-gray-700">
-            Course Description *
-          </label>
-          <div className="border rounded-lg overflow-hidden">
-            <div ref={editorRef} className="min-h-[120px]" />
+        <div className="grid gap-2">
+          <span id="course-description" className="text-sm font-medium text-ink">
+            Description
+          </span>
+          <div className="course-editor overflow-hidden rounded-xl border border-line-strong bg-card" role="group" aria-labelledby="course-description">
+            <div ref={editorRef} className="min-h-[160px]" />
           </div>
         </div>
 
-        {/* Thumbnail (courses are free, owner's 2A: no price or discount to enter) */}
-        <div className="flex flex-wrap gap-6 items-center justify-between">
-          {/* Thumbnail */}
-          <div className="flex flex-col items-center gap-2">
-            <label className="text-sm font-medium text-gray-700">
-              Thumbnail *
-            </label>
-
-            <label
-              htmlFor="thumbnailImage"
-              className="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-gray-300 px-6 py-6 rounded-xl hover:border-indigo-400 hover:bg-indigo-50 transition"
-            >
-              <img src={assets.file_upload_icon} className="w-8 mb-2" />
-
-              <span className="text-sm text-gray-600">
-                Click to upload thumbnail
-              </span>
-
-              {formState.image && (
-                <img
-                  src={URL.createObjectURL(formState.image)}
-                  className="mt-3 w-20 h-20 object-cover rounded-lg shadow"
-                />
+        <div className="grid gap-2">
+          <span className="text-sm font-medium text-ink">Cover image</span>
+          <div className="flex items-center gap-5">
+            <div className="aspect-video w-48 shrink-0 overflow-hidden rounded-xl border border-line bg-ink/5">
+              {coverPreview ? (
+                <img src={coverPreview} alt="Chosen cover" className="h-full w-full object-cover" />
+              ) : (
+                <span className="flex h-full items-center justify-center text-[13px] text-muted">No cover yet</span>
               )}
-            </label>
-
-            <input
-              type="file"
-              hidden
-              id="thumbnailImage"
-              accept="image/*"
-              onChange={(e) =>
-                dispatch({
-                  type: COURSE_ACTIONS.SET_IMAGE,
-                  payload: e.target.files[0],
-                })
-              }
-            />
+            </div>
+            <div>
+              <label htmlFor="thumbnailImage" className={`inline-block cursor-pointer px-4 py-2 text-sm ${quietButton}`}>
+                {coverPreview ? "Choose another image" : "Choose an image"}
+              </label>
+              <p className="mt-2 text-[13px] text-muted">A 16:9 picture works best, up to 5 MB.</p>
+            </div>
           </div>
+          <input
+            type="file"
+            className="sr-only"
+            id="thumbnailImage"
+            accept="image/*"
+            onChange={(e) =>
+              dispatch({
+                type: COURSE_ACTIONS.SET_IMAGE,
+                payload: e.target.files[0],
+              })
+            }
+          />
         </div>
 
-        {/* Course Content */}
-        <div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-3">
-            Course Content
-          </h3>
+        <section aria-labelledby="course-content" className="grid gap-3">
+          <div>
+            <h2 id="course-content" className="font-display text-[22px] font-semibold tracking-[-0.01em] text-ink">
+              Chapters and lessons
+            </h2>
+            <p className="mt-1 text-sm text-muted">Lessons are YouTube videos. Add at least one chapter with one lesson.</p>
+          </div>
 
           {formState.chapters.map((chapter, index) => (
-            <div
-              key={chapter.chapterId}
-              className="border rounded-xl mb-4 bg-white shadow-sm hover:shadow-md transition"
-            >
-              <div className="flex justify-between p-4 border-b">
-                <span className="font-medium">
-                  {index + 1}. {chapter.chapterTitle}
+            <div key={chapter.chapterId} className="overflow-hidden rounded-2xl border border-line bg-card">
+              <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-3">
+                <span className="font-semibold text-ink">
+                  Chapter {index + 1}: {chapter.chapterTitle}
                 </span>
-
                 <button
                   type="button"
                   onClick={() => handleRemoveChapter(chapter.chapterId)}
-                  className="text-red-500 text-sm"
+                  className="text-sm font-medium text-muted transition-colors duration-150 ease-snappy mhover:text-[#B42318]"
                 >
-                  Remove
+                  Remove chapter<span className="sr-only"> {chapter.chapterTitle}</span>
                 </button>
               </div>
 
-              {!chapter.collapsed && (
-                <div className="p-4 space-y-2">
-                  {chapter.chapterContent.map((lecture, i) => (
-                    <div key={i} className="text-sm flex justify-between">
-                      <span>
-                        {i + 1}. {lecture.lectureTitle}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleRemoveLecture(chapter.chapterId, i)
-                        }
-                        className="text-red-400"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-
-                  <button
-                    type="button"
-                    onClick={() => handleOpenLectureModal(chapter.chapterId)}
-                    className="mt-2 text-indigo-600 text-sm font-medium"
-                  >
-                    + Add Lecture
-                  </button>
-                </div>
-              )}
+              <ul className="divide-y divide-line">
+                {chapter.chapterContent.map((lecture, i) => (
+                  <li key={i} className="flex items-center justify-between gap-4 px-5 py-2.5 text-[15px] text-ink-soft">
+                    <span>{lecture.lectureTitle}</span>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveLecture(chapter.chapterId, i)}
+                      className="text-sm text-muted transition-colors duration-150 ease-snappy mhover:text-[#B42318]"
+                    >
+                      Remove<span className="sr-only"> {lecture.lectureTitle}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <div className="px-5 py-3">
+                <button
+                  type="button"
+                  onClick={() => handleOpenLectureModal(chapter.chapterId)}
+                  className="text-sm font-semibold text-act-deep underline-offset-2 mhover:underline"
+                >
+                  Add a lesson
+                </button>
+              </div>
             </div>
           ))}
 
-          <button
-            type="button"
-            onClick={() => setShowChapterModal(true)}
-            className="w-full py-3 rounded-lg bg-gradient-to-r from-indigo-500 to-blue-500 text-white shadow hover:opacity-90 font-medium hover:bg-indigo-200"
-          >
-            + Add Chapter
+          <button type="button" onClick={() => setShowChapterModal(true)} className={`justify-self-start px-5 py-2 text-sm ${quietButton}`}>
+            Add a chapter
+          </button>
+        </section>
+
+        <div className="flex items-center gap-4 border-t border-line pt-6">
+          <button type="submit" disabled={isSubmitting} className={`px-6 py-3 text-[15px] ${primaryButton}`}>
+            {isSubmitting ? "Publishing…" : "Publish course"}
           </button>
         </div>
-
-        {/* Submit */}
-        <button
-          type="submit"
-          disabled={isSubmitting}
-          className="w-full py-3 rounded-lg bg-gradient-to-r from-gray-900 to-black shadow-lg hover:scale-[1.01] active:scale-[0.99] transition text-white font-medium hover:opacity-90 transition"
-        >
-          {isSubmitting ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
-              Creating...
-            </span>
-          ) : (
-            "Create Course"
-          )}
-        </button>
       </form>
 
       {showChapterModal && (
         <EduPopup
-          message="Add Chapter"
+          message="Add a chapter"
           onSubmit={handleAddChapter}
           onClose={() => setShowChapterModal(false)}
         />
@@ -380,7 +345,7 @@ function AddCourse() {
         }}
         onAddLecture={handleAddLecture}
       />
-    </div>
+    </>
   );
 }
 

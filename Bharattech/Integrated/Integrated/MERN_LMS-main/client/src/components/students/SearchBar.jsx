@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { assets } from "../../assets/assets";
+import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
 function SearchBar({ data }) {
@@ -19,7 +19,7 @@ function SearchBar({ data }) {
     const timer = setTimeout(() => {
       const query = input.trim();
 
-      navigate(query ? `/course-list/${query}` : "/course-list");
+      navigate(query ? `/course-list/${encodeURIComponent(query)}` : "/course-list", { replace: true });
     }, 300);
 
     return () => clearTimeout(timer);
@@ -30,90 +30,23 @@ function SearchBar({ data }) {
 
     const query = input.trim();
 
-    navigate(query ? `/course-list/${query}` : "/course-list");
+    navigate(query ? `/course-list/${encodeURIComponent(query)}` : "/course-list");
   };
 
   return (
-    <form
-      onSubmit={onSearchHandler}
-      className="
-        relative z-10
-        flex h-12 w-full max-w-xl
-        items-center
-        rounded
-        border border-gray-200
-        bg-white
-        transition-all duration-300
-        focus-within:border-indigo-600
-        focus-within:shadow-lg
-        focus-within:shadow-indigo-600/20
-
-        sm:h-13
-        md:h-14
-
-        md:w-2/4
-        md:focus-within:w-3/4
-      "
-    >
-      {/* Search icon */}
-      <img
-        src={assets.search_icon}
-        alt=""
-        aria-hidden="true"
-        className="
-          ml-3
-          h-5 w-5
-          shrink-0
-          object-contain
-          sm:ml-4
-        "
-      />
-
-      {/* Input */}
+    <form role="search" onSubmit={onSearchHandler} className="relative w-full max-w-sm">
+      <label htmlFor="course-search" className="sr-only">
+        Search courses
+      </label>
+      <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
       <input
-        type="text"
+        id="course-search"
+        type="search"
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="Search for courses"
-        className="
-          min-w-0
-          flex-1
-          bg-transparent
-          px-2
-          text-sm
-          text-gray-700
-          outline-none
-          placeholder:text-gray-400
-
-          sm:px-3
-          sm:text-base
-        "
+        placeholder="Search courses"
+        className="h-11 w-full rounded-full border border-line-strong bg-card pl-10 pr-4 text-[15px] text-ink outline-none transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act"
       />
-
-      {/* Search button */}
-      <button
-        type="submit"
-        className="
-          m-1
-          shrink-0
-          rounded
-          bg-indigo-700
-          px-4
-          py-3
-          text-sm
-          font-medium
-          text-white
-          transition-colors
-          duration-200
-          hover:bg-indigo-600
-          active:bg-indigo-800
-
-          sm:px-5
-          md:px-10
-        "
-      >
-        Search
-      </button>
     </form>
   );
 }

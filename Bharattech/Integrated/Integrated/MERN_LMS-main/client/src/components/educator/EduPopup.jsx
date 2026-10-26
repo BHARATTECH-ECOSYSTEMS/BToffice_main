@@ -1,18 +1,23 @@
 import { useState } from "react";
 import { toast } from "react-toastify";
+import { primaryButton, quietButton } from "../students/ui";
 
 const EduPopup = ({ message, onSubmit, onClose }) => {
   const [value, setValue] = useState("");
 
   const handleSubmit = () => {
-    if (!value) toast.error("Title not added!");
-    onSubmit(value);
+    const title = value.trim();
+    if (!title) {
+      toast.error("Give the chapter a title.");
+      return;
+    }
+    onSubmit(title);
     onClose();
   };
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/40 backdrop-blur-sm z-50">
-      <div className="bg-white rounded-2xl shadow-lg w-[90%] max-w-md p-6 flex flex-col gap-4 animate-scaleIn">
-        <h2 className="text-lg font-semibold text-gray-800 text-center">
+      <div role="dialog" aria-modal="true" aria-labelledby="edu-popup-title" className="flex w-[90%] max-w-md flex-col gap-4 rounded-2xl bg-card p-6 shadow-2xl">
+        <h2 id="edu-popup-title" className="font-display text-xl font-semibold text-ink">
           {message}
         </h2>
 
@@ -28,24 +33,25 @@ const EduPopup = ({ message, onSubmit, onClose }) => {
                 handleSubmit();
               }
             }}
-            placeholder="Enter title..."
-            className="border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-gray-500"
+            placeholder="Chapter title"
+            aria-label="Chapter title"
+            className="h-11 rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink outline-none placeholder:text-muted focus:border-act"
             autoFocus
           />
           <div className="flex justify-end gap-2 mt-2">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700"
+              className={`px-4 py-2 text-sm ${quietButton}`}
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSubmit}
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white"
+              className={`px-4 py-2 text-sm ${primaryButton}`}
             >
-              Confirm
+              Add chapter
             </button>
           </div>
         </div>

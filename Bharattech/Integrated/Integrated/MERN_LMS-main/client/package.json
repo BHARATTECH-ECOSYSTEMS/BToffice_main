@@ -18,7 +18,6 @@
     "keycloak-js": "^26.2.2",
     "lucide-react": "^1.34.0",
     "quill": "^2.0.3",
-    "rc-progress": "^4.0.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-router-dom": "^7.11.0",

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { toast } from "react-toastify";
 import { assets } from "../../assets/assets";
 import { isValidYouTubeUrl } from "../../utils/VideoHelpers";
+import { primaryButton, quietButton } from "../students/ui";
 
 // Lectures are YouTube videos only (owner's 4A, 2026-10-26): uploading needs the company's Cloudinary keys, which
 // the LMS doesn't have, so the "Upload" choice is gone.
@@ -12,15 +13,15 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
 
   const handleAddLecture = () => {
     if (!lectureDetails.lectureTitle || !lectureDetails.lectureDuration) {
-      toast.error("Please fill in all required fields");
+      toast.error("Add the lesson's title and length.");
       return;
     }
     if (!lectureDetails.lectureUrl) {
-      toast.error("Please provide a YouTube URL");
+      toast.error("Add the lesson's YouTube link.");
       return;
     }
     if (!isValidYouTubeUrl(lectureDetails.lectureUrl)) {
-      toast.error("Invalid YouTube URL");
+      toast.error("That isn't a YouTube video link.");
       return;
     }
     onAddLecture({ ...lectureDetails, videoSource: "youtube" });
@@ -36,16 +37,18 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/60 backdrop-blur-sm z-50 p-4">
-      <div className="bg-white text-gray-700 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm">
+      <div role="dialog" aria-modal="true" aria-labelledby="lesson-title-heading" className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-card text-ink shadow-2xl">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between rounded-t-xl z-10">
-          <h2 className="text-xl font-bold text-gray-800">Add Lecture</h2>
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-card px-6 py-4">
+          <h2 id="lesson-title-heading" className="font-display text-xl font-semibold text-ink">Add a lesson</h2>
           <button
+            type="button"
             onClick={resetModal}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label="Close"
+            className="rounded-full p-2 transition-colors duration-150 ease-snappy mhover:bg-ink/5"
           >
-            <img src={assets.cross_icon} alt="close" className="w-5 h-5" />
+            <img src={assets.cross_icon} alt="" className="h-4 w-4" />
           </button>
         </div>
 
@@ -53,13 +56,14 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
         <div className="p-6 space-y-4">
           {/* Lecture Title */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Lecture Title *
+            <label htmlFor="lesson-title" className="mb-2 block text-sm font-medium text-ink">
+              Title
             </label>
             <input
+              id="lesson-title"
               type="text"
-              className="w-full border-2 border-gray-200 rounded-lg py-2.5 px-4 focus:border-indigo-500 focus:outline-none transition-colors"
-              placeholder="e.g., Introduction to React Hooks"
+              className="h-11 w-full rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink outline-none transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act"
+              placeholder="e.g. Introduction to React Hooks"
               value={lectureDetails.lectureTitle}
               onChange={(e) =>
                 setLectureDetails({
@@ -72,13 +76,15 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
 
           {/* Duration */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Duration (minutes) *
+            <label htmlFor="lesson-length" className="mb-2 block text-sm font-medium text-ink">
+              Length in minutes
             </label>
             <input
+              id="lesson-length"
               type="number"
-              className="w-full border-2 border-gray-200 rounded-lg py-2.5 px-4 focus:border-indigo-500 focus:outline-none transition-colors"
-              placeholder="e.g., 15"
+              min="1"
+              className="h-11 w-full rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink outline-none transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act"
+              placeholder="e.g. 15"
               value={lectureDetails.lectureDuration}
               onChange={(e) =>
                 setLectureDetails({
@@ -91,12 +97,13 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
 
           {/* YouTube URL Input */}
           <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                YouTube Video URL *
+              <label htmlFor="lesson-link" className="mb-2 block text-sm font-medium text-ink">
+                YouTube link
               </label>
               <input
-                type="text"
-                className="w-full border-2 border-gray-200 rounded-lg py-2.5 px-4 focus:border-indigo-500 focus:outline-none transition-colors"
+                id="lesson-link"
+                type="url"
+                className="h-11 w-full rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink outline-none transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act"
                 placeholder="https://www.youtube.com/watch?v=..."
                 value={lectureDetails.lectureUrl}
                 onChange={(e) =>
@@ -109,17 +116,18 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
             </div>
 
           {/* Free Preview Toggle */}
-          <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div className="flex items-center justify-between rounded-xl border border-line p-4">
             <div>
-              <p className="font-medium text-gray-800">Free Preview</p>
-              <p className="text-sm text-gray-500">
-                Allow non-enrolled students to watch
+              <p id="lesson-preview" className="font-medium text-ink">Free preview</p>
+              <p className="text-sm text-muted">
+                People can watch it on the course page before they enroll.
               </p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
                 className="sr-only peer"
+                aria-labelledby="lesson-preview"
                 checked={lectureDetails.isPreviewFree}
                 onChange={(e) =>
                   setLectureDetails({
@@ -128,17 +136,17 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
                   })
                 }
               />
-              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus-visible:ring-act/40 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-act"></div>
             </label>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-gray-50 px-6 py-4 flex gap-3 border-t">
+        <div className="sticky bottom-0 flex gap-3 border-t border-line bg-card px-6 py-4">
           <button
             onClick={resetModal}
             type="button"
-            className="flex-1 border-2 border-gray-300 text-gray-700 font-medium py-2.5 rounded-lg hover:bg-gray-100 disabled:opacity-50"
+            className={`flex-1 py-2.5 text-sm ${quietButton}`}
           >
             Cancel
           </button>
@@ -146,9 +154,9 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
             onClick={handleAddLecture}
             type="button"
             disabled={!lectureDetails.lectureTitle || !lectureDetails.lectureDuration || !lectureDetails.lectureUrl}
-            className="flex-1 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-medium py-2.5 rounded-lg disabled:opacity-50"
+            className={`flex-1 py-2.5 text-sm ${primaryButton}`}
           >
-            Add Lecture
+            Add lesson
           </button>
         </div>
       </div>

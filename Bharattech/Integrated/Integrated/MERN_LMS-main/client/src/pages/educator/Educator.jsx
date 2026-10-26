@@ -1,19 +1,11 @@
 import { Outlet } from "react-router-dom";
-import Navbar from "../../components/educator/Navbar";
-import Sidebar from "../../components/educator/Sidebar";
-import Footer from "../../components/educator/Footer";
 
+// The educator pages under the top bar (owner's 2A, 2026-10-26): no sidebar, the page gets the full width.
 function Educator() {
   return (
-    <div className="text-default min-h-screen bg-white">
-      <div className="flex">
-        <Sidebar />
-        <div className="flex-1">
-          <Outlet />
-        </div>
-      </div>
-      
-    </div>
+    <main className="mx-auto w-full max-w-6xl px-6 pb-20 pt-12 text-left">
+      <Outlet />
+    </main>
   );
 }
 

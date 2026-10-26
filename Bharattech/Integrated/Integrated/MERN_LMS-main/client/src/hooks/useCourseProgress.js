@@ -42,14 +42,14 @@ export const useCourseProgress = (courseId, backendUrl, getToken) => {
         );
 
         if (data.status === "success") {
-          toast.success(data.message);
+          toast.success("Marked as watched.");
           await fetchProgress(); // Refresh progress
         } else {
           toast.error(data.message);
         }
       } catch (error) {
         console.error("Failed to mark lecture:", error);
-        toast.error("Failed to mark lecture as completed");
+        toast.error("Couldn't mark this lesson as watched. Try again.");
       }
     },
     [courseId, backendUrl, getToken, fetchProgress]

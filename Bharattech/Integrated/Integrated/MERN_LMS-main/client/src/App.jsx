@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { ToastContainer } from "react-toastify";
 import Home from "./pages/student/Home";
@@ -20,10 +21,16 @@ import EducatorNavbar from "./components/educator/Navbar";
 function App() {
   const { isAdmin, viewRole, loading } = useAuth();
 
+  // the page scrollbar shows again (index.css html.learn-page): learner and educator pages alike since the
+  // educator redesign (owner's 1A, 2026-10-26)
+  useEffect(() => {
+    document.documentElement.classList.add("learn-page");
+  }, []);
+
   if (loading) return <Loading />;
 
   return (
-    <div className="text-default min-h-screen bg-white">
+    <div className="learn text-default min-h-screen bg-paper text-ink">
       <ToastContainer position="bottom-right" autoClose={3000} />
 
       {viewRole === "educator" ? <EducatorNavbar /> : <Navbar />}

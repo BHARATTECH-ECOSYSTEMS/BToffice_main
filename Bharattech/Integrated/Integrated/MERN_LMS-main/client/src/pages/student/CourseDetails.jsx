@@ -1,25 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import humanizeDuration from "humanize-duration";
-import {
-  Star,
-  Clock,
-  BookOpen,
-  ChevronDown,
-  PlayCircle,
-  CheckCircle2,
-} from "lucide-react";
+import { useCallback, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft, ChevronDown, PlayCircle, Check, Star } from "lucide-react";
+import { primaryButton } from "../../components/students/ui";
 import { useAppConfig } from "../../context/AppContext";
 import { safeDescription } from "../../utils/safeDescription";
 
 import Loading from "../../components/students/Loading";
-import RatingStars from "../../components/common/RatingStars";
 import {
-  calculateRatings,
   enrolledCountOf,
-  calculateChapterTime,
-  calculateCourseDuration,
   calculateNumOfLectures,
+  excerptOf,
+  lessonsLabel,
+  minutesLabel,
+  ratingSummary,
 } from "../../utils/courseHelpers";
 import Footer from "../../components/students/Footer";
 import { useCourseData } from "../../hooks/useCourseData";
@@ -36,6 +29,9 @@ const WHATS_INCLUDED = [
   "Your progress is saved lecture by lecture",
   "Rate the course once you've enrolled",
 ];
+const EXCERPT = 280;
+
+const minutesOf = (lectures) => lectures.reduce((sum, lecture) => sum + (Number(lecture.lectureDuration) || 0), 0);
 
 function CourseDetails() {
   const { id } = useParams();
@@ -46,22 +42,12 @@ function CourseDetails() {
   const { getToken, userData } = useAuth();
   const navigate = useNavigate();
 
-  const [openSections, setOpenSections] = useState(new Set());
-  const [isAlreadyEnrolled, setIsAlreadyEnrolled] = useState(false);
+  const [openSections, setOpenSections] = useState(new Set([0]));
+  const [enrolling, setEnrolling] = useState(false);
   const [playerData, setPlayerData] = useState(null);
   const [showFullDesc, setShowFullDesc] = useState(false);
 
-  // helper to strip HTML for safe excerpting
-  const stripHtml = (html) => {
-    if (!html) return "";
-    try {
-      const doc = new DOMParser().parseFromString(html, "text/html");
-      return doc.body.textContent || "";
-    } catch {
-      // fallback server-side or parsing failure
-      return html.replace(/<[^>]+>/g, "");
-    }
-  };
+  const isAlreadyEnrolled = Boolean(enrolledCourses?.some((c) => String(c._id) === String(id)));
 
   const toggleSection = (index) => {
     setOpenSections((prev) => {
@@ -72,267 +58,180 @@ function CourseDetails() {
   };
 
   const enrollCourse = async () => {
+    if (!userData) return toast.warn("Sign in to enroll");
+    setEnrolling(true);
     try {
-      if (!userData) {
-        return toast.warn("Login to Enroll");
-      }
-      if (isAlreadyEnrolled) {
-        return toast.warn("Already Enrolled");
-      }
       const token = await getToken();
-
       const { data } = await axios.post(
         `${backendUrl}/api/user/purchase`,
         { courseId: courseData._id },
         { headers: { Authorization: `Bearer ${token}` } },
       );
       if (data.status === "success" || data.success) {
-        toast.success(data.message || "Enrolled successfully");
-        setIsAlreadyEnrolled(true);
+        toast.success("Enrolled. Your first lesson is ready.");
         await refetchEnrollments();
-        navigate("/my-enrollments");
+        navigate(`/player/${courseData._id}`);
       } else {
-        toast.error(data.message || "Unable to enroll for this course");
+        toast.error(data.message || "Couldn't enroll in this course. Try again.");
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || error.message);
+      toast.error(error.response?.data?.message || "Couldn't enroll in this course. Check your connection and try again.");
+    } finally {
+      setEnrolling(false);
     }
   };
 
   const handleClose = useCallback(() => setPlayerData(null), []);
 
-  useEffect(() => {
-    setIsAlreadyEnrolled(
-      Boolean(enrolledCourses?.some((c) => String(c._id) === String(id))),
-    );
-  }, [enrolledCourses, id]);
+  if (!courseData) return <Loading />;
 
-  return courseData ? (
+  const rating = ratingSummary(courseData);
+  const learners = enrolledCountOf(courseData);
+  const lectures = calculateNumOfLectures(courseData);
+  const length = minutesLabel(minutesOf(courseData.courseContent.flatMap((chapter) => chapter.chapterContent || [])));
+  const excerpt = excerptOf(courseData.courseDescription, EXCERPT);
+  const longDescription = excerptOf(courseData.courseDescription, Infinity).length > EXCERPT;
+
+  return (
     <>
-      {/* lg:h-screen + lg:overflow-hidden keeps the whole page pinned to the
-          viewport on desktop; the syllabus list gets its own internal
-          scroll area below so nothing pushes the page taller than 100vh.
-          Below lg, the layout falls back to natural scrolling since a full
-          curriculum + sidebar can't realistically fit a phone screen. */}
-      <div className="relative flex  flex-col bg-gradient-to-b from-indigo-50/70 via-blue-50/30 to-white lg:h-screen lg:overflow-hidden">
-        <div className="min-h-0 flex-1 px-4 pt-20 pb-6 md:px-12 lg:px-20 lg:pt-24 lg:pb-8 xl:px-28">
-          <div className="grid h-full grid-cols-1 gap-8 lg:h-full lg:grid-cols-[1fr_380px]">
-            {/* LEFT COLUMN */}
-            <div className="flex min-h-0 flex-col text-gray-600">
-              <h1 className="mb-2 text-2xl font-bold tracking-tight text-slate-900 md:text-3xl">
-                {courseData.courseTitle}
-              </h1>
+      <main className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-6 pb-20 pt-10 text-left lg:grid-cols-[1fr_340px]">
+        <div className="min-w-0">
+          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors duration-150 ease-snappy mhover:text-ink">
+            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            All courses
+          </Link>
+          <h1 className="mt-3 font-display text-[40px] font-bold leading-[1.08] tracking-[-0.02em] text-ink">
+            {courseData.courseTitle}
+          </h1>
+          <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px] text-muted">
+            <span>
+              By <span className="font-medium text-ink">{courseData.educator?.name || "Bharattech"}</span>
+            </span>
+            <span>{lessonsLabel(lectures)}</span>
+            {length && <span>{length}</span>}
+            <span>
+              {learners} {learners === 1 ? "learner" : "learners"}
+            </span>
+            {rating && (
+              <span className="inline-flex items-center gap-1">
+                <Star className="h-4 w-4 fill-tangerine text-tangerine" aria-hidden="true" />
+                {rating.average} from {rating.count} {rating.count === 1 ? "rating" : "ratings"}
+              </span>
+            )}
+          </p>
 
-              {/* Description — single instance, capped height so "Show more"
-                  scrolls inside its own box instead of growing the page */}
-              <div className="mb-3">
-                <div
-                  className={`rich-text break-words text-sm text-gray-600 transition-all duration-300 md:text-[15px] ${
-                    showFullDesc
-                      ? "max-h-32 overflow-y-auto pr-1"
-                      : "max-h-none overflow-hidden"
-                  }`}
+          <section aria-labelledby="about" className="mt-8 max-w-[68ch]">
+            <h2 id="about" className="sr-only">
+              About this course
+            </h2>
+            {showFullDesc ? (
+              <div className="rich-text" dangerouslySetInnerHTML={{ __html: safeDescription(courseData.courseDescription) }} />
+            ) : (
+              <p className="text-[16px] leading-relaxed text-ink-soft">{excerpt}</p>
+            )}
+            {longDescription && (
+              <button
+                type="button"
+                onClick={() => setShowFullDesc((s) => !s)}
+                className="mt-2 text-sm font-semibold text-act-deep underline-offset-2 mhover:underline"
+                aria-expanded={showFullDesc}
+              >
+                {showFullDesc ? "Show less" : "Read the full description"}
+              </button>
+            )}
+          </section>
+
+          <section aria-labelledby="content" className="mt-10">
+            <h2 id="content" className="font-display text-[22px] font-semibold tracking-[-0.01em] text-ink">
+              What you'll watch
+            </h2>
+            <ul className="mt-4 overflow-hidden rounded-2xl border border-line bg-card">
+              {courseData.courseContent.map((chapter, index) => {
+                const isOpen = openSections.has(index);
+                const chapterLectures = chapter.chapterContent || [];
+                return (
+                  <li key={index} className="border-b border-line last:border-b-0">
+                    <button
+                      type="button"
+                      onClick={() => toggleSection(index)}
+                      aria-expanded={isOpen}
+                      className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors duration-150 ease-snappy mhover:bg-ink/[0.02]"
+                    >
+                      <span className="flex items-center gap-3">
+                        <ChevronDown className={`h-4 w-4 shrink-0 text-muted transition-transform duration-200 ease-snappy ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
+                        <span className="font-semibold text-ink">{chapter.chapterTitle}</span>
+                      </span>
+                      <span className="shrink-0 text-[13px] text-muted">
+                        {lessonsLabel(chapterLectures.length)}
+                        {minutesOf(chapterLectures) ? `, ${minutesLabel(minutesOf(chapterLectures))}` : ""}
+                      </span>
+                    </button>
+                    {isOpen && (
+                      <ul className="pb-3 motion-safe:animate-chapter-in">
+                        {chapterLectures.map((lecture, i) => (
+                          <li key={i} className="flex items-center gap-3 px-5 py-2 pl-12 text-[15px] text-ink-soft">
+                            <PlayCircle className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+                            <span className="min-w-0 flex-1">{lecture.lectureTitle}</span>
+                            {lecture.isPreviewFree && (
+                              <button
+                                type="button"
+                                onClick={() => setPlayerData({ ...lecture, chapter: index + 1, lecture: i + 1 })}
+                                className="rounded-full bg-act-wash px-3 py-0.5 text-[13px] font-semibold text-act-deep transition-colors duration-150 ease-snappy mhover:bg-act/15"
+                              >
+                                Preview
+                              </button>
+                            )}
+                            <span className="shrink-0 text-[13px] text-muted">{minutesLabel(lecture.lectureDuration)}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        </div>
+
+        <aside className="lg:sticky lg:top-24 lg:self-start">
+          <div className="overflow-hidden rounded-2xl border border-line bg-card">
+            <div className="aspect-video bg-ink/5">
+              <img className="h-full w-full object-cover" src={courseData.courseThumbnail} alt="" />
+            </div>
+            <div className="p-5">
+              {isAlreadyEnrolled ? (
+                <Link
+                  to={`/player/${courseData._id}`}
+                  className={`block w-full py-3 text-center text-[15px] ${primaryButton}`}
                 >
-                  {showFullDesc ? (
-                    <p
-                      dangerouslySetInnerHTML={{
-                        __html: safeDescription(courseData.courseDescription),
-                      }}
-                    />
-                  ) : (
-                    <p>
-                      {(() => {
-                        const txt = stripHtml(courseData.courseDescription);
-                        return txt.length > 180
-                          ? txt.slice(0, 180) + "..."
-                          : txt;
-                      })()}
-                    </p>
-                  )}
-                </div>
+                  Continue learning
+                </Link>
+              ) : (
                 <button
                   type="button"
-                  onClick={() => setShowFullDesc((s) => !s)}
-                  className="mt-1 text-sm font-semibold text-blue-600 transition-colors hover:text-blue-700"
+                  onClick={enrollCourse}
+                  disabled={enrolling}
+                  className={`w-full py-3 text-[15px] ${primaryButton}`}
                 >
-                  {showFullDesc ? "Show less" : "Show more"}
+                  {enrolling ? "Enrolling…" : "Enroll"}
                 </button>
-              </div>
+              )}
+              <p className="mt-3 text-center text-[13px] text-muted">
+                {isAlreadyEnrolled ? "You're enrolled in this course." : "Free for everyone at Bharattech."}
+              </p>
 
-              {/* Rating + students + educator */}
-              <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-sm">
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-slate-800">
-                    {calculateRatings(courseData)}
-                  </p>
-                  <RatingStars
-                    rating={calculateRatings(courseData)}
-                    parentStyles={"flex"}
-                    imgStyles={"w-3.5 h-3.5"}
-                  />
-                  <p className="text-blue-600">
-                    ({courseData.courseRatings.length}{" "}
-                    {courseData.courseRatings.length > 1 ? "ratings" : "rating"}
-                    )
-                  </p>
-                </div>
-                <p className="text-gray-500">
-                  {enrolledCountOf(courseData)}{" "}
-                  {enrolledCountOf(courseData) === 1 ? "student" : "students"}
-                </p>
-                <p className="text-gray-500">
-                  Course by{" "}
-                  <span className="font-medium text-blue-600">
-                    {courseData.educator?.name ||
-                      courseData.educator?.email ||
-                      "BharatTech"}
-                  </span>
-                </p>
-              </div>
-
-              {/* Course structure — scrolls internally, page stays fixed */}
-              <h2 className="mb-2 text-lg font-bold tracking-tight text-slate-900">
-                Course Structure
-              </h2>
-              <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-                <div className="flex flex-col gap-2 pb-2">
-                  {courseData.courseContent.map((chapter, index) => {
-                    const isOpen = openSections.has(index);
-                    return (
-                      <div
-                        key={index}
-                        className="overflow-hidden rounded-xl border border-slate-200 bg-white transition-colors duration-200 hover:border-slate-300"
-                      >
-                        <div
-                          className="flex cursor-pointer select-none items-center justify-between px-4 py-3"
-                          onClick={() => toggleSection(index)}
-                        >
-                          <div className="flex items-center gap-2">
-                            <ChevronDown
-                              className={`h-4 w-4 text-slate-400 transition-transform duration-300 ${
-                                isOpen ? "rotate-180" : ""
-                              }`}
-                            />
-                            <p className="text-sm font-semibold text-slate-800 md:text-[15px]">
-                              {chapter.chapterTitle}
-                            </p>
-                          </div>
-                          <p className="text-xs text-slate-500 md:text-sm">
-                            {chapter.chapterContent?.length} lectures ·{" "}
-                            {calculateChapterTime(chapter)}
-                          </p>
-                        </div>
-                        <div
-                          className={`overflow-hidden transition-all duration-300 ${
-                            isOpen ? "max-h-96" : "max-h-0"
-                          }`}
-                        >
-                          <ul className="border-t border-slate-100 px-4 py-2 text-gray-600">
-                            {chapter.chapterContent.map((lecture, i) => (
-                              <li
-                                key={i}
-                                className="flex items-start gap-2 py-1.5"
-                              >
-                                <PlayCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400" />
-                                <div className="flex w-full items-center justify-between text-xs text-slate-700 md:text-sm">
-                                  <p>{lecture.lectureTitle}</p>
-                                  <div className="flex items-center gap-2">
-                                    {lecture.isPreviewFree && (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          setPlayerData({
-                                            ...lecture,
-                                            chapter: index + 1,
-                                            lecture: i + 1,
-                                          })
-                                        }
-                                        className="rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-600 transition-colors hover:bg-blue-100"
-                                      >
-                                        Preview
-                                      </button>
-                                    )}
-                                    <p className="text-slate-400">
-                                      {humanizeDuration(
-                                        lecture.lectureDuration * 60 * 1000,
-                                        ["h", "m"],
-                                      )}
-                                    </p>
-                                  </div>
-                                </div>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            {/* RIGHT COLUMN — purchase card, same theme as Resource/Course cards */}
-            <div className="lg:h-full lg:overflow-y-auto lg:pb-2">
-              <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-                <div className="h-[5px] bg-gradient-to-r from-sky-400 to-blue-600" />
-
-                {/* Thumbnail — shorter, cropped instead of full natural height */}
-                <img
-                  className="h-36 w-full object-contain sm:h-44"
-                  src={courseData.courseThumbnail}
-                  alt="Course illustration"
-                />
-
-                <div className="p-5">
-                  <p className="text-2xl font-bold text-slate-900 md:text-3xl">Free</p>
-
-                  <div className="mt-3 flex items-center gap-3 text-xs text-slate-500 md:text-sm">
-                    <div className="flex items-center gap-1">
-                      <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
-                      <p>{calculateRatings(courseData)}</p>
-                    </div>
-                    <div className="h-3.5 w-px bg-slate-200" />
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5" />
-                      <p>{calculateCourseDuration(courseData)}</p>
-                    </div>
-                    <div className="h-3.5 w-px bg-slate-200" />
-                    <div className="flex items-center gap-1">
-                      <BookOpen className="h-3.5 w-3.5" />
-                      <p>{calculateNumOfLectures(courseData)} lessons</p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={enrollCourse}
-                    className={`mt-4 w-full rounded-xl py-3 text-sm font-semibold text-white shadow-md transition-all duration-200 md:mt-5 ${
-                      isAlreadyEnrolled
-                        ? "bg-gradient-to-br from-green-600 to-green-700 shadow-green-600/25 hover:from-green-700 hover:to-green-800"
-                        : "bg-gradient-to-br from-blue-600 to-blue-700 shadow-blue-600/25 hover:from-blue-700 hover:to-blue-800 hover:shadow-lg hover:shadow-blue-600/30"
-                    }`}
-                  >
-                    {isAlreadyEnrolled ? "Already Enrolled" : "Enroll Now"}
-                  </button>
-
-                  <div className="mt-4 border-t border-slate-100 pt-4 md:mt-5 md:pt-5">
-                    <p className="mb-2 text-sm font-semibold text-slate-800">
-                      What's in the course?
-                    </p>
-                    <ul className="grid grid-cols-1 gap-1.5 text-xs text-slate-500 sm:grid-cols-2 md:text-[13px]">
-                      {WHATS_INCLUDED.map((item) => (
-                        <li key={item} className="flex items-start gap-1.5">
-                          <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-blue-600" />
-                          <span>{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
-              </div>
+              <ul className="mt-5 flex flex-col gap-2 border-t border-line pt-5 text-sm text-ink-soft">
+                {WHATS_INCLUDED.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-act" aria-hidden="true" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
-        </div>
-      </div>
+        </aside>
+      </main>
 
       {playerData && (
         <VideoPlayer
@@ -342,11 +241,8 @@ function CourseDetails() {
           isCompleted={false}
         />
       )}
-      {/* Footer only shows on the natural-scroll (mobile) layout */}
       <Footer />
     </>
-  ) : (
-    <Loading />
   );
 }
 

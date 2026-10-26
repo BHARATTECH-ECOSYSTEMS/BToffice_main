@@ -1,146 +1,56 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Line } from "rc-progress";
-import { useAppConfig } from "../../context/AppContext";
-import { useEnrollments } from "../../context/EnrollmentContext";
-import { useAuth } from "../../context/AuthContext";
-import {
-  calculateCourseDuration,
-  calculateNumOfLectures,
-} from "../../utils/courseHelpers";
+import { Link } from "react-router-dom";
 import Footer from "../../components/students/Footer";
-import axios from "axios";
-import { toast } from "react-toastify";
-import EmptySection from "../../components/common/EmptySection";
-import { assets } from "../../assets/assets";
+import LearningRow from "../../components/students/LearningRow";
+import { primaryButton } from "../../components/students/ui";
+import { useCourses } from "../../context/CourseContext";
+import { useMyLearning } from "../../hooks/useMyLearning";
+import { withCovers } from "../../utils/courseHelpers";
 
+// Your courses, unfinished first, from one request (owner's 4A, 2026-10-26): it used to ask for each course's progress
+// separately and showed a table header over "Check back later!", though only you can enroll yourself.
 function MyEnrollments() {
-  const navigate = useNavigate();
-
-  const { backendUrl } = useAppConfig();
-  const { getToken, userData } = useAuth();
-  const { enrolledCourses, refetchEnrollments } = useEnrollments();
-
-  const [progressArray, setProgressArray] = useState([]);
-
-  const getCourseProgress = async () => {
-    try {
-      const token = await getToken();
-      const tempProgressArray = await Promise.all(
-        enrolledCourses.map(async (course) => {
-          const { data } = await axios.post(
-            `${backendUrl}/api/user/get-course-progress`,
-            { courseId: course._id },
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          let totalLectures = calculateNumOfLectures(course);
-          const progressData = data?.data?.progressData;
-          const lectureCompleted = progressData?.lectureCompleted?.length || 0;
-          return { lectureCompleted, totalLectures };
-        })
-      );
-      setProgressArray(tempProgressArray);
-    } catch (error) {
-      toast.error(error.message);
-    }
-  };
-
-  useEffect(() => {
-    if (userData) {
-      refetchEnrollments();
-    }
-  }, [userData, refetchEnrollments]);
-
-  useEffect(() => {
-    if (enrolledCourses.length > 0) {
-      getCourseProgress();
-    }
-  }, [enrolledCourses]);
+  const { allCourses } = useCourses();
+  const mine = useMyLearning();
+  const courses = withCovers(mine.courses, allCourses);
+  const finished = courses.filter((c) => c.completed).length;
 
   return (
     <>
-      <div className="px-8 md:px-36 pt-10 bg-gradient-to-b from-indigo-100/70 via-blue-50/30 to-white mb-52">
-        <h1 className="text-2xl font-semibold">My Enrollments</h1>
+      <main className="mx-auto min-h-[60vh] w-full max-w-6xl px-6 pb-20 pt-12 text-left">
+        <h1 className="font-display text-[44px] font-bold leading-[1.05] tracking-[-0.02em] text-ink">My courses</h1>
 
-        <table className="md:table-auto table-fixed w-full overflow-hidden border mt-10">
-          <thead className="text-gray-900 border-b border-gray-500/20 text-sm text-left max-sm:hidden">
-            <tr>
-              <th className="px-4 py-3 font-semibold truncate">Course</th>
-              <th className="px-4 py-3 font-semibold truncate">Duration</th>
-              <th className="px-4 py-3 font-semibold truncate">Completed</th>
-              <th className="px-4 py-3 font-semibold truncate">Status</th>
-            </tr>
-          </thead>
-          <tbody className="text-gray-700">
-            {enrolledCourses.length === 0 ? (
-              <tr>
-                <td colSpan="4" className="p-0">
-                  <EmptySection
-                    imageSrc={assets.cat_pana}
-                    title="No Enrollments Yet"
-                    actionLabel="Browse Courses"
-                    onAction={() => navigate("/course-list")}
-                  />
-                </td>
-              </tr>
-            ) : (
-              enrolledCourses.map((course, i) => {
-                const isCompleted =
-                  progressArray[i] &&
-                  progressArray[i].lectureCompleted /
-                  progressArray[i].totalLectures ===
-                  1;
-                return (
-                  <tr key={i} className="border-b border-gray-500/20">
-                    <td className="md:px-4 pl-2 md:pl-4 py-3 flex items-center space-x-3">
-                      <img
-                        src={course.courseThumbnail}
-                        alt=""
-                        className="w-14 sm:w-24 md:w-28"
-                      />
-                      <div className="flex-1">
-                        <p className="mb-1 max-sm:text-sm">
-                          {course.courseTitle}
-                        </p>
-                        <Line
-                          strokeWidth={2}
-                          percent={
-                            progressArray[i]
-                              ? (progressArray[i].lectureCompleted * 100) /
-                              progressArray[i].totalLectures
-                              : 0
-                          }
-                          className="bg-gray-300 rounded-full"
-                        />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 max-sm:hidden">
-                      {calculateCourseDuration(course)}
-                    </td>
-                    <td className="px-4 py-3 max-sm:hidden">
-                      {progressArray[i] &&
-                        `${progressArray[i].lectureCompleted} / ${progressArray[i].totalLectures}`}{" "}
-                      <span>Lectures</span>
-                    </td>
-                    <td className="px-4 py-3 max-sm:text-right">
-                      <button
-                        className={`px-3 sm:px-5 py-1.5 sm:py-2 max-sm:text-xs text-white rounded-md ${isCompleted
-                            ? "bg-green-600 hover:bg-green-700"
-                            : "bg-blue-600 hover:bg-blue-700"
-                          }`}
-                        onClick={() => navigate("/player/" + course._id)}
-                      >
-                        {isCompleted ? "Completed" : "On Going"}
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
-      </div>
-
+        {mine.status === "loading" ? (
+          <p className="mt-4 text-muted">Loading your courses…</p>
+        ) : mine.status === "failed" && courses.length === 0 ? (
+          <div className="mt-8 rounded-2xl border border-line bg-card p-6">
+            <p className="text-ink">Your courses didn't load. Check your connection, then try again.</p>
+            <button type="button" onClick={mine.retry} className={`mt-3 px-5 py-2 text-sm ${primaryButton}`}>
+              Try again
+            </button>
+          </div>
+        ) : courses.length === 0 ? (
+          <div className="mt-8 rounded-2xl border border-line bg-card p-8">
+            <h2 className="font-display text-[22px] font-semibold text-ink">You haven't enrolled in a course yet</h2>
+            <p className="mt-2 max-w-prose text-muted">Pick one from the course list. Enrolling is free, and your progress is saved as you watch.</p>
+            <Link to="/" className={`mt-5 inline-block px-5 py-2.5 text-sm ${primaryButton}`}>
+              Browse courses
+            </Link>
+          </div>
+        ) : (
+          <>
+            <p className="mt-2 text-[15px] text-muted">
+              {courses.length} {courses.length === 1 ? "course" : "courses"}
+              {finished ? `, ${finished} finished` : ""}.
+            </p>
+            <ul className="mt-8 flex flex-col gap-3">
+              {courses.map((course) => (
+                <LearningRow key={course.courseId} course={course} />
+              ))}
+            </ul>
+          </>
+        )}
+      </main>
+      <Footer />
     </>
   );
 }

@@ -34,16 +34,80 @@
   outline-offset: 2px;
 }
 
-/* Skeleton loading animation */
-@keyframes shimmer {
-  0% { background-position: -1000px 0; }
-  100% { background-position: 1000px 0; }
+/* The learner pages wear the portal's look (owner's 2A, 2026-10-26); the educator pages keep their own for now. */
+.learn,
+.learn * {
+  font-family: Figtree, system-ui, sans-serif;
+}
+.learn .font-display {
+  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-optical-sizing: auto;
+}
+.learn *:focus-visible {
+  outline-color: #6e58f5;
+}
+/* toasts in the portal's colours (owner's refinement), only on learner pages */
+.learn {
+  --toastify-color-light: #fdfcf9;
+  --toastify-text-color-light: #14130f;
+  --toastify-color-success: #6e58f5;
+  --toastify-color-info: #6e58f5;
+  --toastify-color-warning: #ff8643;
+  --toastify-color-error: #b42318;
+  /* the library derives these from the colours above once, at :root, so they are set here too */
+  --toastify-icon-color-success: #6e58f5;
+  --toastify-icon-color-info: #6e58f5;
+  --toastify-icon-color-warning: #ff8643;
+  --toastify-icon-color-error: #b42318;
+  --toastify-color-progress-success: #6e58f5;
+  --toastify-color-progress-info: #6e58f5;
+  --toastify-color-progress-warning: #ff8643;
+  --toastify-color-progress-error: #b42318;
+  --toastify-font-family: Figtree, system-ui, sans-serif;
+}
+.learn .Toastify__toast {
+  border: 1px solid rgb(20 19 15 / 0.08);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgb(20 19 15 / 0.12);
 }
 
-.skeleton {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-  background-size: 1000px 100%;
-  animation: shimmer 2s infinite linear;
+/* the company CSS hides every scrollbar; on learner pages the page's own comes back (App.jsx sets the class), so
+   you can see how long a page is. The standard properties win over the ::-webkit-scrollbar rule. */
+html.learn-page {
+  scrollbar-width: auto;
+  scrollbar-color: rgb(20 19 15 / 0.28) transparent;
+}
+
+/* the course description editor (Quill) inside the Add a course form: one frame, the form's own */
+.learn .course-editor .ql-toolbar.ql-snow {
+  border: 0;
+  border-bottom: 1px solid rgb(20 19 15 / 0.08);
+}
+.learn .course-editor .ql-container.ql-snow {
+  border: 0;
+  font-family: Figtree, system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.learn .rich-text {
+  font-size: 16px;
+  line-height: 1.65;
+  color: #5c574e;
+}
+.learn .rich-text h1,
+.learn .rich-text h2,
+.learn .rich-text h3 {
+  font-size: 18px;
+  font-weight: 650;
+  color: #14130f;
+  margin: 20px 0 8px;
+}
+.learn .rich-text > :first-child {
+  margin-top: 0;
+}
+.learn .rich-text a {
+  color: #5a41e2;
+  text-decoration: underline;
 }
 
 @layer base {
@@ -52,89 +116,8 @@
   }
 }
 
-/* ─── Bharat Hero gradient banner (matches Bharat landing page / LMS Dashboard) ─── */
-.bharat-hero-banner {
-  position: relative;
-  overflow: hidden;
-  border-radius: 1.5rem;
-  background: radial-gradient(120% 80% at 70% 30%, hsl(230 85% 55%) 0%, hsl(235 80% 35%) 35%, hsl(240 70% 18%) 65%, hsl(240 60% 8%) 100%);
-}
-
-.bharat-hero-banner::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(circle at 30% 40%, rgba(255, 255, 255, 0.18), transparent 55%),
-    radial-gradient(circle at 80% 70%, rgba(120, 140, 255, 0.25), transparent 60%);
-  pointer-events: none;
-}
-
-/* Full-bleed variant (no rounded corners) for full-width page sections.
-   Uses a straight top-to-bottom linear gradient (same color stops as the
-   banner) instead of the radial version — the radial's off-center ellipse
-   produces a near-flat dark band at the top edge on wide/short sections. */
-.bharat-hero-bg {
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(180deg, hsl(230 85% 55%) 0%, hsl(235 80% 35%) 35%, hsl(240 70% 18%) 65%, hsl(240 60% 8%) 100%);
-}
-
-/* Violet wash + radial top glow */
-.bharat-hero-glow {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 100%;
-  pointer-events: none;
-  background:
-    linear-gradient(180deg, hsl(245 58% 51% / 0.35) 0%, hsl(245 58% 51% / 0.12) 35%, transparent 70%),
-    radial-gradient(60% 80% at 50% 0%, hsl(245 58% 51% / 0.5) 0%, hsl(245 58% 51% / 0.2) 35%, transparent 70%);
-}
-
-/* Vertical light beams (Bharat hero highlight effect) */
-.bharat-hero-beams {
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 100%;
-  pointer-events: none;
-  background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0) 80%),
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 22px,
-      rgba(255, 255, 255, 0.45) 22px 23px,
-      transparent 23px 60px,
-      rgba(255, 255, 255, 0.28) 60px 61px,
-      transparent 61px 110px,
-      rgba(255, 255, 255, 0.6) 110px 112px,
-      transparent 112px 170px
-    );
-  background-blend-mode: screen;
-  -webkit-mask-image: radial-gradient(80% 90% at 50% 0%, black 0%, black 25%, transparent 70%);
-  mask-image: radial-gradient(80% 90% at 50% 0%, black 0%, black 25%, transparent 70%);
-}
-
 ::-webkit-scrollbar {
   display: none;
-}
-
-/* Bounce animation for empty states */
-@keyframes bounce-slow {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.animate-bounce-slow {
-  animation: bounce-slow 3s ease-in-out infinite;
 }
 
 /* Modal animations */

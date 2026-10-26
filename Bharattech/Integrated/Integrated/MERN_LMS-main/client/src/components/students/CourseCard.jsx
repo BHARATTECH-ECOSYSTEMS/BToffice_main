@@ -1,81 +1,43 @@
 import { Link } from "react-router-dom";
-import { Eye, Star } from "lucide-react";
-import { calculateRatings } from "../../utils/courseHelpers";
-import RatingStars from "../common/RatingStars";
+import { Star } from "lucide-react";
+import { lessonsLabel, minutesLabel, ratingSummary } from "../../utils/courseHelpers";
 
-function CourseCard({ course }) {
-  const educatorName =
-    course.educator?.name || course.educator?.email || "BharatTech";
-  const rating = calculateRatings(course);
+// The whole card opens the course (owner's 4A): every course is free, so the card says what differs between them,
+// how big it is and who teaches it, and a rating only once someone has given one.
+function CourseCard({ course, enrolled = false }) {
+  const educatorName = course.educator?.name || "Bharattech";
+  const rating = ratingSummary(course);
+  const length = minutesLabel(course.totalMinutes);
 
   return (
-    <div className="group h-full will-change-transform">
-      {/* Card shell — same simple lift used on Resource cards */}
-      <div className="flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.08)] transition-all duration-500 ease-out group-hover:-translate-y-2 group-hover:shadow-[0_24px_48px_rgba(15,23,42,0.14)]">
-        {/* Gradient top bar — matches Resource cards */}
-        <div className="h-[5px] bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800" />
+    <Link
+      to={`/course/${course._id}`}
+      onClick={() => scrollTo(0, 0)}
+      className="group flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card transition-colors duration-150 ease-snappy mhover:border-line-strong"
+    >
+      <div className="aspect-video overflow-hidden bg-ink/5">
+        <img src={course.courseThumbnail} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+      </div>
 
-        {/* Thumbnail */}
-        <Link
-          to={`/course/${course._id}`}
-          onClick={() => scrollTo(0, 0)}
-          className="overflow-hidden"
-        >
-          <img
-            src={course.courseThumbnail}
-            alt={course.courseTitle}
-            className="aspect-[16/9] w-full object-contain"
-          />
-        </Link>
+      <div className="flex flex-1 flex-col gap-1 p-4">
+        <h3 className="line-clamp-2 text-[17px] font-semibold leading-snug text-ink transition-colors duration-150 ease-snappy group-mhover:text-act-deep">
+          {course.courseTitle}
+        </h3>
+        <p className="text-sm text-muted">{educatorName}</p>
 
-        {/* Course details */}
-        <div className="flex flex-1 flex-col p-5 text-left">
-          <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-500">
-            Course
-          </p>
-
-          <Link to={`/course/${course._id}`} onClick={() => scrollTo(0, 0)}>
-            <h3 className="mb-1.5 line-clamp-2 text-base font-bold tracking-tight text-slate-900 transition-colors duration-200 group-hover:text-blue-700">
-              {course.courseTitle}
-            </h3>
-          </Link>
-
-          <p className="mb-3 text-sm text-slate-500">
-            {educatorName.includes("null")
-              ? educatorName.split(" ")[0]
-              : educatorName}
-          </p>
-
-          <div className="mt-auto flex flex-col gap-2 pt-1">
-            {/* Rating line */}
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold text-slate-800">{rating}</p>
-              <RatingStars
-                rating={rating}
-                parentStyles={"flex"}
-                imgStyles={"w-3.5 h-3.5"}
-              />
-              <p className="text-sm text-slate-500">
-                ({course.courseRatings.length})
-              </p>
-            </div>
-
-            {/* every course is free (owner's 2A) */}
-            <p className="text-lg font-bold text-slate-900">Free</p>
-
-            {/* View button — full width, own row */}
-            <Link
-              to={`/course/${course._id}`}
-              onClick={() => scrollTo(0, 0)}
-              className="mt-1 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-md shadow-blue-600/25 transition-all duration-200 hover:from-blue-700 hover:to-blue-800 hover:shadow-lg hover:shadow-blue-600/30 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              View
-            </Link>
-          </div>
+        <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-3 text-[13px] tabular-nums text-muted">
+          {course.lectureCount !== undefined && <span>{lessonsLabel(course.lectureCount)}</span>}
+          {length && <span>{length}</span>}
+          {rating && (
+            <span className="inline-flex items-center gap-1" aria-label={`Rated ${rating.average} out of 5 by ${rating.count}`}>
+              <Star className="h-3.5 w-3.5 fill-tangerine text-tangerine" aria-hidden="true" />
+              {rating.average} ({rating.count})
+            </span>
+          )}
+          {enrolled && <span className="ml-auto font-medium text-tangerine-text">Enrolled</span>}
         </div>
       </div>
-    </div>
+    </Link>
   );
 }
 

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+// Real buttons, so the rating also works from the keyboard and reads out as "Rate 3 out of 5".
 function Rating({ initialRating, onRate }) {
   const [rating, setRating] = useState(initialRating || 0);
   const handleRating = (value) => {
@@ -13,19 +14,20 @@ function Rating({ initialRating, onRate }) {
     }
   }, [initialRating]);
   return (
-    <div>
+    <div className="flex items-center gap-0.5">
       {Array.from({ length: 5 }).map((_, index) => {
         const starValue = index + 1;
         return (
-          <span
+          <button
+            type="button"
             key={index}
-            className={`text-xl sm:text-2xl cursor-pointer transition-colors ${
-              starValue <= rating ? "text-yellow-500" : "text-gray-400"
-            }`}
+            aria-label={`Rate ${starValue} out of 5`}
+            aria-pressed={starValue === rating}
+            className={`rounded px-0.5 text-2xl leading-none transition-colors duration-150 ease-snappy ${starValue <= rating ? "text-tangerine" : "text-ink/20 mhover:text-tangerine/60"}`}
             onClick={() => handleRating(starValue)}
           >
             &#9733;
-          </span>
+          </button>
         );
       })}
     </div>
