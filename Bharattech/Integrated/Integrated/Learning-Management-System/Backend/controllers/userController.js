@@ -5,6 +5,7 @@ const User = require("../models/User");
 const { kcAdmin, ensureKeycloakAdmin: authKeycloakAdmin } = require("../utils/keycloakAdmin");
 const { photoType, saveUserPhoto, findUserPhoto, openUserPhoto, deleteUserPhoto } = require("../utils/userPhotos");
 const { isAdmin } = require("../utils/refusal");
+const { notePhotoChanged } = require("../utils/notify");
 
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 const DEMO_AUTH_ENABLED = process.env.AUTH_MODE === "demo";
@@ -731,6 +732,10 @@ exports.updateUser = async (req, res) => {
       throw error;
     }
     await deleteUserPhoto(oldPhotoId);
+    // an admin changed someone else's photo: that person hears about it in their bell
+    if (req.file && String(user._id) !== String(req.user?.id)) {
+      await notePhotoChanged({ userId: user._id, actorName: req.user?.fullName });
+    }
 
     if (requestedRole && user.keycloakId && user.authProvider === "keycloak") {
       await syncKeycloakRealmRole(user.keycloakId, requestedRole);
@@ -891,6 +896,32 @@ exports.removeMyPhoto = async (req, res) => {
     res.json(stripSensitive(user));
   } catch (error) {
     console.error("Remove photo error:", error.message);
+    res.status(500).json({ message: "The photo couldn't be removed. Try again in a moment." });
+  }
+};
+
+// DELETE /api/user/:id/photo: an admin removes someone's photo, by the same rule as changing their details
+exports.removeUserPhoto = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ message: "User not found" });
+    const user = await User.findOne({ _id: req.params.id, isDeleted: { $ne: true } });
+    if (!user) return res.status(404).json({ message: "User not found" });
+    if (!canEditUser(req.user?.role, user.role)) {
+      return res.status(403).json({ message: "You can only change the details of sub admins, employees and interns." });
+    }
+    // an older record may hold only an address (the company app's uploads), which goes too
+    if (!user.photoFileId && !user.profilePicture) return res.json(publicUser(user));
+    const oldFileId = user.photoFileId;
+    user.photoFileId = undefined;
+    user.profilePicture = "";
+    await user.save();
+    await deleteUserPhoto(oldFileId);
+    if (String(user._id) !== String(req.user?.id)) {
+      await notePhotoChanged({ userId: user._id, actorName: req.user?.fullName, removed: true });
+    }
+    res.json(publicUser(user));
+  } catch (error) {
+    console.error("Remove someone's photo error:", error.message);
     res.status(500).json({ message: "The photo couldn't be removed. Try again in a moment." });
   }
 };

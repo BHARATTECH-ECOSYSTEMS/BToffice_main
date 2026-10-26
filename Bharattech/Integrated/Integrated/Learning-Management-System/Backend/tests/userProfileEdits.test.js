@@ -20,7 +20,8 @@ class FakeKcAdminClient {
 require("./helpers/fakeKeycloakAdmin").stubKeycloakAdminPackage(FakeKcAdminClient);
 
 const User = require("../models/User");
-const { updateUser, setMyPhoto, removeMyPhoto, getUserPhoto, canEditUser, readFullName, keycloakNames } = require("../controllers/userController");
+const Notification = require("../models/Notification");
+const { updateUser, setMyPhoto, removeMyPhoto, removeUserPhoto, getUserPhoto, canEditUser, readFullName, keycloakNames } = require("../controllers/userController");
 const { photoType, PHOTO_MAX_BYTES } = require("../utils/userPhotos");
 const { uploadUserPhoto } = require("../middlewares/uploadUserPhoto");
 const { connectTestDb, clearTestDb, disconnectTestDb, userFields } = require("./helpers/testDb");
@@ -41,6 +42,7 @@ before(async () => {
   app.delete("/me/photo", removeMyPhoto);
   app.get("/:id/photo", getUserPhoto);
   app.patch("/:id", uploadUserPhoto("profilePicture"), updateUser);
+  app.delete("/:id/photo", removeUserPhoto);
   await new Promise((resolve) => (server = app.listen(0, "127.0.0.1", resolve)));
   base = `http://127.0.0.1:${server.address().port}`;
 });
@@ -54,7 +56,7 @@ after(async () => {
   await disconnectTestDb();
 });
 
-const as = (p) => JSON.stringify({ id: String(p._id), role: p.role, keycloakId: p.keycloakId, email: p.email });
+const as = (p) => JSON.stringify({ id: String(p._id), role: p.role, keycloakId: p.keycloakId, email: p.email, fullName: p.fullName });
 
 const send = async (who, method, path, body) => {
   const res = await fetch(base + path, {
@@ -291,4 +293,60 @@ test("a photo an admin uploads goes into the same store, not a broken /uploads/ 
   const { superadmin } = { superadmin: await User.findOne({ role: "Superadmin" }) };
   assert.equal((await upload(admin, "PATCH", `/${superadmin._id}`, "profilePicture", PNG)).status, 403);
   assert.equal(await storedPhotos(), 1);
+});
+
+test("an admin removes someone's photo by the same rule as changing it", async () => {
+  const { superadmin, admin, admin2, subadmin, employee } = await people();
+  await upload(employee, "PUT", "/me/photo", "photo", PNG);
+  await upload(admin2, "PUT", "/me/photo", "photo", PNG);
+  assert.equal(await storedPhotos(), 2);
+
+  // a sub admin or the person's colleague can't, and an Admin can't for another Admin
+  assert.equal((await send(subadmin, "DELETE", `/${employee._id}/photo`)).status, 403);
+  assert.equal((await send(admin, "DELETE", `/${admin2._id}/photo`)).status, 403);
+  assert.equal(await storedPhotos(), 2);
+
+  const removed = await send(admin, "DELETE", `/${employee._id}/photo`);
+  assert.equal(removed.status, 200);
+  assert.equal(removed.body.profilePicture, "");
+  assert.equal(removed.body.password, undefined);
+  assert.equal(await storedPhotos(), 1);
+  assert.equal((await User.findById(employee._id)).photoFileId, undefined);
+  assert.equal((await send(superadmin, "DELETE", `/${admin2._id}/photo`)).status, 200);
+  assert.equal(await storedPhotos(), 0);
+});
+
+test("removing a photo from someone who isn't there answers 404", async () => {
+  const { admin, employee } = await people();
+  await User.updateOne({ _id: employee._id }, { isDeleted: true });
+  assert.equal((await send(admin, "DELETE", `/${employee._id}/photo`)).status, 404);
+  assert.equal((await send(admin, "DELETE", "/not-an-id/photo")).status, 404);
+  assert.equal((await send(admin, "DELETE", `/${new mongoose.Types.ObjectId()}/photo`)).status, 404);
+});
+
+test("the person is told in their bell, without an email, when an admin changes or removes their photo", async () => {
+  const { admin, employee, intern } = await people();
+  await upload(admin, "PATCH", `/${employee._id}`, "profilePicture", PNG);
+  await send(admin, "DELETE", `/${employee._id}/photo`);
+
+  const notes = await Notification.find({ userId: employee._id }).sort({ createdAt: 1, _id: 1 }).lean();
+  assert.deepEqual(
+    notes.map((n) => [n.kind, n.title, n.link]),
+    [
+      ["photo", "Your photo was changed by Ravi Menon", "/portal/settings"],
+      ["photo", "Your photo was removed by Ravi Menon", "/portal/settings"],
+    ],
+  );
+  // a removal with nothing to remove, a name change without a photo, and their own photo tell nobody
+  await send(admin, "DELETE", `/${intern._id}/photo`);
+  await send(admin, "PATCH", `/${intern._id}`, { fullName: "Mira Dasgupta" });
+  await upload(intern, "PUT", "/me/photo", "photo", PNG);
+  assert.equal(await Notification.countDocuments({ userId: intern._id }), 0);
+});
+
+test("an admin changing their own photo through People isn't told about it", async () => {
+  const { superadmin } = await people();
+  await upload(superadmin, "PATCH", `/${superadmin._id}`, "profilePicture", PNG);
+  await send(superadmin, "DELETE", `/${superadmin._id}/photo`);
+  assert.equal(await Notification.countDocuments({}), 0);
 });

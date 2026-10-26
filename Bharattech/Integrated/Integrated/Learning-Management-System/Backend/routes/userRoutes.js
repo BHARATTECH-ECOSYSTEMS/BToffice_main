@@ -12,7 +12,8 @@ const {
   getDirectory,
   setMyPhoto,
   removeMyPhoto,
-  getUserPhoto
+  getUserPhoto,
+  removeUserPhoto
 } = require("../controllers/userController");
 const { sendResetLinkFor } = require("../controllers/passwordResetController");
 const { requireAdmin } = require("../middlewares/keycloakAuth");
@@ -43,6 +44,8 @@ router.get("/keycloak-users", getKeycloakUsers);
 
 // Anyone's photo, for anyone signed in (like the directory)
 router.get("/:id/photo", getUserPhoto);
+// An admin removes someone's photo (who may: canEditUser, as for their other details)
+router.delete("/:id/photo", requireAdmin, removeUserPhoto);
 
 // Get user by ID - MUST come after named routes to avoid conflicts
 router.get("/:id", getUserById);

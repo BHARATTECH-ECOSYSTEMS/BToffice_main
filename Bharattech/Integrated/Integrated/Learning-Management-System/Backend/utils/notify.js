@@ -133,6 +133,21 @@ async function noteAdmins({ note, refId }) {
   }
 }
 
+/** An admin changed or removed someone's photo: a note in that person's bell, without an email (owner's choice). */
+async function notePhotoChanged({ userId, actorName, removed }) {
+  try {
+    await Notification.create({
+      userId,
+      kind: "photo",
+      title: `Your photo was ${removed ? "removed" : "changed"} by ${actorName || "an admin"}`,
+      detail: "You can change it in Settings.",
+      link: "/portal/settings",
+    });
+  } catch (error) {
+    console.error("Notification (photo) failed:", error.message);
+  }
+}
+
 /** Another company sent a verification request from the website: the admins who answer it are told. */
 const noteVerificationRequest = (request) =>
   noteAdmins({
@@ -150,6 +165,7 @@ module.exports = {
   noteEvent,
   noteCourse,
   noteVerificationRequest,
+  notePhotoChanged,
   forgetNotesAbout,
   notifyTaskGiven,
   notifyTaskChanged,
