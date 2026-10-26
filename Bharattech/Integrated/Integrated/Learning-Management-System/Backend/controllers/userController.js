@@ -7,6 +7,7 @@ const { photoType, saveUserPhoto, findUserPhoto, openUserPhoto, deleteUserPhoto 
 const { isAdmin } = require("../utils/refusal");
 const { notePhotoChanged } = require("../utils/notify");
 const { waitsForFirstPassword, hasRecord } = require("./inviteController");
+const { moveRemovedRecordsAside } = require("../utils/takenNames");
 
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 const DEMO_AUTH_ENABLED = process.env.AUTH_MODE === "demo";
@@ -315,32 +316,9 @@ const upsertLocalUserFromKeycloak = async (kcUser) => {
     (email ? await User.findOne({ email }) : null) ||
     (username ? await User.findOne({ username }) : null);
 
-  // A soft-deleted user keeps its unique email/username/keycloakId forever
-  // (deleteUser only flips isDeleted, it never clears them). If that email or
-  // username has since been reused by a *different* Keycloak account, two
-  // separate stale ghost docs can each match one of the lookups above and
-  // collide on save. Free up any such ghosts (other than the one we're about
-  // to update) so this upsert can't throw a duplicate-key error.
-  await User.updateMany(
-    {
-      isDeleted: true,
-      keycloakId: { $ne: kcUser.id },
-      _id: { $ne: existing?._id },
-      $or: [
-        ...(email ? [{ email }] : []),
-        ...(username ? [{ username }] : []),
-      ],
-    },
-    [
-      {
-        $set: {
-          email: { $concat: ["deleted+", { $toString: "$_id" }, "+", "$email"] },
-          username: { $concat: ["deleted_", { $toString: "$_id" }, "_", "$username"] },
-        },
-      },
-    ],
-    { updatePipeline: true }
-  );
+  // A removed record whose email or username is now another Keycloak account's
+  // would collide on save (both are unique), so move it aside first.
+  await moveRemovedRecordsAside({ email, username, keycloakId: kcUser.id, keepId: existing?._id });
 
   const update = {
     fullName: fullNameFromKeycloakUser(kcUser),

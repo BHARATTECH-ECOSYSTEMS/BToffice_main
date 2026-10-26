@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 const jwksClient = require("jwks-rsa");
 const User = require("../models/User");
+const { freeUsernameFor } = require("../utils/takenNames");
 
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 const KEYCLOAK_BASE_URL =
@@ -141,10 +142,13 @@ const getOrCreateUser = async (keycloakUser, keycloakUserId = null) => {
       user = new User({
         keycloakId,
         email: email || `user-${keycloakId.slice(-6)}@lms.local`,
-        username:
+        // a removed person's old username would clash with the new record and refuse every sign-in
+        username: await freeUsernameFor(
           keycloakUser.preferred_username ||
-          keycloakUser.email ||
-          `user-${keycloakId.slice(-6)}`,
+            keycloakUser.email ||
+            `user-${keycloakId.slice(-6)}`,
+          keycloakId
+        ),
         fullName:
           keycloakUser.name ||
           keycloakUser.preferred_username ||
