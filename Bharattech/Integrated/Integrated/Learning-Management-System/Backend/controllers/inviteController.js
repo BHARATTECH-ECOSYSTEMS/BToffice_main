@@ -402,7 +402,7 @@ const sendInviteEmail = async ({ userId, name, username, email, role }) => {
 };
 
 /**
- * Invites someone: checks the inviter's role, makes or reuses their Keycloak account (waiting for a first password)
+ * Invites someone: checks the inviter's role, makes their Keycloak account (or reuses an invite nobody has accepted yet)
  * and emails them a temporary password. Answers { status, body } as POST /api/invite/send-invite replies; the company
  * dashboard's "Add user" (adminController.createUser) uses it too. No record is made until they first sign in.
  */
@@ -419,15 +419,16 @@ const inviteSomeone = async ({ name, email, role, actorRole }) => {
   const normalizedEmail = normalizeEmail(email);
   const normalizedName = normalizeName(name);
 
-  if (!canInviteRole(actorRole, normalizedRole)) {
-    return reply(403, {
+  const roleRefused = () =>
+    reply(403, {
       success: false,
       message:
         normalizeRole(actorRole) === "Admin"
           ? "Admins can invite only Employee and Intern users."
           : "You do not have permission to invite users with this role.",
     });
-  }
+
+  if (!canInviteRole(actorRole, normalizedRole)) return roleRefused();
 
   try {
     const existingDbUser = await User.findOne({
@@ -444,10 +445,26 @@ const inviteSomeone = async ({ name, email, role, actorRole }) => {
       });
     }
 
-    const restored = Boolean(existingDbUser && existingDbUser.isDeleted);
-    const resent = Boolean(existingDbUser && !existingDbUser.isDeleted);
-
     await authAdminClient();
+
+    // An invite resets the account's password, role and name, so an email that already has an account is refused:
+    // otherwise an Admin could demote a Super Admin this way, or switch a blocked person back on. The one exception is
+    // an invite nobody has accepted yet ("Send again"), and only when this inviter may invite the role it carries.
+    const existingAccount = await findExistingKeycloakUser(normalizedEmail);
+    if (existingAccount) {
+      if (!waitsForFirstPassword(existingAccount) || (await hasRecord(existingAccount.id))) {
+        return reply(409, {
+          success: false,
+          code: "has-account",
+          message: "They already have an account. Change their role or send a reset link from People → Details.",
+        });
+      }
+      const roles = (await kcAdminClient.users.listRealmRoleMappings({ realm: KEYCLOAK_REALM, id: existingAccount.id })) || [];
+      if (!canInviteRole(actorRole, roleOfAccount(roles.map((r) => r.name)))) return roleRefused();
+    }
+
+    const restored = Boolean(existingDbUser && existingDbUser.isDeleted);
+    const resent = Boolean(existingAccount);
 
     const { keycloakUserId, username } = await ensureKeycloakUser({
       name: normalizedName,

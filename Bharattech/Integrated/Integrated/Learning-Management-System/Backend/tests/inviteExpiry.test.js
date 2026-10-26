@@ -83,8 +83,10 @@ test("sending an invite records when, and 'Send again' starts the 12 hours again
 
   await age(made.id, 20);
   await InviteSent.updateOne({ keycloakId: made.id }, { voidedAt: new Date() });
-  // "Send again" on a pending invite answers like a new one (no record yet)
-  assert.equal((await invite()).status, 201);
+  // "Send again" on a pending invite reuses its account
+  const resent = await invite();
+  assert.equal(resent.status, 200);
+  assert.equal(resent.body.resent, true);
   const again = await InviteSent.findOne({ keycloakId: made.id }).lean();
   assert.ok(Date.now() - again.sentAt.getTime() < HOUR);
   assert.equal(again.voidedAt, undefined);
@@ -193,10 +195,9 @@ test("pending invites say when each was last sent and whether it has expired", a
   assert.ok(Date.now() - Date.parse(byEmail["late@example.test"].invitedAt) > INVITE_HOURS * HOUR);
 });
 
-test("someone who already has a record and is sent a fresh password gets the same 12 hours", async () => {
+test("someone who already has a record isn't sent a fresh password, so no invite clock starts for them", async () => {
   await User.create(userFields({ email: "back@example.test", keycloakId: "kc-1" }));
   realm.accounts.push({ id: "kc-1", username: "back", email: "back@example.test", enabled: true, createdTimestamp: Date.now(), requiredActions: [], realmRoles: ["Employee"] });
-  assert.equal((await invite("back@example.test")).status, 200);
-  await age("kc-1", INVITE_HOURS + 1);
-  assert.equal((await signIn("back@example.test")).status, 410);
+  assert.equal((await invite("back@example.test")).status, 409);
+  assert.equal(await InviteSent.countDocuments(), 0);
 });
