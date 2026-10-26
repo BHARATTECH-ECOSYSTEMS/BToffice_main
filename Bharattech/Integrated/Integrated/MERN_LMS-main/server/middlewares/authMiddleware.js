@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import jwksClient from "jwks-rsa";
+import { createKeyKeeper } from "../utils/keycloakKeys.js";
 
 const KEYCLOAK_URL = process.env.KEYCLOAK_URL || "http://localhost:8080";
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
@@ -13,25 +14,17 @@ const KEYCLOAK_CLIENT_IDS = (
 const normalizedKeycloakUrl = KEYCLOAK_URL.replace(/\/+$/, "");
 const jwksUri = `${normalizedKeycloakUrl}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs`;
 
-const client = jwksClient({
+// The library only fetches Keycloak's key list; the keeper decides when (utils/keycloakKeys.js), so made-up tokens
+// can't use up the fetches real sign-ins need.
+const jwks = jwksClient({
   jwksUri,
-  cache: true,
-  cacheMaxEntries: 5,
-  cacheMaxAge: 10 * 60 * 1000,
-  rateLimit: true,
-  jwksRequestsPerMinute: 5,
+  cache: false,
+  rateLimit: false,
   timeout: 5000,
 });
+const keyFor = createKeyKeeper({ fetchKeys: () => jwks.getSigningKeys() });
 
-const getKey = (header, callback) => {
-  client.getSigningKey(header.kid, (err, key) => {
-    if (err) {
-      console.error("JWKS Error:", err.message);
-      return callback(err);
-    }
-    callback(null, key.getPublicKey());
-  });
-};
+const getKey = (header, callback) => keyFor(header.kid).then((key) => callback(null, key), callback);
 
 /**
  * The claims of a token Keycloak signed for the LMS's own client; rejects any other. Only Keycloak-signed tokens: a
