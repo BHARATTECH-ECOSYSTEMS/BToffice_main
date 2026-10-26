@@ -6,7 +6,7 @@ import { Arrow, Headline, Reveal, BtnText } from '../components/ui';
 import { Beams, Icon, Marquee, type IconName } from '../components/fx';
 import { ResearchStory } from '../components/research/ResearchStory';
 import { WIDE_QUERY } from '../gl/Scene';
-import { DOMAINS, TECHNOLOGY } from '../content';
+import { DOMAINS, ECOSYSTEM, TECHNOLOGY } from '../content';
 
 const DOMAIN_ICONS: IconName[] = ['spark', 'layers', 'cpu', 'globe', 'shield', 'code2'];
 
@@ -37,9 +37,27 @@ function ResearchPlain() {
       <PageHero
         tone="violet"
         title={['Six domains.', 'One intelligence.']}
-        lede="Our research spans six connected domains. They are not separate products: each one strengthens every other, and all of them share one memory."
+        lede="Our research spans six connected domains."
         visual={<Beams size={440} nodes={DOMAINS.map((d, i) => ({ label: d.name, icon: <Icon name={DOMAIN_ICONS[i]} size={17} />, tone: DOMAIN_TONES[i] }))} />}
       />
+      {/* the company's own words, as on the desktop story, before the domains they connect */}
+      <Quiet className="section section-tight research-ecosystem-section">
+        <div className="wrap research-ecosystem">
+          <Headline tone="violet" lines={['One intelligence', 'ecosystem.']} />
+          <div>
+            <Reveal as="p" className="research-ecosystem-lead">
+              {ECOSYSTEM.line} {ECOSYSTEM.intro}
+            </Reveal>
+            <ul className="research-ecosystem-list" aria-label="One intelligence ecosystem">
+              {ECOSYSTEM.points.map((point, i) => (
+                <Reveal as="li" key={point} delay={80 + i * 60}>
+                  {point}
+                </Reveal>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </Quiet>
       <Quiet className="section section-tight research-domains-section">
         <div className="wrap">
           <DomainGrid link={false} numbered />
@@ -51,9 +69,12 @@ function ResearchPlain() {
             <div>
               <Headline tone="violet" lines={['Where', 'we work.']} />
             </div>
-            <Reveal className="section-head-link" delay={100}>
+            <Reveal className="section-head-link research-actions" delay={100}>
               <Link to="/contact" className="btn btn-primary">
                 <BtnText>Propose a collaboration</BtnText> <Arrow />
+              </Link>
+              <Link to="/careers" className="btn btn-ghost">
+                <BtnText>Join as a researcher</BtnText>
               </Link>
             </Reveal>
           </div>

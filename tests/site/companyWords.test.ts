@@ -79,3 +79,17 @@ test('the Research story says the domains are one ecosystem, and invites researc
   assert.match(story, /ECOSYSTEM\.points\.map/);
   assert.match(story, /<Link to="\/careers"[^>]*>[\s\S]*?Join as a researcher/);
 });
+
+// 2026-10-26, owner's 1A 2A 3A: the plain Research page (phones, tablets, reduced motion, or no 3D) says the same.
+test('the plain Research page has the ecosystem and its 5 points before the domains, and the same two buttons', () => {
+  const page = source('pages/Research.tsx');
+  const plain = page.slice(page.indexOf('function ResearchPlain'));
+  const ecosystem = plain.indexOf('ECOSYSTEM.points.map');
+  assert.ok(ecosystem > 0, 'no ecosystem points');
+  assert.ok(ecosystem < plain.indexOf('<DomainGrid'), 'the points come after the domains');
+  assert.match(plain, /\{ECOSYSTEM\.line\} \{ECOSYSTEM\.intro\}/);
+  // the banner no longer says the same thing as the section under it
+  assert.match(plain, /lede="Our research spans six connected domains\."/);
+  assert.doesNotMatch(plain, /not separate products/);
+  assert.match(plain, /<Link to="\/contact" className="btn btn-primary">[\s\S]*?Propose a collaboration[\s\S]*?<Link to="\/careers" className="btn btn-ghost">[\s\S]*?Join as a researcher/);
+});

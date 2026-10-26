@@ -1197,6 +1197,43 @@
 .research-fields-section {
   padding-top: clamp(40px, 5vw, 68px);
 }
+/* the plain Research page: the ecosystem in the company's words, its points as a ruled list beside the heading */
+.research-ecosystem {
+  display: grid;
+  gap: clamp(20px, 3vw, 40px);
+}
+@media (min-width: 901px) {
+  .research-ecosystem {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    align-items: start;
+  }
+}
+.research-ecosystem-lead {
+  max-width: 52ch;
+  margin: 0 0 18px;
+  font-size: clamp(15px, 1.2vw, 17px);
+  line-height: 1.6;
+  color: var(--muted);
+  text-wrap: pretty;
+}
+.research-ecosystem-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.research-ecosystem-list li {
+  padding: 14px 0;
+  border-top: 1px solid var(--line-strong);
+  font-size: clamp(15px, 1.25vw, 18px);
+  font-weight: 500;
+  color: var(--ink);
+}
+/* "Propose a collaboration" and "Join as a researcher" side by side, wrapping on narrow screens */
+.research-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
 .domain-art {
   width: 78%;
   max-width: 320px;
