@@ -221,6 +221,7 @@ export function ConnectedPeople() {
                             -
                           </span>
                         )}
+                        {p.phone && p.phoneHidden && <span className="p-phone-hidden">Hidden from colleagues</span>}
                       </td>
                       <td>
                         {p.team || p.stream ? (

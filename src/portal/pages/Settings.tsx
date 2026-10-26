@@ -350,7 +350,7 @@ function PhonesForm({ saved: initial }: { saved: AccountProfile }) {
     >
       {phoneRow('phone', 'Phone', 'A 10-digit Indian number.', '+91 98765 43210')}
       {phoneRow('workPhone', 'Work phone', 'Your desk or office line, if you have one.', '+91 80 4000 1234')}
-      <Row label="Show to colleagues" hint="On People and your colleague card. Off hides both numbers." htmlFor="settings-showPhone">
+      <Row label="Show to colleagues" hint="On People and your colleague card. Off hides both numbers from colleagues; admins still see them." htmlFor="settings-showPhone">
         <input
           id="settings-showPhone"
           type="checkbox"

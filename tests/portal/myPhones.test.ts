@@ -1,5 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { toDirectory } from '../../src/portal/people';
 import { phoneProblem, toAccountProfile } from '../../src/portal/profile';
 
 // Owner's 1A 2A (2026-10-25): Settings → Profile edits your own phone and work phone and whether colleagues see
@@ -29,4 +31,19 @@ test('the profile says whether colleagues see the numbers, yes unless the person
   assert.equal(toAccountProfile({ ...me, privacySettings: { showPhone: true } }).showPhone, true);
   assert.equal(toAccountProfile({ ...me, privacySettings: { showPhone: false } }).showPhone, false);
   assert.equal(toAccountProfile({ ...me, privacySettings: 'odd' }).showPhone, true);
+});
+
+// 2026-10-26, owner's 1-1A 1-2A: Super Admins and Admins still get numbers someone hid, marked as hidden, and People
+// says so, so they don't pass them on.
+const hider = { id: 'u1', name: 'Asha Rao', email: 'asha@example.test', role: 'Employee', phone: '+91 98765 00002', status: 'active' };
+
+test('the directory keeps the backend’s "hidden from colleagues" mark, and only a real true', () => {
+  assert.equal(toDirectory([{ ...hider, phoneHidden: true }])[0].phoneHidden, true);
+  for (const phoneHidden of [undefined, false, 'true', 1]) assert.equal('phoneHidden' in toDirectory([{ ...hider, phoneHidden }])[0], false, String(phoneHidden));
+});
+
+test('People marks a hidden number for the admin, and Settings says admins still see it', () => {
+  const people = readFileSync('src/portal/pages/PeopleConnected.tsx', 'utf8');
+  assert.match(people, /p\.phoneHidden && <span className="p-phone-hidden">Hidden from colleagues<\/span>/);
+  assert.match(readFileSync('src/portal/pages/Settings.tsx', 'utf8'), /Off hides both numbers from colleagues; admins still see them\./);
 });

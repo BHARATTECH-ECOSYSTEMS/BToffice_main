@@ -1775,6 +1775,12 @@ body:has(.portal) .scene {
   font-size: 13px;
   color: var(--muted);
 }
+/* People, for admins: a number its owner hid from colleagues, so it isn't passed on */
+.p-phone-hidden {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+}
 .p-hint {
   margin: 0;
   padding: 12px 14px;

@@ -135,6 +135,8 @@ export interface DirectoryPerson {
   roleLabel: string;
   phone?: string;
   workPhone?: string;
+  /** The person hid their numbers from colleagues; only Super Admins and Admins still get them (and this mark). */
+  phoneHidden?: true;
   stream?: Stream;
   team?: string;
   /** First working day, "YYYY-MM-DD", once an admin has set it. */
@@ -183,6 +185,7 @@ export function toDirectory(raw: unknown): DirectoryPerson[] {
       roleLabel: roleLabel(accountRole),
       phone: text(p.phone),
       workPhone: text(p.workPhone),
+      ...(p.phoneHidden === true && { phoneHidden: true as const }),
       stream: STREAMS.find((s) => s.id === p.stream)?.id,
       team: text(p.team),
       joined: readJoinDate(p.joinedOn),
