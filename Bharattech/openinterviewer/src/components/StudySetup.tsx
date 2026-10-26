@@ -13,10 +13,8 @@ import {
   GEMINI_MODELS,
   CLAUDE_MODELS,
   MISTRAL_MODELS,
-  DEFAULT_GEMINI_MODEL,
-  DEFAULT_CLAUDE_MODEL,
-  DEFAULT_MISTRAL_MODEL
 } from '@/types';
+import { aiChoiceToSave, defaultModelFor, shownProvider } from '@/lib/aiDefaults';
 
 import {
   FileText,
@@ -41,6 +39,7 @@ import {
   AlertTriangle,
   ExternalLink
 } from 'lucide-react';
+import AppBar, { PageHeader } from './AppBar';
 
 // Common profile field presets
 const PROFILE_PRESETS: ProfileField[] = [
@@ -109,15 +108,13 @@ const StudySetup: React.FC = () => {
     studyConfig?.aiBehavior || 'standard'
   );
   const [aiProvider, setAiProvider] = useState<AIProviderType>(
-    studyConfig?.aiProvider || 'gemini'
+    shownProvider(studyConfig?.aiProvider)
   );
+  // A study keeps an AI only once the researcher picks one (or it already had one); until then it runs on the
+  // server's AI_PROVIDER, which the screen shows as chosen (lib/aiDefaults.ts).
+  const [aiChosen, setAiChosen] = useState(Boolean(studyConfig?.aiProvider));
   const [aiModel, setAiModel] = useState<string>(
-    studyConfig?.aiModel ||
-      (studyConfig?.aiProvider === 'claude'
-        ? DEFAULT_CLAUDE_MODEL
-        : studyConfig?.aiProvider === 'mistral'
-        ? DEFAULT_MISTRAL_MODEL
-        : DEFAULT_GEMINI_MODEL)
+    studyConfig?.aiModel || defaultModelFor(shownProvider(studyConfig?.aiProvider))
   );
   const [enableReasoning, setEnableReasoning] = useState<boolean | undefined>(
     studyConfig?.enableReasoning
@@ -154,7 +151,17 @@ const StudySetup: React.FC = () => {
     hasAnthropicKey: boolean;
     hasGeminiKey: boolean;
     hasMistralKey: boolean;
+    defaultProvider?: AIProviderType;
   } | null>(null);
+
+  // Until the researcher picks an AI, show the one the server will use
+  useEffect(() => {
+    const serverProvider = configStatus?.defaultProvider;
+    if (!aiChosen && serverProvider) {
+      setAiProvider(serverProvider);
+      setAiModel(defaultModelFor(serverProvider));
+    }
+  }, [configStatus?.defaultProvider, aiChosen]);
 
 
   // Sync savedStudyId with persisted config
@@ -218,7 +225,10 @@ const StudySetup: React.FC = () => {
           if (config.topicAreas?.length) setTopicAreas(config.topicAreas);
           if (config.profileSchema?.length) setProfileSchema(config.profileSchema);
           if (config.aiBehavior) setAiBehavior(config.aiBehavior);
-          if (config.aiProvider) setAiProvider(config.aiProvider);
+          if (config.aiProvider) {
+            setAiProvider(config.aiProvider);
+            setAiChosen(true);
+          }
           if (config.aiModel) setAiModel(config.aiModel);
           if (config.enableReasoning !== undefined) setEnableReasoning(config.enableReasoning);
           if (config.linkExpiration) setLinkExpiration(config.linkExpiration);
@@ -265,15 +275,10 @@ const StudySetup: React.FC = () => {
       setTopicAreas(studyConfig.topicAreas.length > 0 ? studyConfig.topicAreas : ['']);
       setProfileSchema(studyConfig.profileSchema || []);
       setAiBehavior(studyConfig.aiBehavior);
-      setAiProvider(studyConfig.aiProvider || 'gemini');
-      setAiModel(
-      studyConfig.aiModel ||
-        (studyConfig.aiProvider === 'claude'
-          ? DEFAULT_CLAUDE_MODEL
-          : studyConfig.aiProvider === 'mistral'
-          ? DEFAULT_MISTRAL_MODEL
-          : DEFAULT_GEMINI_MODEL)
-    );
+      const provider = shownProvider(studyConfig.aiProvider, configStatus?.defaultProvider);
+      setAiProvider(provider);
+      setAiChosen(Boolean(studyConfig.aiProvider));
+      setAiModel(studyConfig.aiModel || defaultModelFor(provider));
       setEnableReasoning(studyConfig.enableReasoning);
       setLinkExpiration(studyConfig.linkExpiration || 'never');
       setConsentText(studyConfig.consentText);
@@ -357,8 +362,7 @@ const StudySetup: React.FC = () => {
     topicAreas: topicAreas.filter(t => t.trim()),
     profileSchema: profileSchema.filter(f => f.label.trim()),
     aiBehavior,
-    aiProvider,
-    aiModel,
+    ...aiChoiceToSave(aiChosen, aiProvider, aiModel),
     enableReasoning,
     linkExpiration,
     linksEnabled: true, // Always true when creating/editing (revocation is in StudyDetail)
@@ -563,41 +567,19 @@ const StudySetup: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50/60 px-4 py-6 sm:p-8 lg:p-10">
-      <div className="w-full max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-          className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-card"
-        >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <button
-                onClick={() => router.push('/studies')}
-                className="p-2 text-slate-400 hover:text-slate-700 rounded-xl hover:bg-slate-100 transition-colors flex-shrink-0"
-                title="Back to All Studies"
-              >
-                <ArrowLeft size={20} />
-              </button>
-              <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 shadow-xs">
-                <FileText size={22} />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 break-words">
-                  Study Setup
-                </h1>
-                <p className="text-slate-500 font-medium text-xs sm:text-sm mt-0.5">
-                  Configure research objectives, candidate profile fields, and interview parameters
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
+    <div className="min-h-screen bg-slate-50">
+      {/* the shared top bar: sections, Create Study and Logout (components/AppBar.tsx) */}
+      <AppBar />
+      <main className="w-full max-w-4xl mx-auto px-4 sm:px-8 py-8 sm:py-10 space-y-6">
+        <PageHeader
+          back={{ label: 'Back to All Studies', onClick: () => router.push('/studies') }}
+          title="Study Setup"
+          subtitle="Configure research objectives, candidate profile fields, and interview parameters"
+          actions={
+            <>
               <button
                 onClick={loadExampleStudy}
-                className="px-3.5 py-2 text-sm bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl transition-all flex items-center justify-center gap-2 font-medium shadow-xs hover:border-slate-300 active:scale-[0.98]"
+                className="px-3.5 py-2 text-sm rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center justify-center gap-2 font-medium"
               >
                 <Lightbulb size={16} className="text-slate-500" />
                 Load Example
@@ -640,9 +622,9 @@ const StudySetup: React.FC = () => {
                   </button>
                 </>
               )}
-            </div>
-          </div>
-        </motion.div>
+            </>
+          }
+        />
 
         {/* Save Error Banner */}
         {saveError && (
@@ -700,7 +682,7 @@ const StudySetup: React.FC = () => {
             </h2>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Study / Post Name *
               </label>
               <input
@@ -713,7 +695,7 @@ const StudySetup: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Research Objective / Topic *
               </label>
               <textarea
@@ -726,7 +708,7 @@ const StudySetup: React.FC = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Description (optional)
               </label>
               <textarea
@@ -841,7 +823,7 @@ const StudySetup: React.FC = () => {
               </p>
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Job Title
               </label>
               <input
@@ -853,7 +835,7 @@ const StudySetup: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Job Description / Technical Requirements
               </label>
               <textarea
@@ -978,13 +960,8 @@ const StudySetup: React.FC = () => {
                       checked={aiProvider === option.id}
                       onChange={() => {
                         setAiProvider(option.id);
-                        setAiModel(
-                          option.id === 'claude'
-                            ? DEFAULT_CLAUDE_MODEL
-                            : option.id === 'mistral'
-                            ? DEFAULT_MISTRAL_MODEL
-                            : DEFAULT_GEMINI_MODEL
-                        );
+                        setAiChosen(true);
+                        setAiModel(defaultModelFor(option.id));
                         setIsDirty(true);
                       }}
                       className="accent-blue-600"
@@ -997,12 +974,12 @@ const StudySetup: React.FC = () => {
 
             {/* Model Selection */}
             <div className="mt-4 space-y-1.5">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              <label className="block text-xs font-bold text-slate-700">
                 Specific Model Version
               </label>
               <select
                 value={aiModel}
-                onChange={(e) => { setAiModel(e.target.value); setIsDirty(true); }}
+                onChange={(e) => { setAiModel(e.target.value); setAiChosen(true); setIsDirty(true); }}
                 className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-xs text-sm font-semibold"
               >
                 {(
@@ -1054,7 +1031,7 @@ const StudySetup: React.FC = () => {
           {/* Link Expiration & Consent */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 pt-2">
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              <label className="block text-xs font-bold text-slate-700">
                 Link Expiration
               </label>
               <select
@@ -1069,7 +1046,7 @@ const StudySetup: React.FC = () => {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700">
+              <label className="block text-xs font-bold text-slate-700">
                 Participant Consent Text
               </label>
               <textarea
@@ -1127,7 +1104,7 @@ const StudySetup: React.FC = () => {
             </div>
           )}
         </motion.div>
-      </div>
+      </main>
     </div>
   );
 };

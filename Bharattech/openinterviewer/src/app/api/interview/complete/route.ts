@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
+import { verifyParticipantToken } from '@/lib/auth';
 import { getInterviewProvider } from '@/lib/providers';
 import {
+  finishParticipantToken,
+  getInterviewByLink,
   incrementStudyInterviewCount,
   isMongoStorageAvailable,
   lockStudy,
+  reopenParticipantToken,
   saveInterview
 } from '@/lib/kv';
 import { InterviewMessage, StoredInterview } from '@/types';
@@ -39,6 +43,14 @@ const nameMessage = history.find((message: any, index: number) => {
 
 export async function POST(request: Request) {
   try {
+    const auth = await verifyParticipantToken(request);
+    if (!auth.valid) {
+      return NextResponse.json(
+        { error: auth.error || 'Valid participant link or researcher session required' },
+        { status: 401 }
+      );
+    }
+
     const storageAvailable = await isMongoStorageAvailable();
     if (!storageAvailable) {
       return NextResponse.json(
@@ -48,8 +60,12 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { history, studyConfig, participantProfile } = body;
-    const studyId = studyConfig?.id || studyConfig?._id || studyConfig?.studyId;
+    const { history, participantProfile } = body;
+    // A candidate's interview is saved under their link's study, whatever study the browser names.
+    const studyConfig = auth.isAdmin ? body.studyConfig : auth.studyConfig;
+    const studyId = auth.isAdmin
+      ? studyConfig?.id || studyConfig?._id || studyConfig?.studyId
+      : auth.studyId;
 
     if (!Array.isArray(history) || !studyConfig || !studyId) {
       return NextResponse.json(
@@ -59,7 +75,9 @@ export async function POST(request: Request) {
     }
 
     const now = Date.now();
-    const interviewId = crypto.randomUUID();
+    // the record this link already saved (interviews/save), if any: a link keeps one record
+    const ownRecord = auth.linkHash ? await getInterviewByLink(auth.linkHash) : null;
+    const interviewId = ownRecord?.id || crypto.randomUUID();
     const updatedProfile = participantProfile || { fields: [] };
     const behaviorData = {
       timePerTopic: {},
@@ -68,8 +86,9 @@ export async function POST(request: Request) {
       contradictions: []
     };
 
-    const baseInterview: StoredInterview = {
+    const baseInterview: StoredInterview & { linkHash?: string } = {
       id: interviewId,
+      ...(auth.linkHash && { linkHash: auth.linkHash }),
       studyId,
       studyName: studyConfig.name || 'Unknown Study',
       participantName: getParticipantName(history, updatedProfile),
@@ -89,8 +108,19 @@ export async function POST(request: Request) {
       completedAt: now
     };
 
+    // A link finishes once: claim it (one conditional update) right before saving, so a repeat or two finishes at
+    // once save nothing more and spend no more of the AI key on summaries.
+    if (!auth.isAdmin && !(await finishParticipantToken(auth.token!))) {
+      return NextResponse.json(
+        { error: 'This interview is already finished.' },
+        { status: 401 }
+      );
+    }
+
     const saved = await saveInterview(baseInterview);
     if (!saved) {
+      // nothing was kept, so the candidate may finish again
+      if (!auth.isAdmin) await reopenParticipantToken(auth.token!);
       return NextResponse.json(
         { error: 'Failed to save interview to MongoDB' },
         { status: 500 }

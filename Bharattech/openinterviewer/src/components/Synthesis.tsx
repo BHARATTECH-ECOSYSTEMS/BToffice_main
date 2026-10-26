@@ -254,7 +254,7 @@ const Synthesis: React.FC = () => {
             <div className="bg-blue-50 border border-blue-200 text-slate-900 rounded-xl p-4 sm:p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-2 text-slate-500 font-semibold">
                 <Target size={18} />
-                <span className="text-sm font-semibold uppercase tracking-wider">
+                <span className="text-sm font-semibold">
                   Key Insight
                 </span>
               </div>

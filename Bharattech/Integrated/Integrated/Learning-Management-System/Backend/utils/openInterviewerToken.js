@@ -1,18 +1,18 @@
 const { TextEncoder } = require("util");
+const { randomUUID } = require("crypto");
 
-const DEV_FALLBACK_SECRET = "fallback-secret-for-encryption-1234567890";
+// A pass is only carried from the portal's click to OpenInterviewer's login page, so a minute is plenty; its id lets
+// OpenInterviewer refuse it a second time (src/lib/launchAuth.ts there).
+const LAUNCH_PASS_SECONDS = 60;
 
 // The launch is signed with its own secret, shared only with OpenInterviewer. Until step 17 it fell back to
-// ADMIN_SECRET, JWT_SECRET, SESSION_SECRET or ADMIN_PASSWORD, handing OpenInterviewer a secret meant for something else.
+// ADMIN_SECRET, JWT_SECRET, SESSION_SECRET or ADMIN_PASSWORD, handing OpenInterviewer a secret meant for something else,
+// and until step 14 to a built-in one written in this file. Without the setting, no pass is made.
 const getLaunchSecret = () => {
   const secret = process.env.BHARATTECH_LAUNCH_SECRET;
 
   if (!secret) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error("OpenInterviewer launch secret is not configured");
-    }
-    console.warn("[DEV] No launch secret configured — using built-in dev fallback. Set BHARATTECH_LAUNCH_SECRET in production.");
-    return DEV_FALLBACK_SECRET;
+    throw new Error("OpenInterviewer launch secret is not configured");
   }
 
   return secret;
@@ -20,20 +20,23 @@ const getLaunchSecret = () => {
 
 const createOpenInterviewerToken = async (user = {}, options = {}) => {
   const { SignJWT } = await import("jose");
-  const role = user.role || "Admin";
+  if (!user.role) {
+    throw new Error("A launch pass needs the signed-in person's role");
+  }
   const email = user.email || "";
   const name = user.fullName || user.username || "";
 
   return new SignJWT({
     type: "bharattech-admin-launch",
-    role,
+    role: user.role,
     email,
     name,
     redirectTo: options.redirectTo || "/dashboard",
   })
     .setProtectedHeader({ alg: "HS256" })
+    .setJti(randomUUID())
     .setIssuedAt()
-    .setExpirationTime("5m")
+    .setExpirationTime(`${LAUNCH_PASS_SECONDS}s`)
     .sign(new TextEncoder().encode(getLaunchSecret()));
 };
 
@@ -53,6 +56,7 @@ const buildOpenInterviewerLaunchUrl = (token) => {
 };
 
 module.exports = {
+  LAUNCH_PASS_SECONDS,
   buildOpenInterviewerLaunchUrl,
   createOpenInterviewerToken,
   getLaunchSecret,

@@ -6,23 +6,13 @@ import { GeminiProvider } from "./gemini";
 import { ClaudeProvider } from "./claude";
 import { AIProvider } from "../ai";
 import { StudyConfig } from "@/types";
+import { serverDefaultProvider } from "@/lib/aiDefaults";
 
 export type ProviderType = "gemini" | "claude" | "mistral";
 
-// Validate provider safely
+// Validate provider safely: the study's own choice, else the server's (the same rule the setup screen shows)
 function resolveProviderType(studyConfig?: StudyConfig): ProviderType {
-  const envProvider = process.env.AI_PROVIDER;
-
-  const provider =
-    studyConfig?.aiProvider ||
-    (envProvider === "gemini" ||
-    envProvider === "claude" ||
-    envProvider === "mistral"
-      ? envProvider
-      : undefined) ||
-    "mistral";
-
-  return provider;
+  return studyConfig?.aiProvider || serverDefaultProvider();
 }
 
 // Provider priority:

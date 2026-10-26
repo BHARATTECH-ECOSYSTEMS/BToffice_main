@@ -2,6 +2,8 @@
 // Server-side only - API keys never sent to client.
 
 import { NextResponse } from 'next/server';
+import { MAX_TURNS_PER_LINK, verifyParticipantToken } from '@/lib/auth';
+import { claimParticipantTurn } from '@/lib/kv';
 import { getInterviewProvider } from '@/lib/providers';
 import {
   StudyConfig,
@@ -98,22 +100,36 @@ const MAX_PARTICIPANT_ANSWERS = 20;
 
 export async function POST(request: Request) {
   try {
-    // TEMP: participant verification is currently relaxed in this app.
+    // Each turn spends the AI key, so only a live candidate link or the researcher's own session gets one.
+    const auth = await verifyParticipantToken(request);
+    if (!auth.valid) {
+      return NextResponse.json(
+        { error: auth.error || 'Valid participant link or researcher session required' },
+        { status: 401 }
+      );
+    }
+    if (!auth.isAdmin && !(await claimParticipantTurn(auth.token!, MAX_TURNS_PER_LINK))) {
+      return NextResponse.json(
+        { error: 'This interview has reached its limit of questions.' },
+        { status: 429 }
+      );
+    }
+
     const body = await request.json();
 
     const {
       history,
-      studyConfig,
       participantProfile,
       questionProgress,
       currentContext
     }: {
       history: InterviewMessage[];
-      studyConfig: StudyConfig;
       participantProfile: ParticipantProfile | null;
       questionProgress: QuestionProgress;
       currentContext: string;
     } = body;
+    // A candidate's interview runs on the study stored with their link; only the researcher previews other settings.
+    const studyConfig: StudyConfig = auth.isAdmin ? body.studyConfig : auth.studyConfig;
 
     if (!Array.isArray(history) || !studyConfig) {
       return NextResponse.json(

@@ -9,6 +9,8 @@ import keycloak from '@/keycloak';
 import logo from '../../assets/BHARATTECH ORIGIN Logo-01.png';
 
 let keycloakInitPromise: Promise<boolean> | null = null;
+// A BharatTech launch pass works once, so it is posted once even when React runs the effect twice (strict mode).
+let postedLaunchToken: string | null = null;
 
 function getKeycloakSession() {
   if (keycloak.authenticated) {
@@ -46,7 +48,10 @@ const Login: React.FC = () => {
 
   useEffect(() => {
     const launchToken = searchParams.get('launchToken') || searchParams.get('bt_token');
-    if (!launchToken) return;
+    if (!launchToken || launchToken === postedLaunchToken) return;
+    postedLaunchToken = launchToken;
+    // out of the address bar and the browser history before anything else
+    window.history.replaceState(null, '', '/login');
 
     const authenticateLaunch = async () => {
       setLaunching(true);
@@ -175,7 +180,7 @@ const Login: React.FC = () => {
             )}
 
             <div>
-              <label htmlFor="password" className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
+              <label htmlFor="password" className="block text-xs font-bold text-slate-700 mb-1.5">
                 Admin Password
               </label>
               <input
@@ -208,7 +213,7 @@ const Login: React.FC = () => {
           <div className="mt-6 pt-5 border-t border-slate-100 text-center">
             <button
               onClick={() => router.push('/setup')}
-              className="text-xs text-slate-500 hover:text-slate-800 transition-colors font-semibold uppercase tracking-wider"
+              className="text-xs text-slate-500 hover:text-slate-800 transition-colors font-semibold"
             >
               ← Back to Study Setup
             </button>

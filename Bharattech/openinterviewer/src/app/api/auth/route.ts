@@ -9,6 +9,7 @@ import {
   createSessionToken,
   verifySessionToken,
   getSessionCookieOptions,
+  expireSessionCookie,
   SESSION_COOKIE_NAME
 } from '@/lib/auth';
 
@@ -86,7 +87,7 @@ export async function GET() {
 export async function DELETE() {
   try {
     const cookieStore = await cookies();
-    cookieStore.delete(SESSION_COOKIE_NAME);
+    expireSessionCookie(cookieStore);
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json(

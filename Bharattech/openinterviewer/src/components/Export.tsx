@@ -265,7 +265,7 @@ const Export: React.FC = () => {
 
           {/* Export Options */}
           <div className="space-y-3">
-            <h2 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Export Data</h2>
+            <h2 className="font-bold text-slate-900 text-sm">Export Data</h2>
 
             <button
               onClick={handleDownloadJSON}
@@ -334,7 +334,7 @@ const Export: React.FC = () => {
 
           {/* Next Actions */}
           <div className="pt-4 border-t border-slate-200/80 space-y-3">
-            <h2 className="font-bold text-slate-900 text-sm uppercase tracking-wider">Next Actions</h2>
+            <h2 className="font-bold text-slate-900 text-sm">Next Actions</h2>
 
             <button
               onClick={handleNewParticipant}

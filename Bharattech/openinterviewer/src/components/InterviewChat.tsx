@@ -4,11 +4,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
+import logo from '../../assets/BHARATTECH ORIGIN Logo-01.png';
 import { useStore } from '@/store';
 import { InterviewMessage, InterviewPhase } from '@/types';
 import ReactMarkdown from 'react-markdown';
 import { markdownComponents } from './markdownCodeBlock';
 import { formatMessageForMarkdown } from '@/lib/formatChatMarkdown';
+import { INTERVIEW_PHASES, phaseStep } from '@/lib/phases';
 import {
   Send,
   Loader2,
@@ -484,6 +486,16 @@ const InterviewChat: React.FC = () => {
       });
 
       const response = await res.json();
+      // a refused turn (link ended or finished, question limit reached) says why instead of an empty bubble
+      if (!res.ok) {
+        addMessage({
+          id: `msg-${Date.now()}`,
+          role: "ai",
+          content: response.error || "Something went wrong. Please try again.",
+          timestamp: Date.now()
+        });
+        return;
+      }
       response.shouldConclude = response.shouldConclude === true || response.shouldConclude === "true";
 
       console.log("FULL FRONTEND RESPONSE:", response);
@@ -646,28 +658,36 @@ const totalQuestions = studyConfig?.coreQuestions?.length ?? 0;
   }
 
   return (
-    <div className="flex h-[100dvh] min-h-[100dvh] flex-col bg-slate-50/40">
+    <div className="oi-fade-in flex h-[100dvh] min-h-[100dvh] flex-col bg-slate-50/40">
       {/* Header */}
       <div className="min-h-16 flex items-center justify-between px-4 sm:px-6 py-3 border-b border-slate-200/80 bg-white/90 backdrop-blur-md sticky top-0 z-20 shadow-xs">
         <div className="flex items-center gap-3.5 min-w-0">
           {/* Logo */}
           <div className="relative h-10 w-28 sm:w-32 flex-shrink-0 flex items-center">
+            {/* the wide logo (as on the sign-in page); the square public/bharattech-logo.png showed it tiny */}
             <Image
-              src="/bharattech-logo.png"
+              src={logo}
               alt="BharatTech"
-              width={120}
-              height={40}
-              className="h-9 w-auto object-contain"
+              className="h-8 w-auto object-contain"
               priority
             />
           </div>
           <div className="min-w-0 border-l border-slate-200 pl-3">
-            <h1 className="font-bold text-xs sm:text-sm text-slate-900 truncate">
+            <h1 className="font-display font-semibold text-sm sm:text-base text-slate-900 truncate">
               {studyConfig.name}
             </h1>
-            <div className="flex items-center gap-1.5 mt-0.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              <p className="text-[11px] sm:text-xs text-slate-500 font-semibold uppercase tracking-wider">
+            <div className="flex items-center gap-2.5 mt-1">
+              {/* the interview's five phases; each part fills as the interview reaches it */}
+              <ol className="flex gap-1" aria-hidden="true">
+                {INTERVIEW_PHASES.map((phase, i) => (
+                  <li
+                    key={phase}
+                    data-on={i <= phaseStep(questionProgress.currentPhase) || undefined}
+                    className="oi-phase-part relative h-1 w-5 sm:w-7 overflow-hidden rounded-full bg-slate-200"
+                  />
+                ))}
+              </ol>
+              <p className="text-xs text-slate-600 font-medium">
                 {getProgressDisplay()}
               </p>
             </div>
@@ -687,14 +707,14 @@ const totalQuestions = studyConfig?.coreQuestions?.length ?? 0;
         {interviewHistory.map(msg => (
           msg.role === 'system' ? (
             <div key={msg.id} className="flex justify-center py-1">
-              <div className="text-[11px] text-slate-500 font-semibold uppercase tracking-wider bg-slate-100/80 border border-slate-200 rounded-full px-3.5 py-1 shadow-xs">
+              <div className="oi-rise text-xs text-slate-600 font-medium bg-slate-100/80 border border-slate-200 rounded-full px-3.5 py-1 shadow-xs">
                 {msg.content}
               </div>
             </div>
           ) : (
           <div
             key={msg.id}
-            className={`flex items-start gap-2.5 sm:gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            className={`oi-rise flex items-start gap-2.5 sm:gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {msg.role !== 'user' && (
               <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0 mt-0.5 shadow-xs">
@@ -705,19 +725,16 @@ const totalQuestions = studyConfig?.coreQuestions?.length ?? 0;
             <div
               className={`min-w-0 max-w-[90%] sm:max-w-[82%] rounded-2xl p-4 sm:p-4.5 ${
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-tr-xs shadow-card'
+                  ? 'bg-tangerine-50 text-slate-900 rounded-tr-xs'
                   : 'bg-white border border-slate-200/90 text-slate-900 rounded-tl-xs shadow-card'
               }`}
             >
-              <div className="text-xs font-bold uppercase tracking-wider mb-1.5 opacity-70">
+              {/* the candidate in the portal's Tango Orange, the AI in its violet (as on the portal's Interview page) */}
+              <div className={`text-xs font-semibold mb-1.5 ${msg.role === 'user' ? 'text-tangerine-800' : 'text-blue-700'}`}>
                 {msg.role === 'user' ? 'You' : 'AI Interviewer'}
               </div>
               <ReactMarkdown
-                className={`text-sm sm:text-[15px] leading-relaxed font-medium break-words ${
-                  msg.role === 'user'
-                    ? 'text-white [&_*]:text-white [&_strong]:text-white [&_code]:bg-blue-700/60 [&_code]:border-blue-500 [&_code]:text-white'
-                    : 'text-slate-900 [&_*]:text-slate-900'
-                }`}
+                className="text-sm sm:text-[15px] leading-relaxed font-medium break-words text-slate-900 [&_*]:text-slate-900"
                 components={markdownComponents}
               >
                 {formatMessageForMarkdown(msg.content)}
@@ -725,7 +742,7 @@ const totalQuestions = studyConfig?.coreQuestions?.length ?? 0;
             </div>
 
             {msg.role === 'user' && (
-              <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
+              <div className="w-8 h-8 rounded-full bg-tangerine-100 text-tangerine-800 flex items-center justify-center flex-shrink-0 mt-0.5 shadow-xs">
                 <User size={15} />
               </div>
             )}
@@ -734,7 +751,7 @@ const totalQuestions = studyConfig?.coreQuestions?.length ?? 0;
         ))}
 
         {isAiThinking && (
-          <div className="flex items-start gap-2.5 sm:gap-3 justify-start">
+          <div className="oi-rise flex items-start gap-2.5 sm:gap-3 justify-start">
             <div className="w-8 h-8 rounded-full bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0 mt-0.5 shadow-xs">
               <Bot size={16} />
             </div>

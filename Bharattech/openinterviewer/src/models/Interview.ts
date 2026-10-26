@@ -7,6 +7,9 @@ const InterviewSchema = new Schema(
     studyName: { type: String },
     participantName: { type: String },
     token: { type: String, unique: true, sparse: true },
+    // fingerprint (SHA-256) of the candidate link that wrote this record: a link writes only its own one (unique, so
+    // two saves at once can't make two)
+    linkHash: { type: String, unique: true, sparse: true },
     participantEmail: { type: String },
     participantProfile: { type: Object, default: {} },
     transcript: { type: Array, default: [] },

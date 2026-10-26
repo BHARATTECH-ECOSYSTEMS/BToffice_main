@@ -9,6 +9,7 @@ import { connectDB, isMongoConfigured } from '@/lib/mongodb';
 import Interview from '@/models/Interview';
 import ParticipantToken from '@/models/ParticipantToken';
 import Study from '@/models/Study';
+import UsedLaunchPass from '@/models/UsedLaunchPass';
 import { StoredInterview, StoredStudy } from '@/types';
 import { DEMO_INTERVIEWS, DEMO_STUDY_CONFIG } from '@/lib/demoData';
 
@@ -22,7 +23,10 @@ type LocalStore = {
     expiresAt: number;
     terminationReason?: string;
     terminatedAt?: number;
+    completedAt?: number;
+    turns?: number;
   }>;
+  usedLaunchPasses: Record<string, number>;
 };
 
 const LOCAL_STORE_PATH = process.env.LOCAL_STORAGE_PATH || path.join(process.cwd(), '.data', 'local-store.json');
@@ -45,7 +49,8 @@ function createEmptyStore(): LocalStore {
     interviews: {},
     studies: {},
     studyInterviews: {},
-    participantTokens: {}
+    participantTokens: {},
+    usedLaunchPasses: {}
   };
 }
 
@@ -280,7 +285,8 @@ async function readLocalStore(): Promise<LocalStore> {
       interviews: parsed.interviews || {},
       studies: parsed.studies || {},
       studyInterviews: parsed.studyInterviews || {},
-      participantTokens: parsed.participantTokens || {}
+      participantTokens: parsed.participantTokens || {},
+      usedLaunchPasses: parsed.usedLaunchPasses || {}
     };
   } catch (error: any) {
     if (error?.code === 'ENOENT') {
@@ -630,8 +636,9 @@ export async function deleteStudy(id: string): Promise<{ success: boolean; error
     }
 
     if (await shouldUseMongo()) {
-      // Deleting a study also deletes its interviews, so nothing is left
-      // orphaned in the database.
+      // Deleting a study also deletes its interviews and its candidate links, so nothing is left
+      // orphaned in the database and no link keeps running interviews for it.
+      await ParticipantToken.deleteMany({ studyId: id });
       await Interview.deleteMany({ studyId: id });
       await Study.deleteOne({ id });
       return { success: true };
@@ -642,6 +649,9 @@ export async function deleteStudy(id: string): Promise<{ success: boolean; error
       // Clean up any interviews tied to this study too.
       for (const interviewId of interviewIds) {
         delete store.interviews[interviewId];
+      }
+      for (const [token, link] of Object.entries(store.participantTokens)) {
+        if (link.studyId === id) delete store.participantTokens[token];
       }
 
       delete store.studies[id];
@@ -743,6 +753,7 @@ export async function getParticipantToken(token: string): Promise<{
   studyConfig: StoredStudy['config'];
   terminationReason?: string;
   terminatedAt?: number;
+  completedAt?: number;
 } | null> {
   try {
     if (await shouldUseMongo()) {
@@ -757,7 +768,8 @@ export async function getParticipantToken(token: string): Promise<{
         studyId: tokenData.studyId,
         studyConfig: tokenData.studyConfig,
         terminationReason: tokenData.terminationReason,
-        terminatedAt: tokenData.terminatedAt ? toTimestamp(tokenData.terminatedAt) : undefined
+        terminatedAt: tokenData.terminatedAt ? toTimestamp(tokenData.terminatedAt) : undefined,
+        completedAt: tokenData.completedAt ? toTimestamp(tokenData.completedAt) : undefined
       };
     }
 
@@ -775,11 +787,119 @@ export async function getParticipantToken(token: string): Promise<{
       studyId: tokenData.studyId,
       studyConfig: tokenData.studyConfig,
       terminationReason: tokenData.terminationReason,
-      terminatedAt: tokenData.terminatedAt
+      terminatedAt: tokenData.terminatedAt,
+      completedAt: tokenData.completedAt
     };
   } catch (error) {
     console.error('Error getting participant token:', error);
     return null;
+  }
+}
+
+// Counts one interview turn against a link; false once it has used `max` (or the link is gone). One conditional
+// update, so two turns at once can't both slip under the limit.
+export async function claimParticipantTurn(token: string, max: number): Promise<boolean> {
+  try {
+    if (await shouldUseMongo()) {
+      const result = await ParticipantToken.updateOne(
+        { token, $or: [{ turns: { $exists: false } }, { turns: { $lt: max } }] },
+        { $inc: { turns: 1 } }
+      );
+      return result.modifiedCount === 1;
+    }
+
+    return await updateLocalStore((store) => {
+      const link = store.participantTokens[token];
+      if (!link || (link.turns || 0) >= max) return false;
+      link.turns = (link.turns || 0) + 1;
+      return true;
+    });
+  } catch (error) {
+    console.error('Error counting interview turn:', error);
+    return false;
+  }
+}
+
+// Marks a link finished. True only for the call that finished it, so two finishes at once save one interview.
+export async function finishParticipantToken(token: string): Promise<boolean> {
+  try {
+    if (await shouldUseMongo()) {
+      const result = await ParticipantToken.updateOne(
+        { token, completedAt: { $exists: false }, terminatedAt: { $exists: false } },
+        { $set: { completedAt: new Date() } }
+      );
+      return result.modifiedCount === 1;
+    }
+
+    return await updateLocalStore((store) => {
+      const link = store.participantTokens[token];
+      if (!link || link.completedAt || link.terminatedAt) return false;
+      link.completedAt = Date.now();
+      return true;
+    });
+  } catch (error) {
+    console.error('Error finishing participant token:', error);
+    return false;
+  }
+}
+
+// Undoes finishParticipantToken when the interview couldn't be saved, so the candidate can try again.
+export async function reopenParticipantToken(token: string): Promise<void> {
+  try {
+    if (await shouldUseMongo()) {
+      await ParticipantToken.updateOne({ token }, { $unset: { completedAt: 1 } });
+      return;
+    }
+
+    await updateLocalStore((store) => {
+      if (store.participantTokens[token]) delete store.participantTokens[token].completedAt;
+    });
+  } catch (error) {
+    console.error('Error reopening participant token:', error);
+  }
+}
+
+// The interview record a candidate link wrote, if any (see Interview.linkHash).
+export async function getInterviewByLink(linkHash: string): Promise<StoredInterview | null> {
+  try {
+    if (await shouldUseMongo()) {
+      const interview = await Interview.findOne({ linkHash }).lean();
+      return interview ? toStoredInterview(interview) : null;
+    }
+
+    const store = await readLocalStore();
+    return Object.values(store.interviews).find((interview) => (interview as StoredInterview & { linkHash?: string }).linkHash === linkHash) || null;
+  } catch (error) {
+    console.error('Error finding interview by link:', error);
+    return null;
+  }
+}
+
+// Records a portal launch pass as used. True only for its first use; false when it was used before or can't be
+// recorded, so a pass never opens more than one session.
+export async function claimLaunchPass(passId: string, expiresAt: Date): Promise<boolean> {
+  try {
+    if (await shouldUseMongo()) {
+      await UsedLaunchPass.init();
+      await UsedLaunchPass.create({ passId, expiresAt });
+      return true;
+    }
+
+    return await updateLocalStore((store) => {
+      const now = Date.now();
+      for (const [id, until] of Object.entries(store.usedLaunchPasses)) {
+        if (until < now) delete store.usedLaunchPasses[id];
+      }
+      if (store.usedLaunchPasses[passId]) return false;
+
+      store.usedLaunchPasses[passId] = expiresAt.getTime();
+      return true;
+    });
+  } catch (error: any) {
+    if (error?.code !== 11000) {
+      console.error('Error recording launch pass:', error);
+    }
+    return false;
   }
 }
 

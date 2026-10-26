@@ -41,7 +41,7 @@ const Consent: React.FC = () => {
         animate={{ opacity: 1, scale: 1 }}
         className="max-w-lg w-full"
       >
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-md">
+        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-card">
           {/* Header */}
           <div className="bg-slate-50 border-b border-slate-200 p-4 sm:p-6">
             <div className="flex items-center gap-3 mb-2">
@@ -68,7 +68,7 @@ const Consent: React.FC = () => {
 
               <div className="space-y-3 text-sm">
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-700 flex-shrink-0 mt-0.5 font-semibold">1</div>
+                  <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-xs text-blue-700 flex-shrink-0 mt-0.5 font-semibold">1</div>
                   <div>
                     <div className="text-slate-700 font-medium">Brief background questions</div>
                     <div className="text-slate-500 text-xs">Help us understand your context</div>
@@ -76,7 +76,7 @@ const Consent: React.FC = () => {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-700 flex-shrink-0 mt-0.5 font-semibold">2</div>
+                  <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-xs text-blue-700 flex-shrink-0 mt-0.5 font-semibold">2</div>
                   <div>
                     <div className="text-slate-700 font-medium">{studyConfig?.coreQuestions?.length ?? 0} core questions about your experiences</div>
                     <div className="text-slate-500 text-xs">The heart of the interview</div>
@@ -84,7 +84,7 @@ const Consent: React.FC = () => {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-700 flex-shrink-0 mt-0.5 font-semibold">
+                  <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-xs text-blue-700 flex-shrink-0 mt-0.5 font-semibold">
                     <HelpCircle size={12} />
                   </div>
                   <div>
@@ -94,7 +94,7 @@ const Consent: React.FC = () => {
                 </div>
 
                 <div className="flex items-start gap-3">
-                  <div className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs text-slate-700 flex-shrink-0 mt-0.5 font-semibold">3</div>
+                  <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-xs text-blue-700 flex-shrink-0 mt-0.5 font-semibold">3</div>
                   <div>
                     <div className="text-slate-700 font-medium">A final question for your feedback</div>
                     <div className="text-slate-500 text-xs">Your thoughts on the interview itself</div>

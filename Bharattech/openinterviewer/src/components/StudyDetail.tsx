@@ -28,6 +28,7 @@ import {
   Copy,
   Check
 } from 'lucide-react';
+import AppBar, { PageHeader } from './AppBar';
 
 interface StudyDetailProps {
   studyId: string;
@@ -253,76 +254,45 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-slate-50/60 px-4 py-6 sm:p-8 lg:p-10">
-      <div className="w-full max-w-5xl mx-auto space-y-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-          className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-card"
-        >
-          <button
-            onClick={() => router.push('/studies')}
-            className="text-slate-500 hover:text-slate-800 flex items-center gap-1.5 mb-4 text-xs font-semibold uppercase tracking-wider transition-colors w-fit"
-          >
-            <ArrowLeft size={14} />
-            Back to Studies
-          </button>
-
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex items-start gap-3.5 sm:gap-4 min-w-0">
-              <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 shadow-xs">
-                <BookOpen size={24} />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 break-words">
-                  {study.config.name}
-                </h1>
-                <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1.5 text-xs text-slate-500 font-medium">
-                  <span className="flex items-center gap-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">
-                    <Users size={13} className="text-slate-400" />
-                    {interviewCount} {interviewCount === 1 ? 'interview' : 'interviews'}
-                  </span>
-                  <span className="flex items-center gap-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">
-                    <Calendar size={13} className="text-slate-400" />
-                    Created {formatDate(study.createdAt)}
-                  </span>
-                  <span className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-semibold ${
-                    study.isLocked
-                      ? 'bg-slate-100 text-slate-700 border border-slate-200'
-                      : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                  }`}>
-                    {study.isLocked ? <Lock size={11} /> : <Unlock size={11} />}
-                    {study.isLocked ? 'Locked' : 'Editable'}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => router.push(`/setup?prefill=edit&studyId=${studyId}`)}
-                disabled={study.isLocked}
-                className="px-3.5 py-2 text-sm bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl transition-all flex items-center justify-center gap-2 font-medium shadow-xs hover:border-slate-300 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
-              >
-                <Settings size={15} className="text-slate-500" />
-                Edit Configuration
-              </button>
-            </div>
-          </div>
-        </motion.div>
+    <div className="min-h-screen bg-slate-50">
+      {/* the shared top bar: sections, Create Study and Logout (components/AppBar.tsx) */}
+      <AppBar />
+      <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 sm:py-10 space-y-6">
+        <PageHeader
+          back={{ label: 'Back to Studies', onClick: () => router.push('/studies') }}
+          title={study.config.name}
+          subtitle={
+            <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span>{interviewCount} {interviewCount === 1 ? 'interview' : 'interviews'}</span>
+              <span>Created {formatDate(study.createdAt)}</span>
+              <span className="flex items-center gap-2">
+                <span className={`h-2 w-2 rounded-full ${study.isLocked ? 'bg-slate-400' : 'bg-emerald-500'}`} aria-hidden="true" />
+                {study.isLocked ? 'Locked' : 'Editable'}
+              </span>
+            </span>
+          }
+          actions={
+            <button
+              onClick={() => router.push(`/setup?prefill=edit&studyId=${studyId}`)}
+              disabled={study.isLocked}
+              className="px-4 py-2 text-sm rounded-full bg-white text-slate-800 shadow-subtle ring-1 ring-slate-200 hover:ring-slate-300 transition-colors flex items-center gap-2 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Settings size={15} className="text-slate-500" />
+              Edit Configuration
+            </button>
+          }
+        />
 
         {/* Tabs */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 px-4 pt-2 shadow-card">
-          <div className="flex gap-4 border-b border-slate-100 overflow-x-auto">
+        <div>
+          <div className="flex gap-6 border-b border-slate-200 overflow-x-auto">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={`pb-3.5 pt-2 flex items-center gap-2 text-sm font-semibold border-b-2 transition-all whitespace-nowrap ${
                   activeTab === tab.id
-                    ? 'border-blue-600 text-blue-600'
+                    ? 'border-blue-600 text-slate-900'
                     : 'border-transparent text-slate-500 hover:text-slate-800'
                 }`}
               >
@@ -343,34 +313,34 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
               {activeTab === 'overview' && (
                 <div className="space-y-6">
                   {/* Research Question */}
-                  <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 sm:p-6 shadow-xs">
-                    <h3 className="font-bold text-slate-900 mb-1.5 flex items-center gap-2 text-sm uppercase tracking-wider text-slate-600">
+                  <div className="pb-6 border-b border-slate-200/70">
+                    <h3 className="font-bold text-slate-900 mb-1.5 flex items-center gap-2 text-sm text-slate-600">
                       <Sparkles size={16} className="text-blue-600" />
                       Research Question
                     </h3>
-                    <p className="text-slate-800 text-base font-medium leading-relaxed">
+                    <p className="font-display text-xl sm:text-2xl font-medium leading-snug text-slate-900">
                       {study.config.researchQuestion}
                     </p>
                   </div>
 
                   {/* Stats Summary */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <div className="bg-slate-50/70 rounded-2xl border border-slate-200/80 p-5 text-center shadow-xs">
-                      <div className="text-3xl font-extrabold tracking-tight text-slate-900">{interviewCount}</div>
-                      <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Interviews</div>
+                  <div className="grid grid-cols-3 divide-x divide-slate-200/70 rounded-2xl bg-white shadow-card">
+                    <div className="px-5 py-4">
+                      <div className="font-display text-3xl font-semibold tracking-tight text-slate-900">{interviewCount}</div>
+                      <div className="text-xs font-semibold text-slate-500 mt-1">Interviews</div>
                     </div>
-                    <div className="bg-slate-50/70 rounded-2xl border border-slate-200/80 p-5 text-center shadow-xs">
-                      <div className="text-3xl font-extrabold tracking-tight text-slate-900">{study.config.coreQuestions?.length || 0}</div>
-                      <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Core Questions</div>
+                    <div className="px-5 py-4">
+                      <div className="font-display text-3xl font-semibold tracking-tight text-slate-900">{study.config.coreQuestions?.length || 0}</div>
+                      <div className="text-xs font-semibold text-slate-500 mt-1">Core Questions</div>
                     </div>
-                    <div className="bg-slate-50/70 rounded-2xl border border-slate-200/80 p-5 text-center shadow-xs">
-                      <div className="text-3xl font-extrabold tracking-tight text-slate-900">{study.config.topicAreas?.length || 0}</div>
-                      <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 mt-1">Topic Areas</div>
+                    <div className="px-5 py-4">
+                      <div className="font-display text-3xl font-semibold tracking-tight text-slate-900">{study.config.topicAreas?.length || 0}</div>
+                      <div className="text-xs font-semibold text-slate-500 mt-1">Topic Areas</div>
                     </div>
                   </div>
 
                   {/* Aggregate Synthesis */}
-                  <div className="bg-slate-50/60 rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-xs space-y-6">
+                  <div className="bg-white rounded-2xl p-5 sm:p-6 shadow-card space-y-6">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200/80 pb-4">
                       <div>
                         <h3 className="font-bold text-slate-900 text-base flex items-center gap-2">
@@ -403,7 +373,7 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
                       <div className="space-y-6">
                         {/* Bottom Line */}
                         <div className="bg-blue-50/60 border border-blue-200 rounded-2xl p-5 shadow-xs">
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-blue-900 mb-1.5 flex items-center gap-1.5">
+                          <h4 className="text-xs font-bold text-blue-900 mb-1.5 flex items-center gap-1.5">
                             <Lightbulb size={16} className="text-blue-600" />
                             Executive Bottom Line
                           </h4>
@@ -414,7 +384,7 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
 
                         {/* Key Findings */}
                         <div>
-                          <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Key Findings</h4>
+                          <h4 className="text-xs font-bold text-slate-500 mb-3">Key Findings</h4>
                           <div className="grid gap-2.5">
                             {aggregateSynthesis.keyFindings.map((finding, i) => (
                               <div key={i} className="bg-white border border-slate-200 rounded-xl p-3.5 text-sm text-slate-800 font-medium flex items-start gap-2.5 shadow-xs">
@@ -428,7 +398,7 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
                         {/* Participant Comparisons */}
                         {aggregateSynthesis.participantComparisons?.length ? (
                           <div>
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Participant Benchmarking</h4>
+                            <h4 className="text-xs font-bold text-slate-500 mb-3">Participant Benchmarking</h4>
                             {aggregateSynthesis.topParticipantSummary && (
                               <div className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50/70 p-3.5 text-sm text-emerald-900 font-medium">
                                 🏆 {aggregateSynthesis.topParticipantSummary}
@@ -450,7 +420,7 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
                                   </div>
                                   <div className="mt-3.5 grid gap-3 md:grid-cols-2 border-t border-slate-100 pt-3">
                                     <div className="bg-emerald-50/40 border border-emerald-100 rounded-xl p-3">
-                                      <div className="text-xs font-bold uppercase tracking-wider text-emerald-700 mb-1">Key Strengths</div>
+                                      <div className="text-xs font-bold text-emerald-700 mb-1">Key Strengths</div>
                                       <ul className="space-y-1">
                                         {participant.strengths.map((strength, i) => (
                                           <li key={i} className="text-xs text-slate-700 font-medium flex items-start gap-1.5">
@@ -461,7 +431,7 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
                                       </ul>
                                     </div>
                                     <div className="bg-amber-50/40 border border-amber-100 rounded-xl p-3">
-                                      <div className="text-xs font-bold uppercase tracking-wider text-amber-700 mb-1">Areas for Development</div>
+                                      <div className="text-xs font-bold text-amber-700 mb-1">Areas for Development</div>
                                       <ul className="space-y-1">
                                         {participant.gaps.map((gap, i) => (
                                           <li key={i} className="text-xs text-slate-700 font-medium flex items-start gap-1.5">
@@ -481,7 +451,7 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
                         {/* Common Themes */}
                         {aggregateSynthesis.commonThemes?.length > 0 && (
                           <div>
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Recurring Themes</h4>
+                            <h4 className="text-xs font-bold text-slate-500 mb-3">Recurring Themes</h4>
                             <div className="grid gap-3 md:grid-cols-2">
                               {aggregateSynthesis.commonThemes.map((theme, i) => (
                                 <div key={i} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
@@ -503,7 +473,7 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
                         {/* Divergent Views */}
                         {aggregateSynthesis.divergentViews?.length > 0 && (
                           <div>
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Divergent Perspectives</h4>
+                            <h4 className="text-xs font-bold text-slate-500 mb-3">Divergent Perspectives</h4>
                             <div className="space-y-3">
                               {aggregateSynthesis.divergentViews.map((view, i) => (
                                 <div key={i} className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs">
@@ -525,7 +495,7 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
                         {/* Research Implications */}
                         {aggregateSynthesis.researchImplications?.length > 0 && (
                           <div>
-                            <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Actionable Implications</h4>
+                            <h4 className="text-xs font-bold text-slate-500 mb-3">Actionable Implications</h4>
                             <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-2">
                               {aggregateSynthesis.researchImplications.map((item, i) => (
                                 <div key={i} className="text-slate-800 text-xs font-medium flex items-start gap-2">
@@ -571,7 +541,7 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
               {activeTab === 'interviews' && (
                 <div className="space-y-4">
                   {interviews.length === 0 ? (
-                    <div className="bg-slate-50 rounded-2xl border border-slate-200 p-12 text-center shadow-xs">
+                    <div className="bg-white rounded-2xl p-12 text-center shadow-card">
                       <Users size={32} className="text-slate-400 mx-auto mb-3" />
                       <h3 className="text-base font-bold text-slate-900 mb-1">No Interviews Yet</h3>
                       <p className="text-slate-500 text-xs font-medium max-w-sm mx-auto">
@@ -585,7 +555,7 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.04 }}
-                        className="bg-white rounded-2xl border border-slate-200/90 p-5 hover:border-slate-300 hover:shadow-card-hover transition-all duration-200 cursor-pointer shadow-card group"
+                        className="bg-white rounded-2xl p-5 hover:shadow-card-hover transition-shadow duration-200 cursor-pointer shadow-card group"
                         onClick={() => router.push(`/dashboard/interview/${interview.id}`)}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -652,24 +622,24 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
               {activeTab === 'settings' && (
                 <div className="space-y-6">
                   {/* Study Config Display */}
-                  <div className="bg-slate-50/70 rounded-2xl border border-slate-200 p-6 space-y-4 shadow-xs">
+                  <div className="bg-white rounded-2xl p-6 space-y-4 shadow-card">
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Study Name</label>
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Study Name</label>
                       <p className="text-slate-900 font-semibold text-base">{study.config.name}</p>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Description</label>
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Description</label>
                       <p className="text-slate-700 text-sm font-medium">{study.config.description || 'No description provided.'}</p>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">Research Question</label>
+                      <label className="block text-xs font-bold text-slate-500 mb-1">Research Question</label>
                       <p className="text-slate-800 text-sm font-medium">{study.config.researchQuestion}</p>
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                      <label className="block text-xs font-bold text-slate-500 mb-2">
                         Core Questions ({study.config.coreQuestions?.length || 0})
                       </label>
                       <ul className="space-y-2">
@@ -682,7 +652,7 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">
+                      <label className="block text-xs font-bold text-slate-500 mb-2">
                         Topic Areas ({study.config.topicAreas?.length || 0})
                       </label>
                       <div className="flex flex-wrap gap-2">
@@ -695,13 +665,13 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1">AI Interview Behavior</label>
+                      <label className="block text-xs font-bold text-slate-500 mb-1">AI Interview Behavior</label>
                       <p className="text-slate-800 font-semibold text-sm capitalize">{study.config.aiBehavior}</p>
                     </div>
                   </div>
 
                   {/* Link Management */}
-                  <div className="bg-slate-50/70 rounded-2xl border border-slate-200 p-6 space-y-4 shadow-xs">
+                  <div className="bg-white rounded-2xl p-6 space-y-4 shadow-card">
                     <h3 className="font-bold text-slate-900 flex items-center gap-2 text-sm">
                       <LinkIcon size={16} className="text-blue-600" />
                       Participant Link Access
@@ -766,7 +736,7 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
             </motion.div>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

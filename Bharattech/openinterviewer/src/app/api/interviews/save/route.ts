@@ -3,7 +3,7 @@
 // Server-side validation ensures data integrity
 
 import { NextResponse } from 'next/server';
-import { saveInterview, isMongoStorageAvailable, incrementStudyInterviewCount, lockStudy } from '@/lib/kv';
+import { saveInterview, isMongoStorageAvailable, incrementStudyInterviewCount, lockStudy, getInterview, getInterviewByLink } from '@/lib/kv';
 import { verifyParticipantToken } from '@/lib/auth';
 import { StoredInterview } from '@/types';
 
@@ -75,6 +75,19 @@ export async function POST(request: Request) {
       );
     }
 
+    // A candidate link writes at most one interview record, its own: never one another link wrote, which could move
+    // someone else's interview into this study.
+    if (!auth.isAdmin) {
+      const own = await getInterviewByLink(auth.linkHash!);
+      const taken = own ? own.id !== clientData.id : !!(await getInterview(clientData.id));
+      if (taken) {
+        return NextResponse.json(
+          { error: 'This link can only save its own interview.' },
+          { status: 409 }
+        );
+      }
+    }
+
     // Build the interview with server-controlled fields
     const now = Date.now();
     const defaultProfile = {
@@ -83,13 +96,16 @@ export async function POST(request: Request) {
       rawContext: '',
       timestamp: now
     };
-    const interview: StoredInterview = {
+    // For a candidate the study comes from their link, and a summary only from the server's AI (interview/complete):
+    // one sent from the browser could say anything about the candidate.
+    const interview: StoredInterview & { linkHash?: string } = {
       id: clientData.id,
-      studyId: clientData.studyId,
-      studyName: clientData.studyName || 'Unknown Study',
+      ...(!auth.isAdmin && { linkHash: auth.linkHash }),
+      studyId: auth.isAdmin ? clientData.studyId : auth.studyId!,
+      studyName: (auth.isAdmin ? clientData.studyName : auth.studyConfig?.name) || 'Unknown Study',
       participantProfile: clientData.participantProfile || defaultProfile,
       transcript,
-      synthesis: clientData.synthesis || null,
+      synthesis: auth.isAdmin ? clientData.synthesis || null : null,
       behaviorData: clientData.behaviorData || {
         timePerTopic: {},
         messagesPerTopic: {},

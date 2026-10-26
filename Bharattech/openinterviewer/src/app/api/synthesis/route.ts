@@ -19,21 +19,27 @@ const MAX_MESSAGE_LENGTH = 5000;
 
 export async function POST(request: Request) {
   try {
-    // TEMP: bypass auth in development
-    const auth = { valid: true, isAdmin: true, studyId: undefined };
+    // A summary spends the AI key, so only a live candidate link or the researcher's own session gets one.
+    const auth = await verifyParticipantToken(request);
+    if (!auth.valid) {
+      return NextResponse.json(
+        { error: auth.error || 'Valid participant link or researcher session required' },
+        { status: 401 }
+      );
+    }
 
     const body = await request.json();
     let {
       history,
-      studyConfig,
       behaviorData,
       participantProfile
     } = body as {
       history: InterviewMessage[];
-      studyConfig: StudyConfig;
       behaviorData: BehaviorData;
       participantProfile: ParticipantProfile | null;
     };
+    // A candidate's summary runs on the study stored with their link; only the researcher previews other settings.
+    const studyConfig: StudyConfig = auth.isAdmin ? body.studyConfig : auth.studyConfig;
 
     // Validate required fields
     if (!history || !studyConfig || !behaviorData) {

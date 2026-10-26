@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth';
+import { serverDefaultProvider } from '@/lib/aiDefaults';
 
 export async function GET() {
   try {
@@ -30,6 +31,9 @@ export async function GET() {
 
       // Gemini provider support
        hasMistralKey: !!process.env.MISTRAL_API_KEY,
+
+      // the AI a study uses when it names none: the setup screen shows it as chosen
+      defaultProvider: serverDefaultProvider(),
     };
 
     return NextResponse.json(status);

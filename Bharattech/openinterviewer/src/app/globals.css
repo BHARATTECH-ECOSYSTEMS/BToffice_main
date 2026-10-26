@@ -1,8 +1,9 @@
+/* The BharatTech portal's fonts (its index.html loads the same). An @import has to come first to count. */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:wght@400..700&family=Geist+Mono:wght@400;500;600&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 .interview-container {
   user-select: none;
@@ -13,11 +14,19 @@ body {
   width: 100%;
   max-width: 100%;
   overflow-x: hidden;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  color: #0f172a;
-  background-color: #f8fafc;
+  font-family: 'Figtree', 'Helvetica Neue', Arial, sans-serif;
+  color: #14130F;
+  background-color: #F8F7F3;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* headings in the portal's display face */
+h1,
+h2,
+h3 {
+  font-family: 'Bricolage Grotesque', 'Helvetica Neue', Arial, sans-serif;
+  letter-spacing: -0.015em;
 }
 
 * {
@@ -44,17 +53,17 @@ select {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: #CBC5BA;
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: #A39E92;
 }
 
 /* Preview mode banner */
 .preview-banner {
-  background: linear-gradient(90deg, #1e3a8a 0%, #2563eb 50%, #1e3a8a 100%);
+  background: linear-gradient(90deg, #3B2A94 0%, #6E58F5 50%, #3B2A94 100%);
   background-size: 200% 100%;
   animation: shimmer 4s ease infinite;
 }
@@ -99,11 +108,11 @@ select {
 
 /* Prose styling for markdown */
 .prose {
-  color: #334155;
+  color: #3F3B34;
 }
 
 .prose strong {
-  color: #0f172a;
+  color: #14130F;
   font-weight: 600;
 }
 
@@ -131,19 +140,19 @@ select {
 }
 
 .prose code:not(pre code) {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Geist Mono', ui-monospace, monospace;
   font-size: 0.875em;
-  background-color: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  background-color: #EFECE5;
+  border: 1px solid #E4E0D8;
   border-radius: 0.375rem;
   padding: 0.125rem 0.375rem;
-  color: #0f172a;
+  color: #14130F;
 }
 
 /* Button & focus states */
 button:focus-visible,
 a:focus-visible {
-  outline: 2px solid #3b82f6;
+  outline: 2px solid #6E58F5;
   outline-offset: 2px;
 }
 
@@ -151,5 +160,73 @@ input:focus-visible,
 textarea:focus-visible,
 select:focus-visible {
   outline: none;
+}
+
+/* the portal's press feedback (--dur-press 120ms, --ease) */
+button:not(:disabled):active {
+  transform: scale(0.97);
+  transition: transform 120ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* the candidate's chat: each new line rises into place (portal --ease, --dur-ui 240ms); it plays once per message */
+@keyframes oi-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.oi-rise {
+  animation: oi-rise 240ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* consent → chat: the chat fades in rather than appearing at once (opacity only, so nothing moves) */
+@keyframes oi-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.oi-fade-in {
+  animation: oi-fade-in 200ms ease-out both;
+}
+
+/* the interview's five phases in the chat's header; a part fills as the interview reaches it */
+.oi-phase-part::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: #6E58F5;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.oi-phase-part[data-on]::after {
+  transform: scaleX(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .oi-rise {
+    animation: none;
+  }
+  .typing-dot-1,
+  .typing-dot-2,
+  .typing-dot-3,
+  .preview-banner,
+  .preview-banner-pulse,
+  .animate-pulse {
+    animation: none;
+  }
+  .oi-phase-part::after {
+    transition: none;
+  }
+  button:not(:disabled):active {
+    transform: none;
+  }
 }
 

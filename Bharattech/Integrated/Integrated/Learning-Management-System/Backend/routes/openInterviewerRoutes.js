@@ -5,6 +5,7 @@ const {
   requireAdmin,
 } = require("../middlewares/keycloakAuth");
 const {
+  LAUNCH_PASS_SECONDS,
   buildOpenInterviewerLaunchUrl,
   createOpenInterviewerToken,
 } = require("../utils/openInterviewerToken");
@@ -20,7 +21,7 @@ router.post("/launch-token", keycloakAuth, requireAdmin, async (req, res) => {
     res.json({
       launchUrl: buildOpenInterviewerLaunchUrl(token),
       token,
-      expiresIn: 300,
+      expiresIn: LAUNCH_PASS_SECONDS,
     });
   } catch (error) {
     console.error("OpenInterviewer launch token error:", error);

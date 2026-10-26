@@ -1,6 +1,16 @@
 import * as jose from 'jose';
+import { claimLaunchPass } from '@/lib/kv';
+import { isAdminRole } from '@/lib/roles';
 
 type UnknownRecord = Record<string, unknown>;
+
+// The BharatTech portal backend's pass (utils/openInterviewerToken.js there): HS256 with BHARATTECH_LAUNCH_SECRET,
+// at most a minute long, with its own id so it can be used once.
+const PORTAL_PASS_TYPE = 'bharattech-admin-launch';
+const PORTAL_PASS_MAX_SECONDS = 60;
+// The portal backend runs on another server whose clock can be a little ahead or behind; without some slack a pass
+// stamped a second "in the future" is refused.
+const CLOCK_TOLERANCE_SECONDS = 5;
 
 let cachedIssuer: string | null = null;
 let cachedJwks: ReturnType<typeof jose.createRemoteJWKSet> | null = null;
@@ -14,21 +24,16 @@ function getConfiguredValue(...keys: string[]) {
   return undefined;
 }
 
-function getLaunchSecrets() {
-  return [
-    process.env.BHARATTECH_LAUNCH_SECRET,
-    process.env.ADMIN_SECRET,
-    process.env.SESSION_SECRET,
-    process.env.ADMIN_PASSWORD
-  ].filter((value): value is string => Boolean(value));
-}
-
-function getKeycloakIssuer() {
+// No built-in address: without KEYCLOAK_URL the Keycloak check is off, so a laptop or test run can never send
+// tokens to the company's live Keycloak by accident.
+export function getKeycloakIssuer() {
   const rawUrl = getConfiguredValue(
     'KEYCLOAK_URL',
     'NEXT_PUBLIC_KEYCLOAK_URL',
     'VITE_KEYCLOAK_URL'
-  ) || 'https://keycloak-24-0-5-9yaq.onrender.com';
+  );
+  if (!rawUrl) return null;
+
   const realm = getConfiguredValue(
     'KEYCLOAK_REALM',
     'NEXT_PUBLIC_KEYCLOAK_REALM',
@@ -43,9 +48,7 @@ function getKeycloakIssuer() {
   return `${baseUrl}/realms/${realm}`;
 }
 
-function getKeycloakJwks() {
-  const issuer = getKeycloakIssuer();
-
+function getKeycloakJwks(issuer: string) {
   if (cachedIssuer !== issuer || !cachedJwks) {
     cachedIssuer = issuer;
     cachedJwks = jose.createRemoteJWKSet(
@@ -53,7 +56,7 @@ function getKeycloakJwks() {
     );
   }
 
-  return { issuer, jwks: cachedJwks };
+  return cachedJwks;
 }
 
 function asRecord(value: unknown): UnknownRecord {
@@ -75,39 +78,13 @@ function asStringArray(value: unknown): string[] {
   return [];
 }
 
-function normalizeRole(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/^role[\s:_-]+/, '')
-    .replace(/[\s_-]+/g, '');
-}
-
-function isAdminRole(value: string) {
-  const normalized = normalizeRole(value);
-  return normalized === 'admin' || normalized === 'superadmin';
-}
-
 function collectRoles(payload: jose.JWTPayload) {
   const claims = payload as UnknownRecord;
-  const user = asRecord(claims.user);
   const realmAccess = asRecord(claims.realm_access);
   const resourceAccess = asRecord(claims.resource_access);
   const roles = new Set<string>();
 
-  [
-    claims.role,
-    claims.userRole,
-    claims.authority,
-    claims.authorities,
-    claims.roles,
-    claims.groups,
-    user.role,
-    user.userRole,
-    user.roles,
-    user.groups,
-    realmAccess.roles
-  ].forEach(value => {
+  [claims.roles, claims.groups, realmAccess.roles].forEach(value => {
     asStringArray(value).forEach(role => roles.add(role));
   });
 
@@ -118,48 +95,46 @@ function collectRoles(payload: jose.JWTPayload) {
   return Array.from(roles);
 }
 
-export function hasAdminRole(payload: jose.JWTPayload) {
-  const claims = payload as UnknownRecord;
-  const user = asRecord(claims.user);
-  const tokenType = String(claims.type || '').toLowerCase();
-  const roles = collectRoles(payload);
-
-  return tokenType === 'bharattech-admin-launch' ||
-    tokenType === 'openinterviewer-launch' ||
-    claims.isAdmin === true ||
-    claims.isSuperAdmin === true ||
-    user.isAdmin === true ||
-    user.isSuperAdmin === true ||
-    roles.some(role => {
-      if (isAdminRole(role)) return true;
-
-      return role
-        .split('/')
-        .filter(Boolean)
-        .some(segment => isAdminRole(segment));
-    });
+function hasAdminRole(payload: jose.JWTPayload) {
+  return collectRoles(payload).some(role =>
+    isAdminRole(role) || role.split('/').filter(Boolean).some(segment => isAdminRole(segment))
+  );
 }
 
-async function verifySharedSecretToken(token: string) {
-  for (const secret of getLaunchSecrets()) {
-    try {
-      const { payload } = await jose.jwtVerify(token, new TextEncoder().encode(secret));
-      if (hasAdminRole(payload)) {
-        return true;
-      }
-    } catch {
-      // Try the next configured secret.
-    }
+// Only BHARATTECH_LAUNCH_SECRET signs a pass. ADMIN_PASSWORD, SESSION_SECRET and the rest sign other things here
+// (sessions, candidate links) and must never double as a way in.
+async function verifyPortalPass(token: string) {
+  const secret = process.env.BHARATTECH_LAUNCH_SECRET;
+  if (!secret) return false;
+
+  let payload: jose.JWTPayload;
+  try {
+    ({ payload } = await jose.jwtVerify(token, new TextEncoder().encode(secret), {
+      algorithms: ['HS256'],
+      requiredClaims: ['jti', 'iat', 'exp'],
+      maxTokenAge: PORTAL_PASS_MAX_SECONDS,
+      clockTolerance: CLOCK_TOLERANCE_SECONDS,
+    }));
+  } catch {
+    return false;
   }
 
-  return false;
+  if (payload.type !== PORTAL_PASS_TYPE || !isAdminRole(String(payload.role || ''))) return false;
+  if (payload.exp! - payload.iat! > PORTAL_PASS_MAX_SECONDS) return false;
+
+  return claimLaunchPass(payload.jti!, new Date(payload.exp! * 1000));
 }
 
+// A Keycloak sign-in counts when this app's own Keycloak client got it (the login page's single sign-on check), so a
+// token another BharatTech app holds can't be replayed here.
 async function verifyKeycloakToken(token: string) {
+  const issuer = getKeycloakIssuer();
+  if (!issuer) return false;
+
   try {
-    const { issuer, jwks } = getKeycloakJwks();
-    const { payload } = await jose.jwtVerify(token, jwks, { issuer });
-    return hasAdminRole(payload);
+    const { payload } = await jose.jwtVerify(token, getKeycloakJwks(issuer), { issuer });
+    const clientId = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'openinterviewer-client';
+    return payload.azp === clientId && hasAdminRole(payload);
   } catch {
     return false;
   }
@@ -169,7 +144,7 @@ export async function verifyLaunchToken(token: string) {
   const cleanToken = token.trim();
   if (!cleanToken) return false;
 
-  if (await verifySharedSecretToken(cleanToken)) {
+  if (await verifyPortalPass(cleanToken)) {
     return true;
   }
 

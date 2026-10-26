@@ -27,6 +27,7 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
+import AppBar, { PageHeader } from './AppBar';
 
 const PAGE_SIZE = 10;
 
@@ -302,55 +303,25 @@ const Dashboard: React.FC = () => {
   const selectedStudy = studies.find(s => s.id === selectedStudyId);
 
   return (
-    <div className="min-h-screen bg-slate-50/60 px-4 py-6 sm:p-8 lg:p-10">
-      <div className="w-full max-w-5xl mx-auto space-y-6">
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-          className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-card"
-        >
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
-                  Researcher Console
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900">
-                Interviews Dashboard
-              </h1>
-              <p className="text-slate-500 font-medium text-xs sm:text-sm mt-0.5">
-                {totalCount} total interview{totalCount === 1 ? '' : 's'} across active studies
-              </p>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                onClick={() => router.push('/studies')}
-                className="px-3.5 py-2 text-sm bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl transition-all flex items-center justify-center gap-2 font-medium shadow-xs hover:border-slate-300 active:scale-[0.98]"
-              >
-                <FolderOpen size={16} className="text-slate-500" />
-                All Studies
-              </button>
-              <button
-                onClick={handleExportAll}
-                disabled={exporting || totalCount === 0}
-                className="px-3.5 py-2 text-sm bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed font-medium shadow-xs hover:border-slate-300 active:scale-[0.98]"
-              >
-                {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} className="text-slate-500" />}
-                {exporting ? 'Exporting...' : 'Export All'}
-              </button>
-              <button
-                onClick={handleLogout}
-                className="px-3.5 py-2 text-sm bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 text-slate-600 hover:text-red-600 rounded-xl transition-all flex items-center justify-center gap-2 font-medium shadow-xs active:scale-[0.98]"
-              >
-                <LogOut size={16} />
-                <span className="hidden sm:inline">Logout</span>
-              </button>
-            </div>
-          </div>
-        </motion.div>
+    <div className="min-h-screen bg-slate-50">
+      {/* the shared top bar: sections, Create Study and Logout (components/AppBar.tsx) */}
+      <AppBar />
+      <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 sm:py-10 space-y-6">
+        {/* All Studies and Logout moved to the top bar */}
+        <PageHeader
+          title="Interviews Dashboard"
+          subtitle={`${totalCount} total interview${totalCount === 1 ? '' : 's'} across active studies`}
+          actions={
+            <button
+              onClick={handleExportAll}
+              disabled={exporting || totalCount === 0}
+              className="px-3.5 py-2 text-sm rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+            >
+              {exporting ? <Loader2 size={16} className="animate-spin" /> : <Download size={16} />}
+              {exporting ? 'Exporting...' : 'Export All'}
+            </button>
+          }
+        />
 
         {warning && (
           <motion.div
@@ -378,7 +349,7 @@ const Dashboard: React.FC = () => {
                 <Filter size={15} />
               </div>
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Filter By Cohort</span>
+                <span className="text-xs font-bold text-slate-500 block">Filter By Cohort</span>
                 <span className="text-sm font-semibold text-slate-900">
                   {selectedStudyId ? selectedStudy?.config.name : 'All Research Studies'}
                 </span>
@@ -420,7 +391,7 @@ const Dashboard: React.FC = () => {
           >
             <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
               <div className="space-y-1.5 min-w-0">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-600">
+                <div className="flex items-center gap-2 text-xs font-bold text-blue-600">
                   <BookOpen size={14} />
                   <span>Selected Study</span>
                 </div>
@@ -462,7 +433,7 @@ const Dashboard: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-3 bg-slate-50/70 p-4 rounded-xl border border-slate-200/80">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Candidate Access Link</span>
+                <span className="text-xs font-bold text-slate-500 block">Candidate Access Link</span>
                 {link ? (
                   <div className="space-y-2">
                     <input
@@ -490,7 +461,7 @@ const Dashboard: React.FC = () => {
               </div>
 
               <form onSubmit={handleSendEmail} className="space-y-3 bg-slate-50/70 p-4 rounded-xl border border-slate-200/80">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-500 block">Direct Email Invite</span>
+                <span className="text-xs font-bold text-slate-500 block">Direct Email Invite</span>
                 <input
                   type="text"
                   placeholder="candidate@example.com"
@@ -612,7 +583,7 @@ const Dashboard: React.FC = () => {
 
             {totalCount > 0 && (
               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200/80 bg-white rounded-2xl p-4 sm:p-5 border shadow-card">
-                <div className="text-xs text-slate-500 font-semibold uppercase tracking-wider">
+                <div className="text-xs text-slate-500 font-semibold">
                   Showing <span className="text-slate-900 font-bold">{Math.min((currentPage - 1) * PAGE_SIZE + 1, totalCount)}</span>–<span className="text-slate-900 font-bold">{Math.min(currentPage * PAGE_SIZE, totalCount)}</span> of <span className="text-slate-900 font-bold">{totalCount}</span> interviews
                 </div>
 
@@ -672,7 +643,7 @@ const Dashboard: React.FC = () => {
             )}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };

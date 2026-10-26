@@ -10,6 +10,7 @@ import Synthesis from '@/components/Synthesis';
 import Export from '@/components/Export';
 import { Loader2 } from 'lucide-react';
 import keycloak from '@/keycloak';
+import { isAdminRole } from '@/lib/roles';
 
 export default function ParticipantPage() {
   const params = useParams();
@@ -71,10 +72,8 @@ export default function ParticipantPage() {
           }
 
           if (authenticated) {
-            const roles = (keycloak.tokenParsed?.realm_access?.roles || []).map((r: string) =>
-              r.toLowerCase()
-            );
-            const isAdminOrSuperAdmin = roles.includes('admin') || roles.includes('super-admin');
+            const roles: string[] = keycloak.tokenParsed?.realm_access?.roles || [];
+            const isAdminOrSuperAdmin = roles.some(isAdminRole);
 
             if (isAdminOrSuperAdmin) {
               setError('Admin and Super-admin accounts are not permitted to participate in the interview test.');
@@ -92,6 +91,13 @@ export default function ParticipantPage() {
 
         if (!result.valid || !result.studyConfig) {
           setError('Invalid or expired link');
+          setLoading(false);
+          return;
+        }
+
+        // a link finishes once (api/interview/complete)
+        if (result.completed) {
+          setError('You have already finished this interview. Thank you for taking part.');
           setLoading(false);
           return;
         }

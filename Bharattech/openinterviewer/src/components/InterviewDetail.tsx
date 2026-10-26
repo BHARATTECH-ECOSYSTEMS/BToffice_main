@@ -23,6 +23,7 @@ import {
   Lightbulb,
   AlertTriangle
 } from 'lucide-react';
+import AppBar, { PageHeader } from './AppBar';
 
 interface InterviewDetailProps {
   interviewId: string;
@@ -442,59 +443,31 @@ const InterviewDetail: React.FC<InterviewDetailProps> = ({ interviewId }) => {
     : keyInsights[0] || 'Analysis is being regenerated from the interview transcript.';
 
     return (
-    <div className="min-h-screen bg-slate-50/60 px-4 py-6 sm:p-8 lg:p-10">
-      <div className="w-full max-w-5xl mx-auto space-y-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-          className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-card"
-        >
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 mb-4 text-xs font-semibold uppercase tracking-wider transition-colors w-fit"
-          >
-            <ArrowLeft size={14} />
-            Back to Dashboard
-          </button>
-
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2 mb-1">
-                <span className="text-xs font-bold uppercase tracking-wider text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-md border border-blue-100">
-                  {interview.studyName}
-                </span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 break-words">
-                {participantName}
-              </h1>
-              <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-slate-500 font-medium">
-                <span className="flex items-center gap-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">
-                  <Clock size={13} className="text-slate-400" />
-                  {formatDuration(interview.createdAt, interview.completedAt)}
-                </span>
-                <span className="flex items-center gap-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">
-                  <MessageSquare size={13} className="text-slate-400" />
-                  {interview.messages?.length ?? 0} messages
-                </span>
-                <span className="flex items-center gap-1 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">
-                  {formatDate(interview.createdAt)}
-                </span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={handleDownloadTranscript}
-                className="w-full sm:w-auto px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-xs transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
-              >
-                <Download size={15} />
-                Download Report (PDF)
-              </button>
-            </div>
-          </div>
-        </motion.div>
+    <div className="min-h-screen bg-slate-50">
+      {/* the shared top bar: sections, Create Study and Logout (components/AppBar.tsx) */}
+      <AppBar />
+      <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 sm:py-10 space-y-6">
+        <PageHeader
+          back={{ label: 'Back to Dashboard', onClick: () => router.push('/dashboard') }}
+          title={participantName}
+          subtitle={
+            <span className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <span className="font-medium text-blue-700">{interview.studyName}</span>
+              <span>{formatDuration(interview.createdAt, interview.completedAt)}</span>
+              <span>{interview.messages?.length ?? 0} messages</span>
+              <span>{formatDate(interview.createdAt)}</span>
+            </span>
+          }
+          actions={
+            <button
+              onClick={handleDownloadTranscript}
+              className="w-full sm:w-auto px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-full transition-colors flex items-center justify-center gap-2"
+            >
+              <Download size={15} />
+              Download Report (PDF)
+            </button>
+          }
+        />
 
         {/* Tabs & Content */}
         <div className="bg-white rounded-2xl border border-slate-200/80 px-4 pt-2 shadow-card">
@@ -550,7 +523,7 @@ const InterviewDetail: React.FC<InterviewDetailProps> = ({ interviewId }) => {
                           : 'bg-slate-50 border border-slate-200/90 text-slate-900 rounded-tl-xs shadow-xs'
                       }`}
                     >
-                      <div className={`text-xs font-bold uppercase tracking-wider mb-1.5 ${
+                      <div className={`text-xs font-bold mb-1.5 ${
                         msg.role === 'user' ? 'text-blue-100' : 'text-slate-500'
                       }`}>
                         {msg.role === 'user' ? participantName : 'AI Interviewer'}
@@ -591,7 +564,7 @@ const InterviewDetail: React.FC<InterviewDetailProps> = ({ interviewId }) => {
                     <div className="bg-blue-50/70 border border-blue-200 text-slate-900 rounded-2xl p-5 sm:p-6 shadow-xs">
                       <div className="flex items-center gap-2 mb-2 text-blue-900">
                         <Target size={18} className="text-blue-600" />
-                        <span className="text-xs font-bold uppercase tracking-wider">
+                        <span className="text-xs font-bold">
                           Key Bottom Line
                         </span>
                       </div>
@@ -610,7 +583,7 @@ const InterviewDetail: React.FC<InterviewDetailProps> = ({ interviewId }) => {
 
                         <div className="space-y-4">
                           <div>
-                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            <div className="text-xs font-bold text-slate-500 mb-2">
                               Explicitly Stated
                             </div>
                             <div className="space-y-1.5">
@@ -628,7 +601,7 @@ const InterviewDetail: React.FC<InterviewDetailProps> = ({ interviewId }) => {
                           </div>
 
                           <div>
-                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">
+                            <div className="text-xs font-bold text-slate-500 mb-2">
                               Revealed in Practice
                             </div>
                             <div className="space-y-1.5">
@@ -713,7 +686,7 @@ const InterviewDetail: React.FC<InterviewDetailProps> = ({ interviewId }) => {
             )}
           </div>
         </div>
-      </div>
+      </main>
     </div>
   );
 };

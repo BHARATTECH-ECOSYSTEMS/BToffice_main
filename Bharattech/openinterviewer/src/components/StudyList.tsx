@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useStore } from '@/store';
 import { StoredStudy } from '@/types';
 import { getAllStudies, deleteStudy, setStudyLocked } from '@/services/storageService';
+import AppBar, { PageHeader } from './AppBar';
 import {
   Loader2,
   Plus,
@@ -172,74 +173,35 @@ const StudyList: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/60 px-4 py-6 sm:p-8 lg:p-10">
-      <div className="w-full max-w-5xl mx-auto space-y-6">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-          className="bg-white rounded-2xl border border-slate-200/80 p-5 sm:p-6 shadow-card"
-        >
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-3.5 min-w-0">
-              <div className="w-11 h-11 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600 shadow-xs">
-                <BookOpen size={22} />
-              </div>
-              <div className="min-w-0">
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-slate-900 break-words">
-                  My Studies
-                </h1>
-                <p className="text-slate-500 font-medium text-sm mt-0.5">
-                  {studies.length} research {studies.length === 1 ? 'study' : 'studies'} configured
-                </p>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2.5">
+    <div className="min-h-screen bg-slate-50">
+      {/* the shared top bar: sections, Create Study and Logout (components/AppBar.tsx) */}
+      <AppBar />
+      <main className="w-full max-w-6xl mx-auto px-4 sm:px-8 py-8 sm:py-10 space-y-6">
+        <PageHeader
+          title="My Studies"
+          subtitle={`${studies.length} research ${studies.length === 1 ? 'study' : 'studies'} configured`}
+          actions={
+            hasDemoData ? (
               <button
-                onClick={handleCreateStudy}
-                className="px-3.5 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all flex items-center justify-center gap-2 font-semibold shadow-xs hover:shadow-subtle active:scale-[0.98]"
+                onClick={handleClearDemo}
+                disabled={loadingDemo}
+                className="px-3.5 py-2 text-sm rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center gap-2 disabled:opacity-50 font-medium"
               >
-                <Plus size={16} />
-                Create Study
+                {loadingDemo ? <Loader2 size={16} className="animate-spin" /> : <Database size={16} />}
+                Clear Demo
               </button>
+            ) : (
               <button
-                onClick={() => router.push('/dashboard')}
-                className="px-3.5 py-2 text-sm bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl transition-all flex items-center justify-center gap-2 font-medium shadow-xs hover:border-slate-300 active:scale-[0.98]"
+                onClick={handleLoadDemo}
+                disabled={loadingDemo || !!kvWarning}
+                className="px-3.5 py-2 text-sm rounded-full text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center gap-2 disabled:opacity-50 font-medium"
               >
-                <Users size={16} className="text-slate-500" />
-                All Interviews
+                {loadingDemo ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                Load Demo
               </button>
-              {hasDemoData ? (
-                <button
-                  onClick={handleClearDemo}
-                  disabled={loadingDemo}
-                  className="px-3.5 py-2 text-sm border border-amber-200 bg-amber-50/50 text-amber-800 hover:bg-amber-100/60 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-medium active:scale-[0.98]"
-                >
-                  {loadingDemo ? <Loader2 size={16} className="animate-spin" /> : <Database size={16} />}
-                  Clear Demo
-                </button>
-              ) : (
-                <button
-                  onClick={handleLoadDemo}
-                  disabled={loadingDemo || !!kvWarning}
-                  className="px-3.5 py-2 text-sm border border-purple-200 bg-purple-50/50 text-purple-800 hover:bg-purple-100/60 rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 font-medium active:scale-[0.98]"
-                >
-                  {loadingDemo ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
-                  Load Demo
-                </button>
-              )}
-              <button
-                onClick={handleLogout}
-                className="px-3.5 py-2 text-sm border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl transition-all flex items-center justify-center gap-2 font-medium active:scale-[0.98]"
-              >
-                <LogOut size={16} />
-                Logout
-              </button>
-            </div>
-          </div>
-        </motion.div>
+            )
+          }
+        />
 
         {/* Storage Warning Banner */}
         {kvWarning && (
@@ -336,17 +298,23 @@ const StudyList: React.FC = () => {
             )}
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            {studies.map((study, index) => (
-              <motion.div
+          // one calm list instead of a grid of boxes: a row per study
+          <div className="oi-rise overflow-hidden rounded-2xl bg-white shadow-card">
+            <div className="hidden sm:grid grid-cols-[minmax(0,1fr)_110px_110px_120px_44px] gap-4 px-5 py-3 text-xs font-medium text-slate-500 border-b border-slate-200/70">
+              <span>Study</span>
+              <span>Interviews</span>
+              <span>Status</span>
+              <span>Created</span>
+              <span />
+            </div>
+            {studies.map((study) => (
+              <div
                 key={study.id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.04 }}
-                className="bg-white rounded-2xl border border-slate-200/90 p-5 sm:p-6 hover:border-slate-300 hover:shadow-card-hover transition-all duration-200 relative shadow-card group"
+                onClick={() => router.push(`/studies/${study.id}`)}
+                className="group relative grid cursor-pointer grid-cols-[minmax(0,1fr)_44px] items-center gap-4 border-b border-slate-200/70 px-5 py-4 transition-colors last:border-b-0 hover:bg-slate-50 sm:grid-cols-[minmax(0,1fr)_110px_110px_120px_44px]"
               >
-                {/* Menu button */}
-                <div className="absolute top-4 right-4 z-10">
+                {/* Menu button; its clicks stay in the menu instead of opening the study */}
+                <div className="relative z-10 order-last justify-self-end" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -417,56 +385,34 @@ const StudyList: React.FC = () => {
                   )}
                 </div>
 
-                {/* Content */}
-                <div
-                  className="cursor-pointer"
-                  onClick={() => router.push(`/studies/${study.id}`)}
-                >
-                  <div className="flex items-start gap-3 mb-3 pr-10">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-slate-900 text-lg mb-1 group-hover:text-blue-600 transition-colors break-words">
-                        {study.config.name}
-                      </h3>
-                      {study.config.description && (
-                        <p className="text-sm text-slate-500 line-clamp-2 font-medium">
-                          {study.config.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Stats */}
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 font-medium mb-4">
-                    <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">
-                      <Users size={13} className="text-slate-400" />
-                      <span>{study.interviewCount} {study.interviewCount === 1 ? 'interview' : 'interviews'}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-100">
-                      <Calendar size={13} className="text-slate-400" />
-                      <span>{formatDate(study.createdAt)}</span>
-                    </div>
-                  </div>
-
-                  {/* Status badges */}
-                  <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
-                    <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full flex items-center gap-1.5 ${
-                      study.isLocked
-                        ? 'bg-slate-100 text-slate-700 border border-slate-200'
-                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                    }`}>
-                      {study.isLocked ? <Lock size={11} /> : <Unlock size={11} />}
-                      {study.isLocked ? 'Locked' : 'Editable'}
-                    </span>
-                    <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-slate-100 text-slate-700 border border-slate-200">
-                      {study.config.coreQuestions?.length || 0} core questions
-                    </span>
-                  </div>
+                {/* the study: its name opens it from the keyboard too */}
+                <div className="min-w-0">
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/studies/${study.id}`)}
+                    className="block max-w-full text-left text-[15px] font-semibold text-slate-900 break-words transition-colors group-hover:text-blue-700"
+                  >
+                    {study.config.name}
+                  </button>
+                  {study.config.description && (
+                    <p className="mt-0.5 text-sm text-slate-500 line-clamp-1">{study.config.description}</p>
+                  )}
+                  {/* phones: the details sit under the name */}
+                  <p className="mt-1 text-xs text-slate-500 sm:hidden">
+                    {study.interviewCount} {study.interviewCount === 1 ? 'interview' : 'interviews'}, {study.isLocked ? 'locked' : 'editable'}
+                  </p>
                 </div>
-              </motion.div>
+                <span className="hidden text-sm tabular-nums text-slate-700 sm:block">{study.interviewCount}</span>
+                <span className="hidden items-center gap-2 text-sm text-slate-700 sm:flex">
+                  <span className={`h-2 w-2 rounded-full ${study.isLocked ? 'bg-slate-400' : 'bg-emerald-500'}`} aria-hidden="true" />
+                  {study.isLocked ? 'Locked' : 'Editable'}
+                </span>
+                <span className="hidden text-sm text-slate-500 sm:block">{formatDate(study.createdAt)}</span>
+              </div>
             ))}
           </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };

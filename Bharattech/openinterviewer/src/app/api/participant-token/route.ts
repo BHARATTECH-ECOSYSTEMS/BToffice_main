@@ -1,15 +1,26 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { randomUUID } from 'crypto';
+import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth';
 import { getParticipantToken, getStudy, saveParticipantToken } from '@/lib/kv';
 
 // Token expiry (24 hours)
 const TOKEN_TTL_SECONDS = 60 * 60 * 24;
 
-// POST /api/participant-token - Generate participant token
+// POST /api/participant-token - Generate participant token (researchers only: a link starts an interview on the AI key)
 export async function POST(request: Request) {
   try {
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+    if (!sessionToken || !(await verifySessionToken(sessionToken))) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { studyId } = body;
 
@@ -67,7 +78,8 @@ export async function GET(request: Request) {
 
     const tokenData = await getParticipantToken(token);
 
-    if (!tokenData) {
+    // a link whose study was deleted leads nowhere
+    if (!tokenData || !(await getStudy(tokenData.studyId))) {
       return NextResponse.json({ valid: false });
     }
 
@@ -76,7 +88,8 @@ export async function GET(request: Request) {
       studyConfig: tokenData.studyConfig,
       terminated: Boolean(tokenData.terminatedAt),
       terminationReason: tokenData.terminationReason,
-      terminatedAt: tokenData.terminatedAt
+      terminatedAt: tokenData.terminatedAt,
+      completed: Boolean(tokenData.completedAt)
     });
   } catch (error) {
     console.error('Token verification error:', error);
