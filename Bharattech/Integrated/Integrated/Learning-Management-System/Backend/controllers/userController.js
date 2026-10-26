@@ -661,6 +661,9 @@ exports.updateUser = async (req, res) => {
     if (!canEditUser(req.user?.role, user.role)) {
       return res.status(403).json({ message: "You can only change the details of sub admins, employees and interns." });
     }
+    if ("isBanned" in updates && typeof updates.isBanned !== "boolean") {
+      return res.status(400).json({ message: "isBanned must be true or false." });
+    }
     // a Super Admin can't be locked out through this route, even by another Super Admin
     if (normalizeRole(user.role) === "Superadmin" && "isBanned" in updates && Boolean(updates.isBanned) !== Boolean(user.isBanned)) {
       return res.status(403).json({ message: "A Super Admin account can't be blocked." });
@@ -691,19 +694,42 @@ exports.updateUser = async (req, res) => {
 
     if (req.file && !photoType(req.file.buffer)) return res.status(400).json({ message: PHOTO_PROBLEM });
 
+    // Blocking switches their Keycloak account off too (unblocking back on), so the other apps that sign in with
+    // Keycloak refuse them as well. Keycloak goes first, like "Mark as left": if it fails, nothing is changed.
+    const wasBanned = Boolean(user.isBanned);
+    const switchesSignIn = "isBanned" in updates && updates.isBanned !== wasBanned && user.authProvider === "keycloak";
+    if (switchesSignIn) {
+      try {
+        await setKeycloakEnabled(user.keycloakId, !updates.isBanned);
+      } catch (keycloakError) {
+        console.error("Block: switching the Keycloak account failed:", keycloakError?.message);
+        return res.status(502).json({ message: "Their sign-in couldn't be switched right now, so nothing was changed. Try again in a minute." });
+      }
+    }
+    // a failure before the record is saved puts their sign-in back as it was, so the two never disagree
+    const switchSignInBack = () =>
+      switchesSignIn && setKeycloakEnabled(user.keycloakId, !wasBanned).catch((e) => console.error("Block: switching the account back failed:", e.message));
+
     // Keycloak first: if it refuses, nothing is saved here either, so the two never disagree about the name
     if (renaming && updates.fullName !== user.fullName && user.keycloakId && user.authProvider === "keycloak") {
       try {
         await syncKeycloakName(user.keycloakId, updates.fullName);
       } catch (keycloakError) {
         console.error("Keycloak name sync error:", keycloakError?.response?.status || keycloakError?.message);
+        await switchSignInBack();
         return res.status(502).json({ message: "The new name couldn't be saved to the sign-in system, so nothing was changed. Try again in a moment." });
       }
     }
 
-    const oldPhotoId = req.file ? await storePhoto(user, req.file) : null;
-    Object.assign(user, updates);
-    await user.save();
+    let oldPhotoId;
+    try {
+      oldPhotoId = req.file ? await storePhoto(user, req.file) : null;
+      Object.assign(user, updates);
+      await user.save();
+    } catch (error) {
+      await switchSignInBack();
+      throw error;
+    }
     await deleteUserPhoto(oldPhotoId);
 
     if (requestedRole && user.keycloakId && user.authProvider === "keycloak") {

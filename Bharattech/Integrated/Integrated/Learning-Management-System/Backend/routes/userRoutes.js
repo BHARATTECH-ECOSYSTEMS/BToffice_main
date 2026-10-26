@@ -14,6 +14,7 @@ const {
   removeMyPhoto,
   getUserPhoto
 } = require("../controllers/userController");
+const { sendResetLinkFor } = require("../controllers/passwordResetController");
 const { requireAdmin } = require("../middlewares/keycloakAuth");
 // server.js signs everyone in before these routes (app.use("/api/user", keycloakAuth, userRoutes)), so they don't check again
 const { uploadUserPhoto } = require("../middlewares/uploadUserPhoto");
@@ -51,6 +52,9 @@ router.put("/:id", requireAdmin, uploadUserPhoto("profilePicture"), updateUser);
 
 // Partially update user (PATCH)
 router.patch("/:id", requireAdmin, uploadUserPhoto("profilePicture"), partialUpdateUser);
+
+// Email someone a password reset link (Admin only; the same link and limits as "Forgot password?")
+router.post("/:id/reset-link", requireAdmin, sendResetLinkFor);
 
 // Delete user (soft delete - Admin only)
 router.delete("/:id", requireAdmin, deleteUser);

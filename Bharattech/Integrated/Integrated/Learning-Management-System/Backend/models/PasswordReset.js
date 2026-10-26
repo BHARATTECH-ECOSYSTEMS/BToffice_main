@@ -10,6 +10,8 @@ const PasswordResetSchema = new mongoose.Schema({
   usedAt: { type: Date },
   // set when a newer link replaces this one
   cancelledAt: { type: Date },
+  // the admin who sent it from People; unset when the person asked for it themselves
+  requestedBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   createdAt: { type: Date, default: Date.now, expires: 60 * 60 * 24 },
 });
 
