@@ -57,15 +57,19 @@ export async function ensureUser(req) {
     return user;
   }
 
-  // an old record already giving up its email to this account (a move cut short), else one with the same email
-  const old = (await User.findOne({ movedTo: id })) || (email ? await User.findOne({ email }) : null);
+  // an old record already giving up its email to this account (a move cut short), else one with the same email, but
+  // only when Keycloak has verified it (anyone can change their own email; our invites verify it)
+  const verified = req.user?.emailVerified === true;
+  const old = (await User.findOne({ movedTo: id })) || (email && verified ? await User.findOne({ email }) : null);
   if (old) return moveToNewAccount(old, id, name, email);
+  // an unverified email another record holds: a record of its own, with a stand-in email (emails are unique)
+  const ownEmail = email && !(await User.exists({ email })) ? email : `${id}@bharattech.local`;
 
   try {
     return await User.create({
       _id: id,
       name: name || req.user?.username || email || "BharatTech User",
-      email: email || `${id}@bharattech.local`,
+      email: ownEmail,
       imageUrl: "",
       enrolledCourses: [],
     });

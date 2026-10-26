@@ -70,6 +70,8 @@ export const protect = (roles = []) => {
           // the person's real name (the portal keeps it in Keycloak), so the LMS never shows a username instead
           name: decoded.name || [decoded.given_name, decoded.family_name].filter(Boolean).join(" ") || undefined,
           email: decoded.email,
+          // Keycloak marks an email someone changed themselves not verified; only a verified one moves records
+          emailVerified: decoded.email_verified === true,
           roles: rolesFromToken,
         };
 

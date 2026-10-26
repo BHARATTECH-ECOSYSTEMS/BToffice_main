@@ -81,6 +81,8 @@ export function tokenFor({ sub = randomUUID(), roles = ["Employee"], ...claims }
       iss: issuer,
       azp: "lms-client",
       email: `${sub}@example.test`,
+      // as for an invited account (Keycloak marks a self-changed email not verified)
+      email_verified: true,
       name: "Test Person",
       preferred_username: `user-${sub}`,
       realm_access: { roles },
