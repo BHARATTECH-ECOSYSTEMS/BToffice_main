@@ -25,13 +25,14 @@ class FakeKcAdminClient {
 require("./helpers/fakeKeycloakAdmin").stubKeycloakAdminPackage(FakeKcAdminClient);
 
 const User = require("../models/User");
-const { getUsers, getKeycloakUsers } = require("../controllers/userController");
+const { getUsers, getKeycloakUsers, forgetKeycloakList } = require("../controllers/userController");
 const { connectTestDb, clearTestDb, disconnectTestDb, userFields } = require("./helpers/testDb");
 
 before(connectTestDb);
 beforeEach(async () => {
   await clearTestDb();
   Object.assign(keycloak, { users: [], total: null, roles: {}, findError: null, finds: 0 });
+  forgetKeycloakList();
 });
 after(disconnectTestDb);
 
@@ -95,15 +96,14 @@ test("when Keycloak has more people than it sent back, nobody is marked removed"
   assert.equal((await User.findOne({ keycloakId: "kc-ravi" })).isDeleted, false);
 });
 
-test("the Keycloak list shows a phone only when its owner allows it", async () => {
-  await User.create(userFields({ keycloakId: "kc-asha", email: "asha@example.test", privacySettings: { showPhone: false } }));
+// review M15: the Keycloak list is for admins only (staff get an empty list: keycloakListAdmins.test.js)
+test("the Keycloak list shows a phone its owner shows as it is", async () => {
   await User.create(userFields({ keycloakId: "kc-ravi", email: "ravi@example.test" }));
-  keycloak.users = [kcUser("kc-asha", "asha@example.test", { phone: ["+91 90000 00001"], workPhone: ["+91 80 1"] }), kcUser("kc-ravi", "ravi@example.test", { phone: ["+91 90000 00002"] })];
-  const reply = await call(getKeycloakUsers, "Employee");
+  keycloak.users = [kcUser("kc-ravi", "ravi@example.test", { phone: ["+91 90000 00002"] })];
+  const reply = await call(getKeycloakUsers, "Admin");
   assert.equal(reply.status, 200);
-  const byEmail = Object.fromEntries(reply.body.map((p) => [p.email, p]));
-  assert.deepEqual([byEmail["asha@example.test"].phone, byEmail["asha@example.test"].workPhone], ["", ""]);
-  assert.equal(byEmail["ravi@example.test"].phone, "+91 90000 00002");
+  const [ravi] = reply.body;
+  assert.deepEqual([ravi.phone, ravi.phoneHidden], ["+91 90000 00002", undefined]);
 });
 
 test("the Keycloak list still shows Super Admins and Admins a hidden phone, marked as hidden", async () => {
@@ -113,13 +113,12 @@ test("the Keycloak list still shows Super Admins and Admins a hidden phone, mark
     const [asha] = (await call(getKeycloakUsers, role)).body;
     assert.deepEqual([asha.phone, asha.workPhone, asha.phoneHidden], ["+91 90000 00001", "+91 80 1", true], role);
   }
-  const [asSubadmin] = (await call(getKeycloakUsers, "Subadmin")).body;
-  assert.deepEqual([asSubadmin.phone, asSubadmin.phoneHidden], ["", undefined]);
+  assert.deepEqual((await call(getKeycloakUsers, "Subadmin")).body, []);
 });
 
 test("when Keycloak fails, the reply carries no internal error text", async () => {
   keycloak.findError = new Error("connect ECONNREFUSED 10.0.0.7:8443 (internal detail)");
-  const reply = await quiet(() => call(getKeycloakUsers, "Employee"));
+  const reply = await quiet(() => call(getKeycloakUsers, "Admin"));
   assert.equal(reply.status, 500);
   assert.equal(JSON.stringify(reply.body).includes("internal detail"), false, JSON.stringify(reply.body));
 });

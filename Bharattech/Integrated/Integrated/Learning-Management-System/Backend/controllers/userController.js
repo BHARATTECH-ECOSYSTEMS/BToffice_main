@@ -516,51 +516,81 @@ exports.getDirectory = async (req, res) => {
   }
 };
 
+// The company's People page asks for the Keycloak list every 30 seconds from every open page, and each answer costs a
+// Keycloak call per account, so admins share one copy for 30 seconds (before phones are hidden per viewer). An admin's
+// change to someone drops it (forgetKeycloakList), so the page never shows an edit undone.
+const KEYCLOAK_LIST_MS = 30 * 1000;
+let keycloakList = null;
+const forgetKeycloakList = () => {
+  keycloakList = null;
+};
+const sharedKeycloakAccounts = () => {
+  if (!keycloakList || Date.now() - keycloakList.at >= KEYCLOAK_LIST_MS) {
+    const accounts = loadKeycloakAccounts();
+    keycloakList = { at: Date.now(), accounts };
+    // a failed answer isn't shared: the next request asks again
+    accounts.catch(() => {
+      if (keycloakList?.accounts === accounts) keycloakList = null;
+    });
+  }
+  return keycloakList.accounts;
+};
+
+const loadKeycloakAccounts = async () => {
+  await authKeycloakAdmin();
+
+  const kcUsers = await kcAdmin.users.find({ realm: KEYCLOAK_REALM, max: 1000 });
+
+  return Promise.all(
+    kcUsers
+      // Hide invitees who haven't accepted yet (still required to set their
+      // permanent password) — they should only appear once they log in.
+      .filter((u) => u.enabled !== false && !(u.requiredActions || []).includes("UPDATE_PASSWORD"))
+      .map(async (u) => {
+        const roleMappings = await kcAdmin.users
+          .listRealmRoleMappings({ realm: KEYCLOAK_REALM, id: u.id })
+          .catch(() => []);
+
+        const realmRoleNames = (roleMappings || []).map((r) => r.name).filter(Boolean);
+        const role = roleFromKeycloakUser({ realmRoles: realmRoleNames }, "Employee");
+        const firstName = u.firstName || "";
+        const lastName = u.lastName || "";
+        const fullName =
+          [firstName, lastName].filter(Boolean).join(" ").trim() ||
+          u.username ||
+          u.email ||
+          "User";
+
+        const attributes = u.attributes || {};
+        const phone = Array.isArray(attributes.phone) ? attributes.phone[0] : attributes.phone || "";
+        const workPhone = Array.isArray(attributes.workPhone) ? attributes.workPhone[0] : attributes.workPhone || "";
+
+        return {
+          id: u.id,
+          username: u.username || "",
+          email: u.email || "",
+          firstName,
+          lastName,
+          fullName,
+          role,
+          roles: realmRoleNames,
+          emailVerified: u.emailVerified || false,
+          phone,
+          workPhone,
+        };
+      })
+  );
+};
+
+exports.forgetKeycloakList = forgetKeycloakList;
+exports.KEYCLOAK_LIST_MS = KEYCLOAK_LIST_MS;
+
+// GET /api/user/keycloak-users: every account's name, email, role and phones, for admins only. The company's People
+// page calls it for everyone, so staff get an empty list (the page then shows nothing extra, and no error).
 exports.getKeycloakUsers = async (req, res) => {
+  if (!isAdmin(req.user)) return res.json([]);
   try {
-    await authKeycloakAdmin();
-
-    const kcUsers = await kcAdmin.users.find({ realm: KEYCLOAK_REALM, max: 1000 });
-
-    const users = await Promise.all(
-      kcUsers
-        // Hide invitees who haven't accepted yet (still required to set their
-        // permanent password) — they should only appear once they log in.
-        .filter((u) => u.enabled !== false && !(u.requiredActions || []).includes("UPDATE_PASSWORD"))
-        .map(async (u) => {
-          const roleMappings = await kcAdmin.users
-            .listRealmRoleMappings({ realm: KEYCLOAK_REALM, id: u.id })
-            .catch(() => []);
-
-          const realmRoleNames = (roleMappings || []).map((r) => r.name).filter(Boolean);
-          const role = roleFromKeycloakUser({ realmRoles: realmRoleNames }, "Employee");
-          const firstName = u.firstName || "";
-          const lastName = u.lastName || "";
-          const fullName =
-            [firstName, lastName].filter(Boolean).join(" ").trim() ||
-            u.username ||
-            u.email ||
-            "User";
-
-          const attributes = u.attributes || {};
-          const phone = Array.isArray(attributes.phone) ? attributes.phone[0] : attributes.phone || "";
-          const workPhone = Array.isArray(attributes.workPhone) ? attributes.workPhone[0] : attributes.workPhone || "";
-
-          return {
-            id: u.id,
-            username: u.username || "",
-            email: u.email || "",
-            firstName,
-            lastName,
-            fullName,
-            role,
-            roles: realmRoleNames,
-            emailVerified: u.emailVerified || false,
-            phone,
-            workPhone,
-          };
-        })
-    );
+    const users = await sharedKeycloakAccounts();
 
     // each person's "show my phone" lives in their stored record
     const hidden = new Set(
@@ -740,6 +770,7 @@ exports.updateUser = async (req, res) => {
       await putKeycloakBack();
       throw error;
     }
+    forgetKeycloakList();
     await deleteUserPhoto(oldPhotoId);
     // an admin changed someone else's photo: that person hears about it in their bell
     if (req.file && String(user._id) !== String(req.user?.id)) {
@@ -791,6 +822,7 @@ exports.deleteUser = async (req, res) => {
     user.isDeleted = true;
     user.deletedAt = new Date();
     await user.save();
+    forgetKeycloakList();
 
     res.json({ message: "User deleted successfully" });
   } catch (error) {
