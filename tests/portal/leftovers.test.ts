@@ -34,11 +34,15 @@ const block = (css: string, selector: string) => {
 };
 const portalCss = readFileSync('src/styles/portal.css', 'utf8');
 
-test("Profile's details wrap onto another line instead of being cut off", () => {
-  const values = block(portalCss, '.p-me-facts dd');
-  assert.match(values, /white-space: normal/);
+test('facts wrap onto another line instead of being cut off, in Profile, the task window and the Verification file', () => {
+  const values = block(portalCss, '.p-file-facts dd');
   assert.match(values, /overflow-wrap: anywhere/);
-  assert.match(readFileSync('src/portal/pages/Profile.tsx', 'utf8'), /className="p-file-facts p-me-facts"/);
+  assert.doesNotMatch(values, /nowrap|ellipsis|overflow: hidden/);
+  // one rule for all three, so no page brings the "…" back with its own
+  assert.doesNotMatch(portalCss, /facts[^{]* dd[^{]*\{[^}]*(nowrap|ellipsis)/);
+  for (const page of ['Profile', 'TasksConnected', 'Verification']) {
+    assert.match(readFileSync(`src/portal/pages/${page}.tsx`, 'utf8'), /className="p-file-facts[ "]/, page);
+  }
 });
 
 test('every stream has its own colour, and the community badge uses it', () => {

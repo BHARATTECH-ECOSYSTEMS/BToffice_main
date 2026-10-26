@@ -351,7 +351,7 @@ function CaseFile({
         {facts.map(([k, v]) => (
           <div key={k}>
             <dt>{k}</dt>
-            <dd title={typeof v === 'string' ? v : undefined}>{v}</dd>
+            <dd>{v}</dd>
           </div>
         ))}
       </dl>

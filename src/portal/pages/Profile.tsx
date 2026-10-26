@@ -211,7 +211,7 @@ function DetailsCard({ name, badge, badgeLabel, photo, facts }: { name: string; 
           <Badge kind={badge}>{badgeLabel ?? ROLE_LABEL[badge]}</Badge>
         </div>
       </div>
-      <dl className="p-file-facts p-me-facts">
+      <dl className="p-file-facts">
         {facts.map(([k, v]) => (
           <div key={k}>
             <dt>{k}</dt>

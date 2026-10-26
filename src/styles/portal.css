@@ -764,14 +764,13 @@ body:has(.portal) .scene {
   font-size: 12px;
   color: var(--ink-soft);
 }
+/* each detail shows whole: a long email, name or reference takes a second line instead of being cut off */
 .p-file-facts dd {
   margin: 3px 0 0;
-  overflow: hidden;
   font-size: 14px;
   font-weight: 500;
   color: var(--ink);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
 }
 .p-file-facts a {
   color: var(--p-accent-text);
@@ -788,11 +787,6 @@ body:has(.portal) .scene {
 /* a detail the account doesn't have yet reads quieter than real data */
 .p-file-facts dd.is-unset {
   color: var(--ink-soft);
-}
-/* Profile shows each detail whole: a long email or phone number takes a second line instead of being cut off */
-.p-me-facts dd {
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
 .p-file-body {
   display: grid;
