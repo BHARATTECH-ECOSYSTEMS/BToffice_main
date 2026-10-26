@@ -1,4 +1,4 @@
-// How the portal's newer controllers (calendar events, learning) answer: a Refusal is the caller's to fix and goes
+// How the portal's newer controllers (calendar events, attendance) answer: a Refusal is the caller's to fix and goes
 // back with its own status and message; anything else is logged and answered with a plain 500 that leaks nothing.
 
 class Refusal extends Error {

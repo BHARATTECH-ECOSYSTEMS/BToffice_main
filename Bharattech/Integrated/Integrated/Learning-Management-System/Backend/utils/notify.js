@@ -119,10 +119,6 @@ const EVENT_HEADLINE = { added: "New event", changed: "Event changed", cancelled
 const noteEvent = ({ event, action, detail, actorId }) =>
   noteEveryoneElse({ note: { kind: "event", title: `${EVENT_HEADLINE[action]}: ${event.title}`, detail, link: "/portal" }, refId: String(event._id), actorId });
 
-/** A learning course went live: everyone but its educator is told (see noteEveryoneElse). */
-const noteCourse = ({ course, detail, actorId }) =>
-  noteEveryoneElse({ note: { kind: "course", title: `New course: ${course.title}`, detail, link: `/portal/lms/course/${course._id}` }, refId: String(course._id), actorId });
-
 /** A note in every current Super Admin's and Admin's bell, without an email. */
 async function noteAdmins({ note, refId }) {
   try {
@@ -163,7 +159,6 @@ const noteVerificationRequest = (request) =>
 module.exports = {
   notify,
   noteEvent,
-  noteCourse,
   noteVerificationRequest,
   notePhotoChanged,
   forgetNotesAbout,

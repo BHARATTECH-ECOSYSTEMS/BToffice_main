@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-// Profile photos (and learning course covers, utils/courseThumbs.js) are kept in MongoDB GridFS, like task files and
+// Profile photos (and ID documents, through imageStore) are kept in MongoDB GridFS, like task files and
 // policy PDFs, rather than on the server's disk (which hosts like Render wipe on restart) or an outside image service.
 
 // The portal crops photos to a 640 px square JPEG (~100 KB) before sending, so this only stops misuse.
