@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const jwksClient = require("jwks-rsa");
 const User = require("../models/User");
 const { freeUsernameFor } = require("../utils/takenNames");
+const { createKeyKeeper } = require("../utils/keycloakKeys");
 
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 const KEYCLOAK_BASE_URL =
@@ -36,22 +37,17 @@ const assertAuthConfig = () => {
   if (!adminPassword || adminPassword === "admin") throw new Error("KEYCLOAK_ADMIN_PASSWORD must be set to a real password in production.");
 };
 
-const client = jwksClient({
+// The library only fetches Keycloak's key list; the keeper decides when (utils/keycloakKeys.js), so made-up tokens
+// can't use up the fetches real sign-ins need.
+const jwks = jwksClient({
   jwksUri: `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}/protocol/openid-connect/certs`,
-  cache: true,
-  rateLimit: true,
-  jwksRequestsPerMinute: 5,
+  cache: false,
+  rateLimit: false,
+  timeout: 5000,
 });
+const keyFor = createKeyKeeper({ fetchKeys: () => jwks.getSigningKeys() });
 
-const getKey = (header, callback) => {
-  client.getSigningKey(header.kid, (err, key) => {
-    if (err) {
-      console.error("JWKS Error:", err.message);
-      return callback(err);
-    }
-    callback(null, key.publicKey || key.rsaPublicKey);
-  });
-};
+const getKey = (header, callback) => keyFor(header.kid).then((key) => callback(null, key), callback);
 
 /** The claims of a token this realm's Keycloak signed; rejects any other (made up, expired, another issuer). */
 const verifyToken = (token) =>
