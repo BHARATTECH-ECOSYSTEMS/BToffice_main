@@ -8,11 +8,18 @@ const { createRateLimits, PER_PERSON, PER_ADDRESS, SIGN_IN, SIGN_IN_PATHS, PASSW
 let server;
 let base;
 
+// A stand-in for Keycloak's signature check: tokens ending in ".signed" are genuine, anything else is refused.
+const verify = async (token) => {
+  const [, payload, signature] = token.split(".");
+  if (signature !== "signed") throw new Error("invalid signature");
+  return JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+};
+
 // Small limits so the tests can reach them, each a different size so a refusal shows which limit made it. Addresses come from X-Forwarded-For, as on Render (trust proxy).
 before(async () => {
   const app = express();
   app.set("trust proxy", 1);
-  const limits = createRateLimits({ perPerson: 3, perAddress: 4, signIn: 2, publicForm: 1, windowMs: 60_000, publicFormWindowMs: 60_000 });
+  const limits = createRateLimits({ perPerson: 3, perAddress: 4, signIn: 2, publicForm: 1, windowMs: 60_000, publicFormWindowMs: 60_000, verify });
   app.use("/api", limits.api);
   app.post("/api/auth/keycloak-login", limits.signIn, express.json(), (req, res) => (req.body.password === "right" ? res.json({ ok: true }) : res.status(401).json({ message: "Invalid username or password" })));
   app.post("/api/auth/forgot-password", limits.passwords, (_req, res) => res.json({ ok: true }));
@@ -26,8 +33,10 @@ after(async () => {
 });
 
 const part = (claims) => Buffer.from(JSON.stringify(claims)).toString("base64url");
-/** A sign-in token as Keycloak shapes one: only its middle part (who it is) matters for counting. */
+/** A sign-in token Keycloak signed, for `sub`. */
 const tokenFor = (sub) => `${part({ alg: "RS256" })}.${part({ sub })}.signed`;
+/** A token anyone could make up: readable, but not signed by Keycloak. */
+const madeUp = (sub) => `${part({ alg: "RS256" })}.${part({ sub })}.forged`;
 let addresses = 0;
 const newAddress = () => `203.0.113.${++addresses}`;
 
@@ -77,6 +86,46 @@ test("a token that can't be read counts as no sign-in, so it can't dodge the add
   const signedLooking = (claims) => `x.${part(claims)}.signed`;
   const junk = ["junk", "a.b.c", signedLooking([1]), signedLooking({}), signedLooking({ sub: 5 })];
   assert.deepEqual(await statuses(junk.map((token) => () => get(visitor, token))), [200, 200, 200, 200, 429]);
+});
+
+// Review 2026-10-26 M6 (owner's 3A): counting read the token without checking it, so a script sending a new made-up
+// token each time got a fresh count of its own every time and never met the address's limit.
+test("a made-up token counts against its address, however many different ones a script sends", async () => {
+  const script = newAddress();
+  assert.deepEqual(await statuses(["a", "b", "c", "d", "e"].map((sub) => () => get(script, madeUp(`kc-${sub}`)))), [200, 200, 200, 200, 429]);
+  // a real sign-in from that same address still has its own count
+  assert.equal((await get(script, tokenFor("kc-real"))).status, 200);
+});
+
+test("a request whose signature check fails is answered, not left hanging", async () => {
+  const limits = createRateLimits({ verify: () => Promise.reject(new Error("JWKS down")) });
+  const app = express();
+  app.use(limits.api);
+  app.get("/", (_req, res) => res.json({ ok: true }));
+  const s = await new Promise((resolve) => { const srv = app.listen(0, "127.0.0.1", () => resolve(srv)); });
+  try {
+    const res = await fetch(`http://127.0.0.1:${s.address().port}/`, { headers: { Authorization: `Bearer ${tokenFor("kc-asha")}` } });
+    assert.equal(res.status, 200);
+  } finally {
+    await new Promise((resolve) => s.close(resolve));
+  }
+});
+
+test("server.js loads the limits only after the settings: the signature check reads Keycloak's address when it loads", () => {
+  // found by the laptop check: loaded first, the check looked for Keycloak at the default address and every real
+  // sign-in was refused
+  const serverFile = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
+  const settings = serverFile.indexOf("dotenv.config(");
+  const limits = serverFile.indexOf('require("./middlewares/rateLimits")');
+  assert.ok(settings > -1 && limits > settings, `settings at ${settings}, limits at ${limits}`);
+});
+
+test("the real counting checks the signature with sign-in's own check (keycloakAuth's verifyToken)", () => {
+  const limitsFile = fs.readFileSync(path.join(__dirname, "..", "middlewares", "rateLimits.js"), "utf8");
+  assert.match(limitsFile, /const \{ verifyToken \} = require\("\.\/keycloakAuth"\);/);
+  assert.match(limitsFile, /verify = verifyToken,/);
+  const auth = fs.readFileSync(path.join(__dirname, "..", "middlewares", "keycloakAuth.js"), "utf8");
+  assert.match(auth, /decoded = await verifyToken\(token\);/);
 });
 
 // Review 2026-10-26 M5 (owner's 2A): every sign-in counted, successful ones too, so an office behind one address was

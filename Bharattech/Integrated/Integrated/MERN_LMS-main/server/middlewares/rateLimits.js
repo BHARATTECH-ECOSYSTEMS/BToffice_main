@@ -1,4 +1,5 @@
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
+import { verifyToken } from "./authMiddleware.js";
 
 /*
  * How many requests the API takes before it asks the caller to wait (429), the same rule as the portal's main backend
@@ -7,40 +8,51 @@ import { rateLimit, ipKeyGenerator } from "express-rate-limit";
  * the educator pages) locked people out within minutes on the live site.
  * - Signed in: counted per person (the account in the sign-in token), generously.
  * - Not signed in: counted per address.
- * Counting reads the token without checking it: a forged one only gets a count of its own, and protect() still
- * refuses it on every route that needs a sign-in.
+ * A token counts as a person's only once its signature checks out (the same check as protect()): a made-up one counts
+ * against its address, so a script can't escape the address's count by sending a new one each time.
  */
 
 const WINDOW_MS = 15 * 60 * 1000;
 export const PER_PERSON = 1000;
 export const PER_ADDRESS = 300;
 
-/** The account a bearer token says it is for, or null when there is no readable one. */
-const personIn = (req) => {
-  const token = /^Bearer\s+(\S+)$/i.exec(req.get("authorization") || "")?.[1];
-  const payload = token?.split(".")[1];
-  if (!payload) return null;
-  try {
-    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    return typeof claims?.sub === "string" && claims.sub ? claims.sub : null;
-  } catch {
-    return null;
-  }
+/**
+ * Finds the account a request's sign-in token is for, or null (no token, or one Keycloak didn't sign), checking each
+ * request's token once: the counting key and the limit both ask.
+ */
+const personFinder = (verify) => {
+  const found = new WeakMap();
+  const check = async (token) => {
+    try {
+      const claims = await verify(token);
+      return typeof claims?.sub === "string" && claims.sub ? claims.sub : null;
+    } catch {
+      return null;
+    }
+  };
+  return (req) => {
+    if (!found.has(req)) {
+      const token = /^Bearer\s+(\S+)$/i.exec(req.get("authorization") || "")?.[1];
+      found.set(req, token ? check(token) : Promise.resolve(null));
+    }
+    return found.get(req);
+  };
 };
 
 /** The limits, with their sizes as options so tests can reach them. */
-export function createRateLimits({ perPerson = PER_PERSON, perAddress = PER_ADDRESS, windowMs = WINDOW_MS } = {}) {
+export function createRateLimits({ perPerson = PER_PERSON, perAddress = PER_ADDRESS, windowMs = WINDOW_MS, verify = verifyToken } = {}) {
+  const personIn = personFinder(verify);
   return {
     api: rateLimit({
       windowMs,
       standardHeaders: "draft-8",
       legacyHeaders: false,
       message: { status: "fail", message: "Too many requests. Wait a few minutes and try again." },
-      keyGenerator: (req) => {
-        const person = personIn(req);
+      keyGenerator: async (req) => {
+        const person = await personIn(req);
         return person ? `person:${person}` : `address:${ipKeyGenerator(req.ip)}`;
       },
-      limit: (req) => (personIn(req) ? perPerson : perAddress),
+      limit: async (req) => ((await personIn(req)) ? perPerson : perAddress),
     }),
   };
 }

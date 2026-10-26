@@ -1,4 +1,5 @@
 const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
+const { verifyToken } = require("./keycloakAuth");
 
 /*
  * How many requests the API takes before it asks the caller to wait (429). A page of the portal makes about ten, and
@@ -11,8 +12,8 @@ const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
  * - The other routes that take or set a password: every try counts, strictly per address (forgot password answers the
  *   same whatever happened, so its failures can't be told apart).
  * - The website's public verification form: a few an hour per address, against floods (it needs no sign-in).
- * Counting reads the token without checking it: a forged one only gets a count of its own, and keycloakAuth still
- * refuses it on every route that needs a sign-in.
+ * A token counts as a person's only once its signature checks out (the same check as keycloakAuth): a made-up one
+ * counts against its address, so a script can't escape the address's count by sending a new one each time.
  */
 
 const WINDOW_MS = 15 * 60 * 1000;
@@ -36,18 +37,27 @@ const PASSWORD_PATHS = [
 
 const WAIT = { message: "Too many requests. Wait a minute and try again." };
 
-/** The account a bearer token says it is for, or null when there is no readable one. */
-const personIn = (req) => {
-  const token = /^Bearer\s+(\S+)$/i.exec(req.get("authorization") || "")?.[1];
-  const payload = token?.split(".")[1];
-  if (!payload) return null;
-  try {
-    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
-    const who = claims && typeof claims === "object" ? claims.sub || claims.id || claims.userId : null;
-    return typeof who === "string" && who ? who : null;
-  } catch {
-    return null;
-  }
+/**
+ * Finds the account a request's sign-in token is for, or null (no token, or one Keycloak didn't sign), checking each
+ * request's token once: the counting key and the limit both ask.
+ */
+const personFinder = (verify) => {
+  const found = new WeakMap();
+  const check = async (token) => {
+    try {
+      const claims = await verify(token);
+      return typeof claims?.sub === "string" && claims.sub ? claims.sub : null;
+    } catch {
+      return null;
+    }
+  };
+  return (req) => {
+    if (!found.has(req)) {
+      const token = /^Bearer\s+(\S+)$/i.exec(req.get("authorization") || "")?.[1];
+      found.set(req, token ? check(token) : Promise.resolve(null));
+    }
+    return found.get(req);
+  };
 };
 
 const addressOf = (req) => `address:${ipKeyGenerator(req.ip)}`;
@@ -60,16 +70,18 @@ function createRateLimits({
   publicForm = PUBLIC_FORM,
   windowMs = WINDOW_MS,
   publicFormWindowMs = PUBLIC_FORM_WINDOW_MS,
+  verify = verifyToken,
 } = {}) {
   const shared = { windowMs, standardHeaders: "draft-8", legacyHeaders: false, message: WAIT };
+  const personIn = personFinder(verify);
   return {
     api: rateLimit({
       ...shared,
-      keyGenerator: (req) => {
-        const person = personIn(req);
+      keyGenerator: async (req) => {
+        const person = await personIn(req);
         return person ? `person:${person}` : addressOf(req);
       },
-      limit: (req) => (personIn(req) ? perPerson : perAddress),
+      limit: async (req) => ((await personIn(req)) ? perPerson : perAddress),
     }),
     signIn: rateLimit({ ...shared, keyGenerator: addressOf, limit: signIn, skipSuccessfulRequests: true }),
     passwords: rateLimit({ ...shared, keyGenerator: addressOf, limit: signIn }),

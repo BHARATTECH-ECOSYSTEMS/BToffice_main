@@ -33,6 +33,20 @@ const getKey = (header, callback) => {
   });
 };
 
+/**
+ * The claims of a token Keycloak signed for the LMS's own client; rejects any other. Only Keycloak-signed tokens: a
+ * token signed with a shared secret could be made by anyone who knows it, with any role, and the realm signs tokens for
+ * every company app.
+ */
+export const verifyToken = (token) =>
+  new Promise((resolve, reject) => {
+    jwt.verify(token, getKey, { algorithms: ["RS256"], issuer: `${normalizedKeycloakUrl}/realms/${KEYCLOAK_REALM}`, clockTolerance: 60 }, (err, decoded) => {
+      if (err) return reject(err);
+      if (!KEYCLOAK_CLIENT_IDS.includes(decoded?.azp)) return reject(new Error("token issued for another client"));
+      resolve(decoded);
+    });
+  });
+
 export const protect = (roles = []) => {
   return (req, res, next) => {
     const authHeader = req.headers.authorization || "";
@@ -47,30 +61,8 @@ export const protect = (roles = []) => {
         .json({ success: false, message: "Authentication required" });
     }
 
-    // Only Keycloak-signed tokens: a token signed with a shared secret could be made by anyone who knows it, with any role.
-    jwt.verify(
-      token,
-      getKey,
-      {
-        algorithms: ["RS256"],
-        issuer: `${normalizedKeycloakUrl}/realms/${KEYCLOAK_REALM}`,
-        clockTolerance: 60,
-      },
-      (err, decoded) => {
-        if (err) {
-          console.error("Token verification failed:", err.message);
-          return res
-            .status(401)
-            .json({ success: false, message: "Invalid or expired token" });
-        }
-
-        // The realm signs tokens for every company app; only the LMS's own may be used here.
-        if (!KEYCLOAK_CLIENT_IDS.includes(decoded?.azp)) {
-          return res
-            .status(401)
-            .json({ success: false, message: "Invalid or expired token" });
-        }
-
+    verifyToken(token).then(
+      (decoded) => {
         const clientRoles = KEYCLOAK_CLIENT_IDS.flatMap(
           (cid) => decoded?.resource_access?.[cid]?.roles || []
         );
@@ -103,6 +95,10 @@ export const protect = (roles = []) => {
         }
 
         next();
+      },
+      (err) => {
+        console.error("Token verification failed:", err.message);
+        res.status(401).json({ success: false, message: "Invalid or expired token" });
       }
     );
   };

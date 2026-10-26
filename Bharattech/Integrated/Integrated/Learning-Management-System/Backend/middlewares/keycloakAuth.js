@@ -53,6 +53,14 @@ const getKey = (header, callback) => {
   });
 };
 
+/** The claims of a token this realm's Keycloak signed; rejects any other (made up, expired, another issuer). */
+const verifyToken = (token) =>
+  new Promise((resolve, reject) => {
+    jwt.verify(token, getKey, { algorithms: ["RS256"], issuer: `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}` }, (err, verified) =>
+      err ? reject(err) : resolve(verified)
+    );
+  });
+
 const resolveRole = (decoded) => {
   const clientRoles = decoded.resource_access?.["lms-client"]?.roles || [];
   const realmRoles = decoded.realm_access?.roles || [];
@@ -200,23 +208,7 @@ const keycloakAuth = async (req, res, next) => {
 
     let decoded;
     try {
-      decoded = await new Promise((resolve, reject) => {
-        jwt.verify(
-          token,
-          getKey,
-          {
-            algorithms: ["RS256"],
-            issuer: `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}`,
-          },
-          (err, verifiedToken) => {
-            if (err) {
-              reject(err);
-            } else {
-              resolve(verifiedToken);
-            }
-          },
-        );
-      });
+      decoded = await verifyToken(token);
 
       // only tokens issued for this app's Keycloak client are accepted (a token for another app is refused)
       if (!audienceAllowed(decoded)) {
@@ -271,6 +263,7 @@ const requireSuperAdmin = (req, res, next) => {
 
 module.exports = {
   keycloakAuth,
+  verifyToken,
   requireAdmin,
   requireSuperAdmin,
   getOrCreateUser,

@@ -2,10 +2,11 @@ const express = require("express");
 const dotenv = require("dotenv");
 const path = require("path");
 const cors = require("cors");
-const { createRateLimits, SIGN_IN_PATHS, PASSWORD_PATHS } = require("./middlewares/rateLimits");
 
 // Load env before importing routes/controllers that read process.env at module scope.
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
+// after the settings: the limits check sign-in tokens with keycloakAuth, which reads Keycloak's address when it loads
+const { createRateLimits, SIGN_IN_PATHS, PASSWORD_PATHS } = require("./middlewares/rateLimits");
 
 const app = express();
 app.set("trust proxy", 1);
