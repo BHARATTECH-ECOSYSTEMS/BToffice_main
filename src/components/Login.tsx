@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useLocation, useNavigate } from 'react-router';
 import { useScene } from '../gl/Scene';
-import { auth, isEmployeeId, resetTokenFrom, type SignInResult } from '../portal/auth';
+import { auth, isEmployeeId, isUsername, resetTokenFrom, USERNAME_SHAPE, type SignInResult } from '../portal/auth';
 import { getSession, startSession } from '../portal/session';
 import { LogoGlass } from './LogoGlass';
 import { Arrow, Brand, BtnText, ThreadMark } from './ui';
@@ -68,8 +68,6 @@ type Field = 'email' | 'password' | 'username' | 'newPassword' | 'confirm';
 type Status = { kind: 'idle' } | { kind: 'loading' } | { kind: 'notice'; text: string } | { kind: 'entering' } | { kind: 'welcome' };
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-// the backend's rule for chosen usernames (controllers/authController.js acceptInvite)
-const USERNAME_SHAPE = /^[a-zA-Z0-9._-]{3,32}$/;
 const NEW_PASSWORD_MIN = 8;
 const RESET_NOT_CONNECTED = 'Password reset isn’t connected yet, so no email was sent. Please ask your administrator for now.';
 const RESET_UNAVAILABLE = 'We couldn’t reach the sign-in service, so no email was sent. Try again in a moment.';
@@ -81,7 +79,7 @@ const RESET_DONE = 'Your password was changed, and you were signed out everywher
 const TOO_MANY_TRIES = 'Too many tries from here right now. Wait a few minutes and try again.';
 const INVITE_EXPIRED = 'This invite has expired: invites last 12 hours. Ask your admin to send it again from People.';
 const SIGN_IN_FAILED: Record<Exclude<SignInResult, { ok: true }>['reason'], string> = {
-  credentials: 'Those details don’t match. Check your email or Employee ID and password, and try again.',
+  credentials: 'Those details don’t match. Check your email, username or Employee ID and password, and try again.',
   'set-password': 'Your account still needs a new password before you can sign in. Please ask your administrator to help you finish setting it.',
   'not-set-up': 'Your account isn’t fully set up yet. Ask an admin to finish it, then sign in again.',
   'invite-expired': INVITE_EXPIRED,
@@ -98,7 +96,7 @@ const COPY: Record<View, { title: string; sub: string; submit: string; busy: str
   signin: { title: 'Welcome back', sub: 'Sign in to your workspace.', submit: 'Sign in', busy: 'Signing in…' },
   forgot: {
     title: 'Reset your password',
-    sub: auth ? 'Enter your work email or Employee ID and we’ll email you a reset link.' : 'Enter your work email and we’ll send you a reset link.',
+    sub: auth ? 'Enter your work email, username or Employee ID and we’ll email you a reset link.' : 'Enter your work email and we’ll send you a reset link.',
     submit: 'Send reset link',
     busy: 'Sending…',
   },
@@ -172,7 +170,7 @@ function LoginDialog({ onClose, reset }: { onClose: () => void; reset: { token: 
   const [closing, setClosing] = useState(false);
   // a reset link opens on its own view; a broken one (or any in the demo) on a fresh request
   const [view, setView] = useState<View>(reset ? (resetToken.current ? 'reset' : 'forgot') : 'signin');
-  // only the real sign-in knows Employee IDs; the demo stays email-only
+  // only the real sign-in knows Employee IDs and usernames; the demo stays email-only
   const idAllowed = (view === 'signin' || view === 'forgot') && !!auth;
   // which way the new view slides in; unset until the first switch, so the opening stagger plays only once
   const [dir, setDir] = useState<'next' | 'back' | undefined>();
@@ -246,9 +244,9 @@ function LoginDialog({ onClose, reset }: { onClose: () => void; reset: { token: 
     const password = String(f.get('password') ?? '');
     const mail = email.trim();
     const next: typeof errors = {};
-    if (!mail) next.email = idAllowed ? 'Enter your work email or Employee ID.' : 'Enter your work email.';
-    else if (!EMAIL_SHAPE.test(mail) && !(idAllowed && isEmployeeId(mail))) {
-      next.email = idAllowed ? 'Enter a work email, or an Employee ID like BT-0001.' : 'That doesn’t look like an email address.';
+    if (!mail) next.email = idAllowed ? 'Enter your work email, username or Employee ID.' : 'Enter your work email.';
+    else if (!EMAIL_SHAPE.test(mail) && !(idAllowed && (isEmployeeId(mail) || isUsername(mail)))) {
+      next.email = idAllowed ? 'Enter a work email, your username, or an Employee ID like BT-0001.' : 'That doesn’t look like an email address.';
     }
     if (view === 'signin' && !password) next.password = 'Enter your password.';
     setErrors(next);
@@ -536,7 +534,7 @@ function LoginDialog({ onClose, reset }: { onClose: () => void; reset: { token: 
               )}
               {(view === 'signin' || view === 'forgot') && (
               <label className="login-field">
-                <span>{idAllowed ? 'Work email or Employee ID' : 'Work email'}</span>
+                <span>{idAllowed ? 'Work email, username or Employee ID' : 'Work email'}</span>
                 <input
                   name="email"
                   // a text field, because the browser's email check would refuse BT-0001

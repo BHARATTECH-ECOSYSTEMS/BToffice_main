@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, BUSY_MESSAGE } from './api';
+import { api, ApiError, BUSY_MESSAGE, type createApi } from './api';
 import { ROLE_LABEL, STREAMS, type PersonRole, type PersonStatus, type Stream } from './data';
 
 /**
@@ -53,6 +53,53 @@ export function canMarkLeft(actor: AccountRole, target: { accountRole: AccountRo
   if (!canDelete(actor, target.accountRole)) return `${roleLabel(target.accountRole)} accounts can't be marked as left by your role`;
   if (!target.stream) return 'Set their stream in Details first: it decides which community they join';
   return '';
+}
+
+const isAdminRole = (role: AccountRole) => role === 'Superadmin' || role === 'Admin';
+
+/**
+ * Why `actor` can't block or unblock this person, or '' when they can. The backend's rule (the edit route's
+ * canEditUser): a Super Admin anyone but a Super Admin, an Admin those below; never yourself.
+ */
+export function blockProblem(actor: AccountRole, target: { accountRole: AccountRole }, self: boolean) {
+  if (self) return "You can't block yourself";
+  if (!isAdminRole(actor)) return 'Only admins can block accounts';
+  if (target.accountRole === 'Superadmin') return "A Super Admin account can't be blocked";
+  if (!canEditPerson(actor, target.accountRole)) return `${roleLabel(target.accountRole)} accounts can't be blocked by your role`;
+  return '';
+}
+
+/** Why `actor` can't email this person a reset link, or '' when they can (the backend's sendResetLinkFor). */
+export function resetLinkProblem(actor: AccountRole, target: { accountRole: AccountRole; status: PersonStatus }, self: boolean) {
+  if (self) return 'For your own password, use Settings → Change password';
+  if (!isAdminRole(actor)) return 'Only admins can send reset links';
+  if (!canEditPerson(actor, target.accountRole)) return `Your role can't send ${roleLabel(target.accountRole).toLowerCase()} accounts a reset link`;
+  if (target.status === 'inactive') return 'Unblock them first';
+  return '';
+}
+
+const ACCOUNT_FAILED: Record<ApiError['kind'], string> = {
+  'signed-out': 'Your sign-in has ended. Sign out and sign in again, then try once more.',
+  forbidden: 'Your role isn’t allowed to do that for this person.',
+  'not-found': 'That person isn’t in the employee records any more. The list has been refreshed.',
+  conflict: 'That couldn’t be done for this account.',
+  'bad-request': 'That change wasn’t accepted.',
+  busy: BUSY_MESSAGE,
+  unavailable: 'We couldn’t reach the employee records, so nothing was changed. Try again in a moment.',
+};
+/** Block, unblock and reset links: the backend's own words when it sent some (they say what to do), else a plain sentence. */
+export const accountFailedMessage = (e: ApiError) => (e.message && e.message !== e.kind ? e.message : ACCOUNT_FAILED[e.kind]);
+
+/** Block / Unblock (the edit route's isBanned, which also switches their sign-in) and "Send reset link". */
+export function accountCalls(client: ReturnType<typeof createApi>) {
+  return {
+    setBlocked: async (id: string, blocked: boolean) => void (await client.patch(`/user/${encodeURIComponent(id)}`, { isBanned: blocked })),
+    /** The backend's sentence saying where the link went. */
+    sendResetLink: async (id: string) => {
+      const reply = await client.post<{ message?: unknown }>(`/user/${encodeURIComponent(id)}/reset-link`, {});
+      return typeof reply?.message === 'string' && reply.message ? reply.message : 'A reset link went to their work email.';
+    },
+  };
 }
 
 /** The roles `actor` may invite someone as (the backend's canInviteRole). */
@@ -190,6 +237,15 @@ export function useDirectory() {
     changeRole: (id: string, role: AccountRole) => act(() => api!.patch(`/user/${id}`, { role })),
     saveDetails: (id: string, details: { fullName?: string; stream: Stream | null; team: string; joinedOn?: string | null }) => act(() => api!.patch(`/user/${id}`, details)),
     remove: (id: string) => act(() => api!.del(`/user/${id}`)),
+    /** Blocking also switches their sign-in off; unblocking switches it back on. */
+    setBlocked: (id: string, blocked: boolean) => act(() => accountCalls(api!).setBlocked(id, blocked)),
+    sendResetLink: async (id: string) => {
+      try {
+        return await accountCalls(api!).sendResetLink(id);
+      } catch (error) {
+        throw asApiError(error);
+      }
+    },
     /** Moves them to their stream's community and switches their sign-in off (community.ts has the rest). */
     markLeft: (id: string) => act(() => api!.post(`/community/leave/${encodeURIComponent(id)}`, {})),
     /**

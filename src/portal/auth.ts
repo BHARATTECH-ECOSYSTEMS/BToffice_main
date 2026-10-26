@@ -92,6 +92,11 @@ export const loginRedirect = (pathname: string) => (/^\/login\/?$/i.test(pathnam
 const EMPLOYEE_ID_SHAPE = /^bt-?\d{4,}$/i;
 export const isEmployeeId = (typed: string) => EMPLOYEE_ID_SHAPE.test(typed.trim());
 
+// the backend's rule for the username people choose when they finish their invite (controllers/authController.js
+// acceptInvite); Keycloak takes it at sign-in like an email
+export const USERNAME_SHAPE = /^[a-zA-Z0-9._-]{3,32}$/;
+export const isUsername = (typed: string) => USERNAME_SHAPE.test(typed.trim());
+
 interface Tokens {
   access: string;
   refresh: string;

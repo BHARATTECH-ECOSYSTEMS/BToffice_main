@@ -3,6 +3,8 @@ import { EMAIL_SHAPE, ID_RETENTION_DAYS, ROLE_LABEL, STREAM_LABEL, STREAMS, type
 import type { ApiError } from '../api';
 import { BUSY_MESSAGE } from '../api';
 import {
+  accountFailedMessage,
+  blockProblem,
   canDelete,
   canEditDetails,
   canMarkLeft,
@@ -16,6 +18,7 @@ import {
   NAME_MIN,
   inviteEmailFailed,
   pendingInviteFailedMessage,
+  resetLinkProblem,
   roleBadge,
   roleChoices,
   roleLabel,
@@ -70,6 +73,8 @@ export function ConnectedPeople() {
   const [roleFilter, setRoleFilter] = useState<PersonRole | 'all'>('all');
   const [editing, setEditing] = useState<DirectoryPerson | null>(null);
   const [deleting, setDeleting] = useState<DirectoryPerson | null>(null);
+  const [blocking, setBlocking] = useState<DirectoryPerson | null>(null);
+  const [resetting, setResetting] = useState<DirectoryPerson | null>(null);
   const [inviting, setInviting] = useState(false);
   // the person whose change is being saved; their row's controls wait for it
   const [saving, setSaving] = useState<string | null>(null);
@@ -88,13 +93,33 @@ export function ConnectedPeople() {
   );
   const listRef = useListFlip<HTMLTableSectionElement>(`${roleFilter}|${query}`);
 
-  const save = async (person: DirectoryPerson, change: () => Promise<void>, done: string) => {
+  const save = async (person: DirectoryPerson, change: () => Promise<void>, done: string, failed = saveFailedMessage) => {
     setSaving(person.id);
     try {
       await change();
       notify(done);
     } catch (error) {
-      notify(saveFailedMessage(error as ApiError));
+      notify(failed(error as ApiError));
+    } finally {
+      setSaving(null);
+    }
+  };
+
+  // Block / Unblock also switch their sign-in; the backend's refusals say what to do next, so they're shown as sent
+  const setBlocked = (person: DirectoryPerson, blocked: boolean) =>
+    void save(
+      person,
+      () => directory.setBlocked(person.id, blocked),
+      blocked ? `${person.name} is blocked and signed out everywhere.` : `${person.name} is unblocked and can sign in again.`,
+      accountFailedMessage,
+    );
+
+  const sendResetLink = async (person: DirectoryPerson) => {
+    setSaving(person.id);
+    try {
+      notify(await directory.sendResetLink(person.id));
+    } catch (error) {
+      notify(accountFailedMessage(error as ApiError));
     } finally {
       setSaving(null);
     }
@@ -175,6 +200,7 @@ export function ConnectedPeople() {
                   const deletable = !self && canDelete(actor, p.accountRole);
                   const editable = canEditPerson(actor, p.accountRole);
                   const cantLeave = canMarkLeft(actor, p, self);
+                  const blocked = p.status === 'inactive';
                   const busy = saving === p.id;
                   return (
                     <tr key={p.id} data-flip={p.id}>
@@ -186,7 +212,7 @@ export function ConnectedPeople() {
                       <td>{p.email}</td>
                       <td>
                         <Badge kind={p.role}>{p.roleLabel}</Badge>
-                        {p.status === 'inactive' && <Badge kind="inactive">Inactive</Badge>}
+                        {blocked && <Badge kind="inactive">Blocked</Badge>}
                       </td>
                       <td>
                         {p.phone || (
@@ -293,6 +319,13 @@ export function ConnectedPeople() {
       {editing && (
         <DetailsModal
           person={editing}
+          access={{
+            blockProblem: blockProblem(actor, editing, editing.email === myEmail),
+            resetProblem: resetLinkProblem(actor, editing, editing.email === myEmail),
+            onBlock: () => (setEditing(null), setBlocking(editing)),
+            onUnblock: () => (setEditing(null), setBlocked(editing, false)),
+            onResetLink: () => (setEditing(null), setResetting(editing)),
+          }}
           onClose={() => setEditing(null)}
           onSave={(details) => void save(editing, () => directory.saveDetails(editing.id, details), `${details.fullName ?? editing.name}’s details were saved.`)}
         />
@@ -305,6 +338,28 @@ export function ConnectedPeople() {
             const person = deleting;
             setDeleting(null);
             void save(person, () => directory.remove(person.id), `${person.name}’s account was deleted.`);
+          }}
+        />
+      )}
+      {blocking && (
+        <BlockAccountModal
+          person={blocking}
+          onClose={() => setBlocking(null)}
+          onConfirm={() => {
+            const person = blocking;
+            setBlocking(null);
+            setBlocked(person, true);
+          }}
+        />
+      )}
+      {resetting && (
+        <ResetLinkModal
+          person={resetting}
+          onClose={() => setResetting(null)}
+          onConfirm={() => {
+            const person = resetting;
+            setResetting(null);
+            void sendResetLink(person);
           }}
         />
       )}
@@ -472,6 +527,60 @@ export function DeleteAccountModal({ person, onClose, onConfirm }: { person: Dir
   );
 }
 
+/** Asks before blocking, since it signs them out of everything at once. */
+function BlockAccountModal({ person, onClose, onConfirm }: { person: DirectoryPerson; onClose: () => void; onConfirm: () => void }) {
+  return (
+    <Modal
+      title={`Block ${person.name}?`}
+      icon="alert"
+      onClose={onClose}
+      onSubmit={onConfirm}
+      footer={
+        <>
+          <button type="button" className={btnClass('ghost')} onClick={onClose}>
+            <BtnLabel>Cancel</BtnLabel>
+          </button>
+          <button type="submit" className={btnClass('primary')}>
+            <BtnLabel>Block account</BtnLabel>
+          </button>
+        </>
+      }
+    >
+      <p>
+        {person.name} ({person.email}) is signed out everywhere now and can’t sign in to the portal, or to any other app that uses the company sign-in,
+        until you press Unblock. Their records, tasks and certificates stay as they are.
+      </p>
+    </Modal>
+  );
+}
+
+/** Asks before emailing someone a reset link, so a mis-click doesn't land in their inbox. */
+function ResetLinkModal({ person, onClose, onConfirm }: { person: DirectoryPerson; onClose: () => void; onConfirm: () => void }) {
+  return (
+    <Modal
+      title={`Send ${person.name} a reset link?`}
+      icon="key"
+      onClose={onClose}
+      onSubmit={onConfirm}
+      footer={
+        <>
+          <button type="button" className={btnClass('ghost')} onClick={onClose}>
+            <BtnLabel>Cancel</BtnLabel>
+          </button>
+          <button type="submit" className={btnClass('primary')}>
+            <BtnLabel>Send reset link</BtnLabel>
+          </button>
+        </>
+      }
+    >
+      <p>
+        We’ll email {person.email} a link to choose a new password. It works once, for 30 minutes, and replaces any earlier link. Their current
+        password keeps working until they use it.
+      </p>
+    </Modal>
+  );
+}
+
 const INVITE_FAILED: Record<ApiError['kind'], string> = {
   'signed-out': 'Your sign-in has ended. Sign out and sign in again, then send the invite.',
   forbidden: 'Your role can’t invite people with that role.',
@@ -585,12 +694,23 @@ const TEAM_MAX = 80;
  * Name, stream, team and join date. The name is sent only when it changed, and the backend also changes it in
  * Keycloak; the join date too, so the company app's records are never touched by a save that didn't change it.
  */
+/** Block / Unblock and "Send reset link" for this person, with why each can't be used ('' when it can). */
+interface SignInAccess {
+  blockProblem: string;
+  resetProblem: string;
+  onBlock: () => void;
+  onUnblock: () => void;
+  onResetLink: () => void;
+}
+
 function DetailsModal({
   person,
+  access,
   onClose,
   onSave,
 }: {
   person: DirectoryPerson;
+  access: SignInAccess;
   onClose: () => void;
   onSave: (details: { fullName?: string; stream: Stream | null; team: string; joinedOn?: string | null }) => void;
 }) {
@@ -683,6 +803,28 @@ function DetailsModal({
           </span>
         )}
       </label>
+      <div className="p-field" role="group" aria-labelledby="details-signin">
+        <span id="details-signin">Sign-in</span>
+        <div className="p-row-actions">
+          <button
+            type="button"
+            className={btnClass('ghost', { small: true })}
+            disabled={!!access.blockProblem}
+            title={access.blockProblem || undefined}
+            onClick={person.status === 'inactive' ? access.onUnblock : access.onBlock}
+          >
+            <BtnLabel icon="lock">{person.status === 'inactive' ? 'Unblock' : 'Block account'}</BtnLabel>
+          </button>
+          <button type="button" className={btnClass('ghost', { small: true })} disabled={!!access.resetProblem} title={access.resetProblem || undefined} onClick={access.onResetLink}>
+            <BtnLabel icon="key">Send reset link</BtnLabel>
+          </button>
+        </div>
+        <span className="p-field-hint">
+          {person.status === 'inactive'
+            ? 'Blocked: they can’t sign in to the portal or any app that uses the company sign-in until you unblock them.'
+            : 'Blocking signs them out everywhere until you unblock them. A reset link lets them choose a new password.'}
+        </span>
+      </div>
     </Modal>
   );
 }

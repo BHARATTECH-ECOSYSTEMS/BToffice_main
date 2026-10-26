@@ -165,6 +165,12 @@ const CONNECTED_HELP: HelpGroup[] = [
         link: { to: '/portal/people', label: 'Open People' },
       },
       {
+        q: 'How do I block someone, or send them a password reset link?',
+        a: 'On the People page, open their Details and press “Block account”, then confirm: they’re signed out everywhere and can’t sign in to the portal, or any other app that uses the company sign-in, until you press “Unblock” there. Their records stay as they are, and their row says Blocked. For someone who forgot their password, press “Send reset link” in their Details: they get an email with a link that works once, for 30 minutes. Super Admins can do both for admins too; admins for sub admins, employees and interns.',
+        audience: 'admin',
+        link: { to: '/portal/people', label: 'Open People' },
+      },
+      {
         q: 'How do internal jobs work?',
         a: 'On the Community page, press “Post an internal job”: it’s emailed to every member of that community with a personal email. Former colleagues apply by email; add each applicant to the job from its card. Mark whether they meet the criteria (“Not this time” sends a kind email with no reason), then send the knowledge check: you type the test link or instructions and it’s emailed to them. If they pass, “Passed, rejoin” brings them back to People with the same Employee ID, today as their join date, and an email on how to sign in. Close a posting to stop adding applicants.',
         audience: 'admin',
