@@ -6,7 +6,7 @@ import { useQuiet, useScene } from '../../gl/Scene';
 import { mountSwarm, type Swarm } from '../../gl/research/swarm';
 import { LAST, sideOf } from '../../gl/research/path';
 import { PixelReveal } from './PixelReveal';
-import { DOMAINS, TECHNOLOGY } from '../../content';
+import { DOMAINS, ECOSYSTEM, TECHNOLOGY } from '../../content';
 
 const LEDE = 'Six connected research domains. One shared ambition: intelligence that learns, remembers and reasons across the digital and physical world.';
 // a stop's copy rises in once its screen is a little under half way up the window
@@ -282,7 +282,16 @@ export function ResearchStory({ onFail }: { onFail: () => void }) {
             </h2>
           </div>
           <div className="ra-section__side">
-            <p className="ra-note">Our programmes explore different parts of the same question. How can specialised systems share knowledge, preserve context and work as one?</p>
+            <p className="ra-note">
+              {ECOSYSTEM.line} {ECOSYSTEM.intro}
+            </p>
+            <ul className="ra-list" aria-label="One intelligence ecosystem">
+              {ECOSYSTEM.points.map((point, i) => (
+                <li key={point} style={{ '--i': i } as CSSProperties}>
+                  {point}
+                </li>
+              ))}
+            </ul>
             <button type="button" className="ra-text-link" onClick={() => goTo(2)} onFocus={() => goTo(1)}>
               Explore the six domains <Arrow />
             </button>
@@ -350,12 +359,17 @@ export function ResearchStory({ onFail }: { onFail: () => void }) {
               <Lines lines={[<>Researching the <em>next</em></>, <><em>generation</em> of intelligence.</>]} />
             </PixelReveal>
           </h2>
-          <Link to="/contact" className="btn btn-primary ra-hot ra-cta" onFocus={() => goTo(LAST)}>
-            <BtnText>Propose a collaboration</BtnText>
-            <span className="ra-hot__arrow">
-              <Arrow />
-            </span>
-          </Link>
+          <div className="ra-actions">
+            <Link to="/contact" className="btn btn-primary ra-hot ra-cta" onFocus={() => goTo(LAST)}>
+              <BtnText>Propose a collaboration</BtnText>
+              <span className="ra-hot__arrow">
+                <Arrow />
+              </span>
+            </Link>
+            <Link to="/careers" className="btn btn-ghost ra-soft ra-cta" onFocus={() => goTo(LAST)}>
+              <BtnText>Join as a researcher</BtnText>
+            </Link>
+          </div>
         </Scene>
       </div>
     </section>

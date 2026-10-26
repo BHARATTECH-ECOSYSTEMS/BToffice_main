@@ -1,7 +1,6 @@
 import { Link } from 'react-router';
 import { 
   ArrowUpRight, 
-  Sparkles,
   Award, 
   Building2, 
   Mail, 
@@ -10,7 +9,7 @@ import {
 import { Reveal, BtnText, Arrow } from '../components/ui';
 import { PageHero } from '../components/PageHero';
 import { HowWeWorkPipeline } from '../components/HowWeWorkPipeline';
-import { AWARDS, EMAIL, EMAIL_HREF, HQ, HQ_MAP, PRODUCTS } from '../content';
+import { AWARDS, BUILD_FOR, EMAIL, EMAIL_HREF, HQ, HQ_MAP, MISSION, POSITIONING, PRINCIPLES, PRODUCTS, VISION } from '../content';
 
 
 
@@ -66,17 +65,10 @@ export function About() {
               Who we are
             </Reveal>
             <Reveal as="p" className="about-who-lead">
-              At Bharattech Techecosystem, we’re more than just software engineers; we are builders of sovereign intelligence and foundational deep-tech.
+              {POSITIONING}
             </Reveal>
             <Reveal as="p" className="about-who-sub">
               We are a passionate team of technologists, researchers, and systems thinkers who believe in the power of sovereign AI, persistent memory, and accessible technology to reshape industries.
-            </Reveal>
-
-            <Reveal className="about-callout-card" delay={100}>
-              <Sparkles className="about-callout-icon" size={18} />
-              <p className="about-callout-text">
-                “When India innovates, the world listens. We build foundational infrastructure designed to endure for decades.”
-              </p>
             </Reveal>
 
             <Reveal className="about-chips-row" delay={140}>
@@ -97,6 +89,60 @@ export function About() {
               </Reveal>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── VISION, MISSION AND PRINCIPLES: the company's own words (its written brief) ── */}
+      <section className="section about-overview-section" id="vision">
+        <div className="wrap about-overview-grid">
+          <div className="about-who-sticky">
+            <Reveal as="h2" className="h2">
+              Vision
+            </Reveal>
+            <Reveal as="p" className="about-who-lead">
+              {VISION.line}
+            </Reveal>
+            <Reveal as="p" className="about-who-sub">
+              {VISION.body}
+            </Reveal>
+            <Reveal as="h2" className="h2 about-mission-head" delay={80}>
+              Mission
+            </Reveal>
+            <Reveal as="p" className="about-who-lead" delay={80}>
+              {MISSION}
+            </Reveal>
+          </div>
+
+          <div className="about-drives-col">
+            <Reveal as="h2" className="h2">
+              Our principles
+            </Reveal>
+            {PRINCIPLES.map((principle, index) => (
+              <Reveal as="article" key={principle} className="about-drives-card" delay={index * 60}>
+                <h3>{principle}</h3>
+              </Reveal>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── WHO WE BUILD FOR: everyone the brief names ── */}
+      <section className="section" id="build-for">
+        <div className="wrap">
+          <div className="section-head">
+            <div>
+              <Reveal as="h2" className="h2">
+                Who we build for
+              </Reveal>
+            </div>
+          </div>
+          <Reveal as="ul" className="about-chips-row" aria-label="Who we build for">
+            {BUILD_FOR.map((who) => (
+              <li key={who} className="about-chip">
+                {who}
+              </li>
+            ))}
+          </Reveal>
         </div>
       </section>
 

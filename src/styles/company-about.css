@@ -41,30 +41,9 @@
   margin: 0;
 }
 
-.about-callout-card {
-  padding: 18px 20px;
-  border-radius: var(--r-md);
-  background: color-mix(in srgb, var(--violet) 6%, var(--paper));
-  border: 1px solid color-mix(in srgb, var(--violet) 18%, transparent);
-  box-shadow: var(--shadow-sm);
-  display: flex;
-  gap: 12px;
-  align-items: flex-start;
-  margin-top: 6px;
-}
-
-.about-callout-icon {
-  flex-shrink: 0;
-  color: var(--violet);
-  margin-top: 2px;
-}
-
-.about-callout-text {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--ink-2);
-  margin: 0;
-  font-weight: 550;
+/* Mission starts its own block under the vision's paragraph */
+.about-mission-head {
+  margin-top: clamp(20px, 3vw, 36px);
 }
 
 .about-chips-row {

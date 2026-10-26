@@ -464,7 +464,7 @@ export const AUDIENCE_DETAIL = [
       'Observable workflow orchestration & task automation',
       'Hardware-level encryption & zero data leakage',
       'Custom fine-tuned domain models on private corpus',
-      'Enterprise SSO, RBAC & SOC2-compliant access logs',
+      'Enterprise SSO, role-based access & audit logs of every access',
       'Air-gapped on-premise or sovereign VPC deployments',
     ],
     poweredBy: ['Sovereign Core', 'Security Shield', 'Federated Vault'],
@@ -473,10 +473,10 @@ export const AUDIENCE_DETAIL = [
     name: 'Governments',
     line: 'Sovereign intelligence for public services, planning and infrastructure, with data that remains under national control.',
     uses: [
-      '100% sovereign national compute & data localization',
+      'Data kept in India, on infrastructure under national control',
       'Geospatial intelligence & critical infrastructure planning',
       'Air-gapped high-security defense network integrations',
-      'Citizen service delivery across 22+ official languages',
+      'Citizen service delivery across Indian languages',
       'Auditable constitutional guardrails & governance rules',
       'Fault-tolerant decentralized mesh for crisis resilience',
     ],
@@ -584,3 +584,51 @@ export const CONTACT_FAQ = [
   { q: 'How quickly will I hear back?', a: 'Every message is read by a member of the team. Expect a considered reply within two working days.' },
   { q: 'Can we visit your office?', a: 'Yes. Our research and engineering teams work from Kanpur, Uttar Pradesh, India. Write to us before you visit, so the right people are there to meet you.' },
 ];
+
+// The company's own words, from its written brief (bharattech-origin-overview.md in the company bundle). Kept as the
+// brief writes them, so the site says what the company says (gap audit group D, owner's 1A 3A 4A 8A).
+export const POSITIONING =
+  'Bharattech Origin is not building another AI model. We are building the intelligence infrastructure on which future AI systems can collaborate, evolve, and create new capabilities together.';
+
+export const VISION = {
+  line: 'To make intelligence as accessible as information.',
+  body: 'Bharattech Origin envisions a future where intelligence is no longer confined to isolated AI applications. Instead, it becomes a universal infrastructure that powers research, education, automation, governance, industry, and everyday life.',
+};
+
+export const MISSION =
+  'To transform artificial intelligence from isolated models into a unified intelligence ecosystem capable of continuous learning, persistent memory, autonomous reasoning, and global collaboration.';
+
+export const PRINCIPLES = [
+  'Intelligence should remember.',
+  'Intelligence should evolve.',
+  'Intelligence should collaborate.',
+  'Intelligence should remain trustworthy.',
+  'Intelligence should be accessible.',
+  'Intelligence should serve humanity.',
+];
+
+/** Everyone the brief names; the home section shows six of them in depth (AUDIENCE_DETAIL). */
+export const BUILD_FOR = [
+  'Researchers',
+  'Scientists',
+  'Developers',
+  'Enterprises',
+  'Governments',
+  'Educational institutions',
+  'Defense organizations',
+  'Startups',
+  'Innovators',
+  'Students',
+];
+
+export const ECOSYSTEM = {
+  line: 'The six research domains are not independent products. Instead, they form a single intelligence ecosystem.',
+  intro: 'Imagine an operating system where:',
+  points: [
+    'Research improves every model.',
+    'Memory is shared intelligently.',
+    'Specialized systems collaborate.',
+    'Knowledge flows continuously.',
+    'New capabilities emerge through interaction.',
+  ],
+};

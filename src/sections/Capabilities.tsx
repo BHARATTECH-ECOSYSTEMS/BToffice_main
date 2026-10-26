@@ -101,7 +101,7 @@ export function Capabilities() {
       <div className="wheel-pin">
         <div className="wrap wheel-grid">
           <div className="wheel-copy">
-            <Headline tone="cobalt" lines={['One intelligence.', 'Fifteen capabilities.']} />
+            <Headline tone="cobalt" lines={['One intelligence.', 'Infinite capabilities.']} />
 
             <div className="wheel-card" style={{ '--tone': `var(--${TONES[fam]})` } as CSSProperties} aria-live={chosen ? 'polite' : 'off'}>
               <div className="wheel-card-top">
