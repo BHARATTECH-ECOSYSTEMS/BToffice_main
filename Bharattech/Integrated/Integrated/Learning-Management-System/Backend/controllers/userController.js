@@ -6,6 +6,7 @@ const { kcAdmin, ensureKeycloakAdmin: authKeycloakAdmin } = require("../utils/ke
 const { photoType, saveUserPhoto, findUserPhoto, openUserPhoto, deleteUserPhoto } = require("../utils/userPhotos");
 const { isAdmin } = require("../utils/refusal");
 const { notePhotoChanged } = require("../utils/notify");
+const { waitsForFirstPassword, hasRecord } = require("./inviteController");
 
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 const DEMO_AUTH_ENABLED = process.env.AUTH_MODE === "demo";
@@ -287,6 +288,7 @@ const fetchKeycloakUsers = async () => {
   const [users, total] = await Promise.all([kcAdmin.users.find({ realm: KEYCLOAK_REALM, max: KEYCLOAK_PAGE }), kcAdmin.users.count({ realm: KEYCLOAK_REALM })]);
 
   const enabledUsers = users.filter((user) => user.enabled !== false);
+  const switchedOffIds = users.filter((user) => user.enabled === false).map((user) => user.id);
 
   const withRoles = await Promise.all(
     enabledUsers.map(async (user) => {
@@ -302,7 +304,7 @@ const fetchKeycloakUsers = async () => {
       };
     })
   );
-  return { users: withRoles, complete: users.length >= total };
+  return { users: withRoles, switchedOffIds, complete: users.length >= total };
 };
 
 const upsertLocalUserFromKeycloak = async (kcUser) => {
@@ -366,20 +368,24 @@ const upsertLocalUserFromKeycloak = async (kcUser) => {
 };
 
 const syncKeycloakUsersToLocal = async () => {
-  const { users: keycloakUsers, complete } = await fetchKeycloakUsers();
-  const activeKeycloakIds = keycloakUsers.map((user) => user.id).filter(Boolean);
+  const { users: keycloakUsers, switchedOffIds, complete } = await fetchKeycloakUsers();
+  // a switched-off account still exists (someone blocked, or who left): its record is listed as it is, not rewritten
+  const existingKeycloakIds = [...keycloakUsers.map((user) => user.id), ...switchedOffIds].filter(Boolean);
   const syncedUsers = [];
 
   for (const kcUser of keycloakUsers) {
+    // an invite nobody has accepted gets its record at their first sign-in, so it stays in "Pending invites"
+    if (waitsForFirstPassword(kcUser) && !(await hasRecord(kcUser.id))) continue;
     syncedUsers.push(await upsertLocalUserFromKeycloak(kcUser));
   }
+  syncedUsers.push(...(await User.find({ keycloakId: { $in: switchedOffIds }, isDeleted: { $ne: true } })));
 
   // someone missing from the list was removed in Keycloak, but only when the list is everyone: from a partial one
   // (more accounts than a page) that would wrongly remove whoever didn't fit
   if (complete) {
     await User.updateMany(
       {
-        keycloakId: { $exists: true, $nin: activeKeycloakIds },
+        keycloakId: { $exists: true, $nin: existingKeycloakIds },
         isDeleted: { $ne: true },
       },
       { $set: { isDeleted: true, deletedAt: new Date() } }

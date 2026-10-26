@@ -659,4 +659,6 @@ module.exports = {
   setTemporaryPassword,
   generateTemporaryPassword,
   sendBackendInviteEmail,
+  waitsForFirstPassword,
+  hasRecord,
 };
