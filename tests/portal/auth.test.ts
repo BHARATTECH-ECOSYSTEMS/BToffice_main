@@ -103,6 +103,19 @@ test('an account that is not fully set up (and not an invite) is told to ask an 
   assert.equal(auth.signedIn(), false);
 });
 
+// review 2026-10-26 M8 (owner's 5A): the right password on a blocked or left account is told so, not "wrong details"
+test('a switched-off account (the backend says so with its code) reads as switched off, not as a wrong password', async () => {
+  const reply = json(403, { code: 'switched-off', message: 'Your sign-in is switched off. Ask an admin if you think this is a mistake.' });
+  const auth = createAuth(CONFIG, network(reply).request);
+  assert.deepEqual(await auth.signIn('a@example.test', 'pw', false), { ok: false, reason: 'switched-off' });
+  assert.equal(auth.signedIn(), false);
+});
+
+test('the sign-in box tells a switched-off person to ask an admin', () => {
+  const login = readFileSync('src/components/Login.tsx', 'utf8');
+  assert.match(login, /'switched-off': 'Your sign-in is switched off\. Ask an admin if you think this is a mistake\.'/);
+});
+
 test('a backend that is down or failing reads as unavailable, not as a wrong password', async () => {
   for (const reply of [new TypeError('Failed to fetch'), json(500, { message: 'Login failed' })]) {
     const auth = createAuth(CONFIG, network(reply).request);
@@ -236,6 +249,13 @@ test('a wrong temporary password is reported as such', async () => {
 test('a username someone else has is reported so another can be chosen', async () => {
   const auth = createAuth(CONFIG, network(json(409, { message: 'That username is already taken. Please choose another.' })).request);
   assert.deepEqual(await auth.acceptInvite(SETUP, false), { ok: false, reason: 'username-taken' });
+});
+
+// review 2026-10-26 M7: finishing an invite that's already finished (elsewhere, say) is a 409 of its own
+test("an account that's already set up is told so in the backend's words, not that the username is taken", async () => {
+  const message = 'This account is already set up. Sign in, then use Change password in Settings.';
+  const auth = createAuth(CONFIG, network(json(409, { code: 'already-set-up', message })).request);
+  assert.deepEqual(await auth.acceptInvite(SETUP, false), { ok: false, reason: 'invalid', message });
 });
 
 test("a username the backend won't accept comes back with its reason", async () => {

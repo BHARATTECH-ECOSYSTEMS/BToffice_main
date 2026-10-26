@@ -32,7 +32,7 @@ export interface Account {
   role: Role;
 }
 
-export type SignInResult = { ok: true; account: Account } | { ok: false; reason: 'credentials' | 'set-password' | 'not-set-up' | 'invite-expired' | 'busy' | 'unavailable' };
+export type SignInResult = { ok: true; account: Account } | { ok: false; reason: 'credentials' | 'set-password' | 'not-set-up' | 'switched-off' | 'invite-expired' | 'busy' | 'unavailable' };
 
 export interface InviteSetup {
   /** What they signed in with: their email (or the username from the invite). */
@@ -210,6 +210,8 @@ export function createAuth(config: AuthConfig, request: typeof fetch = (input, i
     // the backend limits sign-in tries per address (429): that's a wait, not an outage or a wrong password
     if (reply.status === 429) return { ok: false, reason: 'busy' };
     if (reply.status === 403 && reply.body?.requiresPasswordChange) return { ok: false, reason: 'set-password' };
+    // the right password on a blocked account, or someone who left (the backend only says so then)
+    if (reply.status === 403 && reply.body?.code === 'switched-off') return { ok: false, reason: 'switched-off' };
     // a right password on an account with another unfinished step (a missing last name, say): an admin's to finish
     if (reply.status === 403) return { ok: false, reason: 'not-set-up' };
     // an invite past its 12 hours (owner's 5A): an admin sends it again
@@ -228,6 +230,8 @@ export function createAuth(config: AuthConfig, request: typeof fetch = (input, i
     if (!reply) return { ok: false, reason: 'unavailable' };
     if (reply.status === 429) return { ok: false, reason: 'busy' };
     if (reply.status === 401) return { ok: false, reason: 'credentials' };
+    // finished already (elsewhere, say): the backend's own words, not "that username is taken"
+    if (reply.status === 409 && reply.body?.code === 'already-set-up') return { ok: false, reason: 'invalid', message: reply.body?.message ?? '' };
     if (reply.status === 409) return { ok: false, reason: 'username-taken' };
     if (reply.status === 410) return { ok: false, reason: 'invite-expired' };
     if (reply.status === 400) return { ok: false, reason: 'invalid', message: reply.body?.message ?? '' };
