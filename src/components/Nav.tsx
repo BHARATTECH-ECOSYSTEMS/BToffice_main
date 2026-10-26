@@ -14,6 +14,7 @@ import { ThemeButton } from './ThemeSwitch';
 import { useGlassTilt } from './useGlassTilt';
 import { useNavBubble } from './useNavBubble';
 import { fine, keyAt, KeyLabel, keyPointer, MotionLink, OPENING, useKeyHighlight, type LinkFx } from './navKeys';
+import { useHomeWhole } from '../pages/homeWhole';
 
 const LINKS: { label: string; to: string; section?: string; tone: HueName; peek?: PeekId; fx: LinkFx }[] = [
   { label: 'Research', to: '/research', tone: 'saffron', peek: 'research', fx: 'drop' },
@@ -72,7 +73,7 @@ function useChapterProgress(enabled: boolean, bars: RefObject<HTMLDivElement>) {
     const tracked = CHAPTERS.map((c) => document.getElementById(c.id)).map((el) => (el ? trackBox(el) : null));
     const footer = document.querySelector('.footer');
     const end = footer ? trackBox(footer) : null;
-    // the bars render under the same condition as `enabled`, so they are already mounted and never change
+    // the bars render on the home page, so they are already mounted while this runs and never change
     const fills = bars.current?.querySelectorAll<HTMLElement>(':scope > button > span');
     let vh = window.innerHeight;
     let raf = 0;
@@ -131,7 +132,9 @@ export function Nav() {
   // one liquid drop glides along the whole bar and wraps whichever button the pointer is on
   useNavBubble(barRef, bubbleRef, BAR_BUTTONS);
   const progressRef = useRef<HTMLDivElement>(null);
-  useChapterProgress(home, progressRef);
+  // the home page adds its lower sections after its first paint, so what looks them up waits until it's whole
+  const pageWhole = useHomeWhole();
+  useChapterProgress(home && pageWhole, progressRef);
   const { peek, open: openPeek, close: closePeek, hold } = usePeek();
   const leavePeek = useCallback(() => closePeek(), [closePeek]);
   const [caret, setCaret] = useState(0);
@@ -165,7 +168,7 @@ export function Nav() {
 
   // Capabilities observer without forced layout on scroll
   useEffect(() => {
-    if (!home) return;
+    if (!home || !pageWhole) return;
     const el = document.getElementById('capabilities');
     if (!el) return;
     const io = new IntersectionObserver(
@@ -176,7 +179,7 @@ export function Nav() {
     );
     io.observe(el);
     return () => io.disconnect();
-  }, [home]);
+  }, [home, pageWhole]);
 
   useEffect(() => {
     setOpen(false);

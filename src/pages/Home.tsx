@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
+import { setHomeWhole } from './homeWhole';
 import { Story } from '../sections/Story';
 import { Capabilities } from '../sections/Capabilities';
 import { HowItWorks } from '../sections/HowItWorks';
@@ -67,6 +68,10 @@ export function Home() {
       cancel();
     };
   }, [whole, built]);
+
+  // the nav's chapter bars, its Capabilities key and the globe's ride look sections up by id, so they wait for this
+  useEffect(() => setHomeWhole(whole), [whole]);
+  useEffect(() => () => setHomeWhole(false), []);
 
   return (
     <>

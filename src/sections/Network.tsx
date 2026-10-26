@@ -7,6 +7,7 @@ import { Headline, Reveal } from '../components/ui';
 import { Icon, type IconName } from '../components/fx';
 import { pageScroll, trackBox } from '../components/trackBox';
 import { warmWhenQuiet } from '../components/warmQueue';
+import { useHomeWhole } from '../pages/homeWhole';
 import { NETWORK } from '../content';
 
 const ICONS: IconName[] = ['shield', 'cloud', 'globe'];
@@ -49,6 +50,8 @@ export function Network({ landOn }: { landOn?: string }) {
   const head = useRef<HTMLElement | null>(null);
   const shown = useRef('');
   const { engine } = useScene();
+  // the heading it lands on (Research) is built after this section on the home page, so it's looked up again then
+  const pageWhole = useHomeWhole();
   // the globe's light and shaders, built at a quiet moment ahead of the deck's worlds, as the globe arrives first
   useEffect(() => (engine ? warmWhenQuiet(() => void engine.warm(), true) : undefined), [engine]);
 
@@ -155,7 +158,7 @@ export function Network({ landOn }: { landOn?: string }) {
       if (headEl) headEl.style.opacity = '';
       shown.current = '';
     };
-  }, [landOn, engine]);
+  }, [landOn, engine, pageWhole]);
 
   return (
     <section id="network" ref={ref} className="section">
