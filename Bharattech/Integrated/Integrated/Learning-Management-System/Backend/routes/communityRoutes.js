@@ -1,6 +1,7 @@
 const express = require("express");
 const {
   listMembers,
+  listJoiners,
   markLeft,
   bringBack,
   getMyPersonalEmail,
@@ -14,6 +15,7 @@ const { listJobs, postJob, setJobOpen, removeJob, addApplicant, moveApplicant } 
 const router = express.Router();
 
 router.get("/members", listMembers);
+router.get("/joiners", listJoiners);
 router.post("/leave/:userId", markLeft);
 router.post("/members/:userId/back", bringBack);
 router.put("/members/:userId/personal-email", setMemberPersonalEmail);

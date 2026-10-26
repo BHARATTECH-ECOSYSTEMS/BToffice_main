@@ -454,3 +454,51 @@ test("a record restored at sign-in no longer counts as having left", async () =>
   assert.equal(saved.isDeleted, false);
   assert.equal(saved.leftOn, undefined);
 });
+
+/* ── Staff who joined ahead of leaving (owner's 1A 2A 3A 4A, 2026-10-26) ── */
+
+const joiners = async (who) => (await call(who, "GET", "/community/joiners")).body;
+
+test("everyone signed in sees the staff who joined early, by name; only admins also see their Employee ID and personal email", async () => {
+  const p = await people();
+  await User.updateOne({ _id: p.asha._id }, { $set: { personalEmail: "asha.home@example.net" } });
+  const zoya = await User.create(userFields({ role: "Employee", fullName: "Zoya Khan", personalEmail: "zoya.home@example.net" }));
+
+  const plain = [
+    { id: String(p.asha._id), name: "Asha Rao", stream: "tech" },
+    { id: String(zoya._id), name: "Zoya Khan", stream: null },
+  ];
+  for (const who of [p.asha, p.kabir, p.subadmin]) assert.deepEqual(await joiners(who), plain, who.role);
+  for (const who of [p.admin, p.superadmin]) {
+    assert.deepEqual(await joiners(who), [
+      { ...plain[0], employeeId: p.asha.employeeId, personalEmail: "asha.home@example.net" },
+      { ...plain[1], employeeId: zoya.employeeId, personalEmail: "zoya.home@example.net" },
+    ]);
+  }
+});
+
+test("only current, unblocked staff with a personal email are listed: not former colleagues, deleted or blocked people", async () => {
+  const p = await people();
+  await formerColleague({ fullName: "Neha Kapoor", personalEmail: "neha.home@example.net" });
+  await User.create(userFields({ role: "Employee", stream: "tech", isDeleted: true, deletedAt: new Date(), personalEmail: "gone@example.net" }));
+  await User.create(userFields({ role: "Employee", stream: "tech", isBanned: true, personalEmail: "blocked@example.net" }));
+  await User.create(userFields({ role: "Employee", stream: "tech", personalEmail: "" }));
+  assert.deepEqual(await joiners(p.admin), []);
+  assert.deepEqual(await joiners(p.asha), []);
+});
+
+test("someone who joined early moves to the members wall when they leave, and off the list when they remove their email", async () => {
+  const p = await people();
+  await call(p.asha, "PUT", "/community/me/personal-email", { personalEmail: "asha.home@example.net" });
+  await call(p.kabir, "PUT", "/community/me/personal-email", { personalEmail: "kabir.home@example.net" });
+  assert.deepEqual((await joiners(p.subadmin)).map((j) => j.name), ["Asha Rao", "Kabir Das"]);
+
+  assert.equal((await leave(p.admin, p.asha)).status, 200);
+  assert.deepEqual((await joiners(p.subadmin)).map((j) => j.name), ["Kabir Das"]);
+  assert.deepEqual((await members(p.subadmin)).map((m) => m.name), ["Asha Rao"]);
+
+  const removed = await call(p.kabir, "PUT", "/community/me/personal-email", { personalEmail: "" });
+  assert.equal(removed.status, 200);
+  assert.deepEqual(removed.body, { personalEmail: "" });
+  assert.deepEqual(await joiners(p.subadmin), []);
+});

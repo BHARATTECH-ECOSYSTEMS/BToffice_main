@@ -69,6 +69,28 @@ const savePersonalEmail = async (where, user, raw) => {
   }
 };
 
+// GET /api/community/joiners: staff who gave a personal email ahead of leaving (owner's 1A 2A, 2026-10-26). They're
+// listed apart from the members, by name; everyone signed in sees who, admins also how to reach them. Blocked people
+// are left out. Nothing is sent to them until they leave (3A): referrals and jobs still go to members only.
+exports.listJoiners = async (req, res) => {
+  try {
+    const list = await User.find({ isDeleted: { $ne: true }, isBanned: { $ne: true }, personalEmail: { $type: "string", $ne: "" } })
+      .select("fullName email stream employeeId personalEmail")
+      .sort({ fullName: 1 })
+      .lean();
+    res.json(
+      list.map((u) => ({
+        id: String(u._id),
+        name: u.fullName || u.email,
+        stream: u.stream || null,
+        ...(isAdmin(req.user) ? { employeeId: u.employeeId || "", personalEmail: u.personalEmail } : {}),
+      }))
+    );
+  } catch (error) {
+    answerError(res, error, "List early joiners");
+  }
+};
+
 // GET /api/community/members
 exports.listMembers = async (req, res) => {
   try {
