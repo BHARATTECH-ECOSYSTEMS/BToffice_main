@@ -258,6 +258,12 @@ const acceptInvite = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Only an invite is finished here. A set-up account changes its password through Change password, which also
+    // signs it out everywhere.
+    if (!(kcUser.requiredActions || []).includes("UPDATE_PASSWORD")) {
+      return res.status(409).json({ code: "already-set-up", message: "This account is already set up. Sign in, then use Change password in Settings." });
+    }
+
     if (
       trimmedNewUsername.toLowerCase() !== (kcUser.username || "").toLowerCase()
     ) {
