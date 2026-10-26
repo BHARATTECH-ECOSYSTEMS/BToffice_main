@@ -92,7 +92,7 @@ export function RoleSpiral({
             <div key={role.title} className="cr-strip" style={toneStyle(DEPT_TONES[role.dept])}>
               <div className="cr-strip__text">
                 <b>{role.title}</b>
-                <span>{[role.focus, role.team, role.location].filter((v, k, all) => all.indexOf(v) === k).join(' · ')}</span>
+                <span>{[role.focus, role.team, role.location, role.type].filter((v, k, all) => all.indexOf(v) === k).join(' · ')}</span>
               </div>
               <a href={applyHref(role)} className="btn btn-primary cr-strip__apply">
                 <BtnText>Apply</BtnText>
@@ -130,6 +130,7 @@ export function RoleSpiral({
             <span className="cr-role__facts">
               <span>{roles[i].team}</span>
               <span>{roles[i].location}</span>
+              <span>{roles[i].type}</span>
             </span>
           </a>,
           host,

@@ -7,7 +7,7 @@ import { Arrow, Headline, Reveal, toneStyle, BtnText, ThreadMark } from '../comp
 import { CONTACT_FAQ, CONTACT_NEEDS, EMAIL, EMAIL_HREF, HQ, HQ_MAP } from '../content';
 import type { HueName } from '../gl/palette';
 
-const NEED_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
+const NEED_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron', 'violet', 'tangerine'];
 
 export function Contact() {
   const [need, setNeed] = useState(0);

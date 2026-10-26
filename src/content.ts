@@ -259,14 +259,14 @@ export const VALUES = [
 ];
 
 export const ROLES = [
-  { title: 'Research Scientist', focus: 'Generative Intelligence', team: 'GI Rivinity', location: 'Hybrid · India', dept: 'Research' },
-  { title: 'Senior ML Engineer', focus: 'Memory Architecture', team: 'Rivinity Core', location: 'Remote · Global', dept: 'Engineering' },
-  { title: 'AI Infrastructure Engineer', focus: 'Platform', team: 'Platform', location: 'Hybrid · India', dept: 'Engineering' },
-  { title: 'Research Engineer', focus: 'IoT Intelligence', team: 'IoT Intelligence', location: 'Hybrid · India', dept: 'Research' },
-  { title: 'Geospatial AI Researcher', focus: 'Geo Intelligence', team: 'Geo Intelligence', location: 'Hybrid · India', dept: 'Research' },
-  { title: 'Security AI Researcher', focus: 'Defense Intelligence', team: 'Defense Intelligence', location: 'On-site · India', dept: 'Research' },
-  { title: 'Frontend Engineer', focus: 'Developer Platform', team: 'Platform', location: 'Remote · Global', dept: 'Engineering' },
-  { title: 'Technical Writer', focus: 'Research Documentation', team: 'Communications', location: 'Remote · Global', dept: 'Operations' },
+  { title: 'Research Scientist', focus: 'Generative Intelligence', team: 'GI Rivinity', location: 'Hybrid · India', dept: 'Research', type: 'Full-time' },
+  { title: 'Senior ML Engineer', focus: 'Memory Architecture', team: 'Rivinity Core', location: 'Remote · Global', dept: 'Engineering', type: 'Full-time' },
+  { title: 'AI Infrastructure Engineer', focus: 'Platform', team: 'Platform', location: 'Hybrid · India', dept: 'Engineering', type: 'Full-time' },
+  { title: 'Research Engineer', focus: 'IoT Intelligence', team: 'IoT Intelligence', location: 'Hybrid · India', dept: 'Research', type: 'Full-time' },
+  { title: 'Geospatial AI Researcher', focus: 'Geo Intelligence', team: 'Geo Intelligence', location: 'Hybrid · India', dept: 'Research', type: 'Full-time' },
+  { title: 'Security AI Researcher', focus: 'Defense Intelligence', team: 'Defense Intelligence', location: 'On-site · India', dept: 'Research', type: 'Full-time' },
+  { title: 'Frontend Engineer', focus: 'Developer Platform', team: 'Platform', location: 'Remote · Global', dept: 'Engineering', type: 'Full-time' },
+  { title: 'Technical Writer', focus: 'Research Documentation', team: 'Communications', location: 'Remote · Global', dept: 'Operations', type: 'Full-time' },
 ];
 
 export const POSTS = [
@@ -576,7 +576,7 @@ export const AWARDS = [
   { title: 'MeitY Open Challenge Program', body: 'Honored participant in the Ministry of Electronics & IT (MeitY) Open Challenge Program.' },
 ];
 
-export const CONTACT_NEEDS = ['Research collaboration', 'Enterprise intelligence', 'Foundation models', 'Rivinity', 'Fellowships & careers', 'Press & media'];
+export const CONTACT_NEEDS = ['General enquiry', 'Research collaboration', 'Partnership', 'Enterprise intelligence', 'Foundation models', 'Rivinity', 'Fellowships & careers', 'Press & media'];
 
 export const CONTACT_FAQ = [
   { q: 'How do you partner with institutions and enterprises?', a: 'Through joint research programmes, sponsored fellowships with academic institutions, and early-access deployments for teams building on Origin’s intelligence infrastructure.' },

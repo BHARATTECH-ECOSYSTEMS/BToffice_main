@@ -189,6 +189,7 @@ function RoleList({ keep, controls, onClear }: { keep: boolean[]; controls: Reac
                   <span className="role-facts">
                     <span>{r.team}</span>
                     <span>{r.location}</span>
+                    <span>{r.type}</span>
                   </span>
                   <span className="role-go">Apply</span>
                 </span>

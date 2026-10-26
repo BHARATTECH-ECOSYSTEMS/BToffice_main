@@ -17,9 +17,17 @@ export function NotFound() {
         </p>
         <h1 className="h1">This page was forgotten.</h1>
         <p className="lede">Which is exactly the problem we are working on.</p>
-        <Link to="/" className="btn btn-primary">
-          <BtnText>Back to the start</BtnText> <Arrow />
-        </Link>
+        <div className="notfound-actions">
+          <Link to="/" className="btn btn-primary">
+            <BtnText>Back to the start</BtnText> <Arrow />
+          </Link>
+          <Link to="/research" className="btn btn-ghost">
+            <BtnText>Explore research</BtnText>
+          </Link>
+          <Link to="/contact" className="btn btn-ghost">
+            <BtnText>Contact us</BtnText>
+          </Link>
+        </div>
       </div>
     </section>
   );

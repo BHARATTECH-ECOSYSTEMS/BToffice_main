@@ -1987,6 +1987,12 @@
   justify-items: center;
   gap: 18px;
 }
+.notfound-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+}
 .notfound-num {
   display: flex;
   gap: 0.05em;
