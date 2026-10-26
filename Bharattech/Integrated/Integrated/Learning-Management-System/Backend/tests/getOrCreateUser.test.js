@@ -15,6 +15,8 @@ const token = ({ sub, email, role = "Employee", name = "Asha Rao" }) => ({
   email,
   name,
   preferred_username: email.split("@")[0],
+  // invites verify the email (review M13: only a verified email finds an older record)
+  email_verified: true,
   realm_access: { roles: [role] },
 });
 

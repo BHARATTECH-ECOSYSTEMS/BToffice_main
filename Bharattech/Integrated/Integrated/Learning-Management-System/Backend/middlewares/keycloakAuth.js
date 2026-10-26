@@ -121,6 +121,13 @@ const buildDemoUser = (req) => {
   };
 };
 
+// Anyone can change their own email in Keycloak (it then marks it not verified), so only a verified one (our invites
+// verify it) may find an older record. An unverified email that belongs to a record is refused, not guessed at.
+const UNVERIFIED_EMAIL = {
+  code: "unverified-email",
+  message: "Your email isn't verified, so your sign-in can't be matched to your Bharattech record. Ask an admin to finish your account.",
+};
+
 const getOrCreateUser = async (keycloakUser, keycloakUserId = null) => {
   const keycloakId = keycloakUserId || keycloakUser.sub;
   const email = (keycloakUser.email || "").toLowerCase().trim();
@@ -130,6 +137,9 @@ const getOrCreateUser = async (keycloakUser, keycloakUserId = null) => {
 
     if (!user && email) {
       user = await User.findOne({ email });
+      if (user && keycloakUser.email_verified !== true) {
+        throw Object.assign(new Error(UNVERIFIED_EMAIL.message), { code: UNVERIFIED_EMAIL.code });
+      }
       // Found by email but not by login: someone deleted and invited again (a new Keycloak account), or a record
       // made under an older login. Bring the record back and link it to this login, so lookups by keycloakId and
       // lists that skip deleted people find them. They keep their employee ID.
@@ -226,6 +236,7 @@ const keycloakAuth = async (req, res, next) => {
 
       next();
     } catch (keycloakErr) {
+      if (keycloakErr.code === UNVERIFIED_EMAIL.code) return res.status(403).json(UNVERIFIED_EMAIL);
       // Only Keycloak's tokens sign in. The backend's own local tokens (signed with JWT_SECRET by the old
       // /api/auth/login, removed in step 17) are refused: that route signed in accounts that anyone could register
       // with any role. The demo/mock tokens are refused too; demo mode has its own guarded path above.

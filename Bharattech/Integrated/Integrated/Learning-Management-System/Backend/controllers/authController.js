@@ -91,8 +91,10 @@ const passwordGrantLogin = async (username, password) => {
   try {
     const { getOrCreateUser } = require("../middlewares/keycloakAuth");
     await getOrCreateUser(tp);
-  } catch (_) {
-    /* don't fail login if DB sync fails */
+  } catch (error) {
+    // an unverified email that belongs to someone's record: every page would refuse it, so the sign-in says so now
+    if (error.code === "unverified-email") return { ok: false, refusal: { code: error.code, message: error.message }, errorDescription: error.message };
+    /* otherwise don't fail login if DB sync fails */
   }
 
   return {
@@ -177,6 +179,8 @@ const keycloakLogin = async (req, res) => {
         "Keycloak login failed:",
         result.errorDescription || result.error,
       );
+
+      if (result.refusal) return res.status(403).json(result.refusal);
 
       // blocked, or left Bharattech (both switch the account off)
       if (/^account disabled$/i.test(result.errorDescription || "")) return res.status(403).json(SWITCHED_OFF);

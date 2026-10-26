@@ -14,7 +14,9 @@ const ownRecordIds = async (req) => {
   const decoded = req.user?.decoded || {};
   const me = await getOrCreateUser(decoded);
   const keycloakIds = [...new Set([req.user?.keycloakId, decoded.sub, me?.keycloakId].filter(Boolean))];
-  const emails = [...new Set([req.user?.email, decoded.email, me?.email].filter(Boolean).map((e) => String(e).toLowerCase().trim()))];
+  // the sign-in's email finds older records only when Keycloak has verified it: anyone can change their own email
+  const signInEmails = decoded.email_verified === true ? [req.user?.email, decoded.email] : [];
+  const emails = [...new Set([...signInEmails, me?.email].filter(Boolean).map((e) => String(e).toLowerCase().trim()))];
   const lookup = [
     ...(me?._id ? [{ _id: me._id }] : []),
     ...(keycloakIds.length ? [{ keycloakId: { $in: keycloakIds } }] : []),

@@ -449,7 +449,8 @@ test("inviting someone who left is refused: they're brought back from the Commun
 
 test("a record restored at sign-in no longer counts as having left", async () => {
   const former = await formerColleague({ email: "neha.kapoor@example.test", keycloakId: "kc-old" });
-  await getOrCreateUser({ sub: "kc-new", email: "neha.kapoor@example.test", name: "Neha Kapoor", preferred_username: "neha", realm_access: { roles: ["Employee"] } });
+  // brought back by an invite, which verifies the email (review M13)
+  await getOrCreateUser({ sub: "kc-new", email: "neha.kapoor@example.test", email_verified: true, name: "Neha Kapoor", preferred_username: "neha", realm_access: { roles: ["Employee"] } });
   const saved = await User.findById(former._id).lean();
   assert.equal(saved.isDeleted, false);
   assert.equal(saved.leftOn, undefined);

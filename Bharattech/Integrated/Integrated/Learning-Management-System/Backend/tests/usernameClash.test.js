@@ -34,7 +34,8 @@ beforeEach(async () => {
 after(disconnectTestDb);
 
 /** The parts of a Keycloak access token getOrCreateUser reads. */
-const token = ({ sub, email, username, name = "Asha Rao" }) => ({ sub, email, name, preferred_username: username, realm_access: { roles: ["Employee"] } });
+// invites verify the email (review M13: only a verified email finds an older record)
+const token = ({ sub, email, username, name = "Asha Rao" }) => ({ sub, email, email_verified: true, name, preferred_username: username, realm_access: { roles: ["Employee"] } });
 const removed = (overrides) => User.create(userFields({ isDeleted: true, deletedAt: new Date("2026-09-01"), ...overrides }));
 
 test("a new hire with a removed person's old username gets a record at their first sign-in", async () => {

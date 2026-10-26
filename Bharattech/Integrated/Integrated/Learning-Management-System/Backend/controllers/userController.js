@@ -7,7 +7,7 @@ const { photoType, saveUserPhoto, findUserPhoto, openUserPhoto, deleteUserPhoto 
 const { isAdmin } = require("../utils/refusal");
 const { notePhotoChanged } = require("../utils/notify");
 const { waitsForFirstPassword, hasRecord } = require("./inviteController");
-const { moveRemovedRecordsAside } = require("../utils/takenNames");
+const { moveRemovedRecordsAside, freeUsernameFor } = require("../utils/takenNames");
 
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 const DEMO_AUTH_ENABLED = process.env.AUTH_MODE === "demo";
@@ -311,10 +311,15 @@ const fetchKeycloakUsers = async () => {
 const upsertLocalUserFromKeycloak = async (kcUser) => {
   const email = normalizeEmail(emailFromKeycloakUser(kcUser));
   const username = usernameFromKeycloakUser(kcUser);
+  // An older record is taken over by email only when Keycloak has verified it (anyone can change their own email), and
+  // never by username: every record has its own Keycloak login, and a username can pass from one person to another.
   const existing =
-    (await User.findOne({ keycloakId: kcUser.id })) ||
-    (email ? await User.findOne({ email }) : null) ||
-    (username ? await User.findOne({ username }) : null);
+    (await User.findOne({ keycloakId: kcUser.id })) || (email && kcUser.emailVerified === true ? await User.findOne({ email }) : null);
+  // an unverified email that belongs to a record: no record for this account (its sign-in is refused the same way)
+  if (!existing && email && (await User.exists({ email }))) {
+    console.warn(`Sync: skipped Keycloak account ${kcUser.id}: its unverified email belongs to a record.`);
+    return null;
+  }
 
   // A removed record whose email or username is now another Keycloak account's
   // would collide on save (both are unique), so move it aside first.
@@ -341,6 +346,8 @@ const upsertLocalUserFromKeycloak = async (kcUser) => {
 
   return User.create({
     ...update,
+    // a name a current person still holds gets a number added (they may have been renamed since)
+    username: await freeUsernameFor(username, kcUser.id),
     password: await bcrypt.hash(randomUUID(), 10),
   });
 };
@@ -354,7 +361,8 @@ const syncKeycloakUsersToLocal = async () => {
   for (const kcUser of keycloakUsers) {
     // an invite nobody has accepted gets its record at their first sign-in, so it stays in "Pending invites"
     if (waitsForFirstPassword(kcUser) && !(await hasRecord(kcUser.id))) continue;
-    syncedUsers.push(await upsertLocalUserFromKeycloak(kcUser));
+    const synced = await upsertLocalUserFromKeycloak(kcUser);
+    if (synced) syncedUsers.push(synced);
   }
   syncedUsers.push(...(await User.find({ keycloakId: { $in: switchedOffIds }, isDeleted: { $ne: true } })));
 
