@@ -1,7 +1,7 @@
 const { test, before, beforeEach, after } = require("node:test");
 const assert = require("node:assert/strict");
 const User = require("../models/User");
-const { getDirectory } = require("../controllers/userController");
+const { getDirectory, getUserById } = require("../controllers/userController");
 const { connectTestDb, clearTestDb, disconnectTestDb, userFields } = require("./helpers/testDb");
 
 before(connectTestDb);
@@ -106,4 +106,32 @@ test("a banned account is listed as inactive", async () => {
 test("a person with no name yet is listed by username", async () => {
   await User.create(userFields({ fullName: "", username: "new.joiner" }));
   assert.equal((await call(getDirectory, asEmployee)).body[0].name, "new.joiner");
+});
+
+// 2026-10-26, owner's 1-1A: Super Admins and Admins manage accounts, so they still see numbers someone hid from
+// colleagues, marked as hidden (1-2A); sub admins, employees and interns don't.
+test("Super Admins and Admins still see a hidden phone, marked as hidden; nobody else sees it", async () => {
+  await User.create(userFields({ phone: "+91 98765 00002", workPhone: "+91 80 4000 0002", privacySettings: { showPhone: false } }));
+  for (const role of ["Superadmin", "Admin", "super-admin"]) {
+    const [person] = (await call(getDirectory, { user: { role } })).body;
+    assert.deepEqual([person.phone, person.workPhone, person.phoneHidden], ["+91 98765 00002", "+91 80 4000 0002", true], role);
+  }
+  for (const role of ["Subadmin", "Employee", "Intern", undefined]) {
+    const [person] = (await call(getDirectory, { user: { role } })).body;
+    assert.deepEqual([person.phone, person.workPhone, person.phoneHidden], [undefined, undefined, undefined], String(role));
+  }
+});
+
+test("a phone that isn't hidden carries no hidden mark, for admins either", async () => {
+  await User.create(userFields({ phone: "+91 98765 00004" }));
+  const [person] = (await call(getDirectory, { user: { role: "Admin" } })).body;
+  assert.equal(person.phone, "+91 98765 00004");
+  assert.equal("phoneHidden" in person, false);
+});
+
+test("one person's record follows the same rule", async () => {
+  const hidden = await User.create(userFields({ phone: "+91 98765 00005", privacySettings: { showPhone: false } }));
+  const one = async (role) => (await call(getUserById, { user: { role }, params: { id: String(hidden._id) } })).body;
+  assert.deepEqual([(await one("Admin")).phone, (await one("Admin")).phoneHidden], ["+91 98765 00005", true]);
+  assert.deepEqual([(await one("Subadmin")).phone, (await one("Subadmin")).phoneHidden], ["", undefined]);
 });

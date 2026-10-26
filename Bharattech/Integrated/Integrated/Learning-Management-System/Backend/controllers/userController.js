@@ -401,7 +401,7 @@ exports.getUsers = async (req, res) => {
   try {
     // The company's People page reads this for every role. Only an admin's request syncs from Keycloak (the sync
     // writes to everyone's records and asks Keycloak about every account); everyone else gets the stored list.
-    if (!isAdmin(req.user)) return res.json((await listLocalUsers()).map(publicUser));
+    if (!isAdmin(req.user)) return res.json((await listLocalUsers()).map((u) => publicUser(u, req.user)));
 
     let users = [];
 
@@ -412,14 +412,14 @@ exports.getUsers = async (req, res) => {
       users = await listLocalUsers();
     }
 
-    res.json(users.map(publicUser));
+    res.json(users.map((u) => publicUser(u, req.user)));
   } catch (error) {
     console.error("Get users error:", error?.response?.data || error);
 
     if (DEMO_AUTH_ENABLED) {
       try {
         const users = await listLocalUsers();
-        return res.json(users.map(publicUser));
+        return res.json(users.map((u) => publicUser(u, req.user)));
       } catch (fallbackError) {
         console.error("Demo fallback users error:", fallbackError);
       }
@@ -432,16 +432,23 @@ exports.getUsers = async (req, res) => {
 // Only what a colleague may see. Everything else on the user record (password hash, sessions, Keycloak ID) stays here.
 const DIRECTORY_FIELDS = "employeeId fullName username email role phone phoneNumber workPhone stream team joinedOn isBanned privacySettings";
 
-const toDirectoryEntry = (user) => {
-  const showPhone = user.privacySettings?.showPhone !== false;
+// Super Admins and Admins manage accounts, so they still see the numbers someone hid from colleagues, marked as
+// hidden (owner, 2026-10-26); everyone else sees none. `blank` is what the reply puts for a number not shown.
+const seesHiddenPhones = (viewer) => !!viewer && isAdmin(viewer);
+const phonesFor = (user, viewer, blank) => {
+  const hidden = user.privacySettings?.showPhone === false;
+  if (hidden && !seesHiddenPhones(viewer)) return { phone: blank, workPhone: blank };
+  return { phone: user.phone || user.phoneNumber || blank, workPhone: user.workPhone || blank, ...(hidden && { phoneHidden: true }) };
+};
+
+const toDirectoryEntry = (user, viewer) => {
   return {
     id: String(user._id),
     employeeId: user.employeeId,
     name: user.fullName || user.username || user.email,
     email: user.email,
     role: user.role,
-    phone: showPhone ? user.phone || user.phoneNumber || undefined : undefined,
-    workPhone: showPhone ? user.workPhone || undefined : undefined,
+    ...phonesFor(user, viewer, undefined),
     stream: user.stream,
     team: user.team,
     joinedOn: user.joinedOn || undefined,
@@ -460,8 +467,7 @@ const stripSensitive = (user) => {
 };
 
 /** A colleague's record for anyone signed in: the same safe shape as the directory, plus the photo. Never secrets. */
-const publicUser = (user) => {
-  const showPhone = user.privacySettings?.showPhone !== false;
+const publicUser = (user, viewer) => {
   return {
     id: String(user._id),
     _id: String(user._id),
@@ -472,8 +478,7 @@ const publicUser = (user) => {
     email: user.email,
     role: user.role,
     profilePicture: user.profilePicture || "",
-    phone: showPhone ? user.phone || user.phoneNumber || "" : "",
-    workPhone: showPhone ? user.workPhone || "" : "",
+    ...phonesFor(user, viewer, ""),
     stream: user.stream,
     team: user.team,
     joinedOn: user.joinedOn || undefined,
@@ -520,7 +525,7 @@ exports.getDirectory = async (req, res) => {
       .collation({ locale: "en", strength: 2 })
       .sort({ fullName: 1, username: 1 })
       .lean();
-    res.json(users.map(toDirectoryEntry));
+    res.json(users.map((u) => toDirectoryEntry(u, req.user)));
   } catch (error) {
     console.error("Get directory error:", error);
     res.status(500).json({ message: "Failed to load the people directory" });
@@ -577,7 +582,7 @@ exports.getKeycloakUsers = async (req, res) => {
     const hidden = new Set(
       (await User.find({ keycloakId: { $in: users.map((u) => u.id) }, "privacySettings.showPhone": false }).select("keycloakId").lean()).map((u) => u.keycloakId)
     );
-    const shown = users.map((u) => (hidden.has(u.id) ? { ...u, phone: "", workPhone: "" } : u));
+    const shown = users.map((u) => (!hidden.has(u.id) ? u : seesHiddenPhones(req.user) ? { ...u, phoneHidden: true } : { ...u, phone: "", workPhone: "" }));
 
     res.json(shown.sort((a, b) => a.fullName.localeCompare(b.fullName)));
   } catch (err) {
@@ -594,7 +599,7 @@ exports.getUserById = async (req, res) => {
     });
 
     if (!user) return res.status(404).json({ message: "User not found" });
-    res.json(publicUser(user));
+    res.json(publicUser(user, req.user));
   } catch (error) {
     console.error("Get user by id error:", error);
     res.status(500).json({ message: "Failed to fetch user" });
@@ -741,7 +746,7 @@ exports.updateUser = async (req, res) => {
       await syncKeycloakRealmRole(user.keycloakId, requestedRole);
     }
 
-    res.json(publicUser(user));
+    res.json(publicUser(user, req.user));
   } catch (error) {
     // bad input (e.g. a stream that doesn't exist) is the caller's to fix, not a server failure
     if (error.name === "ValidationError") {
@@ -910,7 +915,7 @@ exports.removeUserPhoto = async (req, res) => {
       return res.status(403).json({ message: "You can only change the details of sub admins, employees and interns." });
     }
     // an older record may hold only an address (the company app's uploads), which goes too
-    if (!user.photoFileId && !user.profilePicture) return res.json(publicUser(user));
+    if (!user.photoFileId && !user.profilePicture) return res.json(publicUser(user, req.user));
     const oldFileId = user.photoFileId;
     user.photoFileId = undefined;
     user.profilePicture = "";
@@ -919,7 +924,7 @@ exports.removeUserPhoto = async (req, res) => {
     if (String(user._id) !== String(req.user?.id)) {
       await notePhotoChanged({ userId: user._id, actorName: req.user?.fullName, removed: true });
     }
-    res.json(publicUser(user));
+    res.json(publicUser(user, req.user));
   } catch (error) {
     console.error("Remove someone's photo error:", error.message);
     res.status(500).json({ message: "The photo couldn't be removed. Try again in a moment." });

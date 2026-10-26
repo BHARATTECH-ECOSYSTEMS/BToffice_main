@@ -106,6 +106,17 @@ test("the Keycloak list shows a phone only when its owner allows it", async () =
   assert.equal(byEmail["ravi@example.test"].phone, "+91 90000 00002");
 });
 
+test("the Keycloak list still shows Super Admins and Admins a hidden phone, marked as hidden", async () => {
+  await User.create(userFields({ keycloakId: "kc-asha", email: "asha@example.test", privacySettings: { showPhone: false } }));
+  keycloak.users = [kcUser("kc-asha", "asha@example.test", { phone: ["+91 90000 00001"], workPhone: ["+91 80 1"] })];
+  for (const role of ["Superadmin", "Admin"]) {
+    const [asha] = (await call(getKeycloakUsers, role)).body;
+    assert.deepEqual([asha.phone, asha.workPhone, asha.phoneHidden], ["+91 90000 00001", "+91 80 1", true], role);
+  }
+  const [asSubadmin] = (await call(getKeycloakUsers, "Subadmin")).body;
+  assert.deepEqual([asSubadmin.phone, asSubadmin.phoneHidden], ["", undefined]);
+});
+
 test("when Keycloak fails, the reply carries no internal error text", async () => {
   keycloak.findError = new Error("connect ECONNREFUSED 10.0.0.7:8443 (internal detail)");
   const reply = await quiet(() => call(getKeycloakUsers, "Employee"));
