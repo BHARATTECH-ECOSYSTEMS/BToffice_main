@@ -684,30 +684,50 @@ exports.updateUser = async (req, res) => {
 
     if (req.file && !photoType(req.file.buffer)) return res.status(400).json({ message: PHOTO_PROBLEM });
 
+    // Keycloak goes first for the sign-in switch, the name and the role: if it refuses, nothing is saved here either.
+    // Each change made there is remembered, and a failure after it puts them all back (newest first), so the two never
+    // disagree.
+    const inKeycloak = user.keycloakId && user.authProvider === "keycloak";
+    const madeInKeycloak = [];
+    const putKeycloakBack = async () => {
+      for (const undo of madeInKeycloak.reverse()) await undo().catch((e) => console.error("Putting Keycloak back failed:", e.message));
+    };
+
     // Blocking switches their Keycloak account off too (unblocking back on), so the other apps that sign in with
-    // Keycloak refuse them as well. Keycloak goes first, like "Mark as left": if it fails, nothing is changed.
+    // Keycloak refuse them as well, like "Mark as left".
     const wasBanned = Boolean(user.isBanned);
-    const switchesSignIn = "isBanned" in updates && updates.isBanned !== wasBanned && user.authProvider === "keycloak";
-    if (switchesSignIn) {
+    if ("isBanned" in updates && updates.isBanned !== wasBanned && user.authProvider === "keycloak") {
       try {
         await setKeycloakEnabled(user.keycloakId, !updates.isBanned);
+        madeInKeycloak.push(() => setKeycloakEnabled(user.keycloakId, !wasBanned));
       } catch (keycloakError) {
         console.error("Block: switching the Keycloak account failed:", keycloakError?.message);
         return res.status(502).json({ message: "Their sign-in couldn't be switched right now, so nothing was changed. Try again in a minute." });
       }
     }
-    // a failure before the record is saved puts their sign-in back as it was, so the two never disagree
-    const switchSignInBack = () =>
-      switchesSignIn && setKeycloakEnabled(user.keycloakId, !wasBanned).catch((e) => console.error("Block: switching the account back failed:", e.message));
 
-    // Keycloak first: if it refuses, nothing is saved here either, so the two never disagree about the name
-    if (renaming && updates.fullName !== user.fullName && user.keycloakId && user.authProvider === "keycloak") {
+    if (renaming && updates.fullName !== user.fullName && inKeycloak) {
+      const oldName = user.fullName;
       try {
         await syncKeycloakName(user.keycloakId, updates.fullName);
+        madeInKeycloak.push(() => syncKeycloakName(user.keycloakId, oldName));
       } catch (keycloakError) {
         console.error("Keycloak name sync error:", keycloakError?.response?.status || keycloakError?.message);
-        await switchSignInBack();
+        await putKeycloakBack();
         return res.status(502).json({ message: "The new name couldn't be saved to the sign-in system, so nothing was changed. Try again in a moment." });
+      }
+    }
+
+    // only a real change asks Keycloak: the company app sends the whole form, role included, on every edit
+    const oldRole = normalizeRole(user.role);
+    if (requestedRole && requestedRole !== oldRole && inKeycloak) {
+      try {
+        await syncKeycloakRealmRole(user.keycloakId, requestedRole);
+        madeInKeycloak.push(() => syncKeycloakRealmRole(user.keycloakId, oldRole));
+      } catch (keycloakError) {
+        console.error("Keycloak role sync error:", keycloakError?.message);
+        await putKeycloakBack();
+        return res.status(502).json({ message: "The new role couldn't be saved to the sign-in system, so nothing was changed. Try again in a moment." });
       }
     }
 
@@ -717,17 +737,13 @@ exports.updateUser = async (req, res) => {
       Object.assign(user, updates);
       await user.save();
     } catch (error) {
-      await switchSignInBack();
+      await putKeycloakBack();
       throw error;
     }
     await deleteUserPhoto(oldPhotoId);
     // an admin changed someone else's photo: that person hears about it in their bell
     if (req.file && String(user._id) !== String(req.user?.id)) {
       await notePhotoChanged({ userId: user._id, actorName: req.user?.fullName });
-    }
-
-    if (requestedRole && user.keycloakId && user.authProvider === "keycloak") {
-      await syncKeycloakRealmRole(user.keycloakId, requestedRole);
     }
 
     res.json(publicUser(user, req.user));
