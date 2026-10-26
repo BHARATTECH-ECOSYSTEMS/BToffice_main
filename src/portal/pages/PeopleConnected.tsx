@@ -1,7 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { EMAIL_SHAPE, ID_RETENTION_DAYS, ROLE_LABEL, STREAM_LABEL, STREAMS, type PersonRole, type Stream } from '../data';
-import type { ApiError } from '../api';
-import { BUSY_MESSAGE } from '../api';
+import { api, ApiError, BUSY_MESSAGE } from '../api';
 import {
   accountFailedMessage,
   blockProblem,
@@ -28,10 +27,12 @@ import {
   type DirectoryPerson,
   type PendingInvite,
 } from '../people';
+import { personPhotoCalls, personPhotoProblem, PHOTO_MAX_MB, PHOTO_TYPES, photoFileProblem, toJpeg, toSquare } from '../photos';
+import type { PhotoSource } from '../profile';
 import { formatDate } from '../store';
 import { useSession } from '../session';
 import { localDay } from '../eoffice';
-import { Badge, btnClass, BtnLabel, Empty, Modal, PageHead, SearchField, useListFlip, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, Empty, initials, Modal, PageHead, SearchField, useListFlip, useNotice } from '../ui';
 import { WaveButton } from './People';
 import { communityFailedMessage } from '../community';
 
@@ -319,6 +320,7 @@ export function ConnectedPeople() {
       {editing && (
         <DetailsModal
           person={editing}
+          photoProblem={personPhotoProblem(actor, editing.accountRole, editing.email === myEmail)}
           access={{
             blockProblem: blockProblem(actor, editing, editing.email === myEmail),
             resetProblem: resetLinkProblem(actor, editing, editing.email === myEmail),
@@ -705,11 +707,13 @@ interface SignInAccess {
 
 function DetailsModal({
   person,
+  photoProblem,
   access,
   onClose,
   onSave,
 }: {
   person: DirectoryPerson;
+  photoProblem: string;
   access: SignInAccess;
   onClose: () => void;
   onSave: (details: { fullName?: string; stream: Stream | null; team: string; joinedOn?: string | null }) => void;
@@ -750,6 +754,7 @@ function DetailsModal({
         </>
       }
     >
+      <PhotoField person={person} problem={photoProblem} />
       <label className="p-field">
         <span>Name</span>
         <input
@@ -826,5 +831,91 @@ function DetailsModal({
         </span>
       </div>
     </Modal>
+  );
+}
+
+// a stored photo needs the sign-in token, which an <img> can't send, so it's fetched and shown from memory
+const photoUrl = async (source: PhotoSource | undefined) =>
+  !source ? undefined : source.kind === 'web' ? source.url : URL.createObjectURL(await api!.getFile(source.path));
+
+/**
+ * Their photo in Details. A change is saved at once, not with Save, like Block and Send reset link; the backend
+ * tells them in their bell.
+ */
+function PhotoField({ person, problem }: { person: DirectoryPerson; problem: string }) {
+  const calls = useMemo(() => personPhotoCalls(api!), []);
+  const input = useRef<HTMLInputElement>(null);
+  const [url, setUrl] = useState<string>();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [done, setDone] = useState('');
+
+  useEffect(() => {
+    let open = true;
+    calls
+      .load(person.id)
+      .then(photoUrl)
+      .then((loaded) => (open ? setUrl(loaded) : loaded?.startsWith('blob:') && URL.revokeObjectURL(loaded)))
+      // their initials stand in; a change still works
+      .catch((e) => console.warn('Their photo did not load:', e));
+    return () => {
+      open = false;
+    };
+  }, [calls, person.id]);
+  // each shown photo is let go once it's replaced or the window closes
+  useEffect(() => () => void (url?.startsWith('blob:') && URL.revokeObjectURL(url)), [url]);
+
+  const change = async (work: () => Promise<string | undefined>, message: string) => {
+    setBusy(true);
+    setError('');
+    setDone('');
+    try {
+      setUrl(await work());
+      setDone(message);
+    } catch (e) {
+      setError(e instanceof ApiError ? accountFailedMessage(e) : 'That image couldn’t be read. Try another file.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pick = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    const fileProblem = photoFileProblem(file);
+    if (fileProblem) return setError(fileProblem);
+    void change(async () => photoUrl(await calls.save(person.id, await toJpeg(await toSquare(file)))), `Photo saved. ${person.name} is told in their bell.`);
+  };
+
+  const remove = () => void change(async () => (await calls.remove(person.id), undefined), `Photo removed. ${person.name} is told in their bell.`);
+
+  return (
+    <div className="p-field" role="group" aria-labelledby="details-photo">
+      <span id="details-photo">Photo</span>
+      <div className="p-set-photo" aria-busy={busy || undefined}>
+        <span className="p-avatar is-large" aria-hidden="true">
+          {url ? <img src={url} alt="" /> : initials(person.name)}
+        </span>
+        <button type="button" className={btnClass('ghost', { small: true })} disabled={busy || !!problem} title={problem || undefined} onClick={() => input.current?.click()}>
+          <BtnLabel icon="upload">{busy ? 'Saving…' : url ? 'Change' : 'Upload'}</BtnLabel>
+        </button>
+        {url && !problem && (
+          <button type="button" className="p-text-btn is-danger" disabled={busy} onClick={remove}>
+            Remove
+          </button>
+        )}
+        <input ref={input} type="file" accept={PHOTO_TYPES.join(',')} onChange={pick} hidden />
+      </div>
+      {error ? (
+        <span className="p-error" role="alert">
+          {error}
+        </span>
+      ) : (
+        <span className="p-field-hint" role="status">
+          {done || problem || `PNG, JPG or WebP, up to ${PHOTO_MAX_MB} MB. Saved at once; they’re told in their bell.`}
+        </span>
+      )}
+    </div>
   );
 }

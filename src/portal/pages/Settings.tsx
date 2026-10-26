@@ -4,17 +4,13 @@ import type { PortalIconName } from '../data';
 import { api, ApiError, BUSY_MESSAGE } from '../api';
 import { auth } from '../auth';
 import { removeMyPhoto, saveMyPhoto, useMyPhoto } from '../myPhoto';
+import { PHOTO_MAX_MB, PHOTO_TYPES, photoFileProblem, toJpeg, toSquare } from '../photos';
 import { phoneProblem, saveMyPhones, useAccountProfile, type AccountProfile } from '../profile';
 import { endSessionForNewSignIn, ROLE_NAME, setDisplayName, setPhoto, useSession } from '../session';
 import { Badge, btnClass, BtnLabel, initials, PageHead, PIcon, useNotice } from '../ui';
 import { ThemeChoices } from '../../components/ThemeSwitch';
 
 const MIN_PASSWORD = 8;
-const PHOTO_TYPES = ['image/png', 'image/jpeg', 'image/webp'];
-const PHOTO_MAX_MB = 5;
-// stored as a square big enough to stay sharp on the dashboard's profile card (~380px wide) and the ID card on
-// high-density screens, yet small enough for browser storage (a JPEG of roughly 60-100 KB)
-const PHOTO_SIZE = 640;
 
 const SECTIONS: { id: string; label: string; icon: PortalIconName; Panel: () => React.JSX.Element }[] = [
   { id: 'profile', label: 'Profile', icon: 'users', Panel: ProfileSection },
@@ -82,27 +78,6 @@ function Row({ label, hint, htmlFor, children }: { label: string; hint?: string;
   );
 }
 
-/** Crops the middle square of the picked image and scales it down. */
-function toSquare(file: File): Promise<HTMLCanvasElement> {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      const side = Math.min(img.naturalWidth, img.naturalHeight);
-      const canvas = document.createElement('canvas');
-      canvas.width = canvas.height = PHOTO_SIZE;
-      canvas.getContext('2d')!.drawImage(img, (img.naturalWidth - side) / 2, (img.naturalHeight - side) / 2, side, side, 0, 0, PHOTO_SIZE, PHOTO_SIZE);
-      URL.revokeObjectURL(url);
-      resolve(canvas);
-    };
-    img.onerror = () => (URL.revokeObjectURL(url), reject(new Error('unreadable image')));
-    img.src = url;
-  });
-}
-
-const toJpeg = (canvas: HTMLCanvasElement) =>
-  new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('unreadable image'))), 'image/jpeg', 0.85));
-
 const PHOTO_FAILED: Record<ApiError['kind'], string> = {
   'signed-out': 'Your sign-in has ended. Sign out and sign in again, then try once more.',
   forbidden: 'Your account isn’t allowed to change its photo.',
@@ -145,8 +120,8 @@ function ProfilePanel() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!PHOTO_TYPES.includes(file.type)) return setPhotoError('Choose a PNG, JPG or WebP image.');
-    if (file.size > PHOTO_MAX_MB * 1024 * 1024) return setPhotoError(`Choose an image under ${PHOTO_MAX_MB} MB.`);
+    const problem = photoFileProblem(file);
+    if (problem) return setPhotoError(problem);
     void changePhoto(
       async () => {
         const square = await toSquare(file);

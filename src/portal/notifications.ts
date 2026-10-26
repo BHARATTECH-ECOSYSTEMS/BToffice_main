@@ -31,6 +31,7 @@ const ICON: Record<string, PortalIconName> = {
   event: 'calendar',
   course: 'cap',
   verification: 'shield',
+  photo: 'settings',
 };
 const PORTAL_PATH = /^\/portal(\/|$)/;
 
