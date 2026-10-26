@@ -587,13 +587,8 @@ export function useNotice() {
   return [node, show] as const;
 }
 
-export const initials = (name: string) =>
-  name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join('');
+// in its own module so the public top bar (and its tests) can use it without the portal's components
+export { initials } from './names';
 
 /**
  * When a filter changes which rows show, the rows that stay slide from where they were to where they are now, and

@@ -1510,6 +1510,17 @@ h3 {
     scale var(--dur-press) var(--ease);
   animation: navItem 0.8s var(--ease) 1150ms backwards;
 }
+/* the initials sit where the arrow is; they stay upright on hover instead of turning with it */
+.nav-cta-initials {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+@media (hover: hover) and (pointer: fine) {
+  .nav-cta:hover .nav-cta-initials {
+    transform: none;
+  }
+}
 .nav-theme svg {
   width: 19px;
   height: 19px;
@@ -2060,6 +2071,20 @@ button.footer-connect-slot {
   .nav .nav-links > button { padding: 0 20px 0 11px; }
   .nav .nav-links i { right: 9px; }
 }
+/* Signed in, the bar's end is one key wider (Sign out), so the keys sit closer up to 1219px instead of 1179px. */
+@media (min-width: 1180px) and (max-width: 1219px) {
+  .nav[data-account] .nav-links {
+    position: relative;
+    left: auto;
+    transform: none;
+    margin-inline: auto;
+    gap: 3px;
+  }
+  .nav[data-account] .nav-end { margin-left: 0; }
+  .nav[data-account] .nav-links > a,
+  .nav[data-account] .nav-links > button { padding: 0 20px 0 11px; }
+  .nav[data-account] .nav-links i { right: 9px; }
+}
 @media (min-width: 1025px) and (max-width: 1059px) {
   .nav .nav-links > a,
   .nav .nav-links > button { padding: 0 18px 0 10px; }
@@ -2083,7 +2108,8 @@ button.footer-connect-slot {
 
 @media (max-width: 640px) {
   .brand-word span { display: none; }
-  .nav-cta { display: none; }
+  .nav-cta,
+  .nav-signout { display: none; }
 
   .nav-progress { padding: 0 22px; gap: 4px; }
   .footer-top { grid-template-columns: repeat(2, minmax(0, 1fr)); }

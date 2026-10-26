@@ -4,6 +4,8 @@ import { motion, useReducedMotion } from 'motion/react';
 import { Arrow, Brand, toneStyle, BtnText, ThreadMark } from './ui';
 import { CHAPTERS, EMAIL, EMAIL_HREF } from '../content';
 import { useOpenLogin } from './Login';
+import { navAccount } from './navAccount';
+import { endSession, useSession } from '../portal/session';
 import { useScene } from '../gl/Scene';
 import { NavPeek, type PeekId } from './NavPeek';
 import type { HueName } from '../gl/palette';
@@ -117,6 +119,8 @@ export function Nav() {
   const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
   const openLogin = useOpenLogin();
+  // someone signed in sees whose portal opens, and can sign out from here (owner's 9A)
+  const account = navAccount(useSession());
   const reduceMotion = useReducedMotion();
   const [hover, setHover] = useState(-1);
   const [inCaps, setInCaps] = useState(false);
@@ -268,7 +272,7 @@ export function Nav() {
   });
 
   return (
-    <header className="nav" data-hidden={(hidden && !open && !peek) || undefined} data-compact={compact || open || undefined} data-open={open || undefined}>
+    <header className="nav" data-hidden={(hidden && !open && !peek) || undefined} data-compact={compact || open || undefined} data-open={open || undefined} data-account={account ? '' : undefined}>
       {/* with reduced motion the bar is simply there: `initial={false}` starts it at its open state */}
       <motion.div className="nav-bar" ref={barRef} initial={reduceMotion ? false : 'closed'} animate="open">
         <motion.span className="nav-glass" aria-hidden="true" variants={OPENING.glass} />
@@ -318,12 +322,28 @@ export function Nav() {
 
         <div className="nav-end">
           <ThemeButton />
-          <button type="button" className="nav-cta" onClick={openLogin} aria-haspopup="dialog">
-            <BtnText>Employee login</BtnText>
-            <span className="nav-cta-icon">
-              <Arrow dir="up-right" size={13} />
-            </span>
-          </button>
+          {account ? (
+            <>
+              <button type="button" className="nav-theme nav-signout" onClick={() => endSession()} aria-label="Sign out" title="Sign out">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h11" />
+                </svg>
+              </button>
+              <Link to="/portal" className="nav-cta" aria-label={account.label}>
+                <BtnText>Open portal</BtnText>
+                <span className="nav-cta-icon nav-cta-initials" aria-hidden="true">
+                  {account.initials}
+                </span>
+              </Link>
+            </>
+          ) : (
+            <button type="button" className="nav-cta" onClick={openLogin} aria-haspopup="dialog">
+              <BtnText>Employee login</BtnText>
+              <span className="nav-cta-icon">
+                <Arrow dir="up-right" size={13} />
+              </span>
+            </button>
+          )}
           <button className="nav-burger" onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-controls="nav-sheet" aria-label={open ? 'Close menu' : 'Open menu'}>
             <span />
             <span />
