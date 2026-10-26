@@ -46,6 +46,16 @@ test('each role sees only its own connected topics', () => {
   assert.ok(!employee.includes('How do I verify a company or an employee?'));
 });
 
+test('admins learn how the interview tool opens; others never see it (step 14)', () => {
+  const topic = 'How do I interview candidates?';
+  assert.ok(questions(true, 'admin').includes(topic));
+  assert.ok(!questions(true, 'subadmin').includes(topic));
+  assert.ok(!questions(true, 'employee').includes(topic));
+  const answer = helpGroups(true, 'admin', 'interview').flatMap((g) => g.topics).find((t) => t.q === topic);
+  assert.match(answer?.a ?? '', /new tab, signed in as you/);
+  assert.equal(answer?.link?.to, '/portal/interview');
+});
+
 test('connected answers never repeat what only the demo says', () => {
   const demoOnly = [/aren’t connected to the sign-in system/i, /saved in this browser\. emails/i, /isn’t connected to a server/i, /active \/ inactive switch/i];
   for (const role of ROLES) {

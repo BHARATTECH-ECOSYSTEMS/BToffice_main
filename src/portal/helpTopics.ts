@@ -164,6 +164,12 @@ const CONNECTED_HELP: HelpGroup[] = [
         link: VERIFY_LINK,
       },
       {
+        q: 'How do I interview candidates?',
+        a: 'Under HR OPS, open Interview and press “Open interview tool”: OpenInterviewer opens in a new tab, signed in as you. There you set up an interview for a role, make a private link for each candidate and send it to them; an AI holds the interview, and you read each transcript with its summary. Candidates don’t need an account. If the new tab doesn’t open, allow pop-ups for this site. Admins and Super Admins can open it.',
+        audience: 'admin',
+        link: { to: '/portal/interview', label: 'Open Interview' },
+      },
+      {
         q: 'How do I mark someone as left?',
         a: 'On the People page, press “Mark as left” on their row (their stream must be set first, since it picks their community). They move to the Community that day, their sign-in is switched off, and their ID documents are deleted 60 days later. Their Employee ID, tasks and certificates stay. Marked someone by mistake? Press “Bring back” on their Community card. Super Admins can mark admins as left; admins can mark sub admins, employees and interns.',
         audience: 'admin',

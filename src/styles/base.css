@@ -384,6 +384,7 @@ main:focus {
    a catch-all [data-offscreen] * restyled every element of a section (up to 540, 26 ms) each time it crossed the
    screen's edge. A new endless animation goes on this list too (tests/site/speed.test.ts checks). */
 [data-offscreen] .footer-connect:hover::after,
+[data-offscreen] .p-iv-msg[data-status='typing'] .p-iv-dots i,
 [data-offscreen] .careers-glow i,
 [data-offscreen] .careers-count em i::after,
 [data-offscreen] .opening-spark::after,

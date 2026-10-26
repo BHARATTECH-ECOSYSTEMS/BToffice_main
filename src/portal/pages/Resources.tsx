@@ -252,18 +252,5 @@ export function LearningElsewhere() {
   );
 }
 
-export function Soon({ title, sub, body }: { title: string; sub: string; body: string }) {
-  return (
-    <>
-      <PageHead title={title} sub={sub} />
-      <section className="p-card">
-        <Empty icon="clock" title="Coming next">
-          {body}
-        </Empty>
-      </section>
-    </>
-  );
-}
-
 // Re-exported so the router can still lazy-load the portal's 404 page from this chunk.
 export { PortalNotFound };

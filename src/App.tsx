@@ -48,6 +48,7 @@ const loadCommunity = () => import('./portal/pages/Community');
 const loadAttendance = () => import('./portal/pages/Attendance');
 const loadProfile = () => import('./portal/pages/Profile');
 const loadVerification = () => import('./portal/pages/Verification');
+const loadInterview = () => import('./portal/pages/Interview');
 
 /**
  * Once the first page is up and the browser is idle, the other pages are fetched one at a time, so moving between
@@ -205,13 +206,7 @@ const router = createHashRouter([
       { path: 'settings', lazy: page(loadSettings, 'Settings') },
       // the portal's own course pages were removed; this says where courses are (older bell notes link under it)
       { path: 'lms/*', lazy: page(loadResources, 'LearningElsewhere') },
-      {
-        path: 'interview',
-        lazy: async () => {
-          const { Soon } = await loadResources();
-          return { element: <Soon title="Interview" sub="Interview tests for candidates." body="This section will be connected once its screens are available." /> };
-        },
-      },
+      { path: 'interview', lazy: page(loadInterview, 'Interview') },
       { path: 'verification', element: <Navigate to="company" replace /> },
       { path: 'verification/company', lazy: page(loadVerification, 'CompanyVerification') },
       { path: 'verification/employee', lazy: page(loadVerification, 'EmployeeVerification') },
