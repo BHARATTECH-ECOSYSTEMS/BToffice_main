@@ -12,6 +12,9 @@ const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 
 const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || "lms-client";
 
+// Keycloak answers "Account disabled" only when the password was right, so saying so tells nothing to someone guessing
+const SWITCHED_OFF = { code: "switched-off", message: "Your sign-in is switched off. Ask an admin if you think this is a mistake." };
+
 // Exchanges username/password for tokens via Keycloak's Direct Grant flow and
 // builds the user payload our frontend expects. Shared by keycloakLogin and
 // acceptInvite (the second leg, after a temporary password has been replaced).
@@ -164,6 +167,9 @@ const keycloakLogin = async (req, res) => {
         "Keycloak login failed:",
         result.errorDescription || result.error,
       );
+
+      // blocked, or left Bharattech (both switch the account off)
+      if (/^account disabled$/i.test(result.errorDescription || "")) return res.status(403).json(SWITCHED_OFF);
 
       // Keycloak refuses a right password while the account has an unfinished step. A temporary (invite) password
       // waits for a new one: that's the invite's "Set up your account". Any other step (a missing last name, an email
