@@ -3,7 +3,7 @@ const User = require("../models/User");
 const PasswordReset = require("../models/PasswordReset");
 const { kcAdmin, ensureKeycloakAdmin: authKeycloakAdmin, keycloakReply } = require("../utils/keycloakAdmin");
 const { createMailTransporter, escapeHtml, portalUrl, EMAIL_FROM } = require("../utils/mailer");
-const { loginNameFor } = require("./authController");
+const { loginNameFor, passwordLengthProblem } = require("./authController");
 const { canEditUser } = require("./userController");
 const { Refusal, answerError, isObjectId } = require("../utils/refusal");
 
@@ -18,8 +18,6 @@ const RESET_LINK_MINUTES = 30;
 const MIN_GAP_MS = 2 * 60 * 1000;
 const HOURLY_MAX = 5;
 const HOUR_MS = 60 * 60 * 1000;
-const PASSWORD_MIN = 8;
-const PASSWORD_MAX = 128;
 
 const SAME_REPLY = `If that account exists, we've sent a reset link to its email. The link works once, for ${RESET_LINK_MINUTES} minutes.`;
 const LINK_GONE = "This link has expired or was already used. Ask for a new one from the sign-in window.";
@@ -138,9 +136,8 @@ exports.resetPassword = async (req, res) => {
     if (typeof token !== "string" || !token || typeof newPassword !== "string") {
       return res.status(400).json({ message: "The link or the new password is missing." });
     }
-    if (newPassword.length < PASSWORD_MIN || newPassword.length > PASSWORD_MAX) {
-      return res.status(400).json({ message: `Choose a password of ${PASSWORD_MIN} to ${PASSWORD_MAX} characters.` });
-    }
+    const tooShortOrLong = passwordLengthProblem(newPassword);
+    if (tooShortOrLong) return res.status(400).json({ message: tooShortOrLong });
 
     // the link is claimed in the same step that checks it, so two clicks at once can't both use it
     const now = new Date();

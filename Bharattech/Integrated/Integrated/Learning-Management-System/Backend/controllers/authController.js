@@ -12,6 +12,16 @@ const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 
 const KEYCLOAK_CLIENT_ID = process.env.KEYCLOAK_CLIENT_ID || "lms-client";
 
+// One rule for every new password (finishing an invite, Change password, Forgot password's reset), checked before
+// Keycloak is asked: the realm may have no rule of its own.
+const PASSWORD_MIN = 8;
+const PASSWORD_MAX = 128;
+/** What to tell someone whose new password is too short or too long, or null when its length is fine. */
+const passwordLengthProblem = (password) =>
+  String(password).length < PASSWORD_MIN || String(password).length > PASSWORD_MAX
+    ? `Choose a password of ${PASSWORD_MIN} to ${PASSWORD_MAX} characters.`
+    : null;
+
 // Keycloak answers "Account disabled" only when the password was right, so saying so tells nothing to someone guessing
 const SWITCHED_OFF = { code: "switched-off", message: "Your sign-in is switched off. Ask an admin if you think this is a mistake." };
 
@@ -229,6 +239,9 @@ const acceptInvite = async (req, res) => {
       });
     }
 
+    const tooShortOrLong = passwordLengthProblem(newPassword);
+    if (tooShortOrLong) return res.status(400).json({ message: tooShortOrLong });
+
     if (await expiredInviteFor(username)) return res.status(410).json(EXPIRED);
 
     const checkResult = await passwordGrantLogin(username, temporaryPassword);
@@ -334,6 +347,9 @@ const keycloakChangePassword = async (req, res) => {
         .json({ message: "Current password and new password are required" });
     }
 
+    const tooShortOrLong = passwordLengthProblem(newPassword);
+    if (tooShortOrLong) return res.status(400).json({ message: tooShortOrLong });
+
     const username = req.user?.decoded?.preferred_username || req.user?.email;
     if (!username) {
       return res
@@ -386,4 +402,7 @@ module.exports = {
   keycloakChangePassword,
   // shared with the "Forgot password?" form (passwordResetController.js), which takes an Employee ID too
   loginNameFor,
+  passwordLengthProblem,
+  PASSWORD_MIN,
+  PASSWORD_MAX,
 };
