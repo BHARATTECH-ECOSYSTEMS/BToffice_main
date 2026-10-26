@@ -2,7 +2,7 @@ const bcrypt = require("bcryptjs");
 const { randomUUID } = require("crypto");
 const mongoose = require("mongoose");
 const User = require("../models/User");
-const { kcAdmin, ensureKeycloakAdmin: authKeycloakAdmin } = require("../utils/keycloakAdmin");
+const { kcAdmin, ensureKeycloakAdmin: authKeycloakAdmin, keycloakReply } = require("../utils/keycloakAdmin");
 const { photoType, saveUserPhoto, findUserPhoto, openUserPhoto, deleteUserPhoto } = require("../utils/userPhotos");
 const { isAdmin } = require("../utils/refusal");
 const { notePhotoChanged } = require("../utils/notify");
@@ -774,12 +774,17 @@ exports.deleteUser = async (req, res) => {
       });
     }
 
+    // Keycloak first: removed here but still in Keycloak, they could sign in to the other apps, and the next admin list
+    // would bring them back. An account already gone from Keycloak counts as done.
     if (user.keycloakId) {
       try {
         await authKeycloakAdmin();
         await kcAdmin.users.del({ realm: KEYCLOAK_REALM, id: user.keycloakId });
       } catch (keycloakError) {
-        console.error("Keycloak delete error:", keycloakError?.response?.data || keycloakError);
+        if (keycloakReply(keycloakError).status !== 404) {
+          console.error("Keycloak delete error:", keycloakError?.response?.status || keycloakError?.message);
+          return res.status(502).json({ message: "Their sign-in couldn't be removed right now, so nothing was changed. Try again in a minute." });
+        }
       }
     }
 
