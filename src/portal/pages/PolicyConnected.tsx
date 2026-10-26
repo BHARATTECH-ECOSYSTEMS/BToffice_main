@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { ApiError, ApiErrorKind } from '../api';
 import { BUSY_MESSAGE } from '../api';
 import { PdfModal } from '../PdfModal';
-import { usePolicies, type PolicyDocument } from '../policies';
+import { READ_CONFIRMATION, usePolicies, type PolicyDocument } from '../policies';
 import { useSession } from '../session';
 import { formatDate } from '../store';
 import { Badge, btnClass, BtnLabel, Empty, Modal, PageHead, PIcon, Stat, useNotice } from '../ui';
@@ -11,7 +11,8 @@ import { UploadModal } from './Policy';
 /**
  * Policy & Compliance with the real sign-in (src/portal/policies.ts). Admins and superadmins upload, delete and see
  * who accepted what; everyone else reads and accepts. The backend lets only those two roles upload or delete, so sub
- * admins read and accept like everyone else. Accepting unlocks once the person has opened that document.
+ * admins read and accept like everyone else. Accepting unlocks once the person has opened that document, and asks for
+ * their “I have read and understood this policy” tick, which the backend requires too.
  */
 
 const LOAD_FAILED: Record<ApiErrorKind, string> = {
@@ -41,6 +42,7 @@ export function ConnectedPolicy() {
   const [uploading, setUploading] = useState(false);
   const [viewing, setViewing] = useState<PolicyDocument | null>(null);
   const [deleting, setDeleting] = useState<PolicyDocument | null>(null);
+  const [accepting, setAccepting] = useState<PolicyDocument | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   // documents opened in this visit: accepting is only offered for something the person has actually opened
   const [opened, setOpened] = useState<Set<string>>(() => new Set());
@@ -150,7 +152,7 @@ export function ConnectedPolicy() {
                             type="button"
                             className={btnClass('primary', { small: true })}
                             disabled={busy === d.id}
-                            onClick={() => void run(d.id, () => policies.accept(d.id), `You accepted ${d.name}.`)}
+                            onClick={() => setAccepting(d)}
                           >
                             <BtnLabel icon="check">
                               {busy === d.id ? 'Accepting…' : 'Accept'}
@@ -243,6 +245,17 @@ export function ConnectedPolicy() {
           onClose={() => setViewing(null)}
         />
       )}
+      {accepting && (
+        <AcceptPolicyModal
+          document={accepting}
+          onClose={() => setAccepting(null)}
+          onAccept={() => {
+            const d = accepting;
+            setAccepting(null);
+            void run(d.id, () => policies.accept(d.id), `You accepted ${d.name}.`);
+          }}
+        />
+      )}
       {deleting && (
         <Modal
           title={`Delete ${deleting.name}?`}
@@ -271,5 +284,37 @@ export function ConnectedPolicy() {
         </Modal>
       )}
     </>
+  );
+}
+
+/** Accepting is recorded with the person's name, so it waits for their own tick. */
+function AcceptPolicyModal({ document, onClose, onAccept }: { document: PolicyDocument; onClose: () => void; onAccept: () => void }) {
+  const [ticked, setTicked] = useState(false);
+  return (
+    <Modal
+      title={`Accept ${document.name}?`}
+      icon="check"
+      onClose={onClose}
+      onSubmit={() => ticked && onAccept()}
+      footer={
+        <>
+          <button type="button" className={btnClass('ghost')} onClick={onClose}>
+            <BtnLabel>Cancel</BtnLabel>
+          </button>
+          <button type="submit" className={btnClass('primary')} disabled={!ticked}>
+            <BtnLabel icon="check">Accept</BtnLabel>
+          </button>
+        </>
+      }
+    >
+      <p>Your acceptance is saved with your name and today’s date, and admins can see it.</p>
+      <label className="p-doc">
+        <input type="checkbox" checked={ticked} onChange={(e) => setTicked(e.target.checked)} />
+        <span className="p-doc-box" aria-hidden="true">
+          <PIcon name="check" size={12} />
+        </span>
+        <span>{READ_CONFIRMATION}</span>
+      </label>
+    </Modal>
   );
 }

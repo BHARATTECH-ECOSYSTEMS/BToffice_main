@@ -28,7 +28,7 @@ export interface HelpGroup {
 
 const OPEN_POLICIES: HelpTopic = {
   q: 'Where do I accept company policies?',
-  a: 'Open Policy & Compliance, read each document and accept it. Documents waiting for you are marked To review.',
+  a: 'Open Policy & Compliance and read each document. Then press Accept, tick “I have read and understood this policy” and accept it. Documents waiting for you are marked To review.',
   link: { to: '/portal/policy', label: 'Open Policy & Compliance' },
 };
 const NOT_CONNECTED_TOOL: HelpTopic = {

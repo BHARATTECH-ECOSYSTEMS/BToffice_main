@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError } from './api';
+import { api, ApiError, type createApi } from './api';
 import type { PersonRole, PolicyCategory } from './data';
 import { readAccountRole, roleBadge, roleLabel } from './people';
 
@@ -134,7 +134,7 @@ export function usePolicies() {
       form.append('pdf', file, file.name);
       return act(() => api!.postForm('/policies', form, { timeoutMs: UPLOAD_TIMEOUT_MS }));
     },
-    accept: (id: string) => act(() => api!.post(`/policies/${id}/accept`, {})),
+    accept: (id: string) => act(() => policyCalls(api!).accept(id)),
     remove: (id: string) => act(() => api!.del(`/policies/${id}`)),
     openPdf: async (id: string) => {
       try {
@@ -143,5 +143,15 @@ export function usePolicies() {
         throw asApiError(error);
       }
     },
+  };
+}
+
+/** The tick the backend requires before it records an acceptance (controllers/policyController.js acceptPolicy). */
+export const READ_CONFIRMATION = 'I have read and understood this policy';
+
+export function policyCalls(client: ReturnType<typeof createApi>) {
+  return {
+    /** Accepts a document with the person's tick; only offered once they have ticked it. */
+    accept: async (id: string) => void (await client.post(`/policies/${encodeURIComponent(id)}/accept`, { readConfirmed: true })),
   };
 }
