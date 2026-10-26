@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ApiError, BUSY_MESSAGE, createApi } from '../../src/portal/api';
-import { communityCalls, communityFailedMessage, emailedLine, jobBody, jobProblem, nextStages, personalEmailProblem, referralBody, referralProblem, toJobs, toMembers, toReferrals } from '../../src/portal/community';
+import { communityCalls, communityFailedMessage, emailedLine, jobBody, jobProblem, nextStages, personalEmailProblem, referralBody, referralProblem, toJobs, toJoiners, toMembers, toReferrals } from '../../src/portal/community';
 import { localDay } from '../../src/portal/eoffice';
 import { canMarkLeft, ACCOUNT_ROLES, type AccountRole } from '../../src/portal/people';
 
@@ -276,4 +276,31 @@ test('job actions go to their own addresses, with the stage the page saw', async
       ['DELETE', `/community/jobs/${frontendJob.id}`, undefined],
     ],
   );
+});
+
+/* Staff who joined ahead of leaving (owner's 1A 2A 3A 4A, 2026-10-26) */
+
+test('early joiners keep their stream, or none yet; only admins are sent their Employee ID and personal email', () => {
+  assert.deepEqual(
+    toJoiners([
+      { id: 'a1', name: 'Asha Rao', stream: 'tech', employeeId: 'BT-0007', personalEmail: 'asha.home@example.net' },
+      { id: 'z1', name: 'Zoya Khan', stream: null },
+      { id: 'q1', name: 'Odd Stream', stream: 'sales' },
+      { id: '', name: 'No id', stream: 'tech' },
+      { id: 'n1', name: ' ', stream: 'tech' },
+      'junk',
+    ]),
+    [
+      { id: 'a1', name: 'Asha Rao', stream: 'tech', employeeId: 'BT-0007', personalEmail: 'asha.home@example.net' },
+      { id: 'z1', name: 'Zoya Khan', stream: null, employeeId: undefined, personalEmail: undefined },
+      { id: 'q1', name: 'Odd Stream', stream: null, employeeId: undefined, personalEmail: undefined },
+    ],
+  );
+  assert.throws(() => toJoiners({ joiners: [] }), ApiError);
+});
+
+test('the early joiners come from their own address', async () => {
+  const { calls, community } = backend([200, [{ id: 'a1', name: 'Asha Rao', stream: 'tech' }]]);
+  assert.equal((await community.joiners())[0].name, 'Asha Rao');
+  assert.deepEqual(calls.map((c) => [c.method, c.url.replace('http://api.test/api', '')]), [['GET', '/community/joiners']]);
 });

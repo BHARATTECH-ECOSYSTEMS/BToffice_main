@@ -1,5 +1,5 @@
 import { api, type ApiError } from '../api';
-import { useCommunityMembers, useMyPersonalEmail, type CommunityMember } from '../community';
+import { useCommunityMembers, useMyPersonalEmail, type CommunityJoiner, type CommunityMember } from '../community';
 import { usePortal } from '../store';
 
 /**
@@ -18,6 +18,8 @@ export interface CommunitySource {
   /** Loads the members again without a loading state (after someone rejoined through a job). */
   refresh: () => void;
   members: SourceMember[];
+  /** Staff still at Bharattech who gave a personal email ahead of leaving (owner's 1A, 2026-10-26). */
+  joiners: CommunityJoiner[];
   /** Connected only: brings a member back to People; resolves with whether they need an invite to sign in. */
   bringBack: ((id: string) => Promise<{ needsInvite: boolean }>) | null;
   /** Saves a member's personal email (empty removes it); rejects with an ApiError when the backend refuses. */
@@ -40,6 +42,7 @@ export function useCommunitySource(): CommunitySource {
       retry: remote.retry,
       refresh: remote.refresh,
       members: state.kind === 'ready' ? state.members : [],
+      joiners: state.kind === 'ready' ? state.joiners : [],
       bringBack: remote.bringBack,
       setPersonalEmail: async (id, email) => void (await remote.setPersonalEmail(id, email)),
       emailTaken: () => false,
@@ -52,6 +55,10 @@ export function useCommunitySource(): CommunitySource {
     // the demo's store updates the wall by itself
     refresh: () => {},
     members: portal.alumni.map((a) => ({ id: a.id, name: a.name, stream: a.stream, left: a.left, employeeId: a.id, personalEmail: a.personalEmail, canBringBack: false, workEmail: a.email })),
+    joiners: portal.people
+      .filter((p) => p.personalEmail)
+      .map((p) => ({ id: p.id, name: p.name, stream: p.stream ?? null, employeeId: p.id, personalEmail: p.personalEmail }))
+      .sort((a, b) => a.name.localeCompare(b.name)),
     bringBack: null,
     setPersonalEmail: async (id, email) => portal.setPersonalEmail(id, email),
     emailTaken: (email, exceptId) => portal.alumni.some((a) => a.id !== exceptId && a.personalEmail?.toLowerCase() === email),

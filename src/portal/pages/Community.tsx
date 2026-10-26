@@ -60,6 +60,8 @@ export function Community() {
   const all = source.members;
   // the backend sends them newest leaver first; the demo's samples are sorted the same way here
   const members = all.filter((a) => !stream || a.stream === stream).sort((a, b) => b.left.localeCompare(a.left));
+  // staff who joined ahead of leaving: one without a stream yet shows under All only
+  const joiners = source.joiners.filter((j) => !stream || j.stream === stream);
   const referralsState = remoteReferrals.state;
   const referrals: (Referral & Partial<Pick<RemoteReferral, 'emailed' | 'failed'>>)[] = source.connected
     ? referralsState.kind === 'ready'
@@ -116,7 +118,7 @@ export function Community() {
         ))}
       </ol>
 
-      {session.role === 'employee' && <JoinCommunity notify={notify} />}
+      {session.role === 'employee' && <JoinCommunity notify={notify} onChange={source.refresh} />}
 
       <div className="p-chips p-comm-streams" role="group" aria-label="Show community">
         {(['', ...STREAMS.map((s) => s.id)] as const).map((s) => (
@@ -185,6 +187,43 @@ export function Community() {
             </section>
           )}
         </section>
+
+        {source.status.kind === 'ready' && (
+          <section className="p-comm-wall p-comm-joiners" aria-labelledby="comm-joiners">
+            <header className="p-comm-head">
+              <h2 id="comm-joiners" className="p-comm-title">
+                Joining when they leave <span className="p-comm-count">{joiners.length}</span>
+              </h2>
+              <p className="p-muted">
+                Colleagues still at Bharattech who gave a personal email ahead of leaving. They join the {label} the day they leave
+                {isAdmin ? ', and hear nothing from it until then.' : '.'}
+              </p>
+            </header>
+            {joiners.length ? (
+              <ul className="p-comm-grid">
+                {joiners.map((j) => (
+                  <li key={j.id} className="p-comm-card is-staff" style={toneStyle(j.stream ? STREAM_TONE[j.stream] : 'ink')}>
+                    <span className="p-comm-card-top">
+                      <span className="p-comm-face" aria-hidden="true">
+                        {initials(j.name)}
+                      </span>
+                      <Badge kind="soft">{j.stream ? STREAM_LABEL[j.stream] : 'No stream yet'}</Badge>
+                    </span>
+                    <strong className="p-comm-name">{j.name}</strong>
+                    <small className="p-comm-left">Still at Bharattech</small>
+                    {isAdmin && (j.personalEmail || j.employeeId) && (
+                      <span className="p-comm-card-email p-comm-email-text" title={j.personalEmail}>
+                        {[j.employeeId, j.personalEmail].filter(Boolean).join(', ')}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="p-muted">{stream ? `Nobody in the ${label} has joined ahead of leaving yet.` : 'Nobody has joined ahead of leaving yet.'}</p>
+            )}
+          </section>
+        )}
 
         {showReferrals && (
           <aside className="p-comm-refs" aria-labelledby="comm-referrals">
@@ -324,7 +363,7 @@ export function Community() {
  * changes while they work here; the day they're marked as left, they arrive in their stream's community with that
  * email already in place. They can change it or take it back at any time.
  */
-function JoinCommunity({ notify }: { notify: (t: string) => void }) {
+function JoinCommunity({ notify, onChange }: { notify: (t: string) => void; onChange: () => void }) {
   const session = useSession()!;
   const { me } = usePortal();
   const own = useOwnPersonalEmail(true);
@@ -335,6 +374,7 @@ function JoinCommunity({ notify }: { notify: (t: string) => void }) {
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const joined = own.email;
   const community = myStream ? `${STREAM_LABEL[myStream]} community` : 'community';
 
@@ -347,6 +387,7 @@ function JoinCommunity({ notify }: { notify: (t: string) => void }) {
     try {
       await own.save(email);
       setEditing(false);
+      onChange();
       notify(joined ? 'Your personal email was changed.' : `You've joined the ${community}.`);
     } catch (e) {
       setError(communityFailedMessage(e as ApiError));
@@ -354,10 +395,13 @@ function JoinCommunity({ notify }: { notify: (t: string) => void }) {
       setSaving(false);
     }
   };
-  const leaveList = async () => {
+  // asks first (owner's 4A): it takes them off the list everyone sees, and the community can't reach them when they leave
+  const removeEmail = async () => {
+    setRemoving(false);
     try {
       await own.save('');
-      notify(`You've left the ${community} list.`);
+      onChange();
+      notify('Your personal email was removed. You can join again any time.');
     } catch (e) {
       notify(communityFailedMessage(e as ApiError));
     }
@@ -391,10 +435,33 @@ function JoinCommunity({ notify }: { notify: (t: string) => void }) {
           <button type="button" className={btnClass('ghost', { small: true })} onClick={() => (setValue(joined), setError(''), setEditing(true))}>
             <BtnLabel icon="edit">Change email</BtnLabel>
           </button>
-          <button type="button" className={btnClass('ghost', { small: true })} onClick={() => void leaveList()}>
-            <BtnLabel>Leave</BtnLabel>
+          <button type="button" className={btnClass('ghost', { small: true })} onClick={() => setRemoving(true)}>
+            <BtnLabel>Remove my email</BtnLabel>
           </button>
         </span>
+        {removing && (
+          <Modal
+            title="Remove your personal email?"
+            icon="users"
+            onClose={() => setRemoving(false)}
+            onSubmit={() => void removeEmail()}
+            footer={
+              <>
+                <button type="button" className={btnClass('ghost')} onClick={() => setRemoving(false)}>
+                  <BtnLabel>Keep it</BtnLabel>
+                </button>
+                <button type="submit" className={btnClass('primary')}>
+                  <BtnLabel>Remove</BtnLabel>
+                </button>
+              </>
+            }
+          >
+            <p>
+              You'll come off the "Joining when they leave" list, and the {community} won't be able to reach you after you leave. You can join
+              again any time.
+            </p>
+          </Modal>
+        )}
       </section>
     );
   }

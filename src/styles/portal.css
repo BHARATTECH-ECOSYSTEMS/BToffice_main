@@ -5186,6 +5186,18 @@ html:has(.portal),
 .p-comm-wall-layout[data-aside] {
   grid-template-columns: minmax(0, 8fr) minmax(300px, 4fr);
 }
+/* staff who joined early sit under the members; the referrals keep the right-hand column beside both */
+.p-comm-wall-layout[data-aside] .p-comm-joiners {
+  grid-column: 1;
+}
+.p-comm-wall-layout[data-aside] .p-comm-refs {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+}
+/* still at Bharattech: the same card, drawn lighter than a member's */
+.p-comm-card.is-staff {
+  border-style: dashed;
+}
 .p-comm-wall,
 .p-comm-refs {
   display: grid;
@@ -5508,6 +5520,12 @@ html:has(.portal),
 @media (max-width: 1100px) {
   .p-comm-wall-layout[data-aside] {
     grid-template-columns: minmax(0, 1fr);
+  }
+  /* one column: members, then early joiners, then referrals */
+  .p-comm-wall-layout[data-aside] .p-comm-joiners,
+  .p-comm-wall-layout[data-aside] .p-comm-refs {
+    grid-column: auto;
+    grid-row: auto;
   }
 }
 @media (max-width: 900px) {

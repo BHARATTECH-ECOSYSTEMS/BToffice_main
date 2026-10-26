@@ -23,6 +23,16 @@ export interface CommunityMember {
   canBringBack: boolean;
 }
 
+/** Someone still at Bharattech who gave a personal email ahead of leaving; the stream is null until one is set. */
+export interface CommunityJoiner {
+  id: string;
+  name: string;
+  stream: Stream | null;
+  /** Only Super Admins and Admins are sent these. */
+  employeeId?: string;
+  personalEmail?: string;
+}
+
 const str = (value: unknown) => (typeof value === 'string' ? value.trim() : '');
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object';
 
@@ -35,6 +45,16 @@ export function toMembers(raw: unknown): CommunityMember[] {
     const left = readJoinDate(m.leftOn);
     if (!str(m.id) || !str(m.name) || !stream || !left) return [];
     return [{ id: str(m.id), name: str(m.name), stream, left, employeeId: str(m.employeeId) || undefined, personalEmail: str(m.personalEmail) || undefined, canBringBack: m.canBringBack === true }];
+  });
+}
+
+/** The early joiners the backend sent, in its order (by name); a broken one is left out. */
+export function toJoiners(raw: unknown): CommunityJoiner[] {
+  if (!Array.isArray(raw)) throw new ApiError('unavailable');
+  return raw.flatMap((j) => {
+    if (!isRecord(j) || !str(j.id) || !str(j.name)) return [];
+    const stream = STREAMS.find((s) => s.id === j.stream)?.id ?? null;
+    return [{ id: str(j.id), name: str(j.name), stream, employeeId: str(j.employeeId) || undefined, personalEmail: str(j.personalEmail) || undefined }];
   });
 }
 
@@ -251,6 +271,7 @@ const member = (id: string) => `/community/members/${encodeURIComponent(id)}`;
 export function communityCalls(client: Client) {
   return {
     members: async () => toMembers(await client.get<unknown>('/community/members')),
+    joiners: async () => toJoiners(await client.get<unknown>('/community/joiners')),
     leave: async (id: string) => void (await client.post(`/community/leave/${encodeURIComponent(id)}`, {})),
     /** needsInvite: their sign-in account is gone, so they need an invite from People to sign in again. */
     bringBack: async (id: string) => {
@@ -300,11 +321,12 @@ const SHARE_TIMEOUT_MS = 60_000;
 
 const asApiError = (error: unknown) => (error instanceof ApiError ? error : new ApiError('unavailable'));
 
-export type MembersState = { kind: 'off' } | { kind: 'loading' } | { kind: 'ready'; members: CommunityMember[] } | { kind: 'error'; error: ApiError };
+export type MembersState = { kind: 'off' } | { kind: 'loading' } | { kind: 'ready'; members: CommunityMember[]; joiners: CommunityJoiner[] } | { kind: 'error'; error: ApiError };
 
 /**
- * The members wall from the backend; `off` with the demo sign-in. Each change loads the list again, so the wall shows
- * what the backend stored. Changes throw an ApiError when the backend refuses.
+ * The members wall and the staff who joined early, from the backend; `off` with the demo sign-in. Both load together,
+ * so someone who leaves moves from one list to the other at once. Each change loads them again, so the page shows what
+ * the backend stored. Changes throw an ApiError when the backend refuses.
  */
 export function useCommunityMembers() {
   const [state, setState] = useState<MembersState>(api ? { kind: 'loading' } : { kind: 'off' });
@@ -314,7 +336,9 @@ export function useCommunityMembers() {
     if (!api) return;
     if (!quiet) setState({ kind: 'loading' });
     try {
-      setState({ kind: 'ready', members: await communityCalls(api).members() });
+      const calls = communityCalls(api);
+      const [members, joiners] = await Promise.all([calls.members(), calls.joiners()]);
+      setState({ kind: 'ready', members, joiners });
     } catch (error) {
       setState({ kind: 'error', error: asApiError(error) });
     }
