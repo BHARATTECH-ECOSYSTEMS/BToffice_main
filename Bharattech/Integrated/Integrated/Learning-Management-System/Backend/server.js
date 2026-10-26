@@ -2,7 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const path = require("path");
 const cors = require("cors");
-const { createRateLimits, SIGN_IN_PATHS } = require("./middlewares/rateLimits");
+const { createRateLimits, SIGN_IN_PATHS, PASSWORD_PATHS } = require("./middlewares/rateLimits");
 
 // Load env before importing routes/controllers that read process.env at module scope.
 dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
@@ -69,6 +69,7 @@ applyRequestSanitizers(app);
 const rateLimits = createRateLimits();
 app.use("/api", rateLimits.api);
 app.use(SIGN_IN_PATHS.map((p) => `/api${p}`), rateLimits.signIn);
+app.use(PASSWORD_PATHS.map((p) => `/api${p}`), rateLimits.passwords);
 
 /* ------------------ STATIC (now behind cors + sanitization) ------------------ */
 

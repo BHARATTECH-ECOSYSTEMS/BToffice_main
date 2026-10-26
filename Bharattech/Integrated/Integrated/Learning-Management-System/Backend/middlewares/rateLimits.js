@@ -6,8 +6,10 @@ const { rateLimit, ipKeyGenerator } = require("express-rate-limit");
  * minutes of normal use, and everyone in an office shares one address.
  * - Signed in: counted per person (the account in the sign-in token), generously.
  * - Not signed in: counted per address.
- * - Routes that take or set a password: strictly per address, whoever is named, against password guessing (Keycloak's
- *   own lockout still applies on top).
+ * - Sign-in: only failed tries count, strictly per address, whoever is named, against password guessing (Keycloak's
+ *   own lockout still applies on top); a whole office signing in in the morning never meets it.
+ * - The other routes that take or set a password: every try counts, strictly per address (forgot password answers the
+ *   same whatever happened, so its failures can't be told apart).
  * - The website's public verification form: a few an hour per address, against floods (it needs no sign-in).
  * Counting reads the token without checking it: a forged one only gets a count of its own, and keycloakAuth still
  * refuses it on every route that needs a sign-in.
@@ -20,8 +22,8 @@ const SIGN_IN = 20;
 const PUBLIC_FORM = 5;
 const PUBLIC_FORM_WINDOW_MS = 60 * 60 * 1000;
 // under /api
-const SIGN_IN_PATHS = [
-  "/auth/keycloak-login",
+const SIGN_IN_PATHS = ["/auth/keycloak-login"];
+const PASSWORD_PATHS = [
   "/auth/login",
   "/auth/accept-invite",
   "/auth/forgot-password",
@@ -69,7 +71,8 @@ function createRateLimits({
       },
       limit: (req) => (personIn(req) ? perPerson : perAddress),
     }),
-    signIn: rateLimit({ ...shared, keyGenerator: addressOf, limit: signIn }),
+    signIn: rateLimit({ ...shared, keyGenerator: addressOf, limit: signIn, skipSuccessfulRequests: true }),
+    passwords: rateLimit({ ...shared, keyGenerator: addressOf, limit: signIn }),
     publicForm: rateLimit({
       ...shared,
       windowMs: publicFormWindowMs,
@@ -80,4 +83,4 @@ function createRateLimits({
   };
 }
 
-module.exports = { createRateLimits, PER_PERSON, PER_ADDRESS, SIGN_IN, SIGN_IN_PATHS, PUBLIC_FORM, PUBLIC_FORM_WINDOW_MS };
+module.exports = { createRateLimits, PER_PERSON, PER_ADDRESS, SIGN_IN, SIGN_IN_PATHS, PASSWORD_PATHS, PUBLIC_FORM, PUBLIC_FORM_WINDOW_MS };
