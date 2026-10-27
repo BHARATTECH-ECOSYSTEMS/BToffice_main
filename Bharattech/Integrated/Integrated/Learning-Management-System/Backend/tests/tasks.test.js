@@ -416,9 +416,12 @@ test("only managers who may change the task attach its document", async () => {
 test("a new project document replaces the old one's stored file", async () => {
   const { admin, asha } = await people();
   const task = await taskFor(asha, admin);
-  await upload(admin, `/${task._id}/upload`, PDF, "brief.pdf");
+  assert.equal((await upload(admin, `/${task._id}/upload`, PDF, "brief.pdf")).status, 200);
 
-  await upload(admin, `/${task._id}/upload`, PNG, "brief-v2.png");
+  // the new one must really be taken, or one stored file would only be the old one left alone
+  const replaced = await upload(admin, `/${task._id}/upload`, PNG, "brief-v2.png");
+  assert.equal(replaced.status, 200);
+  assert.equal(replaced.body.projectFile.fileName, "brief-v2.png");
 
   assert.equal(await storedFiles(), 1);
 });
@@ -450,8 +453,9 @@ test("nobody else submits work on someone's task", async () => {
 test("deleting a task deletes its stored files too", async () => {
   const { admin, asha } = await people();
   const task = await taskFor(asha, admin);
-  await upload(admin, `/${task._id}/upload`, PDF, "brief.pdf");
-  await upload(asha, `/${task._id}/submission`, PNG, "photo.png");
+  assert.equal((await upload(admin, `/${task._id}/upload`, PDF, "brief.pdf")).status, 200);
+  assert.equal((await upload(asha, `/${task._id}/submission`, PNG, "photo.png")).status, 200);
+  assert.equal(await storedFiles(), 2, "there are files to delete");
 
   assert.equal((await send(admin, "DELETE", `/${task._id}`)).status, 200);
 

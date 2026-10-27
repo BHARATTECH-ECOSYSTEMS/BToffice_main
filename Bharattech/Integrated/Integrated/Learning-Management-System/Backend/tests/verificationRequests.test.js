@@ -315,8 +315,16 @@ test("an answer email that fails doesn't undo the decision, and the file says to
 test("company and employee decisions email nobody outside", async () => {
   const p = await people();
   const company = await call("POST", "/verifications", { kind: "company", company: "Northwind Ltd", registration: "U1", contactEmail: "a@northwind.example" }, p.admin);
+  const employee = await call("POST", "/verifications", { kind: "employee", personId: String(p.employee._id) }, p.admin);
+  assert.equal(company.status, 201);
+  assert.equal(employee.status, 201);
   sent.length = 0;
-  await call("POST", `/verifications/${company.body.id}/decision`, { status: "rejected", note: "No" }, p.admin);
+  // each decision must go through, or "nobody was emailed" proves nothing
+  for (const id of [company.body.id, employee.body.id]) {
+    const decided = await call("POST", `/verifications/${id}/decision`, { status: "rejected", note: "No" }, p.admin);
+    assert.equal(decided.status, 200);
+    assert.equal(decided.body.status, "rejected");
+  }
   await settle();
   assert.equal(sent.length, 0);
 });

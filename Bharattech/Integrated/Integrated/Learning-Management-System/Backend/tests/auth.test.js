@@ -6,17 +6,16 @@ const express = require("express");
 const jwt = require("jsonwebtoken");
 
 // A stand-in Keycloak that only publishes its signing key, so tokens can go through the real Keycloak path. Its
-// address must be known before keycloakAuth loads (the key client is made then), so the port is picked here.
-const KEYCLOAK_PORT = 47000 + Math.floor(Math.random() * 2000);
-process.env.KEYCLOAK_BASE_URL = `http://127.0.0.1:${KEYCLOAK_PORT}`;
+// address must be known before keycloakAuth loads (the key client is made then), so the middleware is loaded once the
+// stand-in listens, on a port the system picked as free (a random fixed port could be taken).
 process.env.KEYCLOAK_REALM = "bharattech";
-const ISSUER = `http://127.0.0.1:${KEYCLOAK_PORT}/realms/bharattech`;
+let ISSUER;
 const keys = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
 const otherKeys = crypto.generateKeyPairSync("rsa", { modulusLength: 2048 });
 const KID = "test-key";
 
 const User = require("../models/User");
-const { keycloakAuth, audienceAllowed, inactiveReason, assertAuthConfig } = require("../middlewares/keycloakAuth");
+let keycloakAuth, audienceAllowed, inactiveReason, assertAuthConfig;
 const { allowOrigin } = require("../middlewares/corsOptions");
 const { connectTestDb, clearTestDb, disconnectTestDb, userFields } = require("./helpers/testDb");
 
@@ -35,7 +34,10 @@ before(async () => {
     res.setHeader("Content-Type", "application/json");
     res.end(JSON.stringify({ keys: [jwk] }));
   });
-  await new Promise((resolve) => keycloak.listen(KEYCLOAK_PORT, "127.0.0.1", resolve));
+  await new Promise((resolve) => keycloak.listen(0, "127.0.0.1", resolve));
+  process.env.KEYCLOAK_BASE_URL = `http://127.0.0.1:${keycloak.address().port}`;
+  ISSUER = `${process.env.KEYCLOAK_BASE_URL}/realms/bharattech`;
+  ({ keycloakAuth, audienceAllowed, inactiveReason, assertAuthConfig } = require("../middlewares/keycloakAuth"));
   const app = express();
   app.use(express.json());
   // the real middleware guards a route that simply reports who it decided you are
@@ -59,13 +61,14 @@ after(async () => {
   await disconnectTestDb();
 });
 
-/** A token as Keycloak would sign it for this person (or with another key, to prove it's refused). */
-const keycloakToken = (user, { key = keys.privateKey, claims = {} } = {}) =>
+/** A token as Keycloak would sign it for this person (or with another key, issuer or lifetime, to prove it's refused). */
+const keycloakToken = (user, { key = keys.privateKey, claims = {}, options = {} } = {}) =>
   jwt.sign({ sub: user.keycloakId, email: user.email, preferred_username: user.username, realm_access: { roles: [user.role] }, ...claims }, key, {
     algorithm: "RS256",
     keyid: KID,
     issuer: ISSUER,
     expiresIn: "5m",
+    ...options,
   });
 
 const whoami = (token, headers = {}) =>
@@ -160,6 +163,27 @@ test("a token is accepted only when it was issued for this app's Keycloak client
   assert.equal(audienceAllowed({ azp: "some-other-app", aud: "account" }), false);
   assert.equal(audienceAllowed({ aud: ["account", "lms-client"] }), true);
   assert.equal(audienceAllowed({ azp: "x", aud: "account" }), false);
+});
+
+// Review 2026-10-26, tests area: the checks above are the helper's; these go through the middleware itself, with
+// tokens signed by the right key, so only the one thing named is wrong.
+test("an expired token is refused at the door", async () => {
+  const user = await User.create(userFields({ role: "Employee" }));
+  // ran out five minutes ago
+  assert.equal((await whoami(keycloakToken(user, { options: { expiresIn: -300 } }))).status, 401);
+});
+
+test("a token from another realm or Keycloak (another issuer) is refused at the door", async () => {
+  const user = await User.create(userFields({ role: "Employee" }));
+  assert.equal((await whoami(keycloakToken(user, { options: { issuer: `${process.env.KEYCLOAK_BASE_URL}/realms/master` } }))).status, 401);
+  assert.equal((await whoami(keycloakToken(user, { options: { issuer: "http://127.0.0.1:1/realms/bharattech" } }))).status, 401);
+});
+
+test("a token issued for another app is refused at the door; one for this app signs in", async () => {
+  process.env.KEYCLOAK_CLIENT_ID = "lms-client";
+  const user = await User.create(userFields({ role: "Employee" }));
+  assert.equal((await whoami(keycloakToken(user, { claims: { azp: "some-other-app", aud: "account" } }))).status, 401);
+  assert.equal((await whoami(keycloakToken(user, { claims: { azp: "lms-client", aud: "account" } }))).status, 200);
 });
 
 test("the audience check is skipped when no client is configured, so it can't lock people out by accident", () => {

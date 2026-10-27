@@ -105,9 +105,12 @@ test("saving a finished task again keeps the first finish time; reopening it cle
   const first = (await Task.findById(task._id)).completedAt.getTime();
 
   await new Promise((r) => setTimeout(r, 20));
-  await send(admin, "PATCH", `/${task._id}`, { title: "Write the onboarding notes (v2)" });
-  await send(asha, "PATCH", `/${task._id}/status`, { status: "completed" });
-  assert.equal((await Task.findById(task._id)).completedAt.getTime(), first);
+  // both saves must go through, or an unchanged time would only mean nothing was saved
+  assert.equal((await send(admin, "PATCH", `/${task._id}`, { title: "Write the onboarding notes (v2)" })).status, 200);
+  assert.equal((await send(asha, "PATCH", `/${task._id}/status`, { status: "completed" })).status, 200);
+  const saved = await Task.findById(task._id);
+  assert.equal(saved.title, "Write the onboarding notes (v2)");
+  assert.equal(saved.completedAt.getTime(), first);
 
   await send(asha, "PATCH", `/${task._id}/status`, { status: "in-progress" });
   assert.equal((await Task.findById(task._id)).completedAt, undefined);

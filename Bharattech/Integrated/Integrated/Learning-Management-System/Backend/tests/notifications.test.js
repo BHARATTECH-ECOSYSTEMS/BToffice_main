@@ -120,9 +120,13 @@ test("handing a task to someone else tells the new person; changing it tells the
 
 test("a status change by the person doing the task notifies nobody", async () => {
   const { admin, asha } = await people();
-  const { body: task } = await send(admin, "POST", "/tasks", { title: "Review", assignedTo: String(asha._id) });
+  const made = await send(admin, "POST", "/tasks", { title: "Review", assignedTo: String(asha._id) });
+  assert.equal(made.status, 201);
 
-  await send(asha, "PATCH", `/tasks/${task._id}/status`, { status: "in-progress" });
+  // the change itself must go through, or "nobody heard" proves nothing
+  const moved = await send(asha, "PATCH", `/tasks/${made.body._id}/status`, { status: "in-progress" });
+  assert.equal(moved.status, 200);
+  assert.equal(moved.body.status, "in-progress");
 
   assert.equal((await notesOf(admin)).notes.length, 0);
   assert.equal((await notesOf(asha)).notes.length, 1);
@@ -130,9 +134,11 @@ test("a status change by the person doing the task notifies nobody", async () =>
 
 test("deleting a task removes its notes", async () => {
   const { admin, asha } = await people();
-  const { body: task } = await send(admin, "POST", "/tasks", { title: "Review", assignedTo: String(asha._id) });
+  const made = await send(admin, "POST", "/tasks", { title: "Review", assignedTo: String(asha._id) });
+  assert.equal(made.status, 201);
+  assert.equal((await notesOf(asha)).notes.length, 1, "there's a note to remove");
 
-  await send(admin, "DELETE", `/tasks/${task._id}`);
+  assert.equal((await send(admin, "DELETE", `/tasks/${made.body._id}`)).status, 200);
 
   assert.equal((await notesOf(asha)).notes.length, 0);
 });

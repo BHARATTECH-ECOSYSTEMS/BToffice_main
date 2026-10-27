@@ -337,16 +337,20 @@ test("the person is told in their bell, without an email, when an admin changes 
       ["photo", "Your photo was removed by Ravi Menon", "/portal/settings"],
     ],
   );
-  // a removal with nothing to remove, a name change without a photo, and their own photo tell nobody
-  await send(admin, "DELETE", `/${intern._id}/photo`);
-  await send(admin, "PATCH", `/${intern._id}`, { fullName: "Mira Dasgupta" });
-  await upload(intern, "PUT", "/me/photo", "photo", PNG);
+  // a removal with nothing to remove, a name change without a photo, and their own photo tell nobody; each must go
+  // through, or "nobody was told" proves nothing
+  assert.equal((await send(admin, "DELETE", `/${intern._id}/photo`)).status, 200);
+  assert.equal((await send(admin, "PATCH", `/${intern._id}`, { fullName: "Mira Dasgupta" })).status, 200);
+  assert.equal((await upload(intern, "PUT", "/me/photo", "photo", PNG)).status, 200);
+  assert.equal((await User.findById(intern._id)).fullName, "Mira Dasgupta");
   assert.equal(await Notification.countDocuments({ userId: intern._id }), 0);
 });
 
 test("an admin changing their own photo through People isn't told about it", async () => {
   const { superadmin } = await people();
-  await upload(superadmin, "PATCH", `/${superadmin._id}`, "profilePicture", PNG);
-  await send(superadmin, "DELETE", `/${superadmin._id}/photo`);
+  assert.equal((await upload(superadmin, "PATCH", `/${superadmin._id}`, "profilePicture", PNG)).status, 200);
+  assert.equal(await storedPhotos(), 1);
+  assert.equal((await send(superadmin, "DELETE", `/${superadmin._id}/photo`)).status, 200);
+  assert.equal(await storedPhotos(), 0);
   assert.equal(await Notification.countDocuments({}), 0);
 });

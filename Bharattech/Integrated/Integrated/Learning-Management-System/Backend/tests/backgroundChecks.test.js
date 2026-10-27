@@ -104,9 +104,10 @@ test("education can be ticked once at least one certificate is there, not before
   const early = await tick(p.admin, id, "education");
   assert.equal(early.status, 409);
   assert.match(early.body.message, /at least one/i);
-  await upload(p.asha, "aadhaar");
+  // the Aadhaar must be there, or the second refusal would only repeat the first
+  assert.equal((await upload(p.asha, "aadhaar")).status, 200);
   assert.equal((await tick(p.admin, id, "education")).status, 409, "an Aadhaar isn't an education certificate");
-  await upload(p.asha, "class12");
+  assert.equal((await upload(p.asha, "class12")).status, 200);
   assert.equal((await tick(p.admin, id, "education")).status, 200);
 });
 
@@ -253,7 +254,10 @@ test("not applicable needs a reason, a check that may be skipped, a pending empl
 test("unticking a not-applicable check clears it, so it needs the letter or a new reason again", async () => {
   const p = await people();
   const id = await startFor(p, p.asha);
-  await skip(p.admin, id, "employment", "Fresher");
+  // it must really be marked not applicable first, or the untick has nothing to clear
+  const skipped = await skip(p.admin, id, "employment", "Fresher");
+  assert.equal(skipped.status, 200);
+  assert.deepEqual(skipped.body.notApplicable.map((n) => n.check ?? n), ["employment"]);
   const res = await tick(p.admin, id, "employment", false);
   assert.equal(res.status, 200);
   assert.deepEqual([res.body.done, res.body.notApplicable], [[], []]);

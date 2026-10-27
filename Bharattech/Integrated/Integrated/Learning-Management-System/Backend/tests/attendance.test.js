@@ -105,12 +105,14 @@ test("checking out ends the visit; checking out when not in is refused", async (
 
 test("checking out ends only your own visit, and 'in now' is about you", async () => {
   const { asha, kabir } = await people();
-  await send(kabir, "POST", "/check-in");
+  assert.equal((await send(kabir, "POST", "/check-in")).status, 201);
   const mine = await send(asha, "GET", "/me");
   assert.equal(mine.body.inNow, false);
   assert.equal((await send(asha, "POST", "/check-out")).status, 409);
-  await send(asha, "POST", "/check-in");
-  await send(asha, "POST", "/check-out");
+  // her own check-out must really happen, or "his visit is still open" proves nothing
+  assert.equal((await send(asha, "POST", "/check-in")).status, 201);
+  assert.equal((await send(asha, "POST", "/check-out")).status, 200);
+  assert.equal((await send(asha, "GET", "/me")).body.inNow, false);
   const his = await send(kabir, "GET", "/me");
   assert.equal(his.body.inNow, true);
   assert.equal(todayOf(his.body).visits[0].outAt, null);

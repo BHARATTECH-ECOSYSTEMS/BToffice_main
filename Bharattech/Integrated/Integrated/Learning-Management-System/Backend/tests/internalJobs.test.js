@@ -242,9 +242,11 @@ test("only a member of the job's stream can be added, once, and only while the j
   assert.equal((await call(p.admin, "POST", `/jobs/${job.id}/applicants`, { personId: "nope" })).status, 400);
   assert.equal((await call(p.admin, "POST", `/jobs/${new mongoose.Types.ObjectId()}/applicants`, { personId: String(neha._id) })).status, 404);
 
-  await call(p.admin, "PATCH", `/jobs/${job.id}`, { open: false });
+  assert.equal((await call(p.admin, "PATCH", `/jobs/${job.id}`, { open: false })).status, 200);
   assert.equal((await addApplicant(p.admin, job, await member())).status, 409, "closed");
-  await call(p.admin, "PATCH", `/jobs/${job.id}`, { open: true });
+  // reopened for real, so the next refusal is the date's, not the closed switch's again (both say "closed")
+  assert.equal((await call(p.admin, "PATCH", `/jobs/${job.id}`, { open: true })).status, 200);
+  assert.equal((await InternalJob.findById(job.id)).open, true);
   await InternalJob.updateOne({ _id: job.id }, { $set: { closes: daysAfter(today, -1) } });
   assert.equal((await addApplicant(p.admin, job, await member())).status, 409, "past its apply-by date");
   assert.equal(await JobApplication.countDocuments(), 1);

@@ -90,7 +90,8 @@ test("opening an employee's verification tells them in the bell and by email; a 
   assert.equal(await Notification.countDocuments({ userId: { $ne: p.asha._id } }), 0, "nobody else is told");
 
   sent.length = 0;
-  await call(p.admin, "POST", "/verifications", { kind: "company", company: "Northwind Ltd", registration: "U1", contactEmail: "a@northwind.example" });
+  // the company request must be made, or "nobody was told" proves nothing
+  assert.equal((await call(p.admin, "POST", "/verifications", { kind: "company", company: "Northwind Ltd", registration: "U1", contactEmail: "a@northwind.example" })).status, 201);
   assert.equal(await Notification.countDocuments(), 1);
   assert.equal(sent.length, 0);
 });

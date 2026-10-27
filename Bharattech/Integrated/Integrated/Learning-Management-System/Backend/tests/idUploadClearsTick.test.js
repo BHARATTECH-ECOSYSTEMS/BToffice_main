@@ -44,10 +44,12 @@ test("a request stored before it had a tick list still takes an upload, with no 
 
 test("other checks' ticks stay, and an upload for an unticked check adds no log line about ticks", async () => {
   const { admin, asha, id } = await app.opened();
-  await app.upload(asha, "aadhaar");
-  await tick(admin, id, "aadhaar");
-  await app.upload(asha, "pan");
+  assert.equal((await app.upload(asha, "aadhaar")).status, 200);
+  assert.equal((await tick(admin, id, "aadhaar")).status, 200);
+  // the PAN upload must go through, or "no log line" proves nothing
+  assert.equal((await app.upload(asha, "pan")).status, 200);
   const after = await saved(id);
+  assert.ok(after.documents.some((d) => d.kind === "pan"));
   assert.ok(after.done.includes("aadhaar"));
   assert.equal(after.log.some((l) => /Tick cleared/.test(l.text)), false);
 });

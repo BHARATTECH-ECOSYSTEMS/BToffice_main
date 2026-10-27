@@ -125,9 +125,11 @@ test("everyone signed in sees the events, with whether they may change each one"
 
 test("the list covers only the dates asked for, and at most about 13 months", async () => {
   const p = await people();
-  await send(p.admin, "POST", "", meeting({ date: day(2) }));
-  await send(p.admin, "POST", "", meeting({ title: "Later", date: day(60) }));
+  assert.equal((await send(p.admin, "POST", "", meeting({ date: day(2) }))).status, 201);
+  assert.equal((await send(p.admin, "POST", "", meeting({ title: "Later", date: day(60) }))).status, 201);
 
+  // "Later" is there, so leaving it out of the first ten days is the range doing it
+  assert.deepEqual((await send(p.asha, "GET", `?from=${day(0)}&to=${day(90)}`)).body.map((e) => e.title), ["Team sync", "Later"]);
   assert.deepEqual((await send(p.asha, "GET", `?from=${day(0)}&to=${day(10)}`)).body.map((e) => e.title), ["Team sync"]);
   assert.equal((await send(p.asha, "GET", `?from=${day(0)}&to=${day(500)}`)).status, 400);
   assert.equal((await send(p.asha, "GET", `?from=nope&to=${day(10)}`)).status, 400);

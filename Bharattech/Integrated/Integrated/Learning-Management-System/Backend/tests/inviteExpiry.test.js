@@ -175,7 +175,9 @@ test("the hourly check replaces only expired invites' emailed passwords, and onl
 });
 
 test("a wrong password for an invite still in time, or for someone with no invite, stays a plain refusal", async () => {
-  await invite();
+  // the invite must exist and be in time, or this is only the "no invite" case twice
+  assert.equal((await invite()).status, 201);
+  assert.equal(await InviteSent.countDocuments({ voidedAt: { $exists: false } }), 1);
   tokenAnswer = "wrong";
   assert.equal((await signIn("new.hire@example.test")).status, 401);
   assert.equal((await signIn("nobody@example.test")).status, 401);
@@ -213,7 +215,9 @@ test("an invite sent again while the hourly check runs keeps its fresh password"
   const emailed = realm.passwords.get(late.id);
   const realFindOne = kcAdmin.users.findOne;
   // "Send again" lands while the check is asking Keycloak about the account
+  let resent = 0;
   kcAdmin.users.findOne = async (where) => {
+    resent += 1;
     await InviteSent.updateOne({ keycloakId: late.id }, { $set: { sentAt: new Date() } });
     return realFindOne.call(kcAdmin.users, where);
   };
@@ -222,6 +226,8 @@ test("an invite sent again while the hourly check runs keeps its fresh password"
   } finally {
     kcAdmin.users.findOne = realFindOne;
   }
+  // the check really reached the account, so keeping it is the re-check's doing, not a skip
+  assert.ok(resent > 0, "the check never asked Keycloak about the late invite");
   assert.equal(realm.passwords.get(late.id), emailed);
   assert.ok(!(await InviteSent.findOne({ keycloakId: late.id })).voidedAt);
 });

@@ -60,7 +60,34 @@ const PUBLIC = {
   inviteRoutes: [],
   openInterviewerRoutes: [],
   policyRoutes: [],
+  // the website's verification form: anyone may send one
+  verificationRequestRoutes: ["POST /"],
 };
+
+// Review 2026-10-26, tests area: the test above names six sections; this one reads every section server.js mounts, so
+// one mounted without the sign-in (or added later without it) fails here. The ones without keycloakAuth in server.js
+// are the routers above, which sign in route by route.
+const SIGNS_IN_ITSELF = {
+  "/api/invite": "inviteRoutes",
+  "/api/openinterviewer": "openInterviewerRoutes",
+  "/api/auth": "authRoutes",
+  "/api/reset-links": "resetLinkRoutes",
+  "/api/policies": "policyRoutes",
+  "/api/verification-requests": "verificationRequestRoutes",
+};
+
+test("every section server.js mounts is signed in there, or is a router that signs in route by route", () => {
+  const mounts = [...read("server.js").matchAll(/app\.use\(\s*"(\/[^"]*)",([\s\S]*?)\);/g)]
+    .map(([, at, rest]) => ({ at, rest: rest.trim() }))
+    .filter(({ at }) => at.startsWith("/api/") || at === "/uploads" || at === "/certificates");
+  // 20 API sections, the uploads folder and the certificates folder: a parse that finds fewer has gone wrong
+  assert.ok(mounts.length >= 22, `found ${mounts.length} sections`);
+  for (const { at, rest } of mounts) {
+    if (SIGNS_IN_ITSELF[at]) assert.match(rest, new RegExp(`(^|, )${SIGNS_IN_ITSELF[at]}$`), at);
+    else assert.match(rest, /^keycloakAuth,/, `${at} isn't signed in by server.js`);
+  }
+  for (const router of Object.values(SIGNS_IN_ITSELF)) assert.ok(router in PUBLIC, `${router} isn't checked route by route`);
+});
 
 test("routes that sign in themselves do it once, and only the public ones don't", () => {
   for (const [router, open] of Object.entries(PUBLIC)) {
