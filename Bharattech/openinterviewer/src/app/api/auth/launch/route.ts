@@ -9,7 +9,7 @@ import {
   getSessionCookieOptions,
   SESSION_COOKIE_NAME
 } from '@/lib/auth';
-import { verifyLaunchToken } from '@/lib/launchAuth';
+import { checkLaunchToken } from '@/lib/launchAuth';
 
 export async function POST(request: Request) {
   try {
@@ -27,15 +27,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const isValid = await verifyLaunchToken(token);
-    if (!isValid) {
-      return NextResponse.json(
-        { error: 'Invalid or unauthorized launch token' },
-        { status: 401 }
-      );
-    }
+    const refused = () => NextResponse.json(
+      { error: 'Invalid or unauthorized launch token' },
+      { status: 401 }
+    );
 
+    const launch = await checkLaunchToken(token);
+    if (!launch) return refused();
+
+    // the session first, the pass used up last: a session that can't be made doesn't waste the pass (owner's 2A)
     const sessionToken = await createSessionToken();
+    if (!(await launch.use())) return refused();
+
     const cookieStore = await cookies();
     cookieStore.set(SESSION_COOKIE_NAME, sessionToken, getSessionCookieOptions());
 

@@ -103,9 +103,10 @@ function hasAdminRole(payload: jose.JWTPayload) {
 
 // Only BHARATTECH_LAUNCH_SECRET signs a pass. ADMIN_PASSWORD, SESSION_SECRET and the rest sign other things here
 // (sessions, candidate links) and must never double as a way in.
-async function verifyPortalPass(token: string) {
+// Checks a pass without using it up: the launch route makes the session first and uses the pass last (owner's 2A).
+async function checkPortalPass(token: string): Promise<{ id: string; expiresAt: Date } | null> {
   const secret = process.env.BHARATTECH_LAUNCH_SECRET;
-  if (!secret) return false;
+  if (!secret) return null;
 
   let payload: jose.JWTPayload;
   try {
@@ -116,13 +117,13 @@ async function verifyPortalPass(token: string) {
       clockTolerance: CLOCK_TOLERANCE_SECONDS,
     }));
   } catch {
-    return false;
+    return null;
   }
 
-  if (payload.type !== PORTAL_PASS_TYPE || !isAdminRole(String(payload.role || ''))) return false;
-  if (payload.exp! - payload.iat! > PORTAL_PASS_MAX_SECONDS) return false;
+  if (payload.type !== PORTAL_PASS_TYPE || !isAdminRole(String(payload.role || ''))) return null;
+  if (payload.exp! - payload.iat! > PORTAL_PASS_MAX_SECONDS) return null;
 
-  return claimLaunchPass(payload.jti!, new Date(payload.exp! * 1000));
+  return { id: payload.jti!, expiresAt: new Date(payload.exp! * 1000) };
 }
 
 // A Keycloak sign-in counts when this app's own Keycloak client got it (the login page's single sign-on check), so a
@@ -140,13 +141,21 @@ async function verifyKeycloakToken(token: string) {
   }
 }
 
-export async function verifyLaunchToken(token: string) {
+/**
+ * A launch token that may open a session, or null. `use()` is called last, once the session is ready: for a portal
+ * pass it records the pass as used and is true only the first time; a Keycloak sign-in has nothing to use up.
+ */
+export async function checkLaunchToken(token: string): Promise<{ use: () => Promise<boolean> } | null> {
   const cleanToken = token.trim();
-  if (!cleanToken) return false;
+  if (!cleanToken) return null;
 
-  if (await verifyPortalPass(cleanToken)) {
-    return true;
-  }
+  const pass = await checkPortalPass(cleanToken);
+  if (pass) return { use: () => claimLaunchPass(pass.id, pass.expiresAt) };
 
-  return verifyKeycloakToken(cleanToken);
+  return (await verifyKeycloakToken(cleanToken)) ? { use: async () => true } : null;
+}
+
+export async function verifyLaunchToken(token: string) {
+  const launch = await checkLaunchToken(token);
+  return launch ? launch.use() : false;
 }

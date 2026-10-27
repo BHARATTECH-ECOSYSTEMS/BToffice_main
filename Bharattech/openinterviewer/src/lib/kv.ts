@@ -297,16 +297,41 @@ async function readLocalStore(): Promise<LocalStore> {
   }
 }
 
+// The file is written whole: to a temporary file first, then swapped in, so a crash mid-write can't leave half a file
+// (owner's 3A, 2026-10-27). On Windows the swap can fail for a moment while another request is reading the file.
 async function writeLocalStore(store: LocalStore) {
   await fs.mkdir(path.dirname(LOCAL_STORE_PATH), { recursive: true });
-  await fs.writeFile(LOCAL_STORE_PATH, JSON.stringify(store, null, 2), 'utf8');
+  const temp = `${LOCAL_STORE_PATH}.${process.pid}.${Date.now()}.tmp`;
+  try {
+    await fs.writeFile(temp, JSON.stringify(store, null, 2), 'utf8');
+    for (let attempt = 1; ; attempt++) {
+      try {
+        await fs.rename(temp, LOCAL_STORE_PATH);
+        return;
+      } catch (error: any) {
+        if (attempt >= 5 || !['EPERM', 'EACCES', 'EBUSY'].includes(error?.code)) throw error;
+        await new Promise((resolve) => setTimeout(resolve, attempt * 20));
+      }
+    }
+  } finally {
+    await fs.rm(temp, { force: true });
+  }
 }
 
-async function updateLocalStore<T>(updater: (store: LocalStore) => T | Promise<T>): Promise<T> {
-  const store = await readLocalStore();
-  const result = await updater(store);
-  await writeLocalStore(store);
-  return result;
+// Saves wait their turn: each reads the file, changes it and writes it back while no other save runs, so two at the
+// same moment can't both read the old file (a launch pass used twice, one of two saves lost). A failed save doesn't
+// hold up the ones after it.
+let localStoreQueue: Promise<unknown> = Promise.resolve();
+
+function updateLocalStore<T>(updater: (store: LocalStore) => T | Promise<T>): Promise<T> {
+  const turn = localStoreQueue.then(async () => {
+    const store = await readLocalStore();
+    const result = await updater(store);
+    await writeLocalStore(store);
+    return result;
+  });
+  localStoreQueue = turn.catch(() => undefined);
+  return turn;
 }
 
 // Get interview by ID

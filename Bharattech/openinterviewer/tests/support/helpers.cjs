@@ -4,7 +4,13 @@ const { useCookies } = require('./nextHeaders.cjs');
 
 async function emptyDatabase() {
   const { connectDB } = require('@/lib/mongodb');
-  await connectDB();
+  try {
+    await connectDB();
+  } catch (error) {
+    // where it looked, without the password
+    const at = new URL(process.env.MONGODB_URI);
+    throw new Error(`The tests need a MongoDB on this machine (tried ${at.host}${at.pathname}). Start it, or set TEST_MONGODB_URI. ${error.message}`);
+  }
   if (!mongoose.connection.name.endsWith('_unit')) throw new Error('refusing to empty a database that is not a test one');
   await mongoose.connection.dropDatabase();
 }

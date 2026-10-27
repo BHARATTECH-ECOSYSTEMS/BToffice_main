@@ -6,6 +6,7 @@ const { readFileSync, existsSync } = require('node:fs');
 const { fileURLToPath, pathToFileURL } = require('node:url');
 const path = require('node:path');
 const ts = require('typescript');
+const { testDatabaseUri } = require('./testDatabase.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const SRC = path.join(ROOT, 'src');
@@ -14,19 +15,16 @@ const STUBS = {
   '@/lib/providers': path.join(__dirname, 'fakeProviders.cjs'),
 };
 
-// Tests run against their own database next to the laptop one, never a remote one.
-function testDatabaseUri() {
-  const local = readFileSync(path.join(ROOT, '.env.local'), 'utf8');
-  const uri = new URL(local.match(/^MONGODB_URI=(.*?)\r?$/m)?.[1]?.trim() || 'mongodb://127.0.0.1:27017/openinterviewer');
-  if (!['127.0.0.1', 'localhost'].includes(uri.hostname)) throw new Error('tests only run against a local MongoDB');
-  const database = uri.pathname.replace(/^\//, '') || 'openinterviewer';
-  uri.pathname = `/${database}_unit`;
-  return uri.toString();
-}
+// Tests run against their own database next to the laptop one, never a remote one (support/testDatabase.cjs); a copy
+// without .env.local uses TEST_MONGODB_URI or the local MongoDB.
+const readEnvLocal = () => {
+  const file = path.join(ROOT, '.env.local');
+  return existsSync(file) ? readFileSync(file, 'utf8') : null;
+};
 
 Object.assign(process.env, {
   NODE_ENV: 'test',
-  MONGODB_URI: testDatabaseUri(),
+  MONGODB_URI: testDatabaseUri({ env: process.env, readEnvLocal }),
   LOCAL_FILE_STORAGE: 'false',
   ADMIN_PASSWORD: 'test-admin-password',
   SESSION_SECRET: 'test-session-secret',

@@ -6,11 +6,13 @@ import Image from 'next/image';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Loader2, AlertCircle } from 'lucide-react';
 import keycloak from '@/keycloak';
+import { signInFromPortal } from '@/lib/portalSignIn';
 import logo from '../../assets/BHARATTECH ORIGIN Logo-01.png';
 
 let keycloakInitPromise: Promise<boolean> | null = null;
-// A BharatTech launch pass works once, so it is posted once even when React runs the effect twice (strict mode).
-let postedLaunchToken: string | null = null;
+// One sign-in attempt at a time (owner's 1B, 2026-10-27): hiding the pass from the address bar re-runs the effect, and
+// React runs it twice in strict mode; a pass works once, so it must be posted once.
+let portalSignInStarted = false;
 
 function getKeycloakSession() {
   if (keycloak.authenticated) {
@@ -47,77 +49,58 @@ const Login: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (portalSignInStarted) return;
+    portalSignInStarted = true;
     const launchToken = searchParams.get('launchToken') || searchParams.get('bt_token');
-    if (!launchToken || launchToken === postedLaunchToken) return;
-    postedLaunchToken = launchToken;
     // out of the address bar and the browser history before anything else
-    window.history.replaceState(null, '', '/login');
+    if (launchToken) window.history.replaceState(null, '', '/login');
 
-    const authenticateLaunch = async () => {
-      setLaunching(true);
-      setError(null);
-
-      try {
-        const response = await fetch('/api/auth/launch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ launchToken })
-        });
-
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          setError(data.error || 'Could not authenticate BharatTech launch token.');
-          return;
-        }
-
-        router.replace('/dashboard?mode=admin');
-      } catch {
-        setError('Could not authenticate BharatTech launch token.');
-      } finally {
-        setLaunching(false);
-      }
+    const postLaunch = async (token: string) => {
+      const response = await fetch('/api/auth/launch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ launchToken: token })
+      });
+      const data = await response.json().catch(() => ({}));
+      return { ok: response.ok, error: data.error as string | undefined };
     };
 
-    authenticateLaunch();
-  }, [router, searchParams]);
-
-  useEffect(() => {
-    const launchToken = searchParams.get('launchToken') || searchParams.get('bt_token');
-    if (launchToken) return;
-
-    let cancelled = false;
-
-    const authenticateExistingBharatTechSession = async () => {
-      setCheckingSso(true);
-
-      try {
-        const authenticated = await getKeycloakSession();
-        if (cancelled || !authenticated || !keycloak.token) return;
-
-        const response = await fetch('/api/auth/launch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ launchToken: keycloak.token })
-        });
-
-        if (cancelled || !response.ok) return;
-
-        router.replace('/dashboard?mode=admin');
-      } catch (error) {
-        console.warn('BharatTech SSO check failed:', error);
-      } finally {
-        if (!cancelled) {
+    signInFromPortal({
+      launchToken,
+      tryLaunch: async (token) => {
+        setLaunching(true);
+        setError(null);
+        try {
+          const result = await postLaunch(token);
+          return result.ok ? result : { ok: false, error: result.error || 'Could not authenticate BharatTech launch token.' };
+        } catch {
+          return { ok: false, error: 'Could not authenticate BharatTech launch token.' };
+        } finally {
+          setLaunching(false);
+        }
+      },
+      // the company sign-in this app's own Keycloak client holds, if any
+      trySso: async () => {
+        setCheckingSso(true);
+        try {
+          const authenticated = await getKeycloakSession();
+          if (!authenticated || !keycloak.token) return { ok: false };
+          return await postLaunch(keycloak.token);
+        } catch (ssoError) {
+          console.warn('BharatTech SSO check failed:', ssoError);
+          return { ok: false };
+        } finally {
           setCheckingSso(false);
         }
       }
-    };
-
-    authenticateExistingBharatTechSession();
-
-    return () => {
-      cancelled = true;
-    };
+    })
+      .then((result) => {
+        if (result.ok) router.replace('/dashboard?mode=admin');
+        else if (result.error) setError(result.error);
+      })
+      .finally(() => {
+        portalSignInStarted = false;
+      });
   }, [router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
