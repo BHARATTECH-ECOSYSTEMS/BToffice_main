@@ -593,6 +593,11 @@ interface EmailSwitches {
   kinds: readonly (typeof NOTIFICATION_KINDS)[number][];
   muted: NotificationKind[];
   toggle: (kind: NotificationKind, on: boolean) => void;
+  /** False until the saved switches have loaded; they're locked until then. */
+  ready: boolean;
+  /** The saved switches didn't load; `retry` asks again (and does nothing otherwise). */
+  failed: boolean;
+  retry: () => void;
   /** Why the last change or load didn't work; '' when fine. */
   problem: string;
   foot: string;
@@ -602,13 +607,16 @@ const useDemoSwitches = (muted: NotificationKind[]): EmailSwitches => ({
   kinds: NOTIFICATION_KINDS,
   muted,
   toggle: (kind, on) => setMutedNotifications(on ? muted.filter((k) => k !== kind) : [...muted, kind]),
+  ready: true,
+  failed: false,
+  retry: () => {},
   problem: '',
   foot: "Saved in this browser. Emails aren't connected yet, so none are sent for now.",
 });
 
 function useConnectedSwitches(): EmailSwitches {
-  const { muted, toggle, problem } = useEmailSwitches();
-  return { kinds: EMAIL_KINDS, muted, toggle, problem, foot: 'Saved to your account. The bell shows everything either way; these choose only the emails.' };
+  const { muted, ready, failed, retry, toggle, problem } = useEmailSwitches();
+  return { kinds: EMAIL_KINDS, muted, ready, failed, retry, toggle, problem, foot: 'Saved to your account. The bell shows everything either way; these choose only the emails.' };
 }
 
 // `api` is fixed for the page's whole life, so the bell always calls the same hooks
@@ -688,7 +696,7 @@ function NotifyMenu({ muted }: { muted: NotificationKind[] }) {
                     Mark all read
                   </button>
                 )}
-                <button type="button" className="p-icon-btn" aria-label="Email settings" title="Email settings" onClick={() => show('email')}>
+                <button type="button" className="p-icon-btn" aria-label="Email settings" title="Email settings" onClick={() => (show('email'), switches.retry())}>
                   <PIcon name="settings" size={16} />
                 </button>
               </span>
@@ -743,12 +751,24 @@ function NotifyMenu({ muted }: { muted: NotificationKind[] }) {
                   <strong>{k.label}</strong>
                   <small>{k.hint}</small>
                 </span>
-                <input type="checkbox" role="switch" className="p-switch" checked={!switches.muted.includes(k.id)} onChange={(e) => switches.toggle(k.id, e.target.checked)} />
+                <input
+                  type="checkbox"
+                  role="switch"
+                  className="p-switch"
+                  checked={!switches.muted.includes(k.id)}
+                  disabled={!switches.ready}
+                  onChange={(e) => switches.toggle(k.id, e.target.checked)}
+                />
               </label>
             ))}
             {switches.problem && (
               <p key="email-problem" className="p-error" role="alert">
-                {switches.problem}
+                {switches.problem}{' '}
+                {switches.failed && (
+                  <button type="button" className="p-text-btn" onClick={switches.retry}>
+                    Try again
+                  </button>
+                )}
               </p>
             )}
             <p key="email-foot" className="p-notify-foot">

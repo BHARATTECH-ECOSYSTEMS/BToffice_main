@@ -136,25 +136,40 @@ export function useNotifications() {
 const KNOWN = NOTIFICATION_KINDS.map((k) => k.id as NotificationKind);
 const readMuted = (value: unknown) => (Array.isArray(value) ? value.filter((k): k is NotificationKind => KNOWN.includes(k)) : []);
 
-/** The email switches saved on the account. A change shows at once and is undone, with a message, if it didn't save. */
+/**
+ * The email switches saved on the account. Until they've loaded they're locked (null): a change saves the whole list,
+ * so a click before then would save "nothing switched off" over the saved ones. A failed load is tried again with
+ * `retry`. A change shows at once and is undone, with a message, if it didn't save.
+ */
 export function useEmailSwitches() {
-  const [muted, setMuted] = useState<NotificationKind[]>([]);
+  const [muted, setMuted] = useState<NotificationKind[] | null>(null);
+  const [failed, setFailed] = useState(false);
   const [problem, setProblem] = useState('');
-
+  const live = useRef(true);
   useEffect(() => {
-    if (!api) return;
-    let live = true;
-    api.get<{ muted?: unknown }>('/notifications/prefs').then(
-      (r) => live && setMuted(readMuted(r.muted)),
-      () => live && setProblem('Your email settings didn’t load. Reopen this to try again.'),
-    );
+    live.current = true;
     return () => {
-      live = false;
+      live.current = false;
     };
   }, []);
 
-  const toggle = (kind: NotificationKind, on: boolean) => {
+  const load = useCallback(() => {
     if (!api) return;
+    setFailed(false);
+    setProblem('');
+    api.get<{ muted?: unknown }>('/notifications/prefs').then(
+      (r) => live.current && setMuted(readMuted(r.muted)),
+      () => {
+        if (!live.current) return;
+        setFailed(true);
+        setProblem('Your email settings didn’t load.');
+      },
+    );
+  }, []);
+  useEffect(load, [load]);
+
+  const toggle = (kind: NotificationKind, on: boolean) => {
+    if (!api || muted === null) return;
     const before = muted;
     const next = on ? muted.filter((k) => k !== kind) : [...muted, kind];
     setMuted(next);
@@ -165,5 +180,5 @@ export function useEmailSwitches() {
     });
   };
 
-  return { muted, toggle, problem };
+  return { muted: muted ?? [], ready: muted !== null, failed, retry: () => failed && load(), toggle, problem };
 }

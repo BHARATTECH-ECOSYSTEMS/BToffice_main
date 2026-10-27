@@ -490,6 +490,11 @@ body:has(.portal) .scene {
 .p-switch:checked::after {
   transform: translateX(18px);
 }
+/* locked while saving, or until the saved state has loaded: its position isn't the saved one yet */
+.p-switch:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
 @media (prefers-reduced-motion: reduce) {
   .p-switch,
   .p-switch::after {
