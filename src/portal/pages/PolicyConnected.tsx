@@ -5,7 +5,7 @@ import { PdfModal } from '../PdfModal';
 import { READ_CONFIRMATION, usePolicies, type PolicyDocument } from '../policies';
 import { useSession } from '../session';
 import { formatDate } from '../store';
-import { Badge, btnClass, BtnLabel, Empty, Modal, PageHead, PIcon, Stat, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, DELETE_MS, DeleteButton, Empty, Modal, PageHead, PIcon, Stat, useNotice, useReel } from '../ui';
 import { UploadModal } from './Policy';
 
 /**
@@ -50,6 +50,8 @@ export function ConnectedPolicy() {
   const documents = state.kind === 'ready' ? state.documents : [];
   const acceptances = documents.flatMap((d) => d.acceptances.map((a) => ({ ...a, document: d.name, documentId: d.id })));
 
+  // the row whose Delete plays its reel while the backend deletes (owner's 1A, 2026-10-27)
+  const [deletingNow, playDelete] = useReel(DELETE_MS);
   const run = async (id: string, change: () => Promise<unknown>, done: string) => {
     setBusy(id);
     try {
@@ -140,11 +142,13 @@ export function ConnectedPolicy() {
                     </td>
                     <td className="is-end">
                       {canManage ? (
-                        <button type="button" className={btnClass('ghost', { small: true })} disabled={busy === d.id} onClick={() => setDeleting(d)}>
-                          <BtnLabel>
-                            Delete<span className="sr-only"> {d.name}</span>
-                          </BtnLabel>
-                        </button>
+                        <DeleteButton
+                          small
+                          srText={d.name}
+                          disabled={deletingNow !== d.id && busy === d.id}
+                          going={deletingNow === d.id}
+                          onAsk={() => setDeleting(d)}
+                        />
                       ) : (
                         !d.acceptedByMe &&
                         (opened.has(d.id) ? (
@@ -264,7 +268,7 @@ export function ConnectedPolicy() {
           onSubmit={() => {
             const d = deleting;
             setDeleting(null);
-            void run(d.id, () => policies.remove(d.id), `${d.name} was deleted.`);
+            void playDelete(d.id, (played) => run(d.id, () => policies.remove(d.id, played), `${d.name} was deleted.`));
           }}
           footer={
             <>

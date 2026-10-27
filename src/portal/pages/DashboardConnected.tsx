@@ -6,7 +6,7 @@ import type { useCertificates } from '../certificates';
 import { canDelete, canEditDetails, inviteChoices, roleChoices, roleLabel, type AccountRole, type DirectoryPerson, type useDirectory } from '../people';
 import { useSession } from '../session';
 import { formatDate } from '../store';
-import { Badge, btnClass, BtnLabel, Empty, initials, Modal, SearchField, useListFlip, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, DELETE_MS, Empty, initials, Modal, SearchField, useListFlip, useNotice, useReel } from '../ui';
 import { DeleteAccountModal, InviteModal, saveFailedMessage } from './PeopleConnected';
 
 /**
@@ -49,6 +49,8 @@ export function ConnectedTeamPanel({ directory }: { directory: Directory }) {
   const [deleting, setDeleting] = useState<DirectoryPerson | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [notice, notify] = useNotice();
+  // no row to play it on here: the confirm window's own Delete account plays the reel, then the window closes (owner's 2A)
+  const [deletingNow, playDelete] = useReel(DELETE_MS);
 
   const people = state.kind === 'ready' ? state.people : [];
   // as on People: the account role decides what may be changed, and someone not in the directory gets the least access
@@ -189,11 +191,14 @@ export function ConnectedTeamPanel({ directory }: { directory: Directory }) {
       {deleting && (
         <DeleteAccountModal
           person={deleting}
+          going={deletingNow === deleting.id}
           onClose={() => setDeleting(null)}
-          onConfirm={() => {
+          onConfirm={async () => {
+            // Enter (the window's form) and the bin both confirm; a second press while it plays does nothing
+            if (deletingNow) return;
             const person = deleting;
+            await playDelete(person.id, (played) => save(person, () => directory.remove(person.id, played), `${person.name}’s account was deleted.`));
             setDeleting(null);
-            void save(person, () => directory.remove(person.id), `${person.name}’s account was deleted.`);
           }}
         />
       )}

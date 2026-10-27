@@ -4,6 +4,7 @@ import { EMAIL_SHAPE, STREAM_LABEL, STREAMS, WORK_MODE_LABEL, type ApplicationSt
 import { localDay } from './eoffice';
 import { readJoinDate } from './people';
 import { webLink } from './webLink';
+import { afterReel } from './reel';
 
 /**
  * The Bharattech Community on the backend (/api/community): the people who have left, the personal email the
@@ -404,7 +405,7 @@ export function useReferrals(on: boolean) {
     state,
     retry: () => void load(),
     share: (draft: ReferralDraft) => act(() => communityCalls(api!).shareReferral(draft)),
-    remove: (id: string) => act(() => communityCalls(api!).removeReferral(id)),
+    remove: (id: string, played?: Promise<unknown>) => act(() => afterReel(communityCalls(api!).removeReferral(id), played)),
   };
 }
 
@@ -450,7 +451,7 @@ export function useJobs(on: boolean) {
     retry: () => void load(),
     post: (draft: JobDraft) => act(() => communityCalls(api!).postJob(draft)),
     setOpen: (id: string, open: boolean) => act(() => communityCalls(api!).setJobOpen(id, open)),
-    remove: (id: string) => act(() => communityCalls(api!).removeJob(id)),
+    remove: (id: string, played?: Promise<unknown>) => act(() => afterReel(communityCalls(api!).removeJob(id), played)),
     addApplicant: (jobId: string, personId: string) => act(() => communityCalls(api!).addApplicant(jobId, personId)),
     move: (jobId: string, appId: string, from: ApplicationStage, to: ApplicationStage, instructions?: string) =>
       act(() => communityCalls(api!).moveApplicant(jobId, appId, from, to, instructions)),

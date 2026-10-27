@@ -5,7 +5,7 @@ import type { LinkResource } from '../data';
 import { useDirectory, type DirectoryState } from '../people';
 import { audience, isWebLink, useResources } from '../resources';
 import { useSession } from '../session';
-import { btnClass, BtnLabel, Empty, Modal, PageHead, PIcon, useNotice } from '../ui';
+import { btnClass, BtnLabel, DELETE_MS, DeleteButton, Empty, Modal, PageHead, PIcon, useNotice, useReel } from '../ui';
 import { AddLink, ToolCard, visibleTools } from './Resources';
 
 /**
@@ -162,6 +162,8 @@ function LinkCard({
   const nameOf = (id: string) => people.find((p) => p.id === id)?.name;
   const safe = isWebLink(link.url);
 
+  // its Delete plays the reel while the backend deletes (owner's 1A, 2026-10-27)
+  const [deletingNow, playDelete] = useReel(DELETE_MS);
   const run = async (change: () => Promise<void>, done: string) => {
     setBusy(true);
     try {
@@ -194,11 +196,7 @@ function LinkCard({
             </p>
           )}
           {directory && (
-            <button type="button" className={btnClass('ghost')} disabled={busy} onClick={() => setDeleting(true)}>
-              <BtnLabel>
-                Delete<span className="sr-only"> {link.name}</span>
-              </BtnLabel>
-            </button>
+            <DeleteButton srText={link.name} disabled={deletingNow !== link.id && busy} going={deletingNow === link.id} onAsk={() => setDeleting(true)} />
           )}
         </div>
         {directory && (
@@ -271,7 +269,7 @@ function LinkCard({
           onClose={() => setDeleting(false)}
           onSubmit={() => {
             setDeleting(false);
-            void run(() => resources.remove(link.id), `${link.name} was deleted.`);
+            void playDelete(link.id, (played) => run(() => resources.remove(link.id, played), `${link.name} was deleted.`));
           }}
           footer={
             <>

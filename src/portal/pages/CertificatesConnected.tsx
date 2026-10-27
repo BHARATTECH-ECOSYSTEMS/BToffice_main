@@ -6,7 +6,7 @@ import { PdfModal } from '../PdfModal';
 import { useDirectory } from '../people';
 import { useSession } from '../session';
 import { formatDate } from '../store';
-import { btnClass, BtnLabel, Empty, Modal, PageHead, PIcon, SearchField, Stat, useNotice } from '../ui';
+import { btnClass, BtnLabel, DELETE_MS, DeleteButton, Empty, Modal, PageHead, PIcon, SearchField, Stat, useNotice, useReel } from '../ui';
 import { IssueWizard } from './Certificates';
 
 /**
@@ -117,10 +117,12 @@ function History({ canManage, certificates, notify }: { canManage: boolean; cert
   const rows = list.filter((c) => matchesCertificate(c, q));
   const latest = list[0];
 
-  const remove = async (c: IssuedCertificate) => {
+  // the row whose Delete plays its reel while the backend deletes (owner's 1A, 2026-10-27)
+  const [deletingNow, playDelete] = useReel(DELETE_MS);
+  const remove = async (c: IssuedCertificate, played?: Promise<unknown>) => {
     setBusy(c.id);
     try {
-      await certificates.remove(c.id);
+      await certificates.remove(c.id, played);
       notify('Certificate deleted.');
     } catch (e) {
       notify(actionFailed(e as ApiError));
@@ -192,11 +194,13 @@ function History({ canManage, certificates, notify }: { canManage: boolean; cert
                           </BtnLabel>
                         </button>
                         {canManage && (
-                          <button type="button" className={btnClass('ghost', { small: true })} disabled={busy === c.id} onClick={() => setDeleting(c)}>
-                            <BtnLabel>
-                              Delete<span className="sr-only"> {c.title}</span>
-                            </BtnLabel>
-                          </button>
+                          <DeleteButton
+                            small
+                            srText={c.title}
+                            disabled={deletingNow !== c.id && busy === c.id}
+                            going={deletingNow === c.id}
+                            onAsk={() => setDeleting(c)}
+                          />
                         )}
                       </div>
                     </td>
@@ -235,7 +239,7 @@ function History({ canManage, certificates, notify }: { canManage: boolean; cert
           onSubmit={() => {
             const c = deleting;
             setDeleting(null);
-            void remove(c);
+            void playDelete(c.id, (played) => remove(c, played));
           }}
           footer={
             <>

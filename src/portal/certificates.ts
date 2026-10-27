@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from './api';
 import { CERTIFICATE_TYPES, type CertificateType } from './data';
+import { afterReel } from './reel';
 
 /**
  * Certificates from the backend (/api/certificates): everyone's for admins and superadmins, or the signed-in person's
@@ -109,7 +110,7 @@ export function useCertificates(scope: 'all' | 'mine') {
     retry: () => void load(),
     issue: (personId: string, type: CertificateType) =>
       act(() => api!.post('/certificates/generate', { userId: personId, title: certificateTitle(type) }, { timeoutMs: ISSUE_TIMEOUT_MS })),
-    remove: (id: string) => act(() => api!.del(`/certificates/${id}`)),
+    remove: (id: string, played?: Promise<unknown>) => act(() => afterReel(api!.del(`/certificates/${id}`), played)),
     openPdf: async (id: string) => {
       try {
         return await api!.getFile(`/certificates/${id}/pdf`);

@@ -19,7 +19,8 @@ export interface JobsSource {
   /** These resolve when saved and reject with an ApiError when the backend refuses. */
   post: (draft: JobDraft) => Promise<SourceJob>;
   setOpen: (id: string, open: boolean) => Promise<void>;
-  remove: (id: string) => Promise<void>;
+  /** `played`: the delete reel, which the row waits for before it goes (owner's 1A, 2026-10-27) */
+  remove: (id: string, played?: Promise<unknown>) => Promise<void>;
   addApplicant: (jobId: string, personId: string) => Promise<void>;
   /** emailed: whether this step's email went (connected only); needsInvite: rejoined without a sign-in account. */
   move: (jobId: string, applicant: SourceApplicant, to: ApplicationStage, instructions?: string) => Promise<{ emailed?: boolean; needsInvite?: boolean }>;
@@ -69,7 +70,10 @@ export function useJobsSource(on: boolean): JobsSource {
     })),
     post: async (draft) => portal.postJob({ ...draft, closes: draft.closes || undefined }),
     setOpen: async (id, open) => portal.setJobOpen(id, open),
-    remove: async (id) => portal.removeJob(id),
+    remove: async (id, played) => {
+      await played;
+      portal.removeJob(id);
+    },
     addApplicant: async (jobId, personId) => portal.addApplicant(jobId, personId),
     move: async (_jobId, applicant, to) => (portal.moveApplication(applicant.id, to), {}),
   };

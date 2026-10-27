@@ -19,7 +19,7 @@ import {
   type TasksApi,
 } from '../tasks';
 import { dueFlag } from '../taskDue';
-import { Badge, btnClass, BtnLabel, Empty, Modal, SearchField, useListFlip } from '../ui';
+import { Badge, btnClass, BtnLabel, DELETE_MS, DeleteButton, Empty, Modal, SearchField, useListFlip, useReel } from '../ui';
 
 /**
  * Tasks on the backend's records (src/portal/tasks.ts): the managers' Task management panel, the window a task opens
@@ -142,6 +142,8 @@ export function TaskWindow({
   const changeable = canChangeTask(viewer, task);
   const doer = isDoer(viewer, task);
 
+  // the delete window's own button plays the reel while the task is deleted, then the window closes (owner's 2A, 2026-10-27)
+  const [deletingNow, playDelete] = useReel(DELETE_MS);
   const run = async (work: () => Promise<unknown>, done: string, close = false) => {
     setBusy(true);
     setError('');
@@ -176,20 +178,23 @@ export function TaskWindow({
     );
   }
   if (mode === 'delete') {
+    // Enter (the window's form) and the bin both confirm; a second press while it plays does nothing
+    const confirmDelete = () => {
+      if (deletingNow) return;
+      void playDelete(task.id, (played) => run(() => tasks.remove(task.id, played), 'Task deleted.', true));
+    };
     return (
       <Modal
         title={`Delete “${task.title}”?`}
         icon="alert"
         onClose={() => setMode('view')}
-        onSubmit={() => void run(() => tasks.remove(task.id), 'Task deleted.', true)}
+        onSubmit={confirmDelete}
         footer={
           <>
             <button type="button" className={btnClass('ghost')} onClick={() => setMode('view')}>
               <BtnLabel>Cancel</BtnLabel>
             </button>
-            <button type="submit" className={btnClass('primary')} disabled={busy}>
-              <BtnLabel>{busy ? 'Deleting…' : 'Delete task'}</BtnLabel>
-            </button>
+            <DeleteButton label="Delete task" disabled={deletingNow !== task.id && busy} going={deletingNow === task.id} onAsk={confirmDelete} />
           </>
         }
       >

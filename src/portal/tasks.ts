@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from './api';
 import type { Task, TaskStatus } from './data';
 import type { AccountRole, DirectoryPerson } from './people';
+import { afterReel } from './reel';
 
 /**
  * Tasks from the backend (/api/tasks): the signed-in person's own (`mine`) or the whole team's (`team`, admins and sub
@@ -194,7 +195,7 @@ export function useTasks(scope: 'mine' | 'team') {
     },
     update: (id: string, draft: TaskDraft & { status: TaskStatus }) => act(() => api!.patch(`/tasks/${id}`, { ...fields(draft), status: backendStatus(draft.status) })),
     setStatus: (id: string, status: TaskStatus) => act(() => api!.patch(`/tasks/${id}/status`, { status: backendStatus(status) })),
-    remove: (id: string) => act(() => api!.del(`/tasks/${id}`)),
+    remove: (id: string, played?: Promise<unknown>) => act(() => afterReel(api!.del(`/tasks/${id}`), played)),
     attachBrief: (id: string, file: File) => act(() => api!.postForm(`/tasks/${id}/upload`, form(file), { timeoutMs: UPLOAD_TIMEOUT_MS })),
     handIn: (id: string, file: File, notes: string) => act(() => api!.postForm(`/tasks/${id}/submission`, form(file, notes.trim()), { timeoutMs: UPLOAD_TIMEOUT_MS })),
     openFile: async (path: string) => {

@@ -167,16 +167,32 @@ function DemoPeople() {
 }
 
 // how long the goodbye plays before they're marked as left (the CSS timeline in portal.css ends at 1.7s)
-const WAVE_MS = 1850;
+export const WAVE_MS = 1850;
 const WAVE_LABEL = 'Mark as left';
 
 /**
- * Marks someone as left on click, with no form, waving goodbye on the button itself: the letters drift off one by one,
- * a hand pops in and waves twice, and the button settles into a quiet "Left" chip with a tick. Only then is the person
- * moved (see usePlayThen).
+ * Marks someone as left, waving goodbye on the button itself: the letters drift off one by one, a hand pops in and
+ * waves twice, and the button settles into a quiet "Left" chip with a tick. On its own (`onDone`) it marks them on
+ * click once the wave has played (see usePlayThen); with `onAsk` the click only asks (a window), and the wave plays
+ * while `going` is true, as the backend marks them (owner's 4A, 2026-10-27; see useReel).
  */
-export function WaveButton({ srText, disabled, title, onDone }: { srText: string; disabled?: boolean; title?: string; onDone: () => void }) {
-  const [waving, play] = usePlayThen(WAVE_MS);
+export function WaveButton({
+  srText,
+  disabled,
+  title,
+  onDone,
+  onAsk,
+  going: goingNow,
+}: {
+  srText: string;
+  disabled?: boolean;
+  title?: string;
+  onDone?: () => void;
+  onAsk?: () => void;
+  going?: boolean;
+}) {
+  const [playing, play] = usePlayThen(WAVE_MS);
+  const waving = onAsk ? !!goingNow : playing;
   return (
     <button
       type="button"
@@ -186,7 +202,7 @@ export function WaveButton({ srText, disabled, title, onDone }: { srText: string
       aria-label={waving ? 'Marking as left' : `${WAVE_LABEL} ${srText}`}
       disabled={disabled}
       title={title}
-      onClick={() => play(onDone)}
+      onClick={waving ? undefined : (onAsk ?? (() => play(onDone!)))}
     >
       <PIcon name="logout" size={16} />
       <span className="btn-text" aria-hidden="true">

@@ -32,7 +32,8 @@ import type { PhotoSource } from '../profile';
 import { formatDate } from '../store';
 import { useSession } from '../session';
 import { localDay } from '../eoffice';
-import { Badge, btnClass, BtnLabel, Empty, initials, Modal, PageHead, SearchField, useListFlip, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, DELETE_MS, DeleteButton, Empty, initials, Modal, PageHead, SearchField, useListFlip, useNotice, useReel } from '../ui';
+import { WAVE_MS, WaveButton } from './People';
 import { communityFailedMessage } from '../community';
 
 /**
@@ -87,6 +88,9 @@ export function ConnectedPeople() {
       return next;
     });
   const [notice, notify] = useNotice();
+  // the row whose Delete or Mark as left is playing its reel while the backend works (owner's 1A 4A, 2026-10-27)
+  const [deletingNow, playDelete] = useReel(DELETE_MS);
+  const [leavingNow, playLeave] = useReel(WAVE_MS);
 
   const people = state.kind === 'ready' ? state.people : [];
   // the account role decides what may be changed; someone not found in the directory gets the least access
@@ -142,10 +146,10 @@ export function ConnectedPeople() {
     }
   };
 
-  const markLeft = async (person: DirectoryPerson) => {
+  const markLeft = async (person: DirectoryPerson, played?: Promise<unknown>) => {
     startSaving(person.id);
     try {
-      await directory.markLeft(person.id);
+      await directory.markLeft(person.id, played);
       notify(`${person.name} has left and joined the ${STREAM_LABEL[person.stream!]} community. Their sign-in is switched off.`);
     } catch (error) {
       notify(communityFailedMessage(error as ApiError));
@@ -284,28 +288,21 @@ export function ConnectedPeople() {
                               Details<span className="sr-only"> for {p.name}</span>
                             </BtnLabel>
                           </button>
-                          <button
-                            type="button"
-                            className={btnClass('ghost', { small: true })}
-                            disabled={busy || !!cantLeave}
+                          <WaveButton
+                            srText={p.name}
+                            disabled={leavingNow !== p.id && (busy || !!cantLeave)}
                             title={cantLeave || undefined}
-                            onClick={() => setLeaving(p)}
-                          >
-                            <BtnLabel icon="logout">
-                              Mark as left<span className="sr-only"> {p.name}</span>
-                            </BtnLabel>
-                          </button>
-                          <button
-                            type="button"
-                            className={btnClass('ghost', { small: true })}
-                            disabled={busy || !deletable}
+                            going={leavingNow === p.id}
+                            onAsk={() => setLeaving(p)}
+                          />
+                          <DeleteButton
+                            small
+                            srText={p.name}
+                            disabled={deletingNow !== p.id && (busy || !deletable)}
                             title={deletable ? undefined : self ? "You can't delete your own account" : 'Your role can’t delete this account'}
-                            onClick={() => setDeleting(p)}
-                          >
-                            <BtnLabel>
-                              Delete<span className="sr-only"> {p.name}</span>
-                            </BtnLabel>
-                          </button>
+                            going={deletingNow === p.id}
+                            onAsk={() => setDeleting(p)}
+                          />
                         </td>
                       )}
                     </tr>
@@ -356,7 +353,7 @@ export function ConnectedPeople() {
           onConfirm={() => {
             const person = deleting;
             setDeleting(null);
-            void save(person, () => directory.remove(person.id), `${person.name}’s account was deleted.`);
+            void playDelete(person.id, (played) => save(person, () => directory.remove(person.id, played), `${person.name}’s account was deleted.`));
           }}
         />
       )}
@@ -378,7 +375,7 @@ export function ConnectedPeople() {
           onConfirm={() => {
             const person = leaving;
             setLeaving(null);
-            void markLeft(person);
+            void playLeave(person.id, (played) => markLeft(person, played));
           }}
         />
       )}
@@ -554,8 +551,12 @@ function PendingInvites({
   );
 }
 
-/** Asks before deleting an account, since the login goes at once and the portal can't bring it back. */
-export function DeleteAccountModal({ person, onClose, onConfirm }: { person: DirectoryPerson; onClose: () => void; onConfirm: () => void }) {
+/**
+ * Asks before deleting an account, since the login goes at once and the portal can't bring it back. Its own button is
+ * the bin: on People the window closes and the row's button plays it; where there's no row (the Dashboard), `going`
+ * plays it here while the backend deletes, and the window closes after (owner's 2A, 2026-10-27).
+ */
+export function DeleteAccountModal({ person, going, onClose, onConfirm }: { person: DirectoryPerson; going?: boolean; onClose: () => void; onConfirm: () => void }) {
   return (
     <Modal
       title={`Delete ${person.name}’s account?`}
@@ -567,9 +568,13 @@ export function DeleteAccountModal({ person, onClose, onConfirm }: { person: Dir
           <button type="button" className={btnClass('ghost')} onClick={onClose}>
             <BtnLabel>Cancel</BtnLabel>
           </button>
-          <button type="submit" className={btnClass('primary')}>
-            <BtnLabel>Delete account</BtnLabel>
-          </button>
+          {going === undefined ? (
+            <button type="submit" className={btnClass('primary')}>
+              <BtnLabel>Delete account</BtnLabel>
+            </button>
+          ) : (
+            <DeleteButton label="Delete account" going={going} onAsk={onConfirm} />
+          )}
         </>
       }
     >

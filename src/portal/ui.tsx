@@ -3,6 +3,7 @@ import { Link } from 'react-router';
 import { SearchPill } from '../components/SearchPill';
 import { Arrow, BtnText, LogoMark } from '../components/ui';
 import { api } from './api';
+import { reelPlayed } from './reel';
 import type { PortalIconName } from './data';
 
 const PATHS: Record<PortalIconName, string> = {
@@ -492,12 +493,31 @@ export function usePlayThen(ms: number) {
 }
 
 // how long the delete plays before the item is actually removed (the CSS timeline in portal.css ends at 2.1s)
-const DELETE_MS = 2300;
+export const DELETE_MS = 2300;
 
 /**
- * Deletes on click, with no confirm dialog, after a reel the user picked: the letters of the label fall into the bin,
- * whose lid lifts to take them; the pill shrinks to a circle, a ring draws round it, and the bin turns into the Origin
- * logo with a soft glow. Only then is the item removed (see usePlayThen).
+ * For buttons that ask first and then play their reel while the backend works (owner's 1A, 2026-10-27): `going` is
+ * the id whose button plays; `play(id, work)` hands `work` a promise of the reel having played, for the store to wait
+ * on (afterReel in reel.ts), and stops the reel when the work is done or refused.
+ */
+export function useReel(ms: number) {
+  const [going, setGoing] = useState<string | null>(null);
+  const play = async <T,>(id: string, work: (played: Promise<void>) => Promise<T>) => {
+    setGoing(id);
+    try {
+      return await work(reelPlayed(ms));
+    } finally {
+      setGoing(null);
+    }
+  };
+  return [going, play] as const;
+}
+
+/**
+ * Deletes after a reel the user picked: the letters of the label fall into the bin, whose lid lifts to take them; the
+ * pill shrinks to a circle, a ring draws round it, and the bin turns into the Origin logo with a soft glow. On its own
+ * (`onDone`) it deletes on click once the reel has played (see usePlayThen). With `onAsk` the click only asks (a
+ * window), and the reel plays while `going` is true, for a delete the backend does (see useReel).
  */
 export function DeleteButton({
   label = 'Delete',
@@ -506,6 +526,8 @@ export function DeleteButton({
   disabled,
   title,
   onDone,
+  onAsk,
+  going: goingNow,
 }: {
   label?: string;
   /** Read after the label by screen readers, to say what is deleted ("Delete Asha Rao"). */
@@ -513,12 +535,14 @@ export function DeleteButton({
   small?: boolean;
   disabled?: boolean;
   title?: string;
-  onDone: () => void;
+  onDone?: () => void;
+  onAsk?: () => void;
+  going?: boolean;
 }) {
   const ref = useRef<HTMLButtonElement>(null);
-  const [going, play] = usePlayThen(DELETE_MS);
-  const start = () => {
-    if (going) return;
+  const [playing, play] = usePlayThen(DELETE_MS);
+  const going = onAsk ? !!goingNow : playing;
+  const measure = () => {
     const btn = ref.current!;
     // the pill shrinks from its own width, so that width is handed to the CSS
     btn.style.setProperty('--w', `${btn.offsetWidth}px`);
@@ -531,8 +555,16 @@ export function DeleteButton({
     });
     // every letter must be in before the word collapses at 0.8s, so long labels stagger faster
     btn.style.setProperty('--stagger', `${Math.min(55, 280 / Math.max(1, letters.length - 1))}ms`);
-    play(onDone);
   };
+  const start = () => {
+    if (going) return;
+    measure();
+    play(onDone!);
+  };
+  // asked first: measured as the reel starts, before the browser paints it
+  useLayoutEffect(() => {
+    if (onAsk && goingNow) measure();
+  }, [onAsk, goingNow]);
   return (
     <button
       ref={ref}
@@ -543,7 +575,8 @@ export function DeleteButton({
       aria-label={going ? 'Deleting' : srText ? `${label} ${srText}` : label}
       disabled={disabled}
       title={title}
-      onClick={start}
+      // while its reel plays, a click does nothing (it must not ask again)
+      onClick={going ? undefined : (onAsk ?? start)}
     >
       <span className="p-del-bin" aria-hidden="true">
         <svg viewBox="0 0 24 24">

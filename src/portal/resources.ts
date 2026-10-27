@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from './api';
 import type { LinkResource } from './data';
+import { afterReel } from './reel';
 
 /**
  * Shared links from the backend (/api/resources). Admins and superadmins see and manage every link; everyone else sees
@@ -97,6 +98,6 @@ export function useResources() {
     add: (name: string, url: string) => act(() => api!.post('/resources', { title: name, link: url })),
     assign: (id: string, personId: string) => act(() => api!.post(`/resources/${id}/assign`, { userId: personId })),
     unassign: (id: string, personId: string) => act(() => api!.del(`/resources/${id}/assign/${personId}`)),
-    remove: (id: string) => act(() => api!.del(`/resources/delete/${id}`)),
+    remove: (id: string, played?: Promise<unknown>) => act(() => afterReel(api!.del(`/resources/delete/${id}`), played)),
   };
 }

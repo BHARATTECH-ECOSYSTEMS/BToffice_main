@@ -4,7 +4,7 @@ import type { ApiError } from '../api';
 import { communityFailedMessage, emailedLine, JOB_LIMITS, jobProblem, nextStages, type JobDraft } from '../community';
 import { STREAM_LABEL, STREAMS, WORK_MODE_LABEL, type ApplicationStage, type InternalJob, type Stream, type WorkMode } from '../data';
 import { formatDate } from '../store';
-import { Badge, btnClass, BtnLabel, Empty, Modal, PIcon } from '../ui';
+import { Badge, btnClass, BtnLabel, DELETE_MS, DeleteButton, Empty, Modal, PIcon, useReel } from '../ui';
 import type { SourceMember } from './communitySource';
 import type { JobsSource, SourceApplicant, SourceJob } from './jobsSource';
 
@@ -234,6 +234,8 @@ function JobAdmin({ job, open, notify, source, members, onRejoined }: { job: Sou
   // the demo's "Email this job": everyone in the community with a personal email, in Bcc
   const reach = members.filter((m) => m.stream === job.stream && m.personalEmail).map((m) => m.personalEmail!);
 
+  // its Delete plays the reel while the posting is deleted (owner's 1A, 2026-10-27)
+  const [deletingNow, playDelete] = useReel(DELETE_MS);
   const run = async (change: () => Promise<string>) => {
     setBusy(true);
     try {
@@ -355,11 +357,7 @@ function JobAdmin({ job, open, notify, source, members, onRejoined }: { job: Sou
           >
             <BtnLabel icon={job.open ? 'lock' : 'refresh'}>{job.open ? 'Close posting' : 'Reopen'}</BtnLabel>
           </button>
-          <button type="button" className={btnClass('ghost')} disabled={busy} onClick={() => setDeleting(true)}>
-            <BtnLabel>
-              Delete<span className="sr-only"> {job.title}</span>
-            </BtnLabel>
-          </button>
+          <DeleteButton srText={job.title} disabled={deletingNow !== job.id && busy} going={deletingNow === job.id} onAsk={() => setDeleting(true)} />
         </span>
       </footer>
 
@@ -437,7 +435,7 @@ function JobAdmin({ job, open, notify, source, members, onRejoined }: { job: Sou
           onClose={() => setDeleting(false)}
           onSubmit={() => {
             setDeleting(false);
-            void run(async () => (await source.remove(job.id), `${job.title} was deleted.`));
+            void playDelete(job.id, (played) => run(async () => (await source.remove(job.id, played), `${job.title} was deleted.`)));
           }}
           footer={
             <>

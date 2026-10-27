@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, BUSY_MESSAGE, type createApi, failedText } from './api';
 import { ROLE_LABEL, STREAMS, type PersonRole, type PersonStatus, type Stream } from './data';
+import { afterReel } from './reel';
 
 /**
  * The people directory from the backend (GET /api/user/directory) and the admin actions on it. The permission
@@ -240,7 +241,7 @@ export function useDirectory() {
     retry: () => void load(),
     changeRole: (id: string, role: AccountRole) => act(() => api!.patch(`/user/${id}`, { role })),
     saveDetails: (id: string, details: { fullName?: string; stream: Stream | null; team: string; joinedOn?: string | null }) => act(() => api!.patch(`/user/${id}`, details)),
-    remove: (id: string) => act(() => api!.del(`/user/${id}`)),
+    remove: (id: string, played?: Promise<unknown>) => act(() => afterReel(api!.del(`/user/${id}`), played)),
     /** Blocking also switches their sign-in off; unblocking switches it back on. */
     setBlocked: (id: string, blocked: boolean) => act(() => accountCalls(api!).setBlocked(id, blocked)),
     sendResetLink: async (id: string) => {
@@ -251,7 +252,7 @@ export function useDirectory() {
       }
     },
     /** Moves them to their stream's community and switches their sign-in off (community.ts has the rest). */
-    markLeft: (id: string) => act(() => api!.post(`/community/leave/${encodeURIComponent(id)}`, {})),
+    markLeft: (id: string, played?: Promise<unknown>) => act(() => afterReel(api!.post(`/community/leave/${encodeURIComponent(id)}`, {}), played)),
     /**
      * Creates the person's login with a temporary password and emails it to them. They join the directory at their
      * first sign-in, so there's nothing to reload.

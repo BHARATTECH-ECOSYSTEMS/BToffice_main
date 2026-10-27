@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, type createApi } from './api';
 import type { PersonRole, PolicyCategory } from './data';
 import { readAccountRole, roleBadge, roleLabel } from './people';
+import { afterReel } from './reel';
 
 /**
  * Policy and compliance documents from the backend (/api/policies): the list with who accepted what, uploading and
@@ -135,7 +136,7 @@ export function usePolicies() {
       return act(() => api!.postForm('/policies', form, { timeoutMs: UPLOAD_TIMEOUT_MS }));
     },
     accept: (id: string) => act(() => policyCalls(api!).accept(id)),
-    remove: (id: string) => act(() => api!.del(`/policies/${id}`)),
+    remove: (id: string, played?: Promise<unknown>) => act(() => afterReel(api!.del(`/policies/${id}`), played)),
     openPdf: async (id: string) => {
       try {
         return await api!.getFile(`/policies/${id}/pdf`);
