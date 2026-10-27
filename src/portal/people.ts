@@ -48,11 +48,13 @@ export function canDelete(actor: AccountRole, target: AccountRole) {
  * Why `actor` can't mark this person as left, or '' when they can. The backend's rule: whoever may delete them,
  * never themselves, and only once their stream (which picks their community) is set.
  */
-export function canMarkLeft(actor: AccountRole, target: { accountRole: AccountRole; stream?: Stream }, self: boolean) {
+export function canMarkLeft(actor: AccountRole, target: { accountRole: AccountRole; stream?: Stream; status?: PersonStatus }, self: boolean) {
   if (self) return "You can't mark yourself as left";
   if (actor !== 'Superadmin' && actor !== 'Admin') return 'Only admins can mark someone as left';
   if (!canDelete(actor, target.accountRole)) return `${roleLabel(target.accountRole)} accounts can't be marked as left by your role`;
   if (!target.stream) return 'Set their stream in Details first: it decides which community they join';
+  // someone who left can't be unblocked or brought back, so the block comes off first (as the backend asks)
+  if (target.status === 'inactive') return "They're blocked: unblock them first, then mark them as left";
   return '';
 }
 

@@ -171,7 +171,7 @@ const CONNECTED_HELP: HelpGroup[] = [
       },
       {
         q: 'How do I mark someone as left?',
-        a: 'On the People page, press “Mark as left” on their row (their stream must be set first, since it picks their community). They move to the Community that day, their sign-in is switched off, and their ID documents are deleted 60 days later. Their Employee ID, tasks and certificates stay. Marked someone by mistake? Press “Bring back” on their Community card. Super Admins can mark admins as left; admins can mark sub admins, employees and interns.',
+        a: 'On the People page, press “Mark as left” on their row (their stream must be set first, since it picks their community, and someone blocked is unblocked first). They move to the Community that day, their sign-in is switched off, and their ID documents are deleted 60 days later. Their Employee ID, tasks and certificates stay. Marked someone by mistake? Press “Bring back” on their Community card. Super Admins can mark admins as left; admins can mark sub admins, employees and interns.',
         audience: 'admin',
         link: { to: '/portal/people', label: 'Open People' },
       },

@@ -47,6 +47,9 @@ test("who may mark someone as left matches the backend: whoever may delete them,
   assert.match(canMarkLeft('Superadmin', { accountRole: 'Employee', stream: 'tech' }, true), /yourself/);
   assert.match(canMarkLeft('Admin', { accountRole: 'Employee' }, false), /stream/i);
   assert.match(canMarkLeft('Subadmin', { accountRole: 'Employee', stream: 'tech' }, false), /admins/i);
+  // security report 2026-10-28 lead 10 (owner's A2): a blocked leaver could never be unblocked or brought back
+  assert.match(canMarkLeft('Superadmin', { accountRole: 'Employee', stream: 'tech', status: 'inactive' }, false), /unblock/i);
+  assert.equal(canMarkLeft('Superadmin', { accountRole: 'Employee', stream: 'tech', status: 'active' }, false), '');
 });
 
 test("a personal email is checked as the backend checks it; empty is fine (it takes the email away)", () => {
