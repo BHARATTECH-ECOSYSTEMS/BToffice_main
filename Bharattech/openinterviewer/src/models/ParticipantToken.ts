@@ -11,6 +11,9 @@ const ParticipantTokenSchema = new Schema(
     completedAt: { type: Date },
     // interview turns used, counted here because the history a browser sends can be reset
     turns: { type: Number, default: 0 },
+    // each interview turn's answer and the interviewer's reply, as the server saw them: the saved transcript is built
+    // from these, never from what the browser sends (security report 2026-10-28 lead 17)
+    exchanges: { type: [{ _id: false, answer: String, question: String, at: Date }], default: [] },
     expiresAt: { type: Date, required: true, expires: 0 }
   },
   {

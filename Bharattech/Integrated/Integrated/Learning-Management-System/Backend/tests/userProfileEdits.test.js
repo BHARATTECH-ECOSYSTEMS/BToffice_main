@@ -354,3 +354,16 @@ test("an admin changing their own photo through People isn't told about it", asy
   assert.equal(await storedPhotos(), 0);
   assert.equal(await Notification.countDocuments({}), 0);
 });
+
+test("photos uploaded at the same moment leave one stored photo, the one the record shows", async () => {
+  // security report 2026-10-28 lead 25 (owner's G4A): each upload read the old photo before saving, so parallel ones
+  // left files nothing pointed at
+  const { employee } = await people();
+  const replies = await Promise.all([PNG, JPEG, PNG, JPEG, PNG].map((bytes, i) => upload(employee, "PUT", "/me/photo", "photo", bytes, `me${i}.png`)));
+  assert.deepEqual(replies.map((r) => r.status), [200, 200, 200, 200, 200]);
+
+  const files = await mongoose.connection.db.collection("userPhotos.files").find().toArray();
+  const me = await User.findById(employee._id).lean();
+  assert.equal(files.length, 1);
+  assert.equal(String(files[0]._id), String(me.photoFileId));
+});

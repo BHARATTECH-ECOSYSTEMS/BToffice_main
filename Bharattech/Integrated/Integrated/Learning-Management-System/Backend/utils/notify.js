@@ -69,8 +69,16 @@ const notifyTaskGiven = (task, giverName) =>
 const notifyTaskChanged = (task, changerName) =>
   notify({ userId: idOf(task.assignedTo), kind: "task-update", title: `Task changed: ${task.title}`, detail: changerName ? `By ${changerName}` : "", link: "/portal", refId: task._id });
 
-const notifyWorkHandedIn = (task, doerName) =>
-  notify({ userId: idOf(task.assignedBy), kind: "work-handed-in", title: `Work handed in: ${task.title}`, detail: doerName ? `By ${doerName}` : "", link: "/portal", refId: task._id });
+// Work handed in again within this time adds no note and no email: whoever gave the task already knows, and each
+// hand-in is still kept on the task (security report 2026-10-28 lead 24)
+const HAND_IN_QUIET_MS = 60 * 60 * 1000;
+
+async function notifyWorkHandedIn(task, doerName) {
+  const userId = idOf(task.assignedBy);
+  const told = await Notification.exists({ userId, kind: "work-handed-in", refId: String(task._id), createdAt: { $gt: new Date(Date.now() - HAND_IN_QUIET_MS) } }).catch(() => null);
+  if (told) return;
+  await notify({ userId, kind: "work-handed-in", title: `Work handed in: ${task.title}`, detail: doerName ? `By ${doerName}` : "", link: "/portal", refId: task._id });
+}
 
 const notifyCertificateIssued = ({ certificate, recipient, issuer }) =>
   notify({

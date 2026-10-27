@@ -3,7 +3,7 @@
 
 import { NextResponse } from 'next/server';
 import { MAX_TURNS_PER_LINK, verifyParticipantToken } from '@/lib/auth';
-import { claimParticipantTurn } from '@/lib/kv';
+import { claimParticipantTurn, recordParticipantExchange } from '@/lib/kv';
 import { getInterviewProvider } from '@/lib/providers';
 import {
   StudyConfig,
@@ -13,6 +13,25 @@ import {
 } from '@/types';
 
 const MAX_MESSAGE_LENGTH = 5000;
+
+// What one turn may carry, as /api/synthesis allows: every field reaches the AI prompt, and nothing capped them
+// (security report 2026-10-28 lead 16: 450 KB went through as one turn)
+const MAX_HISTORY_MESSAGES = 200;
+const MAX_RAW_CONTEXT = 10000;
+const MAX_CURRENT_CONTEXT = 2000;
+const MAX_PROFILE_VALUE = 500;
+
+function tooMuchText(body: any): boolean {
+  const history = Array.isArray(body?.history) ? body.history : [];
+  const fields = Array.isArray(body?.participantProfile?.fields) ? body.participantProfile.fields : [];
+  return (
+    history.length > MAX_HISTORY_MESSAGES ||
+    history.some((message: any) => String(message?.content ?? '').length > MAX_MESSAGE_LENGTH) ||
+    String(body?.participantProfile?.rawContext ?? '').length > MAX_RAW_CONTEXT ||
+    String(body?.currentContext ?? '').length > MAX_CURRENT_CONTEXT ||
+    fields.some((field: any) => String(field?.value ?? '').length > MAX_PROFILE_VALUE)
+  );
+}
 
 function normalizeText(value: string) {
   return value.toLowerCase().replace(/\s+/g, ' ').trim();
@@ -108,14 +127,17 @@ export async function POST(request: Request) {
         { status: 401 }
       );
     }
+    const body = await request.json();
+    if (tooMuchText(body)) {
+      return NextResponse.json({ error: 'That is more text than one interview turn takes.' }, { status: 413 });
+    }
+
     if (!auth.isAdmin && !(await claimParticipantTurn(auth.token!, MAX_TURNS_PER_LINK))) {
       return NextResponse.json(
         { error: 'This interview has reached its limit of questions.' },
         { status: 429 }
       );
     }
-
-    const body = await request.json();
 
     const {
       history,
@@ -252,6 +274,12 @@ export async function POST(request: Request) {
 
     if (shouldConclude) {
       finalMessage = 'Thank you for your time and valuable insights. This concludes the interview.';
+    }
+
+    // the server keeps this turn (the candidate's answer and this reply); finishing saves those, not the browser's copy
+    if (!auth.isAdmin) {
+      const answer = [...history].reverse().find((message) => message.role === 'user');
+      await recordParticipantExchange(auth.token!, String(answer?.content ?? '').slice(0, MAX_MESSAGE_LENGTH), finalMessage);
     }
 
     const updatedHistory = history.slice(-20);

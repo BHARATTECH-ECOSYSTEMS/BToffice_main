@@ -13,6 +13,9 @@ import UsedLaunchPass from '@/models/UsedLaunchPass';
 import { StoredInterview, StoredStudy } from '@/types';
 import { DEMO_INTERVIEWS, DEMO_STUDY_CONFIG } from '@/lib/demoData';
 
+/** One interview turn on a link: the candidate's answer and the interviewer's reply. */
+export type ParticipantExchange = { answer: string; question: string; at: number };
+
 type LocalStore = {
   interviews: Record<string, StoredInterview>;
   studies: Record<string, StoredStudy>;
@@ -25,6 +28,7 @@ type LocalStore = {
     terminatedAt?: number;
     completedAt?: number;
     turns?: number;
+    exchanges?: ParticipantExchange[];
   }>;
   usedLaunchPasses: Record<string, number>;
 };
@@ -779,6 +783,7 @@ export async function getParticipantToken(token: string): Promise<{
   terminationReason?: string;
   terminatedAt?: number;
   completedAt?: number;
+  exchanges: ParticipantExchange[];
 } | null> {
   try {
     if (await shouldUseMongo()) {
@@ -794,7 +799,8 @@ export async function getParticipantToken(token: string): Promise<{
         studyConfig: tokenData.studyConfig,
         terminationReason: tokenData.terminationReason,
         terminatedAt: tokenData.terminatedAt ? toTimestamp(tokenData.terminatedAt) : undefined,
-        completedAt: tokenData.completedAt ? toTimestamp(tokenData.completedAt) : undefined
+        completedAt: tokenData.completedAt ? toTimestamp(tokenData.completedAt) : undefined,
+        exchanges: (tokenData.exchanges || []).map((e: any) => ({ answer: e.answer || '', question: e.question || '', at: toTimestamp(e.at) }))
       };
     }
 
@@ -813,7 +819,8 @@ export async function getParticipantToken(token: string): Promise<{
       studyConfig: tokenData.studyConfig,
       terminationReason: tokenData.terminationReason,
       terminatedAt: tokenData.terminatedAt,
-      completedAt: tokenData.completedAt
+      completedAt: tokenData.completedAt,
+      exchanges: tokenData.exchanges || []
     };
   } catch (error) {
     console.error('Error getting participant token:', error);
@@ -841,6 +848,27 @@ export async function claimParticipantTurn(token: string, max: number): Promise<
     });
   } catch (error) {
     console.error('Error counting interview turn:', error);
+    return false;
+  }
+}
+
+// Keeps one interview turn (the candidate's answer and the interviewer's reply) on the link.
+export async function recordParticipantExchange(token: string, answer: string, question: string): Promise<boolean> {
+  try {
+    const exchange = { answer, question, at: Date.now() };
+    if (await shouldUseMongo()) {
+      const result = await ParticipantToken.updateOne({ token }, { $push: { exchanges: { ...exchange, at: new Date(exchange.at) } } });
+      return result.modifiedCount === 1;
+    }
+
+    return await updateLocalStore((store) => {
+      const link = store.participantTokens[token];
+      if (!link) return false;
+      link.exchanges = [...(link.exchanges || []), exchange];
+      return true;
+    });
+  } catch (error) {
+    console.error('Error keeping an interview turn:', error);
     return false;
   }
 }
@@ -937,7 +965,8 @@ export async function terminateParticipantToken(token: string, reason: string): 
         {
           token,
           expiresAt: { $gt: new Date() },
-          terminatedAt: { $exists: false }
+          terminatedAt: { $exists: false },
+          completedAt: { $exists: false }
         },
         {
           $set: {
@@ -947,15 +976,16 @@ export async function terminateParticipantToken(token: string, reason: string): 
         }
       );
 
-      return result.modifiedCount > 0 || result.matchedCount > 0;
+      // true only for the call that ended it, so a repeat saves nothing again
+      return result.modifiedCount === 1;
     }
 
     return await updateLocalStore((store) => {
       const tokenData = store.participantTokens[token];
-      if (!tokenData || tokenData.expiresAt < Date.now()) return false;
+      if (!tokenData || tokenData.expiresAt < Date.now() || tokenData.terminatedAt || tokenData.completedAt) return false;
 
-      tokenData.terminationReason = tokenData.terminationReason || cleanReason;
-      tokenData.terminatedAt = tokenData.terminatedAt || Date.now();
+      tokenData.terminationReason = cleanReason;
+      tokenData.terminatedAt = Date.now();
       return true;
     });
   } catch (error) {

@@ -4,7 +4,8 @@
 
 import { NextResponse } from 'next/server';
 import { getInterviewProvider } from '@/lib/providers';
-import { verifyParticipantToken } from '@/lib/auth';
+import { MAX_TURNS_PER_LINK, verifyParticipantToken } from '@/lib/auth';
+import { claimParticipantTurn } from '@/lib/kv';
 import {
   StudyConfig,
   ParticipantProfile,
@@ -68,6 +69,12 @@ export async function POST(request: Request) {
         { error: 'Token not valid for this study' },
         { status: 403 }
       );
+    }
+
+    // A candidate's summary spends the AI key like a turn does, so it uses up one of the link's turns (security report
+    // 2026-10-28 lead 19: a link could ask for summaries without limit)
+    if (!auth.isAdmin && !(await claimParticipantTurn(auth.token!, MAX_TURNS_PER_LINK))) {
+      return NextResponse.json({ error: 'This interview has reached its limit of questions.' }, { status: 429 });
     }
 
     // Get the configured AI provider (Gemini or Claude)

@@ -49,7 +49,7 @@ test("old ID documents and task files no record refers to are removed; the ones 
   await age("taskFiles", 2);
   const removed = await sweepUnreferencedFiles();
 
-  assert.deepEqual(removed, { idDocuments: 1, taskFiles: 1 });
+  assert.deepEqual(removed, { idDocuments: 1, taskFiles: 1, userPhotos: 0 });
   assert.deepEqual(await ids("idDocuments"), [String(listed)]);
   assert.deepEqual(await ids("taskFiles"), [String(project), String(submitted)].sort());
   assert.equal((await ids("taskFiles")).includes(String(strayTask)), false);
@@ -59,7 +59,7 @@ test("old ID documents and task files no record refers to are removed; the ones 
 test("a file younger than an hour stays, even with no record yet: its upload may still be saving", async () => {
   await idStore.save(PDF, { name: "in-progress", contentType: "application/pdf" });
   await saveTaskFile(PDF, { fileName: "in-progress.pdf", contentType: "application/pdf", taskId: "t3" });
-  assert.deepEqual(await sweepUnreferencedFiles(), { idDocuments: 0, taskFiles: 0 });
+  assert.deepEqual(await sweepUnreferencedFiles(), { idDocuments: 0, taskFiles: 0, userPhotos: 0 });
   assert.equal((await ids("idDocuments")).length, 1);
   assert.equal((await ids("taskFiles")).length, 1);
 });
@@ -101,4 +101,18 @@ test("deleting a task whose files can't be removed right now answers the same wa
 test("the server starts the hourly clean-up", () => {
   const server = fs.readFileSync(path.join(__dirname, "..", "server.js"), "utf8");
   assert.match(server, /startHourlyFileSweep\(\);/);
+});
+
+test("old profile photos no record shows are removed too; everyone's current photo stays", async () => {
+  // security report 2026-10-28 lead 25 (owner's G4A)
+  const photos = imageStore("userPhotos");
+  const shown = await photos.save(PDF, { name: "shown", contentType: "image/png" });
+  const lost = await photos.save(PDF, { name: "lost", contentType: "image/png" });
+  await User.create(userFields({ photoFileId: shown }));
+  await age("userPhotos", 2);
+
+  await sweepUnreferencedFiles();
+
+  assert.deepEqual(await ids("userPhotos"), [String(shown)]);
+  assert.notEqual(String(lost), String(shown));
 });

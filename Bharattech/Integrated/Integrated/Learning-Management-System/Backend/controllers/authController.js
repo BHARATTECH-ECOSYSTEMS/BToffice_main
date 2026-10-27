@@ -57,10 +57,8 @@ const passwordGrantLogin = async (username, password) => {
     .replace(/_/g, "/");
   const tp = JSON.parse(Buffer.from(base64, "base64").toString("utf8"));
 
-  const allRoles = [
-    ...(tp.realm_access?.roles || []),
-    ...(tp.resource_access?.[KEYCLOAK_CLIENT_ID]?.roles || []),
-  ];
+  // realm roles only, as on every request (middlewares/keycloakAuth.js resolveRole)
+  const allRoles = tp.realm_access?.roles || [];
   const upper = allRoles.map((r) => r.toUpperCase().replace(/[-_\s]/g, ""));
 
   let role = "INTERN";

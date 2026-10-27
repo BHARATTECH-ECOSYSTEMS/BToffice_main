@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
+import { candidateStudy } from '@/lib/candidateStudy';
 import { cookies } from 'next/headers';
 import { randomUUID } from 'crypto';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth';
@@ -85,7 +86,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       valid: true,
-      studyConfig: tokenData.studyConfig,
+      studyConfig: candidateStudy(tokenData.studyConfig),
       terminated: Boolean(tokenData.terminatedAt),
       terminationReason: tokenData.terminationReason,
       terminatedAt: tokenData.terminatedAt,

@@ -367,7 +367,11 @@ exports.removeRequest = async (req, res) => {
     const request = await findRequest(req.params.id);
     const decided = "A decided request is kept as the record. Reopen it if it needs another look.";
     if (request.status !== "pending") throw new Refusal(409, decided);
-    const { deletedCount } = await Verification.deleteOne({ _id: request._id, status: "pending" });
+    // reopening and then deleting erased a decision and its log: every reopening is in the log, so one that shows any
+    // was decided once and stays
+    const wasDecided = "This request was decided once, so it's kept as the record, even reopened.";
+    if (request.log.some((e) => /^Reopened/.test(e.text))) throw new Refusal(409, wasDecided);
+    const { deletedCount } = await Verification.deleteOne({ _id: request._id, status: "pending", "log.text": { $not: /^Reopened/ } });
     if (!deletedCount) throw new Refusal(409, decided);
     // its bell notes (admins' for an outside request, the employee's for theirs) and an employee's uploaded IDs go too
     await forgetNotesAbout(request._id);

@@ -78,7 +78,7 @@ const Consent: React.FC = () => {
                 <div className="flex items-start gap-3">
                   <div className="w-6 h-6 rounded-full bg-blue-50 flex items-center justify-center text-xs text-blue-700 flex-shrink-0 mt-0.5 font-semibold">2</div>
                   <div>
-                    <div className="text-slate-700 font-medium">{studyConfig?.coreQuestions?.length ?? 0} core questions about your experiences</div>
+                    <div className="text-slate-700 font-medium">{studyConfig?.questionCount ?? studyConfig?.coreQuestions?.length ?? 0} core questions about your experiences</div>
                     <div className="text-slate-500 text-xs">The heart of the interview</div>
                   </div>
                 </div>

@@ -115,9 +115,10 @@ export async function POST(request: Request) {
     const expirationTime = getExpirationTime(studyConfig.linkExpiration);
 
     // Create token payload
+    // the link carries the study's id only: anyone holding it could read whatever else it carried (security report
+    // 2026-10-28 lead 27); the study itself is kept with the link on the server
     const tokenData: ParticipantToken = {
       studyId: studyConfig.id,
-      studyConfig,
       createdAt: Date.now(),
       // Store expiration info for display purposes
       ...(expirationTime && { expiresAt: Date.now() + (expirationTime === '7d' ? 7 : expirationTime === '30d' ? 30 : 90) * 24 * 60 * 60 * 1000 })

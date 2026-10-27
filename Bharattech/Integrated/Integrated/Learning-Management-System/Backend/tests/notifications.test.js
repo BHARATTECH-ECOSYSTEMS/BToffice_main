@@ -276,3 +276,41 @@ test("email switches are saved on the account; unknown kinds are refused", async
   assert.equal((await send(asha, "PATCH", "/notifications/prefs", { muted: ["everything"] })).status, 400);
   assert.equal((await send(asha, "PATCH", "/notifications/prefs", { muted: "tasks" })).status, 400);
 });
+
+/* ── Mail only for real changes (security report 2026-10-28 leads 23 + 24, owner's G3A) ── */
+
+test("saving a task with nothing changed tells nobody; a real change tells the person doing it once", async () => {
+  const { subadmin, asha } = await people();
+  const { body: task } = await send(subadmin, "POST", "/tasks", { title: "Field visit report", assignedTo: String(asha._id), priority: "High" });
+  await new Promise((r) => setTimeout(r, 200));
+  sent.length = 0;
+  await Notification.deleteMany({});
+
+  for (const body of [{}, { title: "Field visit report" }, { priority: "High" }]) {
+    assert.equal((await send(subadmin, "PATCH", `/tasks/${task._id}`, body)).status, 200);
+  }
+  assert.equal(mailsTo(asha).length, 0);
+  assert.equal((await notesOf(asha)).notes.length, 0);
+
+  await send(subadmin, "PATCH", `/tasks/${task._id}`, { title: "Field visit report (final)" });
+  assert.equal(mailsTo(asha).length, 1);
+});
+
+test("work handed in again within the hour doesn't email whoever gave the task again", async () => {
+  const { subadmin, asha } = await people();
+  const { body: task } = await send(subadmin, "POST", "/tasks", { title: "Field visit report", assignedTo: String(asha._id) });
+  await new Promise((r) => setTimeout(r, 200));
+  sent.length = 0;
+
+  for (let i = 0; i < 4; i++) {
+    assert.equal((await send(asha, "PATCH", `/tasks/${task._id}/status`, { status: "completed", fileUrl: `https://drive.example.test/v${i}.pdf` })).status, 200);
+  }
+  assert.equal(mailsTo(subadmin).length, 1);
+  assert.equal((await notesOf(subadmin)).notes.length, 1);
+  assert.equal((await Task.findById(task._id).lean()).submissions.length, 4, "every hand-in is still kept");
+
+  // an hour later the next hand-in is news again
+  await Notification.updateMany({ kind: "work-handed-in" }, { $set: { createdAt: new Date(Date.now() - 61 * 60 * 1000) } });
+  await send(asha, "PATCH", `/tasks/${task._id}/status`, { status: "completed", fileUrl: "https://drive.example.test/v9.pdf" });
+  assert.equal(mailsTo(subadmin).length, 2);
+});

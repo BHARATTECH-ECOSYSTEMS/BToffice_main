@@ -256,6 +256,24 @@ test("a decided request is closed: no ticks, no second decision, until it's reop
   assert.equal((await decide(p.admin, pending.id, "approved", "x")).status, 400, "not a status");
 });
 
+test("a request that was ever decided is kept, even once reopened", async () => {
+  // security report 2026-10-28 lead 22 (owner's G2A): reopening and then deleting erased a decision and its log
+  const p = await people();
+  const decided = await open(p.admin, northwind({ company: "Decided Ltd" }));
+  await decide(p.superadmin, decided.id, "rejected", "Not a real company");
+  assert.equal((await decide(p.admin, decided.id, "pending")).status, 200);
+
+  const res = await send(p.admin, "DELETE", `/${decided.id}`);
+  assert.equal(res.status, 409);
+  assert.match(res.body.message, /decided once/);
+  assert.ok(await Verification.exists({ _id: decided.id }));
+
+  // what counts is the log: any reopening in it
+  const older = await open(p.admin, northwind({ company: "Older Ltd" }));
+  await Verification.updateOne({ _id: older.id }, { $push: { log: { at: new Date(), by: "Test Admin", text: "Reopened" } } });
+  assert.equal((await send(p.admin, "DELETE", `/${older.id}`)).status, 409);
+});
+
 test("only a pending request can be deleted; a decided one is kept as the record", async () => {
   const p = await people();
   const pending = await open(p.admin);

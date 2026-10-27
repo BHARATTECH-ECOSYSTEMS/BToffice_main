@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import {
+  passwordLoginEnabled,
   createSessionToken,
   verifySessionToken,
   getSessionCookieOptions,
@@ -23,6 +24,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Password is required' },
         { status: 400 }
+      );
+    }
+
+    if (!passwordLoginEnabled()) {
+      return NextResponse.json(
+        { error: 'Password sign-in is switched off. Open Interview from the BharatTech portal.' },
+        { status: 403 }
       );
     }
 

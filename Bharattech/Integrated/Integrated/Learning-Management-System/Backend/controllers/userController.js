@@ -177,6 +177,9 @@ const canAssignRole = (actorRole, targetRole, nextRole) => {
   const requestedRole = normalizeRole(nextRole);
 
   if (currentRole === "Superadmin") {
+    // a Super Admin keeps that role: demoting one first made the block and removal rules stop applying (security
+    // report 2026-10-28 lead 11)
+    if (currentTargetRole === "Superadmin") return requestedRole === "Superadmin";
     return VALID_ROLES.includes(requestedRole);
   }
 
@@ -928,10 +931,16 @@ exports.setMyPhoto = async (req, res) => {
     if (!photoType(req.file.buffer)) return res.status(400).json({ message: PHOTO_PROBLEM });
     const user = await findMe(req);
     if (!user) return res.status(404).json({ message: "User not found" });
-    const oldFileId = await storePhoto(user, req.file);
-    await user.save();
-    await deleteUserPhoto(oldFileId);
-    res.json(stripSensitive(user));
+    const fileId = await saveUserPhoto(req.file.buffer, { contentType: photoType(req.file.buffer), userId: user._id });
+    // one step that also hands back the photo it replaced, so photos uploaded at the same moment each remove the one
+    // before theirs and only the last stays (reading the old one first left files nothing pointed at)
+    const before = await User.findOneAndUpdate(
+      { _id: user._id },
+      { $set: { photoFileId: fileId, profilePicture: `/api/user/${user._id}/photo?v=${fileId}` } },
+      { returnDocument: "before" }
+    );
+    await deleteUserPhoto(before?.photoFileId);
+    res.json(stripSensitive(await User.findById(user._id)));
   } catch (error) {
     console.error("Set photo error:", error.message);
     res.status(500).json({ message: "The photo couldn't be saved. Try again in a moment." });

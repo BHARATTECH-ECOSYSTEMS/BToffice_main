@@ -70,8 +70,8 @@ async function moveToNewAccount(old, id, name, email) {
 }
 
 /**
- * The signed-in person's LMS record, made on their first visit. Its name follows the name in their sign-in, so a
- * rename in the portal shows here on their next visit; a sign-in without a name keeps the one on file.
+ * The signed-in person's LMS record, made on their first visit. Its name and email follow their sign-in, so a rename
+ * in the portal shows here on their next visit; a sign-in without them keeps the ones on file.
  */
 export async function ensureUser(req) {
   const id = req.user?.id;
@@ -86,10 +86,11 @@ export async function ensureUser(req) {
       await finishMove(unfinished._id, id);
       user = await User.findById(id);
     }
-    if (name && user.name !== name) {
-      user.name = name;
-      await user.save();
-    }
+    if (name && user.name !== name) user.name = name;
+    // the email follows the sign-in too, unless another record holds it: a stale one let a new account with this
+    // person's old email take their courses on its first visit (security report 2026-10-28 lead 12)
+    if (email && user.email !== email && !(await User.exists({ email, _id: { $ne: id } }))) user.email = email;
+    if (user.isModified()) await user.save();
     return user;
   }
 

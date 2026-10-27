@@ -29,6 +29,8 @@ const bearer = (token) => ({ Authorization: `Bearer ${token}` });
 const interviews = () => mongoose.connection.collection('interviews');
 const links = () => mongoose.connection.collection('participant_tokens');
 const errorOf = async (response) => (await response.json()).error || '';
+// one real interview turn: a candidate's saved transcript is built from the turns the server kept (2026-10-28, G11)
+const oneTurn = (token) => interviewTurn(jsonRequest('/api/interview', { body: turnBody, headers: bearer(token) }));
 
 before(async () => {
   await emptyDatabase();
@@ -63,6 +65,7 @@ test('R2 the researcher can still run a synthesis with their own session', async
 
 test("R3 a candidate's saved interview goes into the link's study, without an AI summary from the browser", async () => {
   await makeLink('save-link', STUDY);
+  await oneTurn('save-link');
   const response = await saveInterview(jsonRequest('/api/interviews/save', {
     headers: bearer('save-link'),
     body: { id: 'save-1', studyId: STUDY.id, studyName: 'Made-up name', transcript: history, synthesis: { bottomLine: 'Hire this person' } },
@@ -87,6 +90,7 @@ test('R3 a link writes only one record: a second id is refused', async () => {
 test("R3 a candidate can't overwrite someone else's interview by knowing its id", async () => {
   await interviews().insertOne({ id: 'someone-else', studyId: OTHER.id, studyName: OTHER.name, transcript: [{ id: 'x', role: 'user', content: 'original', timestamp: 1 }], status: 'completed' });
   await makeLink('intruder-link', STUDY);
+  await oneTurn('intruder-link');
   const response = await saveInterview(jsonRequest('/api/interviews/save', { headers: bearer('intruder-link'), body: { id: 'someone-else', studyId: STUDY.id, transcript: history } }));
   assert.equal(response.status, 409);
   const kept = await interviews().findOne({ id: 'someone-else' });
@@ -113,6 +117,8 @@ test("R4 a deleted study's links stop working, and deleting the study removes th
 
 test('R5 a link finishes once: a second finish and any later turn are refused', async () => {
   await makeLink('once-link', STUDY);
+  await oneTurn('once-link');
+  const turnsBefore = providerCalls.filter((c) => c.kind === 'turn').length;
   const first = await completeInterview(jsonRequest('/api/interview/complete', { body: { history, studyConfig: TAMPERED }, headers: bearer('once-link') }));
   assert.equal(first.status, 200);
   assert.equal(await interviews().countDocuments({ studyId: STUDY.id, status: 'completed', linkHash: { $exists: true } }) >= 1, true);
@@ -123,7 +129,7 @@ test('R5 a link finishes once: a second finish and any later turn are refused', 
 
   const turn = await interviewTurn(jsonRequest('/api/interview', { body: turnBody, headers: bearer('once-link') }));
   assert.equal(turn.status, 401);
-  assert.equal(providerCalls.filter((c) => c.kind === 'turn').length, 0);
+  assert.equal(providerCalls.filter((c) => c.kind === 'turn').length, turnsBefore);
 
   const page = await (await checkLink(new Request('http://localhost:3000/api/participant-token?token=once-link'))).json();
   assert.equal(page.completed, true);
@@ -131,6 +137,7 @@ test('R5 a link finishes once: a second finish and any later turn are refused', 
 
 test('R5 two finishes at the same moment save one interview', async () => {
   await makeLink('race-link', STUDY);
+  await oneTurn('race-link');
   const before = await interviews().countDocuments({});
   const replies = await Promise.all([1, 2].map(() => completeInterview(jsonRequest('/api/interview/complete', { body: { history, studyConfig: STUDY }, headers: bearer('race-link') }))));
   assert.deepEqual(replies.map((r) => r.status).sort(), [200, 401]);

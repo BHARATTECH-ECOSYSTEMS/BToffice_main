@@ -153,7 +153,12 @@ export async function checkLaunchToken(token: string): Promise<{ via: 'portal' |
   if (!cleanToken) return null;
 
   const pass = await checkPortalPass(cleanToken);
-  if (pass) return { via: 'portal', sub: pass.sub, use: () => claimLaunchPass(pass.id, pass.expiresAt) };
+  // a pass is accepted until a few seconds past its expiry (clock tolerance), so it is remembered as used that long
+  // too: a record forgotten at expiry let the same pass open a second session (security report 2026-10-28 lead 14)
+  if (pass) {
+    const usedUntil = new Date(pass.expiresAt.getTime() + CLOCK_TOLERANCE_SECONDS * 1000);
+    return { via: 'portal', sub: pass.sub, use: () => claimLaunchPass(pass.id, usedUntil) };
+  }
 
   const sub = await verifyKeycloakToken(cleanToken);
   return sub ? { via: 'keycloak', sub, use: async () => true } : null;

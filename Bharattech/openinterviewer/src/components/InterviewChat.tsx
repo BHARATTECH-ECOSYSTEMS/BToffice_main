@@ -612,7 +612,7 @@ const InterviewChat: React.FC = () => {
     );
   }
 
-const totalQuestions = studyConfig?.coreQuestions?.length ?? 0;
+const totalQuestions = studyConfig?.questionCount ?? studyConfig?.coreQuestions?.length ?? 0;
   const questionsCompleted = questionProgress.questionsAsked.length;
   const isComplete = isFinishing || Boolean(terminationReason);
 

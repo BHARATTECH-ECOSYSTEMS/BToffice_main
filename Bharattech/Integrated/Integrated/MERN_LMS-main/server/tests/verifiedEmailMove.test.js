@@ -48,3 +48,26 @@ test("a verified email (a re-invite) still moves them, as before", async () => {
   assert.deepEqual(res.data.data.enrolledCourses.map((c) => String(c._id)), [String(course._id)]);
   assert.equal(await User.findById("kc-old"), null);
 });
+
+test("a live account's stored email follows its sign-in, so its old email can't pull its courses to another account", async () => {
+  // security report 2026-10-28 lead 12 (owner's G6A)
+  const taught = await Course.create({ ...sampleCourse(), courseContent: content, courseThumbnail: "data:image/png;base64,AA==", isPublished: true, educator: "kc-a", enrolledStudents: [] });
+  await User.create({ _id: "kc-a", name: "A", email: "a@example.test", enrolledCourses: [] });
+
+  // A's email was changed (by an admin); A's next visit carries the new one
+  assert.equal((await call("GET", "/api/user/profile", { token: tokenFor({ sub: "kc-a", email: "a2@example.test", email_verified: true }) })).status, 200);
+  assert.equal((await User.findById("kc-a").lean()).email, "a2@example.test");
+
+  // a new account with A's old email takes nothing of A's
+  await call("GET", "/api/user/profile", { token: tokenFor({ sub: "kc-b", email: "a@example.test", email_verified: true }) });
+  assert.equal((await Course.findById(taught._id).lean()).educator, "kc-a");
+  assert.ok(await User.findById("kc-a"));
+});
+
+test("an email another record already holds isn't taken over by a visit; the record keeps its own", async () => {
+  await User.create({ _id: "kc-a", name: "A", email: "a@example.test", enrolledCourses: [] });
+  await User.create({ _id: "kc-c", name: "C", email: "c@example.test", enrolledCourses: [] });
+  assert.equal((await call("GET", "/api/user/profile", { token: tokenFor({ sub: "kc-a", email: "c@example.test", email_verified: true }) })).status, 200);
+  assert.equal((await User.findById("kc-a").lean()).email, "a@example.test");
+  assert.equal((await User.findById("kc-c").lean()).email, "c@example.test");
+});

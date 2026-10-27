@@ -263,3 +263,22 @@ test("a name with HTML in it is escaped in the email", async () => {
   assert.doesNotMatch(mail.html, /<b>Party<\/b>/);
   assert.match(mail.html, /&lt;b&gt;Party&lt;\/b&gt; &amp; cake/);
 });
+
+test("a new title or kind updates the bell but emails nobody; a new date or time emails everyone", async () => {
+  // security report 2026-10-28 lead 21 (owner's G3A): every retitle emailed the whole company
+  const p = await people();
+  const ev = (await send(p.admin, "POST", "", meeting())).body;
+  await settle();
+  sent.length = 0;
+
+  await send(p.admin, "PATCH", `/${ev.id}`, { title: "Team sync (agenda)" });
+  await send(p.admin, "PATCH", `/${ev.id}`, { kind: "holiday" });
+  await settle();
+  assert.equal(sent.length, 0);
+  const [note] = await notesOf(p.asha);
+  assert.equal(note.title, "Event changed: Team sync (agenda)", "the bell still shows the latest");
+
+  await send(p.admin, "PATCH", `/${ev.id}`, { time: "15:30" });
+  await settle();
+  assert.equal(mailsTo(p.asha).length, 1);
+});

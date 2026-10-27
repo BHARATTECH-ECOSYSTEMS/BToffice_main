@@ -1,10 +1,12 @@
 const mongoose = require("mongoose");
 const Verification = require("../models/Verification");
 const Task = require("../models/Task");
+const User = require("../models/User");
 
 /*
  * The hourly clean-up of stored files nothing refers to any more: employees' ID documents (bucket "idDocuments",
- * listed in a Verification's documents) and task files (bucket "taskFiles", a Task's project file or a submission).
+ * listed in a Verification's documents), task files (bucket "taskFiles", a Task's project file or a submission) and
+ * profile photos (bucket "userPhotos", a User's photoFileId; photos replaced at the same moment left some behind).
  * A delete removes the record first and its files after, so a failure there left files nobody could reach or remove;
  * this takes them. Only files at least an hour old: an upload saves its file before the record lists it.
  */
@@ -18,6 +20,7 @@ const BUCKETS = [
     name: "taskFiles",
     referenced: async () => [...(await Task.distinct("projectFile.fileId")), ...(await Task.distinct("submissions.fileId"))],
   },
+  { name: "userPhotos", referenced: async () => User.distinct("photoFileId") },
 ];
 
 /** Removes old stored files no record refers to; returns how many went, per bucket. */

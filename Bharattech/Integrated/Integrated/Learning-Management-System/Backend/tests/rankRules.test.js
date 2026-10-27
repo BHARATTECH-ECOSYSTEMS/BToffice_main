@@ -137,3 +137,16 @@ test("a Super Admin can't be blocked or removed, even by another Super Admin", a
   assert.deepEqual(await stored(p.boss), untouched("Superadmin"));
   assert.deepEqual(keycloak.calls, []);
 });
+
+test("nor demoted first and then blocked: a Super Admin's role is changed by nobody here", async () => {
+  // security report 2026-10-28 lead 11 (owner's G1A): demoting made the block and removal rules stop applying
+  const p = await people();
+  for (const role of ["Admin", "Subadmin", "Employee", "Intern"]) {
+    assert.equal(await send(p.boss2, "PATCH", p.boss._id, { role }), 403, role);
+  }
+  assert.equal(await send(p.boss2, "PATCH", p.boss._id, { role: "Admin", isBanned: true }), 403);
+  assert.deepEqual(await stored(p.boss), untouched("Superadmin"));
+  assert.deepEqual(keycloak.calls, []);
+  // an unchanged role in a whole-form save is fine
+  assert.equal(await send(p.boss2, "PUT", p.boss._id, { role: "Superadmin", team: "Leads" }), 200);
+});

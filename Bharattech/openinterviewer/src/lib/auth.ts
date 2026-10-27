@@ -46,6 +46,15 @@ export async function createSessionToken(origin: { via: SessionOrigin; sub?: str
   return token.sign(secret);
 }
 
+/**
+ * Whether the shared ADMIN_PASSWORD may open a session. Off wherever the BharatTech portal launch is set up, where each
+ * researcher signs in as themselves (security report 2026-10-28 lead 15: the password had no guess limit and can't be
+ * taken from one person); OPENINTERVIEWER_PASSWORD_LOGIN=on switches it back on.
+ */
+export function passwordLoginEnabled() {
+  return process.env.OPENINTERVIEWER_PASSWORD_LOGIN === 'on' || !process.env.BHARATTECH_LAUNCH_SECRET;
+}
+
 // What the portal backend last said about each person: asked at most once a minute, so blocking, removing, marking
 // as left or demoting someone ends their researcher access within a minute.
 const SESSION_CHECK_SECONDS = 60;

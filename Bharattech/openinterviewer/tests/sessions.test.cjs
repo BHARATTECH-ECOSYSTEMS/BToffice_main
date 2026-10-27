@@ -126,7 +126,10 @@ test("when the backend can't be reached, a named session is refused, not waved t
   }
 });
 
-test('a session from the shared password names nobody, lasts 8 hours, and needs no backend', async () => {
+test('a session from the shared password names nobody, lasts 8 hours, and needs no backend', async (t) => {
+  // the password door is off where the portal launch is set up (as here) unless switched back on
+  process.env.OPENINTERVIEWER_PASSWORD_LOGIN = 'on';
+  t.after(() => delete process.env.OPENINTERVIEWER_PASSWORD_LOGIN);
   const res = await passwordLogin(jsonRequest('/api/auth', { body: { password: 'test-admin-password' } }));
   assert.equal(res.status, 200);
   const cookie = cookieJar().get('research-auth').value;

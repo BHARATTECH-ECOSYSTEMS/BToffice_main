@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { verifyParticipantToken } from '@/lib/auth';
 import { getInterviewProvider } from '@/lib/providers';
+import { serverTranscript } from '@/lib/transcript';
 import {
   finishParticipantToken,
+  getParticipantToken,
   getInterviewByLink,
   incrementStudyInterviewCount,
   isMongoStorageAvailable,
@@ -60,7 +62,13 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { history, participantProfile } = body;
+    const { participantProfile } = body;
+    // a candidate's transcript is the one the server kept, turn by turn; only a researcher's preview sends its own
+    const link = auth.isAdmin ? null : await getParticipantToken(auth.token!);
+    if (!auth.isAdmin && !link?.exchanges.length) {
+      return NextResponse.json({ error: 'Answer at least one question before finishing.' }, { status: 409 });
+    }
+    const history = auth.isAdmin ? body.history : serverTranscript(auth.studyConfig!, link!.exchanges);
     // A candidate's interview is saved under their link's study, whatever study the browser names.
     const studyConfig = auth.isAdmin ? body.studyConfig : auth.studyConfig;
     const studyId = auth.isAdmin

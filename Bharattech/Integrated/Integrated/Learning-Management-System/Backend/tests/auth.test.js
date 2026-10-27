@@ -123,6 +123,15 @@ test("a token Keycloak signed signs an active person in", async () => {
   assert.equal(r.body.id, String(user._id));
 });
 
+test("a role given as a client role of the app doesn't count: only realm roles, which People changes, decide", async () => {
+  // security report 2026-10-28 lead 20 (owner's G5A): a demotion changes realm roles only, so an lms-client role
+  // kept granting Admin on every request
+  const user = await User.create(userFields({ role: "Employee" }));
+  const r = await whoami(keycloakToken(user, { claims: { resource_access: { "lms-client": { roles: ["admin"] } } } }));
+  assert.equal(r.status, 200);
+  assert.equal(r.body.role, "Employee");
+});
+
 test("a token signed with any other key is refused", async () => {
   const user = await User.create(userFields({ role: "Employee" }));
   assert.equal((await whoami(keycloakToken(user, { key: otherKeys.privateKey }))).status, 401);

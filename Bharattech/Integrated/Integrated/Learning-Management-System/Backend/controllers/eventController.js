@@ -97,12 +97,15 @@ exports.changeEvent = async (req, res) => {
     if (!canChange(event, req.user)) throw new Refusal(403, "You can only change events you added.");
     const next = readEvent(req.body, event);
     const changed = Object.keys(next).some((k) => next[k] !== (event[k] || ""));
+    // the bell always shows the latest; an email goes only when people have to be somewhere else or at another time
+    // (every retitle emailed the whole company: security report 2026-10-28 lead 21)
+    const moved = ["date", "time"].some((k) => k in next && next[k] !== (event[k] || ""));
     Object.assign(event, next);
     await event.save();
     const sendEmails = changed ? await tellEveryone(event, "changed", req.user) : async () => {};
     await event.populate("createdBy", "fullName email");
     res.status(200).json(view(event, req.user));
-    await sendEmails();
+    if (moved) await sendEmails();
   } catch (error) {
     return answerError(res, error, "Change event");
   }

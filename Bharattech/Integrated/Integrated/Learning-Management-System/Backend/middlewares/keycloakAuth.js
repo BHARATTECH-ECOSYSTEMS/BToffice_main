@@ -66,12 +66,11 @@ const verifyToken = (token) =>
     });
   });
 
+// Realm roles only: People changes a person's role there (syncKeycloakRealmRole), so an lms-client client role kept
+// granting the old role after a demotion (security report 2026-10-28 lead 20)
 const resolveRole = (decoded) => {
-  const clientRoles = decoded.resource_access?.["lms-client"]?.roles || [];
   const realmRoles = decoded.realm_access?.roles || [];
-  const allRolesUpper = [...clientRoles, ...realmRoles].map((role) =>
-    role.toUpperCase(),
-  );
+  const allRolesUpper = realmRoles.map((role) => role.toUpperCase());
 
   if (
     allRolesUpper.includes("SUPERADMIN") ||

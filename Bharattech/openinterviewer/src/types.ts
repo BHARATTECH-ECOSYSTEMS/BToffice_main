@@ -127,6 +127,8 @@ export interface StudyConfig {
   linkExpiration?: LinkExpirationOption;  // When links expire (default: 'never')
   // AI Reasoning
   enableReasoning?: boolean;      // undefined=auto, true=force on, false=force off
+  // Only on a candidate's copy, which has no questions (src/lib/candidateStudy.ts)
+  questionCount?: number;
 }
 
 // ============================================
@@ -230,9 +232,9 @@ export interface StoredInterview {
 // Participant Token (URL)
 // ============================================
 
+// What a generated link carries; the study itself stays on the server
 export interface ParticipantToken {
   studyId: string;
-  studyConfig: StudyConfig;
   createdAt: number;
   expiresAt?: number;
 }

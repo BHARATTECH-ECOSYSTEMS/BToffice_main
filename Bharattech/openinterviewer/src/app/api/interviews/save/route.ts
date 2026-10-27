@@ -3,7 +3,8 @@
 // Server-side validation ensures data integrity
 
 import { NextResponse } from 'next/server';
-import { saveInterview, isMongoStorageAvailable, incrementStudyInterviewCount, lockStudy, getInterview, getInterviewByLink } from '@/lib/kv';
+import { saveInterview, isMongoStorageAvailable, incrementStudyInterviewCount, lockStudy, getInterview, getInterviewByLink, getParticipantToken } from '@/lib/kv';
+import { serverTranscript } from '@/lib/transcript';
 import { verifyParticipantToken } from '@/lib/auth';
 import { StoredInterview } from '@/types';
 
@@ -38,11 +39,13 @@ export async function POST(request: Request) {
       );
     }
 
-    // allow transcript OR messages OR history
-    const transcript =
-      clientData.transcript ||
-      clientData.messages ||
-      clientData.history;
+    // allow transcript OR messages OR history; a candidate's is the one the server kept, turn by turn
+    const link = auth.isAdmin ? null : await getParticipantToken(auth.token!);
+    const transcript = auth.isAdmin
+      ? clientData.transcript || clientData.messages || clientData.history
+      : link?.exchanges.length
+        ? serverTranscript(auth.studyConfig!, link.exchanges)
+        : null;
 
     if (!clientData.id || !clientData.studyId || !transcript) {
       return NextResponse.json(

@@ -301,11 +301,13 @@ exports.updateTask = async (req, res) => {
         replaced = storedFileIds({ projectFile: task.projectFile });
         task.projectFile = { url: readLink(body.fileUrl), fileName: readText(body.fileName, 200, "file name") || "Project document", uploadedAt: new Date() };
       }
+      // a save that changes nothing (the company app sends the whole form) tells nobody
+      const changed = task.isModified();
       await task.save();
       await deleteTaskFiles(replaced);
       // the person now doing it hears about it: as a new task when it was handed to them, else as a change
       if (handedOver) await notifyTaskGiven(task, req.user.fullName);
-      else await notifyTaskChanged(task, req.user.fullName);
+      else if (changed) await notifyTaskChanged(task, req.user.fullName);
     } else if (doesTask(task, req.user)) {
       if (DETAIL_FIELDS.some((f) => body[f] !== undefined) || body.status === undefined) {
         throw new Refusal(403, "You can only change the status of your task.");
