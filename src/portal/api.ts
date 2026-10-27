@@ -1,4 +1,5 @@
 import { auth, authConfig } from './auth';
+import { TIMEOUT_MS } from './timedFetch';
 
 /**
  * Requests to the company backend, signed with the person's Keycloak token (src/portal/auth.ts). Every failure
@@ -24,9 +25,6 @@ export class ApiError extends Error {
 }
 
 const STATUS_KIND: Partial<Record<number, ApiErrorKind>> = { 400: 'bad-request', 401: 'signed-out', 403: 'forbidden', 404: 'not-found', 409: 'conflict', 429: 'busy' };
-
-// long enough for a slow connection, short enough that a hung backend shows an error instead of loading forever
-const TIMEOUT_MS = 20_000;
 
 interface ApiOptions {
   /** The API root, e.g. http://localhost:5000/api */

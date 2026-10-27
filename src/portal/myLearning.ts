@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { auth } from './auth';
 import { LMS_API } from './lmsPlatform';
+import { timed, TIMEOUT_MS } from './timedFetch';
 
 /**
  * "My learning" on the dashboard (owner's 6A, 2026-10-26): the courses someone is enrolled in on the LMS Platform, with
@@ -41,11 +42,11 @@ export function toMyLearning(raw: unknown): LearningCourse[] {
 export const learningLink = (platform: string, courseId: string) => new URL(`player/${encodeURIComponent(courseId)}`, platform.endsWith('/') ? platform : `${platform}/`).href;
 
 /** Asks the LMS Platform's server for the list with the portal's sign-in; never throws. */
-export async function fetchMyLearning(apiBase: string, token: () => Promise<string | null>, request: typeof fetch = fetch): Promise<MyLearningState> {
+export async function fetchMyLearning(apiBase: string, token: () => Promise<string | null>, send: typeof fetch = fetch, timeoutMs = TIMEOUT_MS): Promise<MyLearningState> {
   const access = await token().catch(() => null);
   if (!access) return { kind: 'error', reason: 'signed-out' };
   try {
-    const res = await request(new URL('api/user/learning', apiBase.endsWith('/') ? apiBase : `${apiBase}/`).href, { headers: { Authorization: `Bearer ${access}` } });
+    const res = await timed(send, timeoutMs)(new URL('api/user/learning', apiBase.endsWith('/') ? apiBase : `${apiBase}/`).href, { headers: { Authorization: `Bearer ${access}` } });
     if (res.status === 401 || res.status === 403) return { kind: 'error', reason: 'signed-out' };
     if (!res.ok) return { kind: 'error', reason: 'unavailable' };
     return { kind: 'ready', courses: toMyLearning(await res.json()) };

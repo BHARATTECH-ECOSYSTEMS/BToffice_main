@@ -1,4 +1,5 @@
 import type { Role } from './session';
+import { timed, TIMEOUT_MS } from './timedFetch';
 
 /**
  * The real sign-in, through the company backend and its Keycloak.
@@ -167,7 +168,8 @@ function saveTokens(tokens: Tokens | null, remember: boolean) {
 
 const FORM = { 'Content-Type': 'application/x-www-form-urlencoded' };
 
-export function createAuth(config: AuthConfig, request: typeof fetch = (input, init) => fetch(input, init)) {
+export function createAuth(config: AuthConfig, send: typeof fetch = (input, init) => fetch(input, init), timeoutMs = TIMEOUT_MS) {
+  const request = timed(send, timeoutMs);
   const oidc = `${config.keycloak}/realms/${config.realm}/protocol/openid-connect`;
   let { tokens, remember } = loadTokens();
   let renewing: Promise<string | null> | null = null;

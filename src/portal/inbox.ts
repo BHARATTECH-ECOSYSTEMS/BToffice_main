@@ -1,5 +1,6 @@
 import { authConfig } from './auth';
 import type { Verification } from './data';
+import { timed, TIMEOUT_MS } from './timedFetch';
 
 /**
  * Verification requests sent from the public website. Outside companies use the footer form instead of emailing
@@ -60,11 +61,15 @@ const UNREACHABLE = 'We couldn’t send your request just now. Try again in a mo
 export async function sendEmploymentRequest(
   draft: EmploymentRequestDraft,
   website: string,
-  { base = authConfig?.api ?? '', request = (input: string, init: RequestInit) => fetch(input, init) }: { base?: string; request?: (input: string, init: RequestInit) => Promise<Response> } = {},
+  {
+    base = authConfig?.api ?? '',
+    request = (input: string, init: RequestInit) => fetch(input, init),
+    timeoutMs = TIMEOUT_MS,
+  }: { base?: string; request?: (input: string, init: RequestInit) => Promise<Response>; timeoutMs?: number } = {},
 ): Promise<SendResult> {
   let res: Response;
   try {
-    res = await request(`${base}/verification-requests`, {
+    res = await timed(request as typeof fetch, timeoutMs)(`${base}/verification-requests`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
       body: JSON.stringify({ ...draft, consent: true, website }),
