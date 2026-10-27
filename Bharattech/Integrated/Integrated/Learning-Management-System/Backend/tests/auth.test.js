@@ -136,14 +136,20 @@ test("an ID token or a refresh token is refused; an access token signs in", asyn
   assert.equal((await whoami(keycloakToken(user, { claims: { typ: "Bearer" } }))).status, 200);
 });
 
-test("a blocked account is refused, not just hidden", async () => {
+// the refusal carries the "switched-off" code the sign-in uses, so an open portal signs out and says why (review
+// 2026-10-26 low list, owner's 2A)
+test("a blocked account is refused, not just hidden, and told it's switched off", async () => {
   const user = await User.create(userFields({ role: "Employee", isBanned: true }));
-  assert.equal((await whoami(keycloakToken(user))).status, 403);
+  const r = await whoami(keycloakToken(user));
+  assert.equal(r.status, 403);
+  assert.equal(r.body.code, "switched-off");
 });
 
-test("a deleted account is refused", async () => {
+test("a deleted account is refused, and told it's switched off", async () => {
   const user = await User.create(userFields({ role: "Employee", isDeleted: true }));
-  assert.equal((await whoami(keycloakToken(user))).status, 403);
+  const r = await whoami(keycloakToken(user));
+  assert.equal(r.status, 403);
+  assert.equal(r.body.code, "switched-off");
 });
 
 // --- audience / authorized-party check (unit, since the real path needs Keycloak) ---

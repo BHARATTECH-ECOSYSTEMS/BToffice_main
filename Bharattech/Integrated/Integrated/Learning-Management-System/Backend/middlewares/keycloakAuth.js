@@ -232,7 +232,8 @@ const keycloakAuth = async (req, res, next) => {
 
       const user = await getOrCreateUser(decoded);
       const reason = inactiveReason(user);
-      if (reason) return res.status(403).json({ message: reason });
+      // "switched-off", as sign-in says it: an open portal signs out and tells them why
+      if (reason) return res.status(403).json({ code: "switched-off", message: reason });
 
       req.user = {
         id: user._id.toString(),
