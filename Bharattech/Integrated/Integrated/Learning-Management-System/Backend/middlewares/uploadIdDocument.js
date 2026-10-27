@@ -7,6 +7,8 @@ const ID_DOCUMENT_MAX_MB = 1;
 const uploadIdDocument = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: ID_DOCUMENT_MAX_MB * 1024 * 1024, files: 1 },
+  // file names arrive as UTF-8 ("आधार कार्ड.pdf"), not Latin-1
+  defParamCharset: "utf8",
 });
 
 // The "file" field, with upload problems answered as the caller's mistake (400/413) instead of a server error.

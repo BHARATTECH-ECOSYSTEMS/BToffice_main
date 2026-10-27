@@ -7,6 +7,8 @@ const MAX_PDF_MB = 20;
 const uploadPolicy = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: MAX_PDF_MB * 1024 * 1024, files: 1 },
+  // file names arrive as UTF-8 ("आधार कार्ड.pdf"), not Latin-1
+  defParamCharset: "utf8",
   fileFilter: (req, file, cb) => {
     if (file.mimetype !== "application/pdf") {
       return cb(new Error("Only PDF files allowed"));
