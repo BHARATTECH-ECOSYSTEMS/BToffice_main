@@ -11,7 +11,8 @@ const { sendReceipt } = require("../utils/verificationMail");
  * check agency) asks us to confirm that someone worked here. No sign-in, so it takes only what the form sends, checks
  * all of it, and is limited to a few an hour per address (server.js, middlewares/rateLimits.js publicForm).
  * - The request is filed for HR OPS (kind "employment") with a reference, VR-0001…, which the requester is shown.
- * - Every current Super Admin and Admin gets a bell note; the requester gets a receipt email.
+ * - Every current Super Admin and Admin gets a bell note; the requester gets a receipt email (only our words and the
+ *   reference, at most 3 a day per address).
  * - `website` is a field people never see (the form hides it): something that fills it in is a bot, and gets a calm
  *   answer while nothing is saved, so it learns nothing.
  */
@@ -20,6 +21,9 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MONTH_SHAPE = /^(\d{4})-(0[1-9]|1[0-2])$/;
 const EMPLOYEE_ID_SHAPE = /^[A-Z0-9-]*$/;
 const EARLIEST_YEAR = 1950;
+// anyone can type any address into the form: one address gets at most this many receipts a day
+const RECEIPTS_PER_DAY = 3;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 const text = (value, max, problem) => {
   const out = typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
@@ -74,7 +78,10 @@ exports.submitRequest = async (req, res) => {
     await noteVerificationRequest(request);
     res.status(201).json({ reference: request.reference, message: "Request received." });
     // the receipt goes after the reply; if it fails, the file says so
-    if (!(await sendReceipt(request))) {
+    const sentToday = await Verification.countDocuments({ kind: "employment", requesterEmail: request.requesterEmail, consentAt: { $gt: new Date(Date.now() - DAY_MS) } });
+    if (sentToday > RECEIPTS_PER_DAY) {
+      await Verification.updateOne({ _id: request._id }, { $push: { log: { at: new Date(), by: "System", text: `No receipt sent: this address already got ${RECEIPTS_PER_DAY} today` } } });
+    } else if (!(await sendReceipt(request))) {
       await Verification.updateOne({ _id: request._id }, { $push: { log: { at: new Date(), by: "System", text: `Couldn't email the receipt to ${request.requesterEmail}` } } });
     }
   } catch (error) {

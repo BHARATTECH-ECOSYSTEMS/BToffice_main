@@ -165,17 +165,33 @@ test("a filled-in hidden field (a bot) gets a calm answer, and nothing is saved,
   assert.equal(await Notification.countDocuments(), 0);
 });
 
-test("the requester is emailed a receipt with the reference, and only what they sent", async () => {
+// Review 2026-10-26 M14: anyone can send the form with any address, so a receipt that repeated the form's text let
+// people send their own words (a link, say) from the company's address. The receipt now says only our words and the
+// reference, and one address gets at most 3 receipts a day.
+test("the requester is emailed a receipt with the reference, and none of the text the form sent", async () => {
   await people();
-  const { body } = await submit(form({ candidate: "Asha <b>Rao</b>" }));
+  const { body } = await submit(form({ requesterName: "Click https://evil.example now", candidate: "Visit evil.example", designation: "Pay at evil.example" }));
   await settle();
   const mails = sent.filter((m) => m.to === "riya.sen@acme.example");
   assert.equal(mails.length, 1);
   assert.match(mails[0].subject, /VR-0001/);
   assert.match(mails[0].text, new RegExp(body.reference));
-  assert.match(mails[0].text, /Asha <b>Rao<\/b>/, "the text version says it as sent");
-  assert.ok(!mails[0].html.includes("<b>Rao</b>"), "the HTML version escapes it");
-  assert.match(mails[0].html, /Asha &lt;b&gt;Rao&lt;\/b&gt;/);
+  for (const part of [mails[0].subject, mails[0].text, mails[0].html]) assert.ok(!part.includes("evil"), `nothing the form sent: ${part}`);
+});
+
+test("an address gets at most 3 receipts a day; later requests are still filed, and say no receipt went", async () => {
+  await people();
+  const replies = [];
+  for (let i = 0; i < 4; i++) replies.push(await submit(form()));
+  await settle();
+  assert.deepEqual(replies.map((r) => r.status), [201, 201, 201, 201]);
+  assert.equal(sent.filter((m) => m.to === "riya.sen@acme.example").length, 3);
+  const fourth = await Verification.findOne({ reference: replies[3].body.reference });
+  assert.ok(fourth.log.some((l) => l.text === "No receipt sent: this address already got 3 today"), JSON.stringify(fourth.log));
+  // another address still gets its own
+  await submit(form({ requesterEmail: "someone@other.example" }));
+  await settle();
+  assert.equal(sent.filter((m) => m.to === "someone@other.example").length, 1);
 });
 
 test("every current Super Admin and Admin gets a bell note, nobody else, and no admin email", async () => {

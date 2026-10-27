@@ -2,8 +2,10 @@ const { createMailTransporter, escapeHtml, EMAIL_FROM } = require("./mailer");
 
 /*
  * The two emails another company gets about a verification request it sent from the website: a receipt with its
- * reference, and the answer once HR decides. They only ever repeat what the requester sent and say yes or no about
- * it: never the admin's note and nothing else from our records, which are other people's personal data.
+ * reference, and the answer once HR decides. The receipt repeats nothing the form sent: anyone can type any address
+ * into the form, so their words (a link, say) must not go out from our address to whoever that is. The answer, after
+ * HR has read the request, repeats the details sent and says yes or no about them: never the admin's note and
+ * nothing else from our records, which are other people's personal data.
  * Neither throws; each resolves true when the email went out.
  */
 
@@ -33,9 +35,9 @@ const sendReceipt = (request) =>
   send(request, {
     subject: `We received your verification request ${request.reference}`,
     lines: [
-      `Hello ${request.requesterName},`,
-      `We received your request to verify ${detailsSent(request)}. Your reference is ${request.reference}.`,
-      "Our HR team checks it against our records and emails the answer to this address.",
+      "Hello,",
+      `We received your employment verification request. Your reference is ${request.reference}.`,
+      "Our HR team checks it against our records and emails the answer to this address. If you didn't send this request, you can ignore this email.",
     ],
   });
 
