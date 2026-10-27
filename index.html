@@ -15,7 +15,7 @@
           var params = new URLSearchParams(window.location.search);
           var hash = window.location.hash || '';
           var path = window.location.pathname || '';
-          var route = hash.replace(/^#/, '').split('?')[0];
+          var route = hash.replace(/^#/, '').split('?')[0].replace(/\/+$/, '');
           var dark = route === '/services' || route === '/research' || params.get('theme') === 'dark' || hash.indexOf('theme=dark') !== -1 || hash.indexOf('/dark') !== -1 || path.indexOf('/dark') === 0;
           if (!dark) {
             var saved = null;

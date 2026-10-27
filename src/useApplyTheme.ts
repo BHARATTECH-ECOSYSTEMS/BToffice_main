@@ -1,6 +1,6 @@
 import { useLayoutEffect } from 'react';
 import { useLocation } from 'react-router';
-import { resolveTheme, useThemeState } from './theme';
+import { pageAddress, resolveTheme, useThemeState } from './theme';
 
 // the phone browser's own bar takes the page's colour (light: the value index.html starts with)
 const BROWSER_BAR = { light: '#FBF6EF', dark: '#0A0910' };
@@ -14,7 +14,7 @@ export function useApplyTheme() {
   const { choice, systemDark } = useThemeState();
   // A layout effect, so the theme is right before any page's effects run: the hero's 3D scene reads it when built.
   useLayoutEffect(() => {
-    const theme = resolveTheme({ choice, systemDark, pathname, search: window.location.search, hash: window.location.hash });
+    const theme = resolveTheme({ choice, systemDark, pathname, ...pageAddress() });
     const dark = theme === 'dark';
     const root = document.documentElement;
     if (dark) root.setAttribute('data-theme', 'dark');

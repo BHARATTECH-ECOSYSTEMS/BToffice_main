@@ -46,6 +46,17 @@ test('the old dark links still work: ?theme=dark, #/dark and /dark', () => {
   assert.equal(resolveTheme({ ...light, search: '?theme=darkish' }), 'light');
 });
 
+// Low list, public site (2026-10-27): a trailing slash, and the real /dark address under the hash route "/"
+test('Services and Research stay dark with a trailing slash too', () => {
+  for (const pathname of ['/services/', '/research/']) assert.equal(resolveTheme({ choice: 'light', systemDark: false, pathname }), 'dark', pathname);
+});
+
+test('the real /dark address stays dark once the hash route is "/" (no dark first paint, then light)', () => {
+  const light = { choice: 'light' as const, systemDark: false, pathname: '/' };
+  assert.equal(resolveTheme({ ...light, path: '/dark' }), 'dark');
+  assert.equal(resolveTheme({ ...light, path: '/' }), 'light');
+});
+
 test('a missing, unknown or unreadable saved choice means Auto', () => {
   assert.equal(readThemeChoice(memory()), 'auto');
   assert.equal(readThemeChoice(memory({ [THEME_KEY]: 'purple' })), 'auto');
@@ -121,7 +132,7 @@ test('the first-paint script in index.html agrees with resolveTheme', () => {
   const cases: { saved: string | null; systemDark: boolean; pathname: string; search: string; hash: string }[] = [];
   for (const saved of [null, 'light', 'dark', 'auto', 'purple'])
     for (const systemDark of [false, true])
-      for (const [pathname, search, hash] of [['/', '', ''], ['/', '', '#/services'], ['/', '', '#/research'], ['/', '', '#/services/deep-research'], ['/', '?theme=dark', '#/about'], ['/', '', '#/?theme=dark'], ['/', '', '#/portal/settings?tab=appearance'], ['/dark', '', '']])
+      for (const [pathname, search, hash] of [['/', '', ''], ['/', '', '#/services'], ['/', '', '#/research'], ['/', '', '#/services/deep-research'], ['/', '', '#/services/'], ['/', '', '#/research/'], ['/dark', '', '#/'], ['/', '?theme=dark', '#/about'], ['/', '', '#/?theme=dark'], ['/', '', '#/portal/settings?tab=appearance'], ['/dark', '', '']])
         cases.push({ saved, systemDark, pathname, search, hash });
   for (const c of cases) {
     const attrs = new Map<string, string>();
@@ -138,7 +149,7 @@ test('the first-paint script in index.html agrees with resolveTheme', () => {
       localStorage: { getItem: (k: string) => (k === THEME_KEY ? c.saved : '0'), setItem: () => {} },
     });
     const route = c.hash.replace(/^#/, '').split('?')[0] || c.pathname;
-    const expected = resolveTheme({ choice: readThemeChoice({ getItem: () => c.saved }), systemDark: c.systemDark, pathname: route, search: c.search, hash: c.hash });
+    const expected = resolveTheme({ choice: readThemeChoice({ getItem: () => c.saved }), systemDark: c.systemDark, pathname: route, search: c.search, hash: c.hash, path: c.pathname });
     assert.equal(attrs.get('data-theme') === 'dark' ? 'dark' : 'light', expected, JSON.stringify(c));
   }
 });
@@ -152,6 +163,11 @@ test('both shells (site and portal) apply resolveTheme, and the phone browser ba
   for (const f of ['src/App.tsx', 'src/portal/PortalLayout.tsx']) assert.match(src(f), /useApplyTheme\(\)/, `${f} doesn't apply the theme`);
   // the old route-only rule is gone from App
   assert.doesNotMatch(src('src/App.tsx'), /pathname === '\/services' \|\| pathname === '\/research'/);
+});
+
+test('the page and the theme key both read the whole address: ?theme=dark and /dark, not only the route', () => {
+  assert.match(src('src/useApplyTheme.ts'), /resolveTheme\(\{ choice, systemDark, pathname, \.\.\.pageAddress\(\) \}\)/);
+  assert.match(src('src/components/ThemeSwitch.tsx'), /resolveTheme\(\{ choice: 'light', systemDark: false, pathname, \.\.\.pageAddress\(\) \}\)/);
 });
 
 test('the switch is in the site nav, the portal top bar and portal Settings', () => {

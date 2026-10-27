@@ -27,13 +27,20 @@ export function readThemeChoice(storage: Pick<Storage, 'getItem'> | null): Theme
   }
 }
 
-export function resolveTheme({ choice, systemDark, pathname, search = '', hash = '' }: { choice: ThemeChoice; systemDark: boolean; pathname: string; search?: string; hash?: string }): Theme {
+/**
+ * `pathname` is the page's route (after the #); `path`, `search` and `hash` are the whole address, which only the
+ * old dark links use.
+ */
+export function resolveTheme({ choice, systemDark, pathname, search = '', hash = '', path = '' }: { choice: ThemeChoice; systemDark: boolean; pathname: string; search?: string; hash?: string; path?: string }): Theme {
   // ?theme=dark, #/?theme=dark and /dark are older links that still open the dark site
-  const linkedDark = new URLSearchParams(search).get('theme') === 'dark' || hash.includes('theme=dark') || hash.includes('/dark') || pathname.startsWith('/dark');
-  if (ALWAYS_DARK.has(pathname) || linkedDark) return 'dark';
+  const linkedDark = new URLSearchParams(search).get('theme') === 'dark' || hash.includes('theme=dark') || hash.includes('/dark') || pathname.startsWith('/dark') || path.startsWith('/dark');
+  if (ALWAYS_DARK.has(pathname.replace(/\/+$/, '')) || linkedDark) return 'dark';
   if (choice === 'auto') return systemDark ? 'dark' : 'light';
   return choice;
 }
+
+/** The parts of the address resolveTheme reads besides the route. */
+export const pageAddress = () => ({ search: window.location.search, hash: window.location.hash, path: window.location.pathname });
 
 /** The top-bar button's next step: Auto → Light → Dark → Auto. */
 export const nextThemeChoice = (choice: ThemeChoice) => THEME_CHOICES[(THEME_CHOICES.indexOf(choice) + 1) % THEME_CHOICES.length];

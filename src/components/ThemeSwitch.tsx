@@ -1,5 +1,5 @@
 import { useLocation } from 'react-router';
-import { nextThemeChoice, resolveTheme, setThemeChoice, THEME_CHOICES, THEME_LABEL, useThemeState, type ThemeChoice } from '../theme';
+import { nextThemeChoice, pageAddress, resolveTheme, setThemeChoice, THEME_CHOICES, THEME_LABEL, useThemeState, type ThemeChoice } from '../theme';
 
 /** Sun for Light, moon for Dark, a half-filled circle for Auto (whatever the device says). */
 function ThemeIcon({ choice }: { choice: ThemeChoice }) {
@@ -30,7 +30,7 @@ export function ThemeButton() {
   const { choice } = useThemeState();
   const { pathname } = useLocation();
   const next = nextThemeChoice(choice);
-  const alwaysDark = resolveTheme({ choice: 'light', systemDark: false, pathname }) === 'dark';
+  const alwaysDark = resolveTheme({ choice: 'light', systemDark: false, pathname, ...pageAddress() }) === 'dark';
   const label = `Theme: ${THEME_LABEL[choice]}${choice === 'auto' ? ' (follows your device)' : ''}${alwaysDark ? ', but this page is always dark' : ''}. Switch to ${THEME_LABEL[next]}.`;
   return (
     <button type="button" className="nav-theme" onClick={() => setThemeChoice(next)} aria-label={label} title={label}>
