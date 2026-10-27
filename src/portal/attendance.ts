@@ -173,6 +173,8 @@ export const indiaClock = (t: number) => new Date(t + INDIA_OFFSET_MS).toISOStri
 export const indiaTime = (t: number) => new Date(t).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' });
 /** Today in India, yyyy-mm-dd. */
 export const indiaToday = (now = Date.now()) => new Date(now + INDIA_OFFSET_MS).toISOString().slice(0, 10);
+/** The hour on India's clock, 0–23: for anything that greets or counts by the time of day there. */
+export const indiaHour = (now = Date.now()) => new Date(now + INDIA_OFFSET_MS).getUTCHours();
 
 export interface CorrectionDraft {
   /** The visit's day, yyyy-mm-dd */

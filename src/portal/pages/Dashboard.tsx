@@ -4,7 +4,7 @@ import { CERTIFICATE_TYPES, PERSON_STATUS_LABEL, ROLE_LABEL, toolById, type Pers
 import { hasArrived, managesPortal, markArrived, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, NotConnected, PIcon, SearchField, Stat, ToolButton, useListFlip, useNotice } from '../ui';
-import { attendanceFailedMessage, indiaTime, indiaToday, useAttendanceDay } from '../attendance';
+import { attendanceFailedMessage, indiaHour, indiaTime, indiaToday, useAttendanceDay } from '../attendance';
 import { useOfficeSource } from './officeSource';
 import { IdCardDialog } from '../IdCard';
 import { InviteModal } from './People';
@@ -110,7 +110,7 @@ function Hello({
           <h1 className="p-title">
             {/* the line rises out of its own baseline on arrival; the mask is the h1 */}
             <span className="p-title-line">
-              {greeting(new Date().getHours())}, <span className="p-title-name">{me.name.split(' ')[0]}</span>
+              {greeting(indiaHour())}, <span className="p-title-name">{me.name.split(' ')[0]}</span>
             </span>
           </h1>
           {sub && <p className="p-sub">{sub}</p>}

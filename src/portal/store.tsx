@@ -14,6 +14,7 @@ import {
   EMPLOYEE_CHECKS,
   EMPLOYMENT_CHECKS,
   SEED_VERIFICATIONS,
+  documentsDeleteOn,
   ID_RETENTION_DAYS,
   rejoinedPerson,
   type Acceptance,
@@ -38,6 +39,7 @@ import {
   type Verification,
   type VerificationStatus,
 } from './data';
+import { indiaToday } from './attendance';
 import { localMinute, receivedRequests } from './inbox';
 import type { Session } from './session';
 
@@ -47,16 +49,14 @@ import type { Session } from './session';
  * call that will replace it.
  */
 
-const today = () => new Date().toISOString().slice(0, 10);
+// India's date, as the real portal and the backend count days
+const today = () => indiaToday();
 let counter = 100;
 
 // Verification requests, uploaded ID documents and deletion dates outlive a sign-out (but not a reload): HR opens a
 // request, signs out, and the employee signs in to upload, so both sides must see the same records. Everything else
 // in the portal still starts fresh with each sign-in.
 const kept: { verifications?: Verification[]; documents?: IdDocument[]; deleted?: Record<string, string> } = {};
-const DAY_MS = 864e5;
-/** The day a person's ID documents are deleted: ID_RETENTION_DAYS after their last working day. */
-export const documentsDeleteOn = (left: string) => new Date(new Date(`${left}T00:00:00`).getTime() + ID_RETENTION_DAYS * DAY_MS).toISOString().slice(0, 10);
 const nextId = (prefix: string) => `${prefix}${++counter}`;
 
 function usePortalState(session: Session) {

@@ -1,8 +1,10 @@
 import { Fragment, useState, type CSSProperties, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
 import { ApiError } from '../api';
+import { indiaToday } from '../attendance';
 import {
   COMPANY_CHECKS,
+  documentsDeleteOn,
   EMAIL_SHAPE,
   EMPLOYEE_CHECKS,
   EMPLOYMENT_CHECKS,
@@ -20,7 +22,7 @@ import {
 import { PdfModal } from '../PdfModal';
 import { useDirectory } from '../people';
 import { useSession } from '../session';
-import { documentsDeleteOn, formatDate, usePortal } from '../store';
+import { formatDate, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PageHead, PIcon, PortalNotFound, SampleDataBar, SearchField, useNotice } from '../ui';
 import { verificationFailedMessage } from '../verifications';
 import { EvidenceDetail, EvidenceSummary, NotApplicableWindow } from './CheckEvidence';
@@ -55,7 +57,6 @@ const COPY = {
 
 const DAY = 864e5;
 const daysBetween = (from: string, to: string) => Math.max(0, Math.round((new Date(`${to}T00:00:00`).getTime() - new Date(`${from}T00:00:00`).getTime()) / DAY));
-const todayIso = () => new Date().toISOString().slice(0, 10);
 // "2024-02" → "Feb 2024"
 const formatMonth = (month: string) => new Date(`${month}-01T00:00:00`).toLocaleDateString('en-IN', { month: 'short', year: 'numeric' });
 const formatStamp = (at: string) =>
@@ -142,7 +143,7 @@ function VerificationPage({ kind }: { kind: VerificationKind }) {
               <ul className="p-desk-items" data-lenis-prevent>
                 {rows.map((v) => {
                   const total = CHECKS[kind].length;
-                  const age = daysBetween(v.requested, v.decided ?? todayIso());
+                  const age = daysBetween(v.requested, v.decided ?? indiaToday());
                   const stale = v.status === 'pending' && age > VERIFICATION_STALE_DAYS;
                   return (
                     <li key={v.id}>
@@ -232,7 +233,7 @@ function CaseFile({
   const allDone = checks.every((c) => request.done.includes(c.id));
   const pending = request.status === 'pending';
   const person = source.personOf(request);
-  const age = daysBetween(request.requested, request.decided ?? todayIso());
+  const age = daysBetween(request.requested, request.decided ?? indiaToday());
   // the employee's own uploads (employee files only), and when the 60-day rule removes them
   const ids = source.uploadsOf(request);
   const idsComplete = ID_DOCS.every((d) => ids.some((u) => u.kind === d.id));

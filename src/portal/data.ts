@@ -309,6 +309,12 @@ export const NA_REASON_MAX = 300;
 
 export const ID_DOC_MAX_MB = 1;
 export const ID_RETENTION_DAYS = 60;
+const DAY_MS = 864e5;
+/**
+ * The day a person's ID documents are deleted: ID_RETENTION_DAYS after their last working day. Counted on the date
+ * itself (as UTC midnight), so the answer is the same day on any device's clock.
+ */
+export const documentsDeleteOn = (left: string) => new Date(Date.parse(`${left}T00:00:00Z`) + ID_RETENTION_DAYS * DAY_MS).toISOString().slice(0, 10);
 export interface IdDocument {
   personId: string;
   kind: IdDocKind;
