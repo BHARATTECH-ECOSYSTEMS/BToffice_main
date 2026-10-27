@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { HANDOFF, askPortal, isSignInReturn, originOf } from "../src/auth/handoff.js";
 
 // The LMS asks the portal tab that opened it for its sign-in (owner's fix A, 1A 2A, 2026-10-25), so someone signed in
@@ -69,4 +70,20 @@ test("addresses are reduced to their origin; anything else is no address", LIMIT
   assert.equal(originOf("http://localhost:4182/#/portal"), PORTAL);
   assert.equal(originOf(""), null);
   assert.equal(originOf("not a url"), null);
+});
+
+// Review 2026-10-26 low list: the portal renews its sign-in before handing it over when it's near expiry, which can
+// take up to its 20-second limit on a slow network; waiting only 1.5 s, this tab often gave up and showed its own
+// sign-in screen, which Employee IDs can't use.
+test("waits longer than the portal's own 20-second limit on renewing the sign-in", LIMIT, async () => {
+  let waited = 0;
+  const opener = { postMessage() {} };
+  void askPortal({ opener, portalOrigin: PORTAL, listen: () => () => {}, later: (_fn, ms) => (waited = ms) });
+  assert.ok(waited > 20000, `waits ${waited} ms`);
+});
+
+test("while it waits, the page says it's signing you in instead of staying blank", LIMIT, () => {
+  const main = readFileSync(new URL("../src/main.jsx", import.meta.url), "utf8");
+  assert.match(main, /renderSigningIn\(\);\nsignIn\(\)/);
+  assert.match(main, /Signing you in…/);
 });

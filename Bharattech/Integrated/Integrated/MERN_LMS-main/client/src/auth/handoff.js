@@ -5,8 +5,12 @@
 
 export const HANDOFF = { ready: "bt-lms-ready", tokens: "bt-lms-tokens" };
 
-/** How long to wait for the portal's answer before showing this app's own sign-in screen. */
-const WAIT_MS = 1500;
+/**
+ * How long to wait for the portal's answer before showing this app's own sign-in screen: longer than the portal's own
+ * 20-second limit on renewing its sign-in, which it does first when the sign-in is about to expire. Opened directly,
+ * there's no portal to ask, so nothing waits.
+ */
+const WAIT_MS = 25000;
 
 /** An http(s) address's origin, or null. */
 export function originOf(url) {

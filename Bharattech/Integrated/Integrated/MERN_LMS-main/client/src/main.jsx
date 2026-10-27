@@ -65,7 +65,17 @@ const renderSignIn = () => {
   );
 };
 
+// while the portal is asked for its sign-in (it may renew it first, on a slow network for a while), say so
+const renderSigningIn = () => {
+  root.render(
+    <main className="flex min-h-screen flex-col items-center justify-center gap-4 p-6 text-center" role="status">
+      <p className="text-sm text-gray-600">Signing you in…</p>
+    </main>
+  );
+};
+
 forgetOldSignIns();
+renderSigningIn();
 signIn()
   .then((signedIn) => (signedIn ? renderApp() : renderSignIn()))
   .catch((error) => {
