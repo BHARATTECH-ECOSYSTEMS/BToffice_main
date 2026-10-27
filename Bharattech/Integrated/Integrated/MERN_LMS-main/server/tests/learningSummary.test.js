@@ -40,7 +40,9 @@ test("my courses come with their progress, unfinished first", async () => {
 
 test("someone enrolled in nothing gets an empty list, and only their own courses ever", async () => {
   const basics = await course("Basics", 1);
-  await call("POST", "/api/user/purchase", { token: tokenFor({ sub: "s1" }), json: { courseId: basics } });
+  // someone else really is enrolled, or an empty list says nothing about "only their own"
+  assert.equal((await call("POST", "/api/user/purchase", { token: tokenFor({ sub: "s1" }), json: { courseId: basics } })).status, 200);
+  assert.deepEqual((await learning(tokenFor({ sub: "s1" }))).data.data.courses.map((c) => c.courseId), [basics]);
   const meera = await learning(tokenFor({ sub: "s2" }));
   assert.equal(meera.status, 200);
   assert.deepEqual(meera.data.data.courses, []);

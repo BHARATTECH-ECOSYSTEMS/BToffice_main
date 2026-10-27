@@ -55,8 +55,9 @@ test("an educator's courses show their real name, and it follows a rename", asyn
 });
 
 test("a token without a name keeps the name already on file", async () => {
-  await call("GET", "/api/user/profile", { token: tokenFor({ sub: "p1", name: "Kabir Das" }) });
-  await call("GET", "/api/user/profile", { token: tokenFor({ sub: "p1", name: undefined }) });
+  assert.equal((await call("GET", "/api/user/profile", { token: tokenFor({ sub: "p1", name: "Kabir Das" }) })).status, 200);
+  // the nameless visit must work, or a kept name would only mean the visit failed
+  assert.equal((await call("GET", "/api/user/profile", { token: tokenFor({ sub: "p1", name: undefined }) })).status, 200);
   assert.equal((await User.findById("p1")).name, "Kabir Das");
 });
 

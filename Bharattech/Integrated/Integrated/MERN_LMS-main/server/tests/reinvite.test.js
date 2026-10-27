@@ -95,7 +95,9 @@ test("a move cut short before the new record was made still keeps every course",
 
 test("someone with a different email is never merged into another person", async () => {
   await oldKabir();
-  await call("GET", "/api/user/profile", { token: tokenFor({ sub: "kc-other", email: "meera@example.test", name: "Meera Iyer" }) });
+  // her visit must work and give her her own record, or an untouched Kabir would only mean the visit failed
+  assert.equal((await call("GET", "/api/user/profile", { token: tokenFor({ sub: "kc-other", email: "meera@example.test", name: "Meera Iyer" }) })).status, 200);
+  assert.equal((await User.findById("kc-other")).email, "meera@example.test");
   assert.ok(await User.findById("kc-old"));
   assert.equal(await Purchase.countDocuments({ userId: "kc-old" }), 1);
 });

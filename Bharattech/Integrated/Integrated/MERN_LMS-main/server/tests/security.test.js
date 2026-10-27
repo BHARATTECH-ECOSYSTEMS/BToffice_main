@@ -50,6 +50,27 @@ async function storedCourse({ isPublished }) {
   });
 }
 
+// Review 2026-10-26, tests area: the educator pages are for sub admins and above (routes/educatorRoutes.js); the
+// people who take courses are refused on every one of them.
+const EDUCATOR_ROUTES = [
+  ["POST", "/api/educator/add-course"],
+  ["GET", "/api/educator/courses"],
+  ["GET", "/api/educator/dashboard"],
+  ["GET", "/api/educator/enrollments"],
+  ["GET", "/api/educator/enrolled-students"],
+];
+
+test("employees and interns are refused on every educator route; a sub admin gets in", async () => {
+  for (const role of ["Employee", "Intern"]) {
+    for (const [method, route] of EDUCATOR_ROUTES) {
+      assert.equal((await call(method, route, { token: tokenFor({ roles: [role] }) })).status, 403, `${role} ${method} ${route}`);
+    }
+  }
+  assert.equal(await Course.countDocuments(), 0);
+  // the same routes answer a sub admin, so the refusals above are about the role
+  assert.equal((await call("GET", "/api/educator/courses", { token: tokenFor({ roles: ["Subadmin"] }) })).status, 200);
+});
+
 test("a token the server signed itself is refused, even with JWT_SECRET set", async () => {
   const selfMade = jwt.sign({ id: "anyone", role: "admin", roles: ["admin"] }, LOCAL_SECRET);
   const res = await call("GET", "/api/educator/courses", { token: selfMade });
