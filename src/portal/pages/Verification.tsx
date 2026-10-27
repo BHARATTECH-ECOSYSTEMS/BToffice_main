@@ -357,7 +357,9 @@ function CaseFile({
       </dl>
 
       <div className="p-file-body">
-        <fieldset className="p-file-docs" disabled={!pending || saving}>
+        {/* never switched off as a whole: that would switch off the files' Open buttons too, so each control that
+            changes something stops on its own once decided or while saving */}
+        <fieldset className="p-file-docs" data-decided={!pending || undefined}>
           <legend>
             <span>{request.kind === 'employment' ? 'Checks' : 'Documents'}</span>
             <span className="p-dim">
@@ -391,7 +393,7 @@ function CaseFile({
                     <input
                       type="checkbox"
                       checked={request.done.includes(c.id)}
-                      disabled={waitingFor(c.id)}
+                      disabled={waitingFor(c.id) || !pending || saving}
                       aria-describedby={shown ? fileId : undefined}
                       onChange={(e) => {
                         const done = e.target.checked;
@@ -405,7 +407,12 @@ function CaseFile({
                   </label>
                   {shown && <EvidenceSummary id={fileId} missing={missing} {...evidence} />}
                   {canSkip && (
-                    <button type="button" className={`${btnClass('ghost', { small: true })} p-skip`} onClick={() => setSkipping(c.id as SkippableCheck)}>
+                    <button
+                      type="button"
+                      className={`${btnClass('ghost', { small: true })} p-skip`}
+                      disabled={saving}
+                      onClick={() => setSkipping(c.id as SkippableCheck)}
+                    >
                       <BtnLabel>
                         Not applicable<span className="sr-only">: {c.label}</span>
                       </BtnLabel>

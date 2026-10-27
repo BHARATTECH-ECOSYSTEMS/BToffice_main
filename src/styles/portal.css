@@ -923,11 +923,11 @@ body:has(.portal) .scene {
   outline: 2px solid var(--violet);
   outline-offset: 2px;
 }
-.p-file-docs:disabled .p-doc {
+.p-file-docs[data-decided] .p-doc {
   cursor: default;
 }
 @media (hover: hover) and (pointer: fine) {
-  .p-file-docs:not(:disabled) .p-doc-line:has(input:enabled):hover {
+  .p-file-docs:not([data-decided]) .p-doc-line:has(input:enabled):hover {
     background: color-mix(in srgb, var(--ink) 4%, transparent);
   }
 }

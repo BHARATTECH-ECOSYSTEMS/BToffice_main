@@ -143,19 +143,21 @@ export function Profile() {
             </Empty>
           ) : docs.canUpload || docs.list.length ? (
             <>
-              <fieldset className="p-docs" disabled={!docs.canUpload}>
+              {/* never switched off as a whole (that would switch off the Open buttons too): what changes a file only
+                  shows while uploads are open */}
+              <fieldset className="p-docs">
                 <legend>Government ID</legend>
                 {VERIFICATION_FILES.filter((d) => d.required).map(fileRow)}
               </fieldset>
               {docs.mine && (
                 <>
-                  <fieldset className="p-docs" disabled={!docs.canUpload}>
+                  <fieldset className="p-docs">
                     <legend>
                       Education <span className="p-dim">(upload at least one)</span>
                     </legend>
                     {EDUCATION_FILES.map(fileRow)}
                   </fieldset>
-                  <fieldset className="p-docs" disabled={!docs.canUpload}>
+                  <fieldset className="p-docs">
                     <legend>Previous employment</legend>
                     <PreviousEmployment
                       mine={docs.mine}
