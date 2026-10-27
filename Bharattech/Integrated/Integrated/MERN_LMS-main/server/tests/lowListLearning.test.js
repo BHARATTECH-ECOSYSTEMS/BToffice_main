@@ -77,3 +77,12 @@ test("two first visits at once during an account move both work, and keep every 
   assert.equal(await CourseProgress.countDocuments({ userId: "kc-new" }), 3);
   assert.equal(await Purchase.countDocuments({ userId: "kc-old" }) + (await CourseProgress.countDocuments({ userId: "kc-old" })), 0);
 });
+
+test("a lecture link must really be on YouTube", () => {
+  for (const good of ["https://youtu.be/dQw4w9WgXcQ", "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "https://m.youtube.com/watch?v=dQw4w9WgXcQ&t=10", "https://youtube.com/shorts/dQw4w9WgXcQ", "https://www.youtube.com/embed/dQw4w9WgXcQ", "dQw4w9WgXcQ"]) {
+    assert.equal(extractYouTubeId(good), "dQw4w9WgXcQ", good);
+  }
+  for (const bad of ["https://other.example/?youtube.com/watch?v=dQw4w9WgXcQ", "https://youtube.com.other.example/watch?v=dQw4w9WgXcQ", "https://other.example/youtu.be/dQw4w9WgXcQ", "javascript:alert(1)//youtu.be/dQw4w9WgXcQ", "ftp://youtube.com/watch?v=dQw4w9WgXcQ"]) {
+    assert.equal(isValidYouTubeUrl(bad), false, bad);
+  }
+});

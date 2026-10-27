@@ -1,3 +1,5 @@
+const YOUTUBE_HOSTS = new Set(["youtube.com", "www.youtube.com", "m.youtube.com", "youtu.be", "youtube-nocookie.com", "www.youtube-nocookie.com"]);
+
 /**
  * Extract YouTube video ID from any valid YouTube URL
  */
@@ -11,8 +13,17 @@ export const extractYouTubeId = (url) => {
     return trimmedUrl;
   }
 
-  const match = trimmedUrl.match(
-    /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=|shorts\/|live\/)|youtu\.be\/)([^"&?\/\s]{11})/i
+  // the link's own address must be YouTube's: "youtube.com/…" inside another site's link isn't a YouTube link
+  let link;
+  try {
+    link = new URL(/^[a-z][a-z0-9+.-]*:/i.test(trimmedUrl) ? trimmedUrl : `https://${trimmedUrl}`);
+  } catch {
+    return null;
+  }
+  if (!/^https?:$/.test(link.protocol) || !YOUTUBE_HOSTS.has(link.hostname.toLowerCase())) return null;
+
+  const match = `${link.hostname}${link.pathname}${link.search}`.match(
+    /(?:youtube(?:-nocookie)?\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=|shorts\/|live\/)|youtu\.be\/)([^"&?\/\s]{11})/i
   );
 
   return match ? match[1] : null;
