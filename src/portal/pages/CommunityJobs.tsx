@@ -4,7 +4,7 @@ import type { ApiError } from '../api';
 import { communityFailedMessage, emailedLine, JOB_LIMITS, jobProblem, nextStages, type JobDraft } from '../community';
 import { STREAM_LABEL, STREAMS, WORK_MODE_LABEL, type ApplicationStage, type InternalJob, type Stream, type WorkMode } from '../data';
 import { formatDate } from '../store';
-import { Badge, btnClass, BtnLabel, DeleteButton, Empty, Modal, PIcon } from '../ui';
+import { Badge, btnClass, BtnLabel, Empty, Modal, PIcon } from '../ui';
 import type { SourceMember } from './communitySource';
 import type { JobsSource, SourceApplicant, SourceJob } from './jobsSource';
 
@@ -222,9 +222,11 @@ function JobCard({ job, notify, isAdmin, source, members, onRejoined }: { job: S
 function JobAdmin({ job, open, notify, source, members, onRejoined }: { job: SourceJob; open: boolean; notify: (t: string) => void; source: JobsSource; members: SourceMember[]; onRejoined: () => void }) {
   const [who, setWho] = useState('');
   const [busy, setBusy] = useState(false);
-  // connected, sending the check asks for its link or instructions, and rejoining asks first
+  // connected, sending the check asks for its link or instructions, and rejoining asks first; deleting the posting
+  // always asks first
   const [checking, setChecking] = useState<SourceApplicant | null>(null);
   const [rejoining, setRejoining] = useState<SourceApplicant | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const mine = job.applicants ?? [];
   // only former colleagues from this job's stream, and nobody twice
   const candidates = members.filter((m) => m.stream === job.stream && !mine.some((a) => a.personId === m.id));
@@ -351,7 +353,11 @@ function JobAdmin({ job, open, notify, source, members, onRejoined }: { job: Sou
           >
             <BtnLabel icon={job.open ? 'lock' : 'refresh'}>{job.open ? 'Close posting' : 'Reopen'}</BtnLabel>
           </button>
-          <DeleteButton srText={job.title} onDone={() => void run(async () => (await source.remove(job.id), `${job.title} was deleted.`))} />
+          <button type="button" className={btnClass('ghost')} disabled={busy} onClick={() => setDeleting(true)}>
+            <BtnLabel>
+              Delete<span className="sr-only"> {job.title}</span>
+            </BtnLabel>
+          </button>
         </span>
       </footer>
 
@@ -391,6 +397,32 @@ function JobAdmin({ job, open, notify, source, members, onRejoined }: { job: Sou
           <p>
             {rejoining.name} goes back to People with the same Employee ID, their sign-in is switched on again, their join date becomes today, and they’re
             emailed how to sign in.
+          </p>
+        </Modal>
+      )}
+      {deleting && (
+        <Modal
+          title={`Delete ${job.title}?`}
+          icon="alert"
+          onClose={() => setDeleting(false)}
+          onSubmit={() => {
+            setDeleting(false);
+            void run(async () => (await source.remove(job.id), `${job.title} was deleted.`));
+          }}
+          footer={
+            <>
+              <button type="button" className={btnClass('ghost')} onClick={() => setDeleting(false)}>
+                <BtnLabel>Cancel</BtnLabel>
+              </button>
+              <button type="submit" className={btnClass('primary')}>
+                <BtnLabel>Delete posting</BtnLabel>
+              </button>
+            </>
+          }
+        >
+          <p>
+            The posting is removed for everyone{mine.length ? ', along with who applied and where each one is' : ''}. Emails already sent about it stay with
+            the people who got them. This can’t be undone.
           </p>
         </Modal>
       )}

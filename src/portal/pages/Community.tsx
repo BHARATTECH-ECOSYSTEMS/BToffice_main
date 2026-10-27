@@ -15,7 +15,7 @@ import { STREAM_LABEL, STREAM_TONE, STREAMS, type Referral, type Stream } from '
 import { useAccountProfile } from '../profile';
 import { managesPortal, useSession } from '../session';
 import { formatDate, usePortal } from '../store';
-import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, PageHead, PIcon, useListFlip, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, Empty, initials, Modal, PageHead, PIcon, useListFlip, useNotice } from '../ui';
 import { useCommunitySource, useOwnPersonalEmail, type CommunitySource, type SourceMember } from './communitySource';
 import { InternalJobs, PostJob } from './CommunityJobs';
 import { useJobsSource } from './jobsSource';
@@ -56,6 +56,9 @@ export function Community() {
   const [posting, setPosting] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [bringing, setBringing] = useState<SourceMember | null>(null);
+  // removing a referral asks first; the row's button waits while the backend answers
+  const [removing, setRemoving] = useState<Referral | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
   const [notice, notify] = useNotice();
   const all = source.members;
   // the backend sends them newest leaver first; the demo's samples are sorted the same way here
@@ -272,19 +275,11 @@ export function Community() {
                             </a>
                           )}
                           {isAdmin && (
-                            <DeleteButton
-                              small
-                              label="Remove"
-                              srText={r.title}
-                              onDone={async () => {
-                                try {
-                                  await removeReferral(r.id);
-                                  notify('The referral was removed. Emails already sent stay with the people who got them.');
-                                } catch (error) {
-                                  notify(communityFailedMessage(error as ApiError));
-                                }
-                              }}
-                            />
+                            <button type="button" className={btnClass('ghost', { small: true })} disabled={removingId === r.id} onClick={() => setRemoving(r)}>
+                              <BtnLabel>
+                                Remove<span className="sr-only"> {r.title}</span>
+                              </BtnLabel>
+                            </button>
                           )}
                         </span>
                       )}
@@ -326,6 +321,42 @@ export function Community() {
             }
           }}
         />
+      )}
+
+      {removing && (
+        <Modal
+          title={`Remove ${removing.title}?`}
+          icon="alert"
+          onClose={() => setRemoving(null)}
+          onSubmit={async () => {
+            const r = removing;
+            setRemoving(null);
+            setRemovingId(r.id);
+            try {
+              await removeReferral(r.id);
+              notify('The referral was removed. Emails already sent stay with the people who got them.');
+            } catch (error) {
+              notify(communityFailedMessage(error as ApiError));
+            } finally {
+              setRemovingId(null);
+            }
+          }}
+          footer={
+            <>
+              <button type="button" className={btnClass('ghost')} onClick={() => setRemoving(null)}>
+                <BtnLabel>Cancel</BtnLabel>
+              </button>
+              <button type="submit" className={btnClass('primary')}>
+                <BtnLabel>Remove referral</BtnLabel>
+              </button>
+            </>
+          }
+        >
+          <p>
+            {removing.title} at {removing.company} is taken off the {STREAM_LABEL[removing.stream]} community’s referrals for everyone. Emails already sent
+            about it stay with the people who got them.
+          </p>
+        </Modal>
       )}
 
       {sharing && (
