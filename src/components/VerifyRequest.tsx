@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useScene } from '../gl/Scene';
 import { sendEmploymentRequest, sendsToBackend, submitEmploymentRequest } from '../portal/inbox';
 import { Arrow, BtnText } from './ui';
+import { thisMonth } from './verifyForm';
 import '../styles/verify-request.css';
 
 /**
@@ -28,7 +29,6 @@ export function VerifyRequestButton() {
 }
 
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const thisMonth = () => new Date().toISOString().slice(0, 7);
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 const YEARS = Array.from({ length: 31 }, (_, i) => new Date().getFullYear() - i);
 
@@ -78,6 +78,8 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
   // connected: received, with the address the receipt went to
   const [received, setReceived] = useState<{ email: string } | null>(null);
   const [sending, setSending] = useState(false);
+  // a drag that starts in a field and ends on the backdrop also clicks the backdrop: only a press there closes
+  const pressedBackdrop = useRef(false);
 
   // a modal <dialog> brings Esc, a focus trap and an inert page; the page behind stops scrolling
   useEffect(() => {
@@ -120,7 +122,7 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
     setError('');
     if (!sendsToBackend) return setReference(submitEmploymentRequest(draft));
     setSending(true);
-    const sent = await sendEmploymentRequest(draft, get('website'));
+    const sent = await sendEmploymentRequest(draft, get('leave_empty'));
     setSending(false);
     if (!sent.ok) return setError(sent.message);
     setReference(sent.reference);
@@ -141,7 +143,8 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
         onClose();
       }}
       // a click on the dimmed backdrop lands on the dialog element itself
-      onClick={(e) => e.target === e.currentTarget && onClose()}
+      onPointerDown={(e) => (pressedBackdrop.current = e.target === e.currentTarget)}
+      onClick={(e) => e.target === e.currentTarget && pressedBackdrop.current && onClose()}
     >
       {/* the title and the close button stay put while the fields scroll under them */}
       <header className="vr-head">
@@ -224,11 +227,12 @@ function VerifyDialog({ onClose }: { onClose: () => void }) {
               <span>The candidate has given written consent for this check.</span>
             </label>
             {/* a trap for bots: off-screen, out of the tab order and hidden from screen readers, so only something
-                automatic fills it in, and the backend then quietly saves nothing */}
+                automatic fills it in, and the backend then quietly saves nothing. Not named like an address field
+                ("website"), which browsers autofill for real people */}
             <div className="vr-trap" aria-hidden="true">
               <label>
                 Leave this empty
-                <input name="website" tabIndex={-1} autoComplete="off" />
+                <input name="leave_empty" tabIndex={-1} autoComplete="off" />
               </label>
             </div>
             {error && (
