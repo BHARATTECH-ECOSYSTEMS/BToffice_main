@@ -58,3 +58,22 @@ test("a site that isn't allowed is refused plainly, not with a server error", as
   assert.notEqual(res.status, 500);
   assert.equal(res.headers.get("access-control-allow-origin"), null);
 });
+
+test("two first visits at once during an account move both work, and keep every enrollment and progress", async () => {
+  await User.create({ _id: "educator-1", name: "Asha Rao", email: "asha@example.test" });
+  const courses = await Promise.all([1, 2, 3].map(() => Course.create({ ...sampleCourse(), courseContent: content, courseThumbnail: "data:image/png;base64,AA==", isPublished: true, educator: "educator-1", enrolledStudents: ["kc-old"] })));
+  await User.create({ _id: "kc-old", name: "Kabir Das", email: "kabir@example.test", enrolledCourses: courses.map((c) => c._id) });
+  for (const c of courses) {
+    await Purchase.create({ userId: "kc-old", courseId: c._id, amount: 0, status: "completed" });
+    await CourseProgress.create({ userId: "kc-old", courseId: String(c._id), lectureCompleted: ["l1"], completed: true });
+  }
+  const token = tokenFor({ sub: "kc-new", email: "kabir@example.test", name: "Kabir Das" });
+  const replies = await Promise.all(Array.from({ length: 6 }, () => call("GET", "/api/user/profile", { token })));
+  assert.deepEqual(replies.map((r) => r.status), [200, 200, 200, 200, 200, 200]);
+  assert.equal(await User.countDocuments({ email: "kabir@example.test" }), 1);
+  assert.equal(await User.findById("kc-old"), null);
+  // nothing lost while two visits finish the same move
+  assert.equal(await Purchase.countDocuments({ userId: "kc-new" }), 3);
+  assert.equal(await CourseProgress.countDocuments({ userId: "kc-new" }), 3);
+  assert.equal(await Purchase.countDocuments({ userId: "kc-old" }) + (await CourseProgress.countDocuments({ userId: "kc-old" })), 0);
+});

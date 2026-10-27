@@ -11,22 +11,23 @@ import User from "../models/User.js";
  */
 async function finishMove(oldId, newId) {
   // (the new record got the old one's course list when it was made, in moveToNewAccount)
+  // every change names the old id too, so two visits finishing the same move can't undo each other's work
   for (const purchase of await Purchase.find({ userId: oldId }).lean()) {
     const kept = await Purchase.exists({ userId: newId, courseId: purchase.courseId });
-    if (kept) await Purchase.deleteOne({ _id: purchase._id });
-    else await Purchase.updateOne({ _id: purchase._id }, { $set: { userId: newId } });
+    if (kept) await Purchase.deleteOne({ _id: purchase._id, userId: oldId });
+    else await Purchase.updateOne({ _id: purchase._id, userId: oldId }, { $set: { userId: newId } }).catch(alreadyThere);
   }
   for (const progress of await CourseProgress.find({ userId: oldId }).lean()) {
     const kept = await CourseProgress.findOne({ userId: newId, courseId: progress.courseId });
     if (!kept) {
-      await CourseProgress.updateOne({ _id: progress._id }, { $set: { userId: newId } });
+      await CourseProgress.updateOne({ _id: progress._id, userId: oldId }, { $set: { userId: newId } }).catch(alreadyThere);
       continue;
     }
     const done = [...new Set([...kept.lectureCompleted, ...progress.lectureCompleted])];
     const lectures = await lectureIdsOf(progress.courseId);
     const completed = kept.completed || progress.completed || (lectures.length > 0 && lectures.every((id) => done.includes(id)));
     await CourseProgress.updateOne({ _id: kept._id }, { $set: { lectureCompleted: done, completed } });
-    await CourseProgress.deleteOne({ _id: progress._id });
+    await CourseProgress.deleteOne({ _id: progress._id, userId: oldId });
   }
   await Course.updateMany({ educator: oldId }, { $set: { educator: newId } });
   await Course.updateMany({ enrolledStudents: oldId }, { $addToSet: { enrolledStudents: newId } });
@@ -38,6 +39,11 @@ async function finishMove(oldId, newId) {
     { arrayFilters: [{ "mine.userId": oldId }] }
   );
   await User.deleteOne({ _id: oldId });
+}
+
+/** A move step another visit finished first (the new account already holds that course): the next visit combines it. */
+function alreadyThere(error) {
+  if (error?.code !== 11000) throw error;
 }
 
 /** Every lecture id in a course, to tell whether combined progress finishes it. */
@@ -53,7 +59,12 @@ async function lectureIdsOf(courseId) {
  */
 async function moveToNewAccount(old, id, name, email) {
   await User.updateOne({ _id: old._id }, { $set: { email: `moved-${old._id}@bharattech.local`, movedTo: id } });
-  await User.create({ _id: id, name: name || old.name, email: email || old.email, imageUrl: old.imageUrl || "", enrolledCourses: old.enrolledCourses });
+  try {
+    await User.create({ _id: id, name: name || old.name, email: email || old.email, imageUrl: old.imageUrl || "", enrolledCourses: old.enrolledCourses });
+  } catch (error) {
+    // two first visits at once: the other one made the record; this one helps finish the move
+    if (error?.code !== 11000 || !(await User.exists({ _id: id }))) throw error;
+  }
   await finishMove(old._id, id);
   return User.findById(id);
 }
