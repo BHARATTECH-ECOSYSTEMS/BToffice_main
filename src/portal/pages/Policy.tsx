@@ -28,7 +28,8 @@ function DemoPolicy() {
   return (
     <>
       <PageHead title="Policy & Compliance" sub={isManager ? 'Publish internal policies and see who has accepted them.' : 'Read and accept the internal policies that apply to you.'}>
-        {isManager && (
+        {/* as in the real portal (PolicyConnected): only Super Admins and Admins publish */}
+        {role === 'admin' && (
           <button type="button" className={btnClass('light')} onClick={() => setUploading(true)}>
             <BtnLabel icon="upload">Upload document</BtnLabel>
           </button>

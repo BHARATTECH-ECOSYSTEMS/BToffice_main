@@ -171,7 +171,8 @@ export function toDirectory(raw: unknown): DirectoryPerson[] {
   for (const entry of raw) {
     const p = (entry && typeof entry === 'object' ? entry : {}) as Record<string, unknown>;
     const id = text(p.id);
-    const email = text(p.email);
+    // in lower case, as the sign-in keeps yours, so "Is this me?" holds whatever case the record was saved in
+    const email = text(p.email)?.toLowerCase();
     // one broken record shouldn't take the whole directory down
     if (!id || !email) continue;
     const accountRole = readAccountRole(p.role);

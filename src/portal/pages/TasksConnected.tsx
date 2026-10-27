@@ -131,7 +131,9 @@ export function TaskWindow({
   notify: (t: string) => void;
 }) {
   const [mode, setMode] = useState<'view' | 'edit' | 'delete'>('view');
-  const [file, setFile] = useState<File | null>(null);
+  // the brief and the work handed in are picked apart, so one is never sent as the other
+  const [briefFile, setBriefFile] = useState<File | null>(null);
+  const [workFile, setWorkFile] = useState<File | null>(null);
   // a file input can't be emptied from React; a new key gives a fresh one once its file was sent
   const [pickKey, setPickKey] = useState(0);
   const [notes, setNotes] = useState('');
@@ -146,7 +148,8 @@ export function TaskWindow({
     try {
       await work();
       notify(done);
-      setFile(null);
+      setBriefFile(null);
+      setWorkFile(null);
       setPickKey((k) => k + 1);
       setNotes('');
       if (close) onClose();
@@ -264,12 +267,12 @@ export function TaskWindow({
         {task.projectFile ? <FileButton file={task.projectFile} tasks={tasks} notify={notify} /> : <p className="p-dim">No brief attached.</p>}
         {changeable && (
           <div className="p-task-upload">
-            <FilePick key={pickKey} label={task.projectFile ? 'Replace the brief' : 'Attach a brief'} disabled={busy} onPick={(f, problem) => (setFile(problem ? null : f), setError(problem))} />
+            <FilePick key={pickKey} label={task.projectFile ? 'Replace the brief' : 'Attach a brief'} disabled={busy} onPick={(f, problem) => (setBriefFile(problem ? null : f), setError(problem))} />
             <button
               type="button"
               className={btnClass('light', { small: true })}
-              disabled={busy || !file}
-              onClick={() => file && void run(() => tasks.attachBrief(task.id, file), 'Brief attached.')}
+              disabled={busy || !briefFile}
+              onClick={() => briefFile && void run(() => tasks.attachBrief(task.id, briefFile), 'Brief attached.')}
             >
               <BtnLabel icon="upload">{busy ? 'Uploading…' : 'Attach'}</BtnLabel>
             </button>
@@ -294,7 +297,7 @@ export function TaskWindow({
         )}
         {doer && (
           <div className="p-task-upload">
-            <FilePick key={pickKey} label="Hand in your work" disabled={busy} onPick={(f, problem) => (setFile(problem ? null : f), setError(problem))} />
+            <FilePick key={pickKey} label="Hand in your work" disabled={busy} onPick={(f, problem) => (setWorkFile(problem ? null : f), setError(problem))} />
             <label className="p-field">
               <span>Notes (optional)</span>
               <textarea value={notes} rows={2} maxLength={2000} disabled={busy} onChange={(e) => setNotes(e.target.value)} placeholder="Anything they should know" />
@@ -302,8 +305,8 @@ export function TaskWindow({
             <button
               type="button"
               className={btnClass('primary', { small: true })}
-              disabled={busy || !file}
-              onClick={() => file && void run(() => tasks.handIn(task.id, file, notes), 'Work handed in. The task is done.')}
+              disabled={busy || !workFile}
+              onClick={() => workFile && void run(() => tasks.handIn(task.id, workFile, notes), 'Work handed in. The task is done.')}
             >
               <BtnLabel icon="upload">{busy ? 'Uploading…' : 'Hand in'}</BtnLabel>
             </button>

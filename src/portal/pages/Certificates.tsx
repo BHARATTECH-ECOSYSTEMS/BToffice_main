@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api';
 import { CERTIFICATE_TYPES, type Certificate, type CertificateType } from '../data';
-import { managesPortal, useSession } from '../session';
+import { useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
 import { btnClass, BtnLabel, DeleteButton, Empty, Modal, PageHead, PIcon, SearchField, Stat, useNotice } from '../ui';
 import type { PortalIconName } from '../data';
@@ -16,15 +16,16 @@ export function Certificates() {
 }
 
 function DemoCertificates() {
-  const isManager = managesPortal(useSession()!.role);
+  // as in the real portal (CertificatesConnected): only Super Admins and Admins issue; everyone else sees their own
+  const canIssue = useSession()!.role === 'admin';
   const { certificates, people, issueCertificate } = usePortal();
-  const [tab, setTab] = useState<'issue' | 'history'>(isManager ? 'issue' : 'history');
+  const [tab, setTab] = useState<'issue' | 'history'>(canIssue ? 'issue' : 'history');
   const [notice, notify] = useNotice();
 
   return (
     <>
-      <PageHead title="Certificates" sub={isManager ? 'Generate certificates and keep track of every one issued.' : 'Certificates issued to you.'} />
-      {isManager && (
+      <PageHead title="Certificates" sub={canIssue ? 'Generate certificates and keep track of every one issued.' : 'Certificates issued to you.'} />
+      {canIssue && (
         <div className="p-tabs" role="tablist" aria-label="Certificates">
           <button type="button" role="tab" aria-selected={tab === 'issue'} onClick={() => setTab('issue')}>
             <PIcon name="plus" size={16} /> Issue certificate
@@ -34,7 +35,7 @@ function DemoCertificates() {
           </button>
         </div>
       )}
-      {isManager && tab === 'issue' ? (
+      {canIssue && tab === 'issue' ? (
         <IssueWizard
           people={people}
           issue={issueCertificate}
@@ -44,7 +45,7 @@ function DemoCertificates() {
           }}
         />
       ) : (
-        <History isManager={isManager} notify={notify} />
+        <History isManager={canIssue} notify={notify} />
       )}
       {notice}
     </>

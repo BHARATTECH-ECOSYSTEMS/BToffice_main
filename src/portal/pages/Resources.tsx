@@ -33,7 +33,8 @@ function DemoResources() {
   return (
     <>
       <PageHead title="Resources" sub="Every tool and reference the team works with.">
-        {isManager && (
+        {/* as in the real portal (ResourcesConnected): only Super Admins and Admins add links */}
+        {role === 'admin' && (
           <button type="button" className={btnClass('light')} onClick={() => setAdding(true)}>
             <BtnLabel icon="plus">Add resource</BtnLabel>
           </button>

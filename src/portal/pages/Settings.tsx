@@ -5,7 +5,7 @@ import { api, ApiError, BUSY_MESSAGE } from '../api';
 import { auth } from '../auth';
 import { removeMyPhoto, saveMyPhoto, useMyPhoto } from '../myPhoto';
 import { PHOTO_MAX_MB, PHOTO_TYPES, photoFileProblem, toJpeg, toSquare } from '../photos';
-import { phoneProblem, saveMyPhones, useAccountProfile, type AccountProfile } from '../profile';
+import { nameChangeHint, phoneProblem, saveMyPhones, useAccountProfile, type AccountProfile, type ProfileState } from '../profile';
 import { endSessionForNewSignIn, ROLE_NAME, setDisplayName, setPhoto, useSession } from '../session';
 import { Badge, btnClass, BtnLabel, initials, PageHead, PIcon, useNotice } from '../ui';
 import { ThemeChoices } from '../../components/ThemeSwitch';
@@ -89,7 +89,8 @@ const PHOTO_FAILED: Record<ApiError['kind'], string> = {
 };
 const photoFailed = (e: ApiError) => (e.kind === 'bad-request' && e.message !== e.kind ? e.message : PHOTO_FAILED[e.kind]);
 
-function ProfilePanel() {
+/** `roleLabel`: the account's own role ("Super Admin", "Admin"…), which decides who can change the name. */
+function ProfilePanel({ roleLabel }: { roleLabel?: string }) {
   const session = useSession()!;
   // connected, the photo is saved to the account and only an admin changes the name (People → Details)
   const connected = !!api;
@@ -191,7 +192,7 @@ function ProfilePanel() {
         )}
       </Row>
       {connected ? (
-        <Row label="Name" hint="Shown on your profile, tasks and certificates. Only an admin can change it, on the People page.">
+        <Row label="Name" hint={nameChangeHint(roleLabel)}>
           <p className="p-set-value">
             {session.name}
             <PIcon name="lock" size={14} />
@@ -232,10 +233,12 @@ function ProfilePanel() {
 
 /** Profile, then (connected) your phone numbers. */
 function ProfileSection() {
+  // one load of the account for both cards: the name's hint needs the role, the phones card the numbers
+  const [account, retry] = useAccountProfile();
   return (
     <>
-      <ProfilePanel />
-      {api && <PhonesCard />}
+      <ProfilePanel roleLabel={account.kind === 'ready' ? account.profile.roleLabel : undefined} />
+      {api && <PhonesCard account={account} retry={retry} />}
     </>
   );
 }
@@ -247,8 +250,7 @@ const PHONES_FAILED: Partial<Record<ApiError['kind'], string>> = {
 };
 
 /** Your own phone numbers and whether colleagues see them (owner's 1A 2A). Saved to your account. */
-function PhonesCard() {
-  const [account, retry] = useAccountProfile();
+function PhonesCard({ account, retry }: { account: ProfileState; retry: () => void }) {
   if (account.kind !== 'ready') {
     return (
       <section className="p-card p-set-card" aria-labelledby="settings-phones" aria-busy={account.kind === 'loading' || undefined}>

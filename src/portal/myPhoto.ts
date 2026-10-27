@@ -17,6 +17,8 @@ interface MyPhoto {
 }
 
 let state: MyPhoto = { email: '' };
+// a photo that didn't load is tried again after this long (the bell asks again every minute too)
+const PHOTO_RETRY_MS = 60_000;
 const listeners = new Set<() => void>();
 const subscribe = (listener: () => void) => (listeners.add(listener), () => listeners.delete(listener));
 
@@ -41,6 +43,7 @@ async function load(email: string) {
   } catch (error) {
     // the initials stand in for a photo that didn't load; Profile and the dashboard say when the account itself didn't
     console.warn('Your photo did not load:', error);
+    window.setTimeout(() => state.email === email && !state.url && void load(email), PHOTO_RETRY_MS);
   }
 }
 

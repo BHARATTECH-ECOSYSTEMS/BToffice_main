@@ -13,6 +13,7 @@ import {
 import { localDay } from './eoffice';
 import { isSkippable, toMyDocumentList, type MyDocument } from './myDocuments';
 import { readAccountRole, roleLabel } from './people';
+import { webLink } from './webLink';
 
 /**
  * HR OPS verifications on the backend (/api/verifications; Super Admins and Admins only): companies, employees, and
@@ -133,7 +134,7 @@ export function toVerification(raw: unknown): RemoteVerification | null {
   if (kind === 'company') {
     const company = str(raw.company);
     if (!company) return null;
-    return { kind, ...base, company, registration: str(raw.registration), contactEmail: str(raw.contactEmail), website: str(raw.website) };
+    return { kind, ...base, company, registration: str(raw.registration), contactEmail: str(raw.contactEmail), website: webLink(str(raw.website)) ?? '' };
   }
   if (kind === 'employment') {
     const fields = {

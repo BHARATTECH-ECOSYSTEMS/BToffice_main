@@ -935,6 +935,8 @@ function Breakdown({ title, icon, total, rows }: { title: string; icon: PortalIc
 }
 
 function CertificatesPanel() {
+  // as in the real portal: only Super Admins and Admins generate certificates
+  const isAdmin = useSession()!.role === 'admin';
   const { certificates } = usePortal();
   const byId = usePeopleById();
   const [q, setQ] = useState('');
@@ -952,9 +954,11 @@ function CertificatesPanel() {
           </h2>
           <p className="p-muted">Manage and generate certificates. The five most recent are shown; the full history is on Certificates.</p>
         </div>
-        <Link to="/portal/certificates" className={btnClass('primary')}>
-          <BtnLabel icon="plus">Generate certificate</BtnLabel>
-        </Link>
+        {isAdmin && (
+          <Link to="/portal/certificates" className={btnClass('primary')}>
+            <BtnLabel icon="plus">Generate certificate</BtnLabel>
+          </Link>
+        )}
       </div>
       <SearchField value={q} onChange={setQ} label="Search certificates" placeholder="Search by type or person" />
       {rows.length ? (
@@ -1009,9 +1013,12 @@ function TeamPanel() {
           </h2>
           <p className="p-muted">Admin accounts can't be managed from here.</p>
         </div>
-        <button type="button" className={btnClass('primary')} onClick={() => setInviting(true)}>
-          <BtnLabel icon="plus">Add user</BtnLabel>
-        </button>
+        {/* as in the real portal: only Super Admins and Admins invite */}
+        {isAdmin && (
+          <button type="button" className={btnClass('primary')} onClick={() => setInviting(true)}>
+            <BtnLabel icon="plus">Add user</BtnLabel>
+          </button>
+        )}
       </div>
       <SearchField value={q} onChange={setQ} label="Search the team" placeholder="Search by name, email or role" />
       {rows.length ? (

@@ -29,7 +29,8 @@ function DemoPeople() {
   return (
     <>
       <PageHead title="People" sub={isManager ? 'Manage users and roles in your organisation.' : 'Everyone in the organisation.'}>
-        {isManager && (
+        {/* as in the real portal (PeopleConnected): only Super Admins and Admins invite */}
+        {isAdmin && (
           <button type="button" className={btnClass('light')} onClick={() => setInviting(true)}>
             <BtnLabel icon="plus">Add people</BtnLabel>
           </button>

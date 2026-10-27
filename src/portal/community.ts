@@ -3,6 +3,7 @@ import { api, ApiError, BUSY_MESSAGE, type createApi } from './api';
 import { EMAIL_SHAPE, STREAM_LABEL, STREAMS, WORK_MODE_LABEL, type ApplicationStage, type InternalJob, type Referral, type Stream, type WorkMode } from './data';
 import { localDay } from './eoffice';
 import { readJoinDate } from './people';
+import { webLink } from './webLink';
 
 /**
  * The Bharattech Community on the backend (/api/community): the people who have left, the personal email the
@@ -77,15 +78,6 @@ export type ReferralDraft = Pick<Referral, 'stream' | 'title' | 'company' | 'lin
 // the backend's limits (models/Referral.js)
 export const REFERRAL_LIMITS = { title: 120, company: 120, note: 500, link: 2048 } as const;
 
-/** A web address starting with http:// or https://, as the browser writes it; null when it isn't one. */
-const webLink = (value: string) => {
-  try {
-    const url = new URL(value);
-    return url.protocol === 'http:' || url.protocol === 'https:' ? url.href : null;
-  } catch {
-    return null;
-  }
-};
 const count = (value: unknown) => (typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : 0);
 
 /** The referrals the backend sent, in its order (newest first); a broken one is left out. */

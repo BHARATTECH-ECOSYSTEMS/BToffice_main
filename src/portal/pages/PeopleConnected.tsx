@@ -77,8 +77,15 @@ export function ConnectedPeople() {
   const [resetting, setResetting] = useState<DirectoryPerson | null>(null);
   const [leaving, setLeaving] = useState<DirectoryPerson | null>(null);
   const [inviting, setInviting] = useState(false);
-  // the person whose change is being saved; their row's controls wait for it
-  const [saving, setSaving] = useState<string | null>(null);
+  // the people whose changes are being saved; each row's controls wait for its own
+  const [saving, setSaving] = useState<ReadonlySet<string>>(new Set());
+  const startSaving = (id: string) => setSaving((s) => new Set(s).add(id));
+  const doneSaving = (id: string) =>
+    setSaving((s) => {
+      const next = new Set(s);
+      next.delete(id);
+      return next;
+    });
   const [notice, notify] = useNotice();
 
   const people = state.kind === 'ready' ? state.people : [];
@@ -93,14 +100,14 @@ export function ConnectedPeople() {
   const listRef = useListFlip<HTMLTableSectionElement>(`${roleFilter}|${query}`);
 
   const save = async (person: DirectoryPerson, change: () => Promise<void>, done: string, failed = saveFailedMessage) => {
-    setSaving(person.id);
+    startSaving(person.id);
     try {
       await change();
       notify(done);
     } catch (error) {
       notify(failed(error as ApiError));
     } finally {
-      setSaving(null);
+      doneSaving(person.id);
     }
   };
 
@@ -114,25 +121,25 @@ export function ConnectedPeople() {
     );
 
   const sendResetLink = async (person: DirectoryPerson) => {
-    setSaving(person.id);
+    startSaving(person.id);
     try {
       notify(await directory.sendResetLink(person.id));
     } catch (error) {
       notify(accountFailedMessage(error as ApiError));
     } finally {
-      setSaving(null);
+      doneSaving(person.id);
     }
   };
 
   const markLeft = async (person: DirectoryPerson) => {
-    setSaving(person.id);
+    startSaving(person.id);
     try {
       await directory.markLeft(person.id);
       notify(`${person.name} has left and joined the ${STREAM_LABEL[person.stream!]} community. Their sign-in is switched off.`);
     } catch (error) {
       notify(communityFailedMessage(error as ApiError));
     } finally {
-      setSaving(null);
+      doneSaving(person.id);
     }
   };
 
@@ -199,7 +206,7 @@ export function ConnectedPeople() {
                   const editable = canEditPerson(actor, p.accountRole);
                   const cantLeave = canMarkLeft(actor, p, self);
                   const blocked = p.status === 'inactive';
-                  const busy = saving === p.id;
+                  const busy = saving.has(p.id);
                   return (
                     <tr key={p.id} data-flip={p.id}>
                       <td className="is-mono">{p.employeeId ?? <span className="p-dim">-</span>}</td>

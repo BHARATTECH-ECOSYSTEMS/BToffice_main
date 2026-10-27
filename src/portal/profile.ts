@@ -125,3 +125,14 @@ export function useAccountProfile() {
   const retry = useCallback(() => setAttempt((n) => n + 1), []);
   return [state, retry] as const;
 }
+
+/**
+ * Who can change your name, for Settings: a Super Admin changes anyone's under People → Details, their own included; an
+ * Admin can't change their own (only those below them), so theirs takes a Super Admin.
+ */
+export function nameChangeHint(label: string | undefined) {
+  const where = 'Shown on your profile, tasks and certificates.';
+  if (label === 'Super Admin') return `${where} You can change it on the People page, under Details.`;
+  if (label === 'Admin') return `${where} Only a Super Admin can change it, on the People page.`;
+  return `${where} Only an admin can change it, on the People page.`;
+}

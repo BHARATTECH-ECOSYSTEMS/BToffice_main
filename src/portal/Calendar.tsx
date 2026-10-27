@@ -160,7 +160,7 @@ export function CalendarCard({ tasks, joiners, notify }: { tasks?: Task[]; joine
   }, [items]);
   const dayItems = byDate.get(picked) ?? [];
   const ahead = items.filter((it) => it.date > picked).slice(0, AHEAD_MAX);
-  const kinds = KIND_ORDER.filter((k) => (k !== 'followup' || (manager && SAMPLE_RECORDS)) && (k !== 'people' || !api || joiners) && (k !== 'task' || tasks));
+  const kinds = KIND_ORDER.filter((k) => (k !== 'followup' || role === 'admin' || (manager && SAMPLE_RECORDS)) && (k !== 'people' || !api || joiners) && (k !== 'task' || tasks));
 
   // Weeks start on Sunday; the grid is filled out to whole weeks with the neighbouring months' days, greyed out.
   const lead = month.getDay();
