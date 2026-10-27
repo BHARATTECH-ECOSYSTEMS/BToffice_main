@@ -98,6 +98,7 @@ exports.uploadMine = async (req, res) => {
       metadata: { verificationId: String(request._id), kind, personId: String(req.user.id) },
     });
     const now = new Date();
+    const check = DOCUMENTS.find((d) => d.id === kind).check;
     const doc = { kind, fileId, fileName: cleanFileName(req.file.originalname, kind), size: req.file.buffer.length, uploadedAt: now };
     // One database step swaps this kind's file in the list as it is at that moment, so an upload running at the same
     // time can't lose its file; the state just before says which file this one replaced. ($literal: a name starting
@@ -112,8 +113,11 @@ exports.uploadMine = async (req, res) => {
               $concatArrays: [
                 { $ifNull: ["$log", []] },
                 [{ at: now, by: { $literal: nameOf(req.user) }, text: { $cond: [{ $in: [kind, { $ifNull: ["$documents.kind", []] }] }, `Replaced the ${LABEL[kind]}`, `Uploaded the ${LABEL[kind]}`] } }],
+                { $cond: [{ $in: [check, { $ifNull: ["$done", []] }] }, [{ at: now, by: "System", text: `Tick cleared: a new ${LABEL[kind]} was uploaded` }], []] },
               ],
             },
+            // a file nobody has looked at can't stay ticked: HR looks again
+            done: { $filter: { input: { $ifNull: ["$done", []] }, cond: { $ne: ["$$this", check] } } },
           },
         },
       ],
