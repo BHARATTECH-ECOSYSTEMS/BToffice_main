@@ -92,28 +92,41 @@ exports.uploadMine = async (req, res) => {
       throw new Refusal(409, "Previous employment is marked as your first job. Undo that first, then upload the letter.");
     }
 
-    const old = request.documents.find((d) => d.kind === kind);
     const fileId = await store.save(req.file.buffer, {
       name: `${kind}-${request._id}`,
       contentType: "application/pdf",
       metadata: { verificationId: String(request._id), kind, personId: String(req.user.id) },
     });
-    const doc = { kind, fileId, fileName: cleanFileName(req.file.originalname, kind), size: req.file.buffer.length, uploadedAt: new Date() };
-    const updated = await Verification.findOneAndUpdate(
+    const now = new Date();
+    const doc = { kind, fileId, fileName: cleanFileName(req.file.originalname, kind), size: req.file.buffer.length, uploadedAt: now };
+    // One database step swaps this kind's file in the list as it is at that moment, so an upload running at the same
+    // time can't lose its file; the state just before says which file this one replaced. ($literal: a name starting
+    // with "$" stays a name; $ifNull: a request made before a list existed has none stored.)
+    const before = await Verification.findOneAndUpdate(
       { _id: request._id, status: "pending" },
-      {
-        $set: { documents: [...request.documents.filter((d) => d.kind !== kind), doc] },
-        $push: { log: { at: new Date(), by: nameOf(req.user), text: `${old ? "Replaced" : "Uploaded"} the ${LABEL[kind]}` } },
-      },
-      { returnDocument: "after" }
+      [
+        {
+          $set: {
+            documents: { $concatArrays: [{ $filter: { input: { $ifNull: ["$documents", []] }, cond: { $ne: ["$$this.kind", kind] } } }, [{ $literal: doc }]] },
+            log: {
+              $concatArrays: [
+                { $ifNull: ["$log", []] },
+                [{ at: now, by: { $literal: nameOf(req.user) }, text: { $cond: [{ $in: [kind, { $ifNull: ["$documents.kind", []] }] }, `Replaced the ${LABEL[kind]}`, `Uploaded the ${LABEL[kind]}`] } }],
+              ],
+            },
+          },
+        },
+      ],
+      { returnDocument: "before", updatePipeline: true }
     );
-    if (!updated) {
+    if (!before) {
       // decided in the meantime: the new file goes, nothing changed
       await store.remove(fileId);
       throw new Refusal(409, "Your verification was decided a moment ago, so the file wasn't added.");
     }
+    const old = before.documents.find((d) => d.kind === kind);
     if (old) await store.remove(old.fileId);
-    return res.status(200).json(mineView(updated));
+    return res.status(200).json(mineView(await Verification.findById(request._id)));
   } catch (error) {
     return answerError(res, error, "Upload verification document");
   }
