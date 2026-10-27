@@ -15,6 +15,7 @@ import {
   MISTRAL_MODELS,
 } from '@/types';
 import { aiChoiceToSave, defaultModelFor, shownProvider } from '@/lib/aiDefaults';
+import { createSetupLink, saveStudyConfig } from '@/lib/setupLink';
 
 import {
   FileText,
@@ -390,38 +391,37 @@ const StudySetup: React.FC = () => {
     router.push('/consent');
   };
 
+  // the server asks first when the study already has interviews
+  const confirmStudyChange = (warning: string) => window.confirm(`${warning}\n\nDo you want to continue?`);
+
+  // a link only works while its study is stored, so the study is saved (or its changes updated) first
   const handleGenerateLink = async () => {
     setIsGeneratingLink(true);
     setLinkError(null);
-    try {
-      const config = buildConfig();
-      setStudyConfig(config);
+    const result = await createSetupLink({
+      config: buildConfig(),
+      savedStudyId,
+      isDirty,
+      confirm: confirmStudyChange
+    });
+    setIsGeneratingLink(false);
 
-      const response = await fetch('/api/generate-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studyConfig: config })
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setLinkError('auth');
-          setIsAuthenticated(false);
-        } else {
-          const data = await response.json();
-          setLinkError(data.error || 'Failed to generate link');
-        }
-        return;
+    if (!result.ok) {
+      if (result.error === 'auth') {
+        setIsAuthenticated(false);
+        setLinkError('Your session has ended. Sign in again to make a link.');
+      } else if (result.error !== 'cancelled') {
+        setLinkError(result.error);
       }
-
-      const data = await response.json();
-      setParticipantLink(data.url);
-    } catch (error) {
-      console.error('Error generating link:', error);
-      setLinkError('Network error. Please try again.');
-    } finally {
-      setIsGeneratingLink(false);
+      return;
     }
+
+    if (result.study) {
+      setSavedStudyId(result.study.id);
+      setStudyConfig(result.study.config);
+      setIsDirty(false);
+    }
+    setParticipantLink(result.url);
   };
 
   const handleCopyLink = () => {
@@ -446,81 +446,26 @@ const StudySetup: React.FC = () => {
     setSaveSuccess(false);
     setSaveError(null);
 
-    try {
-      const config = buildConfig();
-      const isUpdate = !!savedStudyId;
+    const result = await saveStudyConfig({ config: buildConfig(), savedStudyId, confirm: confirmStudyChange });
+    setIsSaving(false);
 
-      // For updates, the API may return 409 if study has interviews
-      const response = await fetch(
-        isUpdate ? `/api/studies/${savedStudyId}` : '/api/studies',
-        {
-          method: isUpdate ? 'PUT' : 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ config })
-        }
-      );
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setIsAuthenticated(false);
-          router.push('/login');
-          return;
-        }
-
-        // Handle storage not configured (503)
-        if (response.status === 503) {
-          setSaveError('Storage not configured. Please set MONGODB_URI in your environment.');
-          return;
-        }
-
-        // Handle confirmation required (409) - study has interviews
-        if (response.status === 409) {
-          const data = await response.json();
-          if (data.requiresConfirmation) {
-            const confirmed = window.confirm(
-              `${data.warning}\n\nDo you want to continue?`
-            );
-            if (confirmed) {
-              // Retry with confirmed: true
-              const retryResponse = await fetch(`/api/studies/${savedStudyId}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ config, confirmed: true })
-              });
-              if (retryResponse.ok) {
-                const retryData = await retryResponse.json();
-                setSavedStudyId(retryData.study.id);
-                setStudyConfig(retryData.study.config);
-                setSaveSuccess(true);
-                setIsDirty(false);
-                // Navigate to study detail page after confirmed save
-                router.push(`/studies/${retryData.study.id}`);
-              }
-            }
-            return;
-          }
-        }
-
-        // Generic error
-        const data = await response.json().catch(() => ({}));
-        setSaveError(data.error || 'Failed to save study. Please try again.');
-        return;
+    if (!result.ok) {
+      if (result.error === 'auth') {
+        setIsAuthenticated(false);
+        router.push('/login');
+      } else if (result.error !== 'cancelled') {
+        setSaveError(result.error);
       }
-
-      const data = await response.json();
-      setSavedStudyId(data.study.id);
-      setSaveSuccess(true);
-      setStudyConfig(data.study.config);
-      setIsDirty(false);
-
-      // Navigate to study detail page after successful save
-      router.push(`/studies/${data.study.id}`);
-    } catch (error) {
-      console.error('Error saving study:', error);
-      setSaveError('Network error. Please check your connection and try again.');
-    } finally {
-      setIsSaving(false);
+      return;
     }
+
+    setSavedStudyId(result.study.id);
+    setSaveSuccess(true);
+    setStudyConfig(result.study.config);
+    setIsDirty(false);
+
+    // Navigate to study detail page after successful save
+    router.push(`/studies/${result.study.id}`);
   };
 
   const isValid = name.trim() && researchQuestion.trim();
@@ -1068,7 +1013,7 @@ const StudySetup: React.FC = () => {
                     Participant Link Dispatch
                   </h3>
                   <p className="text-xs text-slate-500 font-medium mt-0.5">
-                    Generate link directly with this configuration
+                    Saves this study first, then makes its link
                   </p>
                 </div>
               </div>
@@ -1100,6 +1045,13 @@ const StudySetup: React.FC = () => {
                   <LinkIcon size={16} />
                   {isGeneratingLink ? 'Generating Link...' : 'Generate Participant Link'}
                 </button>
+              )}
+
+              {linkError && (
+                <p role="alert" className="text-xs text-red-800 font-medium flex items-start gap-1.5">
+                  <AlertTriangle size={14} className="text-red-600 flex-shrink-0 mt-px" />
+                  {linkError}
+                </p>
               )}
             </div>
           )}
