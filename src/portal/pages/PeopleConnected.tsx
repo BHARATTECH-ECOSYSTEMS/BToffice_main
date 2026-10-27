@@ -33,7 +33,6 @@ import { formatDate } from '../store';
 import { useSession } from '../session';
 import { localDay } from '../eoffice';
 import { Badge, btnClass, BtnLabel, Empty, initials, Modal, PageHead, SearchField, useListFlip, useNotice } from '../ui';
-import { WaveButton } from './People';
 import { communityFailedMessage } from '../community';
 
 /**
@@ -76,11 +75,10 @@ export function ConnectedPeople() {
   const [deleting, setDeleting] = useState<DirectoryPerson | null>(null);
   const [blocking, setBlocking] = useState<DirectoryPerson | null>(null);
   const [resetting, setResetting] = useState<DirectoryPerson | null>(null);
+  const [leaving, setLeaving] = useState<DirectoryPerson | null>(null);
   const [inviting, setInviting] = useState(false);
   // the person whose change is being saved; their row's controls wait for it
   const [saving, setSaving] = useState<string | null>(null);
-  // the wave button ends as a "Left" chip; a refused leave gives it a fresh start (its key)
-  const [leaveTries, setLeaveTries] = useState(0);
   const [notice, notify] = useNotice();
 
   const people = state.kind === 'ready' ? state.people : [];
@@ -132,7 +130,6 @@ export function ConnectedPeople() {
       await directory.markLeft(person.id);
       notify(`${person.name} has left and joined the ${STREAM_LABEL[person.stream!]} community. Their sign-in is switched off.`);
     } catch (error) {
-      setLeaveTries((n) => n + 1);
       notify(communityFailedMessage(error as ApiError));
     } finally {
       setSaving(null);
@@ -269,16 +266,17 @@ export function ConnectedPeople() {
                               Details<span className="sr-only"> for {p.name}</span>
                             </BtnLabel>
                           </button>
-                          <WaveButton
-                            key={`${p.id}-${leaveTries}`}
-                            srText={p.name}
+                          <button
+                            type="button"
+                            className={btnClass('ghost', { small: true })}
                             disabled={busy || !!cantLeave}
-                            title={
-                              cantLeave ||
-                              `Moves them to the ${STREAM_LABEL[p.stream!]} community today and switches off their sign-in. Their ID documents are deleted ${ID_RETENTION_DAYS} days later.`
-                            }
-                            onDone={() => void markLeft(p)}
-                          />
+                            title={cantLeave || undefined}
+                            onClick={() => setLeaving(p)}
+                          >
+                            <BtnLabel icon="logout">
+                              Mark as left<span className="sr-only"> {p.name}</span>
+                            </BtnLabel>
+                          </button>
                           <button
                             type="button"
                             className={btnClass('ghost', { small: true })}
@@ -352,6 +350,17 @@ export function ConnectedPeople() {
             const person = blocking;
             setBlocking(null);
             setBlocked(person, true);
+          }}
+        />
+      )}
+      {leaving && (
+        <LeaveModal
+          person={leaving}
+          onClose={() => setLeaving(null)}
+          onConfirm={() => {
+            const person = leaving;
+            setLeaving(null);
+            void markLeft(person);
           }}
         />
       )}
@@ -552,6 +561,33 @@ function BlockAccountModal({ person, onClose, onConfirm }: { person: DirectoryPe
       <p>
         {person.name} ({person.email}) is signed out everywhere now and can’t sign in to the portal, or to any other app that uses the company sign-in,
         until you press Unblock. Their records, tasks and certificates stay as they are.
+      </p>
+    </Modal>
+  );
+}
+
+/** Asks before marking someone as left, since their sign-in is switched off at once. */
+function LeaveModal({ person, onClose, onConfirm }: { person: DirectoryPerson; onClose: () => void; onConfirm: () => void }) {
+  return (
+    <Modal
+      title={`Mark ${person.name} as left?`}
+      icon="alert"
+      onClose={onClose}
+      onSubmit={onConfirm}
+      footer={
+        <>
+          <button type="button" className={btnClass('ghost')} onClick={onClose}>
+            <BtnLabel>Cancel</BtnLabel>
+          </button>
+          <button type="submit" className={btnClass('primary')}>
+            <BtnLabel icon="logout">Mark as left</BtnLabel>
+          </button>
+        </>
+      }
+    >
+      <p>
+        {person.name} moves to the {STREAM_LABEL[person.stream!]} community today and their sign-in is switched off now. Their ID documents are deleted{' '}
+        {ID_RETENTION_DAYS} days later. An admin can bring them back from the community.
       </p>
     </Modal>
   );

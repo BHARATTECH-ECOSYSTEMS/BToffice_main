@@ -222,10 +222,11 @@ function JobCard({ job, notify, isAdmin, source, members, onRejoined }: { job: S
 function JobAdmin({ job, open, notify, source, members, onRejoined }: { job: SourceJob; open: boolean; notify: (t: string) => void; source: JobsSource; members: SourceMember[]; onRejoined: () => void }) {
   const [who, setWho] = useState('');
   const [busy, setBusy] = useState(false);
-  // connected, sending the check asks for its link or instructions, and rejoining asks first; deleting the posting
-  // always asks first
+  // connected, sending the check asks for its link or instructions, and rejoining asks first; turning someone down
+  // (it emails them) and deleting the posting always ask first
   const [checking, setChecking] = useState<SourceApplicant | null>(null);
   const [rejoining, setRejoining] = useState<SourceApplicant | null>(null);
+  const [declining, setDeclining] = useState<SourceApplicant | null>(null);
   const [deleting, setDeleting] = useState(false);
   const mine = job.applicants ?? [];
   // only former colleagues from this job's stream, and nobody twice
@@ -252,6 +253,7 @@ function JobAdmin({ job, open, notify, source, members, onRejoined }: { job: Sou
   const ask = (a: SourceApplicant, to: ApplicationStage) => {
     if (source.connected && to === 'checking') return setChecking(a);
     if (source.connected && to === 'rejoined') return setRejoining(a);
+    if (to === 'declined') return setDeclining(a);
     void move(a, to);
   };
 
@@ -397,6 +399,34 @@ function JobAdmin({ job, open, notify, source, members, onRejoined }: { job: Sou
           <p>
             {rejoining.name} goes back to People with the same Employee ID, their sign-in is switched on again, their join date becomes today, and they’re
             emailed how to sign in.
+          </p>
+        </Modal>
+      )}
+      {declining && (
+        <Modal
+          title={`Turn down ${declining.name}?`}
+          icon="alert"
+          onClose={() => setDeclining(null)}
+          onSubmit={() => {
+            const a = declining;
+            setDeclining(null);
+            void move(a, 'declined');
+          }}
+          footer={
+            <>
+              <button type="button" className={btnClass('ghost')} onClick={() => setDeclining(null)}>
+                <BtnLabel>Cancel</BtnLabel>
+              </button>
+              <button type="submit" className={btnClass('primary')}>
+                <BtnLabel>{declining.stage === 'checking' ? "Didn't pass" : "Doesn't meet"}</BtnLabel>
+              </button>
+            </>
+          }
+        >
+          <p>
+            {declining.name} won’t go ahead for {job.title}
+            {source.connected && declining.hasPersonalEmail ? ', and is emailed to say so' : ''}. This can’t be undone.
+            {source.connected && !declining.hasPersonalEmail && ' They have no personal email, so tell them yourself.'}
           </p>
         </Modal>
       )}
