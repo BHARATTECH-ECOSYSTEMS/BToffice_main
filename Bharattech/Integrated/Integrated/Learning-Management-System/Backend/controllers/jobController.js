@@ -215,11 +215,12 @@ exports.moveApplicant = async (req, res) => {
       if (!instructions) throw new Refusal(400, "Add the test link or instructions to send.");
       if (instructions.length > INSTRUCTIONS_MAX) throw new Refusal(400, `Keep the instructions to ${INSTRUCTIONS_MAX} characters.`);
       if (!person?.personalEmail) throw new Refusal(400, "They have no personal email yet. Add one under Members first.");
-      // the stage says "sent", so it changes only once the email has gone
+      // claim the step first, so two clicks can't both email it; the stage says "sent", so it goes back if the email fails
+      if (!(await setStage(app, from, to))) throw new Refusal(409, CHANGED);
       if (!(await sendTo(person.personalEmail, checkMessage(job, instructions), "Knowledge check"))) {
+        await setStage(app, to, from);
         throw new Refusal(502, "The knowledge check couldn't be emailed, so nothing changed. Try again in a minute.");
       }
-      if (!(await setStage(app, from, to))) throw new Refusal(409, CHANGED);
       reply.emailed = true;
     } else if (to === "rejoined") {
       if (!person?.isDeleted || !person.leftOn) throw new Refusal(409, "They're no longer in the community.");
@@ -234,7 +235,7 @@ exports.moveApplicant = async (req, res) => {
         throw error;
       }
       reply.needsInvite = restored.needsInvite;
-      reply.emailed = person.personalEmail ? await sendTo(person.personalEmail, welcomeMessage(job, restored.person), "Welcome back") : false;
+      reply.emailed = person.personalEmail ? await sendTo(person.personalEmail, welcomeMessage(job, restored.person, restored.needsInvite), "Welcome back") : false;
     } else {
       if (!(await setStage(app, from, to))) throw new Refusal(409, CHANGED);
       if (to === "declined") reply.emailed = person?.personalEmail ? await sendTo(person.personalEmail, declinedMessage(job), "Not this time") : false;

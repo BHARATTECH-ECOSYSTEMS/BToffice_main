@@ -447,3 +447,59 @@ test("a failed posting email is counted, and the log never names the address", a
   assert.ok(logged.length >= 1);
   assert.ok(!logged.some((line) => line.includes("@")), logged.join(" | "));
 });
+
+/* ── Review 2026-10-26 low list (owner's 5A and the welcome email) ── */
+
+test("two clicks sending the knowledge check at once: it is emailed once", async () => {
+  const p = await people();
+  const job = await postJob(p);
+  const neha = await member({ personalEmail: "neha.home@example.net" });
+  let app = applicantOf((await addApplicant(p.admin, job, neha)).body.job, neha);
+  app = applicantOf((await move(p.admin, job, app, "applied", "eligible")).body.job, neha);
+  mail.sent = [];
+  const body = { instructions: "https://tests.example.com/react" };
+  const results = await Promise.all([move(p.admin, job, app, "eligible", "checking", body), move(p.superadmin, job, app, "eligible", "checking", body)]);
+  assert.deepEqual(results.map((r) => r.status).sort(), [200, 409]);
+  assert.equal(mail.sent.filter((m) => m.to === "neha.home@example.net").length, 1);
+});
+
+test("when the knowledge check can't be emailed, the step is put back for the next try", async () => {
+  const p = await people();
+  const job = await postJob(p);
+  const neha = await member({ personalEmail: "neha.home@example.net" });
+  let app = applicantOf((await addApplicant(p.admin, job, neha)).body.job, neha);
+  app = applicantOf((await move(p.admin, job, app, "applied", "eligible")).body.job, neha);
+  mail.failFor.add("neha.home@example.net");
+  assert.equal((await move(p.admin, job, app, "eligible", "checking", { instructions: "https://tests.example.com/react" })).status, 502);
+  assert.equal((await JobApplication.findById(app.id).lean()).stage, "eligible");
+  mail.failFor.clear();
+  assert.equal((await move(p.admin, job, app, "eligible", "checking", { instructions: "https://tests.example.com/react" })).status, 200);
+});
+
+test("someone whose sign-in is gone is told an invite is coming, not to use their old password", async () => {
+  const p = await people();
+  const job = await postJob(p);
+  const neha = await member({ personalEmail: "neha.home@example.net" });
+  const app = await toChecking(p, job, neha);
+  kc.missing.add(neha.keycloakId);
+  mail.sent = [];
+  const res = await move(p.admin, job, app, "checking", "rejoined");
+  assert.equal(res.body.needsInvite, true);
+  const [m] = mail.sent;
+  assert.match(m.subject, /welcome back/i);
+  assert.ok(!/old password|Forgot password/i.test(m.text), m.text);
+  assert.match(m.text, /invite/i);
+});
+
+test("the welcome email never prints 'undefined' for a missing Employee ID", async () => {
+  const p = await people();
+  const job = await postJob(p);
+  const neha = await member({ personalEmail: "neha.home@example.net" });
+  await User.collection.updateOne({ _id: neha._id }, { $unset: { employeeId: 1 } });
+  const app = await toChecking(p, job, neha);
+  mail.sent = [];
+  await move(p.admin, job, app, "checking", "rejoined");
+  const [m] = mail.sent;
+  for (const part of [m.text, m.html]) assert.ok(!part.includes("undefined"), part);
+  assert.ok(m.text.includes(neha.email), "the work email is still there");
+});

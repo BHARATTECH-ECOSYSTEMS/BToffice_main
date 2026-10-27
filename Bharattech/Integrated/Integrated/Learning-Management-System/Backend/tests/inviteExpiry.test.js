@@ -201,3 +201,51 @@ test("someone who already has a record isn't sent a fresh password, so no invite
   assert.equal((await invite("back@example.test")).status, 409);
   assert.equal(await InviteSent.countDocuments(), 0);
 });
+
+// Review 2026-10-26 low list: the hourly check read the due invites once, then worked through them with Keycloak; an
+// invite sent again in between was voided anyway, and one failure stopped the rest.
+const { kcAdmin } = require("../utils/keycloakAdmin");
+
+test("an invite sent again while the hourly check runs keeps its fresh password", async () => {
+  await invite("late@example.test");
+  const [late] = realm.accounts;
+  await age(late.id, INVITE_HOURS + 1);
+  const emailed = realm.passwords.get(late.id);
+  const realFindOne = kcAdmin.users.findOne;
+  // "Send again" lands while the check is asking Keycloak about the account
+  kcAdmin.users.findOne = async (where) => {
+    await InviteSent.updateOne({ keycloakId: late.id }, { $set: { sentAt: new Date() } });
+    return realFindOne.call(kcAdmin.users, where);
+  };
+  try {
+    assert.equal(await voidExpiredInvites(), 0);
+  } finally {
+    kcAdmin.users.findOne = realFindOne;
+  }
+  assert.equal(realm.passwords.get(late.id), emailed);
+  assert.ok(!(await InviteSent.findOne({ keycloakId: late.id })).voidedAt);
+});
+
+test("one invite the check can't void doesn't stop the others", async () => {
+  await invite("first@example.test");
+  await invite("second@example.test");
+  const [first, second] = realm.accounts;
+  await age(first.id, INVITE_HOURS + 1);
+  await age(second.id, INVITE_HOURS + 2);
+  const emailed = realm.passwords.get(second.id);
+  const realReset = kcAdmin.users.resetPassword;
+  kcAdmin.users.resetPassword = async (args) => {
+    if (args.id === first.id) throw new Error("Keycloak said no");
+    return realReset.call(kcAdmin.users, args);
+  };
+  const quiet = console.error;
+  console.error = () => {};
+  try {
+    assert.equal(await voidExpiredInvites(), 1);
+  } finally {
+    kcAdmin.users.resetPassword = realReset;
+    console.error = quiet;
+  }
+  assert.notEqual(realm.passwords.get(second.id), emailed);
+  assert.ok(!(await InviteSent.findOne({ keycloakId: first.id })).voidedAt, "the failed one is tried again next hour");
+});

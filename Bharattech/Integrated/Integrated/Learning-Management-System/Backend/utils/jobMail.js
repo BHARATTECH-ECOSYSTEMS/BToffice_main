@@ -35,11 +35,16 @@ const declinedMessage = (job) =>
     STOP,
   ]);
 
-const welcomeMessage = (job, person) =>
+// `needsInvite`: their sign-in account was gone, so there's no old password; an admin sends them an invite
+const welcomeMessage = (job, person, needsInvite = false) =>
   messageFrom("Welcome back to Bharattech", [
     `You passed the knowledge check for ${job.title}. Welcome back!`,
-    `Sign in at ${portalUrl("/portal")} with your work email ${person.email} or your Employee ID ${person.employeeId}, and your old password.`,
-    'Forgotten it? Press "Forgot password?" on the sign-in window and we\'ll email you a link.',
+    ...(needsInvite
+      ? [`Your sign-in was removed after you left, so our HR team will email ${person.email} an invite to set it up again.`]
+      : [
+          `Sign in at ${portalUrl("/portal")} with your work email ${person.email}${person.employeeId ? ` or your Employee ID ${person.employeeId}` : ""}, and your old password.`,
+          'Forgotten it? Press "Forgot password?" on the sign-in window and we\'ll email you a link.',
+        ]),
   ]);
 
 module.exports = { postingMessage, checkMessage, declinedMessage, welcomeMessage };

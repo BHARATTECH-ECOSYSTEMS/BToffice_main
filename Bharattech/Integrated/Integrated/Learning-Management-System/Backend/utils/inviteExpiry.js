@@ -42,19 +42,27 @@ const voidExpiredInvites = async (now = Date.now()) => {
   if (!due.length) return 0;
   await ensureKeycloakAdmin();
   let voided = 0;
+  // still the invite that was due: "Send again" in the meantime starts a fresh 12 hours with a fresh password
+  const stillDue = (record) => InviteSent.exists({ _id: record._id, sentAt: record.sentAt, voidedAt: { $exists: false } });
   for (const record of due) {
-    const account = await kcAdmin.users.findOne({ realm: KEYCLOAK_REALM, id: record.keycloakId });
-    if (!account || !(account.requiredActions || []).includes("UPDATE_PASSWORD")) {
-      await forgetInvite(record.keycloakId);
-      continue;
+    // one account Keycloak won't change is tried again next hour; the others still go
+    try {
+      const account = await kcAdmin.users.findOne({ realm: KEYCLOAK_REALM, id: record.keycloakId });
+      if (!(await stillDue(record))) continue;
+      if (!account || !(account.requiredActions || []).includes("UPDATE_PASSWORD")) {
+        await forgetInvite(record.keycloakId);
+        continue;
+      }
+      await kcAdmin.users.resetPassword({
+        realm: KEYCLOAK_REALM,
+        id: record.keycloakId,
+        credential: { type: "password", value: randomBytes(32).toString("base64url"), temporary: true },
+      });
+      await InviteSent.updateOne({ _id: record._id }, { $set: { voidedAt: new Date(now) } });
+      voided += 1;
+    } catch (error) {
+      console.error(`Invite expiry: couldn't void the invite for Keycloak account ${record.keycloakId}:`, error.message);
     }
-    await kcAdmin.users.resetPassword({
-      realm: KEYCLOAK_REALM,
-      id: record.keycloakId,
-      credential: { type: "password", value: randomBytes(32).toString("base64url"), temporary: true },
-    });
-    await InviteSent.updateOne({ _id: record._id }, { $set: { voidedAt: new Date(now) } });
-    voided += 1;
   }
   return voided;
 };
