@@ -389,7 +389,7 @@ function TaskForm({
       </label>
       <label className="p-field">
         <span>Description (optional)</span>
-        <textarea value={description} rows={3} maxLength={5000} onChange={(e) => setDescription(e.target.value)} placeholder="Details, links, what done looks like" />
+        <textarea value={description} rows={5} maxLength={5000} onChange={(e) => setDescription(e.target.value)} placeholder="Details, links, what done looks like" />
       </label>
       <label className="p-field">
         <span>Assign to</span>

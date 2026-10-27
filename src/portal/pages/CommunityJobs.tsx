@@ -625,7 +625,7 @@ export function PostJob({
       </div>
       <label className="p-field">
         <span>About the role</span>
-        <textarea value={about} onChange={change(setAbout)} rows={3} placeholder="What they'll work on, and with which team." maxLength={600} />
+        <textarea value={about} onChange={change(setAbout)} rows={5} placeholder="What they'll work on, and with which team." maxLength={600} />
       </label>
       <div className="p-form-row">
         <label className="p-field">

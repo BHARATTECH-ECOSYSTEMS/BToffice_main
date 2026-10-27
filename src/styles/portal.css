@@ -2448,7 +2448,6 @@ a.p-cal-item-title {
 .p-badge.is-todo { color: var(--p-amber-text); background: rgb(245 158 0 / 0.16); }
 .p-badge.is-soft { color: var(--p-accent-text); background: color-mix(in srgb, var(--violet) 9%, var(--paper)); }
 /* for names and counts ("Git and GitHub for teams", "2 students") that must keep their own capitals */
-.p-badge.is-text { color: var(--p-accent-text); background: color-mix(in srgb, var(--violet) 9%, var(--paper)); text-transform: none; }
 .p-you {
   margin-left: 8px;
   padding: 2px 8px;
@@ -3486,10 +3485,6 @@ a.p-cal-item-title {
   font-weight: 650;
   color: var(--p-accent-text);
 }
-.p-checks.is-plain {
-  padding: 0;
-  background: none;
-}
 
 .p-enrolled {
   display: flex;
@@ -3550,8 +3545,8 @@ a.p-cal-item-title {
 .p-stats.is-three {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+/* as tall as its rows: a short note's box is short */
 .p-field textarea {
-  min-height: 140px;
   padding: 12px 14px;
   border: 0;
   border-radius: var(--r-sm);
@@ -3577,9 +3572,6 @@ a.p-cal-item-title {
   font-size: 12.5px;
   font-weight: 500;
   color: var(--ink-soft);
-}
-.p-field-hint.is-bad {
-  color: var(--p-orange-text);
 }
 .p-text-btn.is-danger {
   color: var(--p-danger-text);
