@@ -50,6 +50,9 @@ const managedRealmRoles = [
 const normalizeRole = (role) =>
   roleMap[String(role || "").toLowerCase()] || "Employee";
 
+/** Whether `role` names one of the roles (any case, the portal's or Keycloak's names). */
+const knownRole = (role) => Object.hasOwn(roleMap, String(role || "").trim().toLowerCase());
+
 const toKeycloakRoleName = (role) => KEYCLOAK_ROLE_NAMES[normalizeRole(role)] || "Employee";
 
 const canInviteRole = (actorRole, invitedRole) => {
@@ -415,6 +418,10 @@ const inviteSomeone = async ({ name, email, role, actorRole }) => {
     });
   }
 
+  // a role nobody knows used to make an Employee quietly
+  if (!knownRole(role)) {
+    return reply(400, { success: false, message: "Pick a role for them: Super Admin, Admin, Sub Admin, Employee or Intern." });
+  }
   const normalizedRole = normalizeRole(role);
   const normalizedEmail = normalizeEmail(email);
   const normalizedName = normalizeName(name);

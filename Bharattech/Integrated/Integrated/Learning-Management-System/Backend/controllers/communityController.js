@@ -1,5 +1,5 @@
 const User = require("../models/User");
-const { canDeleteUser, setKeycloakEnabled } = require("./userController");
+const { canDeleteUser, canEditUser, setKeycloakEnabled } = require("./userController");
 const { todayInIndia } = require("../utils/days");
 const { Refusal, answerError, isAdmin, isObjectId } = require("../utils/refusal");
 
@@ -205,8 +205,10 @@ exports.setMemberPersonalEmail = async (req, res) => {
   try {
     mustBeAdmin(req.user, "Only Super Admins and Admins change a member's personal email.");
     const id = readUserId(req.params.userId);
-    const member = await User.findOne({ _id: id, ...MEMBER }).select("email").lean();
+    const member = await User.findOne({ _id: id, ...MEMBER }).select("email role").lean();
     if (!member) throw new Refusal(404, NOT_A_MEMBER);
+    // the same rank as any other change to someone: leaving doesn't lower it
+    if (!canEditUser(req.user.role, member.role)) throw new Refusal(403, "Your role can't change this person's personal email.");
     const saved = await savePersonalEmail({ _id: member._id, ...MEMBER }, member, req.body?.personalEmail);
     if (!saved) throw new Refusal(404, NOT_A_MEMBER);
     res.json(saved);

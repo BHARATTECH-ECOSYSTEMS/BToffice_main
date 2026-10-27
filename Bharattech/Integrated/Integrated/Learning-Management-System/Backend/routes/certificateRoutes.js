@@ -13,6 +13,9 @@ const User = require("../models/User");
 const { notifyCertificateIssued, forgetNotesAbout } = require("../utils/notify");
 const { myCertificates, certificatePdf } = require("../controllers/certificateAccessController");
 
+// the portal's certificate types are far shorter; this keeps a typed title on the page
+const TITLE_MAX = 120;
+
 /**
  * The signed-in admin's own record, or null. A certificate is issued only in their name: before step 17 an unknown
  * issuer fell back to the oldest Admin, or a new Admin record was made up for them.
@@ -52,10 +55,17 @@ router.post("/generate", requireAdmin, async (req, res) => {
       });
     }
 
+    if (typeof title !== "string" || title.trim().length > TITLE_MAX) {
+      return res.status(400).json({ message: `Keep the certificate title to ${TITLE_MAX} characters.` });
+    }
+
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+    // a certificate goes to someone who is here: not to a blocked or removed account
+    if (user.isDeleted) return res.status(409).json({ message: "This person was removed, so no certificate can be issued to them." });
+    if (user.isBanned) return res.status(409).json({ message: "This person is blocked. Unblock them first to issue a certificate." });
 
     // before the PDF is made, so a refused request leaves no file behind
     const issuer = await resolveIssuerUser(req);
