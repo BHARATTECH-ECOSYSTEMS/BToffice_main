@@ -10,18 +10,17 @@
   <img src="https://img.shields.io/badge/React-19.1.1-61DAFB?logo=react&logoColor=white" />
   <img src="https://img.shields.io/badge/Node.js-20+-339933?logo=node.js&logoColor=white" />
   <img src="https://img.shields.io/badge/MongoDB-8.18.3-47A248?logo=mongodb&logoColor=white" />
-  <img src="https://img.shields.io/badge/Stripe-19.0.0-635BFF?logo=stripe&logoColor=white" />
   <img src="https://img.shields.io/badge/Clerk-1.7.35-2C2E35?logo=clerk.dev&logoColor=white" />
 </p>
 
 [![Live Demo](https://img.shields.io/badge/demo-live-success)](https://mindure.vercel.app)
 [![Backend](https://img.shields.io/badge/backend-deployed-blue)](https://lmsbackend-alpha.vercel.app)
 
-> A modern, feature-rich Learning Management System built with the MERN stack, featuring video streaming, payment processing, and real-time progress tracking.
+> A modern, feature-rich Learning Management System built with the MERN stack, featuring video streaming and real-time progress tracking.
 
 ## Project Overview
 
-Mindure is a comprehensive LMS platform that enables educators to create and monetize courses while providing students with an engaging learning experience. The platform supports both YouTube-embedded and Cloudinary-hosted video content, implements secure payment processing, and tracks student progress in real-time.
+Mindure is a comprehensive LMS platform that enables educators to create and share courses while providing students with an engaging learning experience. The platform supports both YouTube-embedded and Cloudinary-hosted video content and tracks student progress in real-time.
 
 ## Screenshots/Demo
 
@@ -62,7 +61,6 @@ Mindure is a comprehensive LMS platform that enables educators to create and mon
 - 🎥 **Adaptive Video Streaming** - Smooth playback with buffering indicators
 - 📊 **Progress Tracking** - Track completion status for each lecture
 - ⭐ **Course Ratings** - Rate and review completed courses
-- 💳 **Secure Payments** - Stripe integration for safe transactions
 - 📱 **Responsive Design** - Works seamlessly on all devices
 
 ### For Educators
@@ -78,7 +76,7 @@ Mindure is a comprehensive LMS platform that enables educators to create and mon
 
 - 🛠️ **User Management** - Role-based access control (Student/Educator)
 - 📊 **Platform Analytics** - Overview of platform-wide metrics
-- 🔔 **Webhook Integration** - Real-time updates via Clerk and Stripe webhooks
+- 🔔 **Webhook Integration** - Real-time updates via Clerk webhooks
 
 ---
 
@@ -108,7 +106,6 @@ Mindure is a comprehensive LMS platform that enables educators to create and mon
 - 🟢 **Node.js & Express 5.1.0** - RESTful API server
 - 🍃 **MongoDB & Mongoose 8.18.3** - NoSQL database & ODM
 - 🔐 **@clerk/express 1.7.35** - Authentication middleware
-- 💳 **Stripe 19.0.0** - Payment processing
 - ☁️ **Cloudinary 2.7.0** - Video/image hosting & optimization
 - 🔄 **Svix 1.42.0** - Webhook verification
 - 📦 **Multer 2.0.2** - File upload handling
@@ -243,69 +240,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 };
 ```
 
-### 5. Stripe Payment Integration
-
-**Webhook-Driven Flow:**
-
-```javascript
-// Stripe webhook handler
-// CASE 1: Payment successful and checkout completed
-case "payment_intent.succeeded": {
-      try {
-        const paymentIntent = event.data.object;
-        const { purchaseId, userId, courseId } = paymentIntent.metadata;
-
-        // Validate metadata exists
-        if (!purchaseId || !userId || !courseId) {
-          console.error(
-            "Missing metadata in payment intent:",
-            paymentIntent.id
-          );
-          return res.status(400).json({ error: "Missing metadata" });
-        }
-
-        // Fetch all relevant data from database
-        const purchaseData = await Purchase.findById(purchaseId);
-        const userData = await User.findById(userId);
-        const courseData = await Course.findById(courseId);
-
-        // Prevents crashes if metadata contains invalid IDs
-        if (!purchaseData || !userData || !courseData) {
-          console.error("Missing data:", { purchaseId, userId, courseId });
-          return res.status(400).json({ error: "Invalid metadata" });
-        }
-
-        // This ensures a student isn't enrolled multiple times
-        if (!courseData.enrolledStudents.includes(userId)) {
-          courseData.enrolledStudents.push(userData._id);
-          await courseData.save();
-        }
-
-        // Check if course already in user's enrollments
-        if (!userData.enrolledCourses.includes(courseId)) {
-          userData.enrolledCourses.push(courseData._id);
-          await userData.save();
-        }
-
-        purchaseData.status = "completed";
-        await purchaseData.save();
-      } catch (error) {
-        // If any database operation fails, we catch and log it
-        console.error("Checkout session error:", error);
-        return res.status(500).json({ error: "Internal server error" });
-      }
-      break;
-    }
-```
-
-**Security Features:**
-
-- ✅ Webhook signature verification
-- ✅ Idempotent operations (prevent duplicates)
-- ✅ Metadata validation
-- ✅ Error handling and logging
-
-### 6. Empty State Management
+### 5. Empty State Management
 
 **Reusable Component:**
 
@@ -369,7 +304,7 @@ MERN_LMS/
 │   │   ├── userRoutes.js
 │   │   └── educatorRoutes.js
 │   ├── controllers/            # Route handlers
-│   │   ├── webhooks.js         # Clerk & Stripe webhooks
+│   │   ├── webhooks.js         # Clerk webhooks
 │   │   └── courseController.js
 │   ├── middleware/             # Custom middleware
 │   │   └── protectEducator.js
@@ -391,7 +326,6 @@ MERN_LMS/
 - Node.js 18+
 - MongoDB Atlas account
 - Cloudinary account
-- Stripe account
 - Clerk account
 
 ### Installation
@@ -436,8 +370,6 @@ MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/lms
 CLERK_WEBHOOK_SECRET=whsec_xxxxx
 CLERK_PUBLISHABLE_KEY=pk_test_xxxxx
 CLERK_SECRET_KEY=sk_test_xxxxx
-STRIPE_SECRET_KEY=sk_test_xxxxx
-STRIPE_WEBHOOK_SECRET=whsec_xxxxx
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
@@ -557,7 +489,6 @@ This project is licensed under the [MIT License](./LICENSE) - see the LICENSE fi
 
 - [Clerk](https://clerk.com) - Authentication platform
 - [Cloudinary](https://cloudinary.com) - Video hosting
-- [Stripe](https://stripe.com) - Payment processing
 - [Vercel](https://vercel.com) - Deployment platform
 - All open-source contributors
 

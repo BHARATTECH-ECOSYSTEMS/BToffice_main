@@ -4,7 +4,6 @@ import search_icon from "./search_icon.svg";
 import cross_icon from "./cross_icon.svg";
 import upload_area from "./upload_area.svg";
 import sketch from "./sketch.svg";
-import stripe_logo from "./stripe_logo.svg";
 import vercel_logo from "./vercel_logo.svg";
 import figma_logo from "./figma_logo.svg";
 import adobe_logo from "./adobe_logo.svg";
@@ -51,7 +50,6 @@ export const assets = {
   sketch,
   vercel_logo,
   figma_logo,
-  stripe_logo,
   adobe_logo,
   paypal_logo,
   star,
