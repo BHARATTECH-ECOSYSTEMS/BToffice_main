@@ -1,8 +1,9 @@
 import { useRef } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Star } from "lucide-react";
 import { lessonsLabel, minutesLabel, ratingSummary } from "../../utils/courseHelpers";
 import { useCoverMorph } from "../../hooks/useCoverMorph";
+import { rememberScroll } from "../../utils/backToList";
 import { entranceProps, metaList } from "./ui";
 
 // The whole card opens the course (owner's 4A): every course is free, so the card says what differs between them,
@@ -12,6 +13,8 @@ function CourseCard({ course, enrolled = false, entrance }) {
   const rating = ratingSummary(course);
   const length = minutesLabel(course.totalMinutes);
   const to = `/course/${course._id}`;
+  // the course page's back link returns here, to this list where it was left
+  const { pathname: from } = useLocation();
   const cover = useRef(null);
   const openWithMorph = useCoverMorph();
   const enter = entranceProps(entrance);
@@ -19,11 +22,15 @@ function CourseCard({ course, enrolled = false, entrance }) {
   return (
     <Link
       to={to}
-      onClick={(event) => openWithMorph(event, to, cover.current)}
+      state={{ from }}
+      onClick={(event) => {
+        rememberScroll(from, window.scrollY);
+        openWithMorph(event, to, cover.current, { from });
+      }}
       style={enter.style}
       className={`group flex h-full flex-col overflow-hidden rounded-2xl border border-line bg-card transition-colors duration-150 ease-snappy mhover:border-line-strong ${enter.className}`}
     >
-      <div ref={cover} className="aspect-video overflow-hidden rounded-t-2xl bg-ink/5">
+      <div ref={cover} data-card-cover={course._id} className="aspect-video overflow-hidden rounded-t-2xl bg-ink/5">
         <img src={course.courseThumbnail} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
       </div>
 

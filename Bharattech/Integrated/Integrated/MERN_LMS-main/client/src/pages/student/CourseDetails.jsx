@@ -1,9 +1,10 @@
 import { useCallback, useLayoutEffect, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, ChevronDown, Check, Star } from "lucide-react";
 import { metaList, primaryButton } from "../../components/students/ui";
 import { useAppConfig } from "../../context/AppContext";
 import { safeDescription } from "../../utils/safeDescription";
+import { backLink } from "../../utils/backToList";
 
 import Loading from "../../components/students/Loading";
 import {
@@ -42,6 +43,7 @@ function CourseDetails() {
   const { enrolledCourses, refetchEnrollments } = useEnrollments();
   const { getToken, userData } = useAuth();
   const navigate = useNavigate();
+  const back = backLink(useLocation().state);
 
   const [openSections, setOpenSections] = useState(new Set([0]));
   const [enrolling, setEnrolling] = useState(false);
@@ -103,9 +105,18 @@ function CourseDetails() {
     <>
       <main className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-6 pb-20 pt-10 text-left lg:grid-cols-[1fr_340px]">
         <div className="min-w-0">
-          <Link to="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors duration-150 ease-snappy mhover:text-ink">
+          {/* opened from a list, a step back (like the browser's back button) returns to it where it was left */}
+          <Link
+            to={back.to}
+            onClick={(event) => {
+              if (!back.back || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+              event.preventDefault();
+              navigate(-1);
+            }}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors duration-150 ease-snappy mhover:text-ink"
+          >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            All courses
+            {back.label}
           </Link>
           <h1 className="mt-3 font-display text-[40px] font-bold leading-[1.08] tracking-[-0.02em] text-ink">
             {courseData.courseTitle}
@@ -204,7 +215,7 @@ function CourseDetails() {
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="overflow-hidden rounded-2xl border border-line bg-card">
             {/* a clicked course card's cover grows into this one (hooks/useCoverMorph.js) */}
-            <div data-course-cover className="aspect-video overflow-hidden rounded-t-2xl bg-ink/5" style={{ viewTransitionName: "course-cover" }}>
+            <div data-course-cover={courseData._id} className="aspect-video overflow-hidden rounded-t-2xl bg-ink/5" style={{ viewTransitionName: "course-cover" }}>
               <img className="h-full w-full object-cover" src={courseData.courseThumbnail} alt="" />
             </div>
             <div className="p-5">

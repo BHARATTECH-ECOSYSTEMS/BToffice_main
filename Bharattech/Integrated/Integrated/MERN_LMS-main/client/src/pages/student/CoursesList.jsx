@@ -5,9 +5,9 @@ import { CourseGridPlaceholder } from "../../components/students/CourseCardPlace
 import Footer from "../../components/students/Footer";
 import { useCourses } from "../../context/CourseContext";
 import { useMyLearning } from "../../hooks/useMyLearning";
-import { useEffect } from "react";
 import { staggerDelay } from "../../utils/entrance";
 import { useFirstShow } from "../../hooks/useFirstShow";
+import { useListScroll } from "../../hooks/useListScroll";
 
 function CoursesList() {
   const { query } = useParams();
@@ -17,9 +17,7 @@ function CoursesList() {
   // typing a search narrows the list in place: only the first show animates
   const cardsFirst = useFirstShow("all-courses", !loading && allCourses.length > 0);
 
-  useEffect(() => {
-    window.scrollTo(0, 0);
-  }, []);
+  useListScroll();
 
   const words = (query || "").trim().toLowerCase();
   const shown = words ? allCourses.filter((course) => course.courseTitle.toLowerCase().includes(words)) : allCourses;

@@ -9,6 +9,7 @@ import { CourseProvider } from "./context/CourseContext.jsx";
 import { EnrollmentProvider } from "./context/EnrollmentContext.jsx";
 import { ErrorBoundary } from "./components/common/ErrorBoundary.jsx";
 import { forgetOldSignIns, goToSignIn, signIn } from "./auth/keycloak.js";
+import { watchBackMorph } from "./hooks/useCoverMorph.js";
 
 const root = createRoot(document.getElementById("root"));
 
@@ -75,6 +76,7 @@ const renderSigningIn = () => {
 };
 
 forgetOldSignIns();
+watchBackMorph();
 renderSigningIn();
 signIn()
   .then((signedIn) => (signedIn ? renderApp() : renderSignIn()))

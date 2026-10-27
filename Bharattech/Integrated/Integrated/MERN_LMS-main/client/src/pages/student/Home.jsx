@@ -10,6 +10,7 @@ import { useMyLearning } from "../../hooks/useMyLearning";
 import { continueLearning } from "../../utils/courseHelpers";
 import { staggerDelay } from "../../utils/entrance";
 import { useFirstShow } from "../../hooks/useFirstShow";
+import { useListScroll } from "../../hooks/useListScroll";
 import Educator from "../educator/Educator";
 
 // The first page after Learning in the portal (owner's 3A, 2026-10-26): your own courses first, then everything on
@@ -20,6 +21,7 @@ function Home() {
   const mine = useMyLearning();
   const cardsFirst = useFirstShow("home-courses", !coursesLoading && allCourses.length > 0);
   const rowsFirst = useFirstShow("home-continue", mine.courses.length > 0);
+  useListScroll();
 
   if (loading) return null;
 
