@@ -58,9 +58,12 @@ const getKey = (header, callback) => keyFor(header.kid).then((key) => callback(n
 /** The claims of a token this realm's Keycloak signed; rejects any other (made up, expired, another issuer). */
 const verifyToken = (token) =>
   new Promise((resolve, reject) => {
-    jwt.verify(token, getKey, { algorithms: ["RS256"], issuer: `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}` }, (err, verified) =>
-      err ? reject(err) : resolve(verified)
-    );
+    jwt.verify(token, getKey, { algorithms: ["RS256"], issuer: `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM}` }, (err, verified) => {
+      if (err) return reject(err);
+      // Keycloak signs its ID and refresh tokens with the same key: only an access token signs a request in
+      if (verified.typ && verified.typ !== "Bearer") return reject(new Error(`A ${verified.typ} token isn't an access token.`));
+      return resolve(verified);
+    });
   });
 
 const resolveRole = (decoded) => {

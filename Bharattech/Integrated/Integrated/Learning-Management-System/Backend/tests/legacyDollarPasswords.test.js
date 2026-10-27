@@ -3,8 +3,9 @@ const assert = require("node:assert/strict");
 
 // Before step 16 the request cleaner deleted every "$" from what people typed, so a password chosen as "Pa$$word1"
 // was saved in Keycloak as "Paword1", and signing in worked only because the typing was cut the same way. Now that
-// passwords arrive as typed, such a person must still get in (owner's choice 2A), and their password is saved again
-// as they type it.
+// passwords arrive as typed, such a person must still get in (owner's choice 2A). Saving it again as typed was
+// dropped (review 2026-10-26 low list, owner's 1A): a typo that adds a "$" ("Sunr$ise99" for "Sunrise99") signed in
+// and saved the typo as the password, so a sign-in never changes a password now.
 
 // A stand-in for the Keycloak admin client, put in place before authController loads it. It records the calls.
 const keycloak = { stored: "", calls: [], resetError: null };
@@ -88,19 +89,25 @@ const call = async (handler, req) => {
 const signIn = (password) => call(keycloakLogin, { body: { username: "asha", password } });
 const resets = () => keycloak.calls.filter(([name]) => name === "resetPassword").map(([, args]) => args);
 
-test("a password saved without its $ still signs in, and is saved again as typed", async () => {
+test("a password saved without its $ still signs in, and nothing is saved", async () => {
   const reply = await signIn(TYPED);
   assert.equal(reply.status, 200);
   assert.equal(reply.body.success, true);
   assert.deepEqual(tries, [TYPED, SAVED_BY_OLD_CLEANER]);
-  assert.deepEqual(resets(), [{ realm: process.env.KEYCLOAK_REALM || "bharattech", id: "kc-asha", credential: { type: "password", value: TYPED, temporary: false } }]);
-  // their new sign-in stays: no sessions are ended
-  assert.equal(keycloak.calls.some(([name]) => name === "logout"), false);
+  assert.deepEqual(resets(), []);
+  assert.equal(keycloak.stored, SAVED_BY_OLD_CLEANER);
 
-  // from now on the password works as typed, first time
+  // the next sign-in takes the same two tries
   tries = [];
   assert.equal((await signIn(TYPED)).status, 200);
-  assert.deepEqual(tries, [TYPED]);
+  assert.deepEqual(tries, [TYPED, SAVED_BY_OLD_CLEANER]);
+});
+
+test("a typo that adds a $ signs in, and never becomes the password", async () => {
+  keycloak.stored = "Sunrise99";
+  assert.equal((await signIn("Sunr$ise99")).status, 200);
+  assert.deepEqual(resets(), []);
+  assert.equal(keycloak.stored, "Sunrise99", "the real password still works");
 });
 
 test("a wrong password with a $ still fails, after at most two tries", async () => {
@@ -139,12 +146,10 @@ test("only a wrong password is retried, not any other refusal (a switched-off ac
   assert.deepEqual(tries, [TYPED]);
 });
 
-test("if saving it again fails they're still signed in, and no password reaches the log", async () => {
-  keycloak.resetError = new Error("Keycloak is down");
-  const reply = await signIn(TYPED);
-  assert.equal(reply.status, 200);
-  assert.ok(logged.some((line) => /saved again|resave|as typed/i.test(line)), logged.join("\n"));
-  assert.equal(logged.some((line) => line.includes(TYPED) || line.includes(SAVED_BY_OLD_CLEANER)), false);
+test("no password reaches the log", async () => {
+  await signIn(TYPED);
+  await signIn("Wr$ng-one");
+  assert.equal(logged.some((line) => line.includes(TYPED) || line.includes(SAVED_BY_OLD_CLEANER) || line.includes("Wr$ng-one")), false);
 });
 
 test("Change password accepts a current password saved without its $ and sets the new one", async () => {

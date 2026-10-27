@@ -60,8 +60,8 @@ after(async () => {
 });
 
 /** A token as Keycloak would sign it for this person (or with another key, to prove it's refused). */
-const keycloakToken = (user, { key = keys.privateKey } = {}) =>
-  jwt.sign({ sub: user.keycloakId, email: user.email, preferred_username: user.username, realm_access: { roles: [user.role] } }, key, {
+const keycloakToken = (user, { key = keys.privateKey, claims = {} } = {}) =>
+  jwt.sign({ sub: user.keycloakId, email: user.email, preferred_username: user.username, realm_access: { roles: [user.role] }, ...claims }, key, {
     algorithm: "RS256",
     keyid: KID,
     issuer: ISSUER,
@@ -126,6 +126,15 @@ test("a token signed with any other key is refused", async () => {
 });
 
 // --- blocked and deleted accounts lose access at the door ---
+
+// Review 2026-10-26 low list: Keycloak signs its ID tokens (who someone is, for the app that asked) with the same key,
+// and they were accepted for requests like access tokens. Only an access token ("Bearer") signs a request in now.
+test("an ID token or a refresh token is refused; an access token signs in", async () => {
+  const user = await User.create(userFields({ isDeleted: false, isBanned: false }));
+  assert.equal((await whoami(keycloakToken(user, { claims: { typ: "ID" } }))).status, 401);
+  assert.equal((await whoami(keycloakToken(user, { claims: { typ: "Refresh" } }))).status, 401);
+  assert.equal((await whoami(keycloakToken(user, { claims: { typ: "Bearer" } }))).status, 200);
+});
 
 test("a blocked account is refused, not just hidden", async () => {
   const user = await User.create(userFields({ role: "Employee", isBanned: true }));

@@ -108,30 +108,17 @@ const passwordGrantLogin = async (username, password) => {
 
 // Before step 16 the request cleaner deleted every "$" from what people typed, so a password chosen with "$" was
 // saved in Keycloak without it, and signing in worked only because the typing was cut the same way. Passwords now
-// arrive as typed, so when one with a "$" is refused, the same password without its "$" is tried once.
+// arrive as typed, so when one with a "$" is refused, the same password without its "$" is tried once. It is never
+// saved again as typed: a typo that adds a "$" would become the password (review 2026-10-26, owner's 1A).
 const isWrongPassword = (result) => !result.ok && /invalid user credentials/i.test(result.errorDescription || "");
 const withoutDollars = (password) => String(password).replace(/\$/g, "");
 
-/**
- * Signs in with the password as typed or, for a password saved before step 16, as it was saved. `resave` then saves
- * it as typed, so the next sign-in needs one try; a failure there is logged (never the password) and doesn't stop
- * the sign-in.
- */
-const passwordGrantAsTyped = async (username, password, { resave = false } = {}) => {
+/** Signs in with the password as typed or, for a password saved before step 16, as it was saved. */
+const passwordGrantAsTyped = async (username, password) => {
   const result = await passwordGrantLogin(username, password);
   if (!isWrongPassword(result) || typeof password !== "string" || !password.includes("$")) return result;
   const older = await passwordGrantLogin(username, withoutDollars(password));
-  if (!older.ok) return result;
-  if (resave) {
-    try {
-      const { sub } = JSON.parse(Buffer.from(older.access_token.split(".")[1], "base64url").toString("utf8"));
-      await ensureKeycloakAdmin();
-      await kcAdmin.users.resetPassword({ realm: KEYCLOAK_REALM, id: sub, credential: { type: "password", value: password, temporary: false } });
-    } catch (error) {
-      console.warn("Sign-in: an older password couldn't be saved again as typed:", error.message);
-    }
-  }
-  return older;
+  return older.ok ? older : result;
 };
 
 // BT-0001, bt-0001, BT0001… (IDs are padded to at least four digits).
@@ -172,7 +159,7 @@ const keycloakLogin = async (req, res) => {
     }
 
     const login = await loginNameFor(username);
-    const result = await passwordGrantAsTyped(login, password, { resave: true });
+    const result = await passwordGrantAsTyped(login, password);
 
     if (!result.ok) {
       console.warn(
