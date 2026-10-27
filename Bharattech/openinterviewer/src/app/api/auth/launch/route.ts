@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     if (!launch) return refused();
 
     // the session first, the pass used up last: a session that can't be made doesn't waste the pass (owner's 2A)
-    const sessionToken = await createSessionToken();
+    const sessionToken = await createSessionToken({ via: launch.via, sub: launch.sub });
     if (!(await launch.use())) return refused();
 
     const cookieStore = await cookies();

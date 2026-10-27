@@ -98,11 +98,11 @@ test("someone removed and invited again isn't brought back before they accept", 
 test("someone with a record whose account waits for a new password is still synced", async () => {
   await User.create(userFields({ keycloakId: "kc-asha", email: "asha@example.test", fullName: "Old Name" }));
   const asha = account("kc-asha", "asha@example.test", { waiting: true });
-  asha.firstName = "Asha";
-  asha.lastName = "Rao";
+  asha.attributes = { phone: ["+91 98765 43210"] };
 
   assert.deepEqual(await adminList(), ["asha@example.test"]);
-  assert.equal((await stored("asha@example.test")).fullName, "Asha Rao");
+  // synced (since 2026-10-28 the name stays the record's own; see the self-edit test below)
+  assert.equal((await stored("asha@example.test")).phone, "+91 98765 43210");
 });
 
 test("someone really gone from a complete list is still marked removed; blocked and pending people aren't", async () => {
@@ -114,4 +114,25 @@ test("someone really gone from a complete list is still marked removed; blocked 
   await adminList();
   assert.equal((await stored("gone@example.test")).isDeleted, true);
   assert.equal((await stored("blocked@example.test")).isDeleted, false);
+});
+
+test("a name, username or email someone changed for themselves in Keycloak doesn't replace the one admins keep", async () => {
+  // security report 2026-10-28 lead 5 (owner's F4A): the realm now lets only admins change these, and an admin's
+  // change in the portal saves the record itself, so the sync keeps what the record says
+  await User.create(userFields({ keycloakId: "kc-asha", fullName: "Asha Rao", username: "asha", email: "asha@example.test" }));
+  keycloak.users.push({ id: "kc-asha", username: "someone.else", email: "other@example.test", emailVerified: false, firstName: "Someone", lastName: "Else", enabled: true, requiredActions: [] });
+
+  await adminList();
+
+  const saved = await User.findOne({ keycloakId: "kc-asha" }).lean();
+  assert.deepEqual([saved.fullName, saved.username, saved.email], ["Asha Rao", "asha", "asha@example.test"]);
+});
+
+test("a record missing a name, username or email still gets Keycloak's", async () => {
+  await User.create(userFields({ keycloakId: "kc-ravi", fullName: "", username: "ravi" }));
+  account("kc-ravi", "ravi@example.test");
+
+  await adminList();
+
+  assert.equal((await User.findOne({ keycloakId: "kc-ravi" }).lean()).fullName, "ravi");
 });

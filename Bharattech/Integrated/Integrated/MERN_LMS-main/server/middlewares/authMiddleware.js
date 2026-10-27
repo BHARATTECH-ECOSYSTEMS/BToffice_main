@@ -35,6 +35,8 @@ export const verifyToken = (token) =>
   new Promise((resolve, reject) => {
     jwt.verify(token, getKey, { algorithms: ["RS256"], issuer: `${normalizedKeycloakUrl}/realms/${KEYCLOAK_REALM}`, clockTolerance: 60 }, (err, decoded) => {
       if (err) return reject(err);
+      // Keycloak signs its ID tokens with the same key, issuer and azp: only an access token signs a request in
+      if (decoded?.typ && decoded.typ !== "Bearer") return reject(new Error(`a ${decoded.typ} token isn't an access token`));
       if (!KEYCLOAK_CLIENT_IDS.includes(decoded?.azp)) return reject(new Error("token issued for another client"));
       resolve(decoded);
     });

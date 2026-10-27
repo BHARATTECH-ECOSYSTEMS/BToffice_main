@@ -61,7 +61,8 @@ const streamPolicyFile = async (res, storedFileName, displayName = storedFileNam
 
   const filePath = getPolicyFilePath(storedFileName);
 
-  if (!fs.existsSync(filePath)) {
+  // a folder exists too, and reading one as a file throws outside any try/catch, stopping the whole backend
+  if (!fs.statSync(filePath, { throwIfNoEntry: false })?.isFile()) {
     return res.status(404).send("PDF file not found. Please re-upload this document.");
   }
 
@@ -71,7 +72,15 @@ const streamPolicyFile = async (res, storedFileName, displayName = storedFileNam
     `inline; filename="${encodeURIComponent(displayName)}"`
   );
 
-  return fs.createReadStream(filePath).pipe(res);
+  return fs.createReadStream(filePath)
+    .once("error", (error) => {
+      console.error("Stream disk policy PDF error:", error);
+      if (res.headersSent) return res.end();
+      res.removeHeader("Content-Type");
+      res.removeHeader("Content-Disposition");
+      res.status(500).json({ message: "Failed to load PDF" });
+    })
+    .pipe(res);
 };
 
 const normalizePolicy = (policy, req) => {
@@ -222,7 +231,8 @@ exports.streamPolicyPdfFile = async (req, res) => {
       decodeURIComponent(req.params.filename || "")
     );
 
-    if (!storedFileName) {
+    // "." and ".." survive basename and name a folder, never a stored PDF
+    if (!storedFileName || /^\.+$/.test(storedFileName)) {
       return res.status(400).send("PDF filename required");
     }
 

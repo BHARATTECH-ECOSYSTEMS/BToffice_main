@@ -175,3 +175,12 @@ test("no reply sends an error's internal message", () => {
   }
   assert.deepEqual(leaks, []);
 });
+
+test("only access tokens are let in: an ID token or a refresh token from the same realm is refused", async () => {
+  // security report 2026-10-28 lead 6: Keycloak signs ID tokens with the same key, issuer and azp as access tokens
+  assert.equal((await call("GET", "/api/user/profile", { token: tokenFor({ typ: "Bearer" }) })).status, 200);
+  for (const typ of ["ID", "Refresh", "Logout"]) {
+    assert.equal((await call("GET", "/api/user/profile", { token: tokenFor({ typ }) })).status, 401, typ);
+  }
+  assert.equal(await User.countDocuments(), 1, "a refused token makes no record");
+});

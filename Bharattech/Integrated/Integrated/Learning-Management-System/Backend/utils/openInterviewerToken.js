@@ -26,14 +26,17 @@ const createOpenInterviewerToken = async (user = {}, options = {}) => {
   const email = user.email || "";
   const name = user.fullName || user.username || "";
 
-  return new SignJWT({
+  const pass = new SignJWT({
     type: "bharattech-admin-launch",
     role: user.role,
     email,
     name,
     redirectTo: options.redirectTo || "/dashboard",
   })
-    .setProtectedHeader({ alg: "HS256" })
+    .setProtectedHeader({ alg: "HS256" });
+  // whose pass it is: OpenInterviewer keeps it in the session and asks back whether they're still an admin
+  if (user.keycloakId) pass.setSubject(user.keycloakId);
+  return pass
     .setJti(randomUUID())
     .setIssuedAt()
     .setExpirationTime(`${LAUNCH_PASS_SECONDS}s`)
@@ -55,7 +58,30 @@ const buildOpenInterviewerLaunchUrl = (token) => {
   return launchUrl.toString();
 };
 
+const SESSION_CHECK_TYPE = "openinterviewer-session-check";
+
+/**
+ * The Keycloak account OpenInterviewer asks about, from its signed check (POST /api/openinterviewer/session-check), or
+ * null when the check isn't OpenInterviewer's: signed with the launch secret, of its own kind, lasting a minute at most.
+ */
+const readSessionCheck = async (token) => {
+  const { jwtVerify } = await import("jose");
+  try {
+    const { payload } = await jwtVerify(token, new TextEncoder().encode(getLaunchSecret()), {
+      algorithms: ["HS256"],
+      requiredClaims: ["sub", "iat", "exp"],
+      maxTokenAge: LAUNCH_PASS_SECONDS,
+    });
+    if (payload.type !== SESSION_CHECK_TYPE || !payload.sub) return null;
+    if (payload.exp - payload.iat > LAUNCH_PASS_SECONDS) return null;
+    return payload.sub;
+  } catch {
+    return null;
+  }
+};
+
 module.exports = {
+  readSessionCheck,
   LAUNCH_PASS_SECONDS,
   buildOpenInterviewerLaunchUrl,
   createOpenInterviewerToken,

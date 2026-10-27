@@ -74,6 +74,7 @@ async function portalPass() {
     .setIssuedAt(issuedAt)
     .setExpirationTime(issuedAt + 60)
     .setJti(randomUUID())
+    .setSubject('kc-test-admin')
     .sign(encode('test-launch-secret'));
 }
 

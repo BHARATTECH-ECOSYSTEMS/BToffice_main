@@ -58,7 +58,8 @@ const PUBLIC = {
   authRoutes: ["POST /keycloak-login", "POST /accept-invite", "POST /forgot-password", "POST /reset-password"],
   resetLinkRoutes: ["POST /use"],
   inviteRoutes: [],
-  openInterviewerRoutes: [],
+  // OpenInterviewer asks server to server, with its own check signed by the launch secret (security report 2026-10-28)
+  openInterviewerRoutes: ["POST /session-check"],
   policyRoutes: [],
   // the website's verification form: anyone may send one
   verificationRequestRoutes: ["POST /"],

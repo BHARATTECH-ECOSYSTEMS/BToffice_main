@@ -22,8 +22,7 @@ const passwordLengthProblem = (password) =>
     ? `Choose a password of ${PASSWORD_MIN} to ${PASSWORD_MAX} characters.`
     : null;
 
-// Keycloak answers "Account disabled" only when the password was right, so saying so tells nothing to someone guessing
-const SWITCHED_OFF = { code: "switched-off", message: "Your sign-in is switched off. Ask an admin if you think this is a mistake." };
+const INVALID_LOGIN = { message: "Invalid username or password" };
 
 // Exchanges username/password for tokens via Keycloak's Direct Grant flow and
 // builds the user payload our frontend expects. Shared by keycloakLogin and
@@ -169,8 +168,9 @@ const keycloakLogin = async (req, res) => {
 
       if (result.refusal) return res.status(403).json(result.refusal);
 
-      // blocked, or left Bharattech (both switch the account off)
-      if (/^account disabled$/i.test(result.errorDescription || "")) return res.status(403).json(SWITCHED_OFF);
+      // blocked, or left Bharattech (both switch the account off): Keycloak 24 says "Account disabled" for a wrong
+      // password too, so saying so would tell anyone guessing who is blocked or has left. They get the plain answer.
+      if (/^account disabled$/i.test(result.errorDescription || "")) return res.status(401).json(INVALID_LOGIN);
 
       // Keycloak refuses a right password while the account has an unfinished step. A temporary (invite) password
       // waits for a new one: that's the invite's "Set up your account". Any other step (a missing last name, an email
@@ -190,7 +190,7 @@ const keycloakLogin = async (req, res) => {
         return res.status(403).json({ message: "Your account isn't fully set up yet. Ask an admin to finish it." });
       }
 
-      return res.status(401).json({ message: "Invalid username or password" });
+      return res.status(401).json(INVALID_LOGIN);
     }
 
     return res.json({ success: true, ...result });

@@ -45,22 +45,50 @@ async function authAdmin() {
   });
 }
 
+const REALM_SETTINGS = {
+  registrationAllowed: false,         // invitation-only: no self-registration
+  registrationEmailAsUsername: false, // usernames are name-based, not email-based
+  loginWithEmailAllowed: true,
+  duplicateEmailsAllowed: false,
+  resetPasswordAllowed: true,
+  // invitees choose their own username when accepting; Keycloak 24 refuses even the admin API's rename without this.
+  // People still can't change it themselves: the user profile below lets only admins edit it.
+  editUsernameAllowed: true,
+  // Employee IDs (BT-0001…) are easy to guess and the sign-in page is public: 5 wrong tries lock the account for
+  // 1 minute, doubling up to 15. Temporary on purpose: a permanent lock would let anyone lock someone out.
+  bruteForceProtected: true,
+  permanentLockout: false,
+  failureFactor: 5,
+  waitIncrementSeconds: 60,
+  maxFailureWaitSeconds: 900,
+  maxDeltaTimeSeconds: 43200,
+};
+
+// The portal keeps these as an admin set them (an admin's rename goes through the portal, a new work email means a
+// new invite), so people can't change them in Keycloak's own account page.
+const ADMIN_ONLY_FIELDS = ["username", "email", "firstName", "lastName"];
+
+/** The realm's user profile with ADMIN_ONLY_FIELDS editable by admins only; everything else as it was. */
+const adminOnlyIdentity = (profile) => ({
+  ...profile,
+  attributes: (profile.attributes || []).map((attribute) =>
+    ADMIN_ONLY_FIELDS.includes(attribute.name)
+      ? { ...attribute, permissions: { ...attribute.permissions, view: attribute.permissions?.view || ["admin", "user"], edit: ["admin"] } }
+      : attribute
+  ),
+});
+
+async function configureAdminOnlyIdentity() {
+  const profile = await kcAdmin.users.getProfile({ realm: KEYCLOAK_REALM });
+  await kcAdmin.users.updateProfile({ realm: KEYCLOAK_REALM, ...adminOnlyIdentity(profile) });
+}
+
 async function getOrCreateRealm() {
   const existing = await kcAdmin.realms.findOne({ realm: KEYCLOAK_REALM }).catch(() => null);
 
   if (existing) {
     console.log(`Realm "${KEYCLOAK_REALM}" already exists — updating settings.`);
-    await kcAdmin.realms.update(
-      { realm: KEYCLOAK_REALM },
-      {
-        registrationAllowed: false,         // no self-registration
-        registrationEmailAsUsername: false, // usernames are name-based, not email-based
-        loginWithEmailAllowed: true,
-        duplicateEmailsAllowed: false,
-        resetPasswordAllowed: true,
-        editUsernameAllowed: true,           // invitees choose their own username when accepting
-      }
-    );
+    await kcAdmin.realms.update({ realm: KEYCLOAK_REALM }, REALM_SETTINGS);
     return existing;
   }
 
@@ -69,12 +97,7 @@ async function getOrCreateRealm() {
     realm: KEYCLOAK_REALM,
     enabled: true,
     displayName: "BharatTech LMS",
-    registrationAllowed: false,             // invitation-only
-    registrationEmailAsUsername: false,     // usernames are name-based, not email-based
-    loginWithEmailAllowed: true,
-    duplicateEmailsAllowed: false,
-    resetPasswordAllowed: true,
-    editUsernameAllowed: true,               // invitees choose their own username when accepting
+    ...REALM_SETTINGS,
     sslRequired: "external",
   });
 
@@ -310,7 +333,10 @@ async function setupKeycloakRealm() {
   console.log('Authenticated as Keycloak admin.');
 
   await getOrCreateRealm();
-  console.log(`Realm "${KEYCLOAK_REALM}" configured (self-registration disabled).`);
+  console.log(`Realm "${KEYCLOAK_REALM}" configured (self-registration disabled, lockout after 5 wrong passwords).`);
+
+  await configureAdminOnlyIdentity();
+  console.log("Names, email and username: only admins change them.");
 
   console.log('Upserting realm roles...');
   const createdRoles = await upsertRealmRoles();
@@ -342,7 +368,7 @@ async function setupKeycloakRealm() {
   return { success: true, realm: KEYCLOAK_REALM };
 }
 
-module.exports = { setupKeycloakRealm };
+module.exports = { setupKeycloakRealm, REALM_SETTINGS, adminOnlyIdentity };
 
 // Run directly: node scripts/setupKeycloakRealm.js
 if (require.main === module) {

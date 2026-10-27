@@ -10,6 +10,22 @@ const KEYCLOAK_ADMIN_REALM = process.env.KEYCLOAK_ADMIN_REALM || "master";
 const KEYCLOAK_ADMIN_USERNAME = process.env.KEYCLOAK_ADMIN_USERNAME || "admin";
 const KEYCLOAK_ADMIN_PASSWORD = process.env.KEYCLOAK_ADMIN_PASSWORD || "admin";
 
+// Seeds only a Keycloak on this machine: the accounts below share one password, two of them are Admins, and the
+// .env this reads may name the live Keycloak (security report 2026-10-28 lead 2).
+const LOOPBACK_HOSTS = ["localhost", "127.0.0.1", "[::1]"];
+
+/** Why this script refuses to seed `baseUrl`, or "" when it is a Keycloak on this machine and this isn't a live server. */
+const seedTargetProblem = (baseUrl, env = process.env) => {
+  if (env.NODE_ENV === "production" || env.RENDER) return "This is a live server: test accounts are never seeded here.";
+  let host;
+  try {
+    host = new URL(baseUrl).hostname;
+  } catch {
+    return `"${baseUrl}" isn't a Keycloak address.`;
+  }
+  return LOOPBACK_HOSTS.includes(host) ? "" : `Refusing to seed ${baseUrl}: only a Keycloak on this machine (localhost) is seeded.`;
+};
+
 const KEYCLOAK_ROLE_NAMES = {
   Admin: "admin",
   Subadmin: "Subadmin",
@@ -79,7 +95,50 @@ const kcAdmin = new KcAdminClient({
   realmName: KEYCLOAK_ADMIN_REALM,
 });
 
+// A realm this script makes is invitation-only, like scripts/setupKeycloakRealm.js makes it.
+const NEW_REALM = { enabled: true, registrationAllowed: false };
+
+// The local apps' addresses only: a "*" web origin let every website use lms-client from a browser.
+const LMS_CLIENT = {
+  clientId: "lms-client",
+  name: "LMS Client",
+  enabled: true,
+  protocol: "openid-connect",
+  publicClient: true,
+  standardFlowEnabled: true,
+  directAccessGrantsEnabled: true,
+  redirectUris: [
+    "http://localhost:5174/*",
+    "http://127.0.0.1:5174/*",
+    "http://localhost:5173/*",
+    "http://127.0.0.1:5173/*",
+    "http://localhost:5175/*",
+    "http://127.0.0.1:5175/*",
+    "http://localhost:8080/*",
+    "http://127.0.0.1:8080/*",
+  ],
+  attributes: {
+    "post.logout.redirect.uris": "http://localhost:5174/*##http://127.0.0.1:5174/*##http://localhost:5173/*##http://127.0.0.1:5173/*##http://localhost:5175/*##http://127.0.0.1:5175/*##http://localhost:8080/*##http://127.0.0.1:8080/*"
+  },
+  webOrigins: [
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5175",
+    "http://127.0.0.1:5175",
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+  ],
+};
+
 async function main() {
+  const problem = seedTargetProblem(KEYCLOAK_BASE_URL);
+  if (problem) {
+    console.error(`❌ ${problem}`);
+    process.exit(1);
+  }
+
   try {
     console.log(`📡 Connecting to Keycloak at ${KEYCLOAK_BASE_URL}...`);
     await kcAdmin.auth({
@@ -95,15 +154,11 @@ async function main() {
     const realmExists = realms.some(r => r.realm === KEYCLOAK_REALM);
     if (!realmExists) {
       console.log(`🔨 Creating realm "${KEYCLOAK_REALM}"...`);
-      await kcAdmin.realms.create({
-        realm: KEYCLOAK_REALM,
-        enabled: true,
-        registrationAllowed: true,
-      });
+      await kcAdmin.realms.create({ realm: KEYCLOAK_REALM, ...NEW_REALM });
       console.log(`✅ Realm created!`);
     } else {
-      console.log(`✅ Realm "${KEYCLOAK_REALM}" already exists. Making sure registration is enabled...`);
-      await kcAdmin.realms.update({ realm: KEYCLOAK_REALM }, { registrationAllowed: true });
+      // its sign-up setting is left as it is (scripts/setupKeycloakRealm.js keeps it off)
+      console.log(`✅ Realm "${KEYCLOAK_REALM}" already exists.`);
     }
 
     // Ensure client "lms-client" exists and is properly configured
@@ -112,39 +167,7 @@ async function main() {
       realm: KEYCLOAK_REALM,
     });
     const lmsClient = clients.find(c => c.clientId === "lms-client");
-    const clientPayload = {
-      clientId: "lms-client",
-      name: "LMS Client",
-      enabled: true,
-      protocol: "openid-connect",
-      publicClient: true,
-      standardFlowEnabled: true,
-      directAccessGrantsEnabled: true,
-      redirectUris: [
-        "http://localhost:5174/*",
-        "http://127.0.0.1:5174/*",
-        "http://localhost:5173/*",
-        "http://127.0.0.1:5173/*",
-        "http://localhost:5175/*",
-        "http://127.0.0.1:5175/*",
-        "http://localhost:8080/*",
-        "http://127.0.0.1:8080/*",
-      ],
-      attributes: {
-        "post.logout.redirect.uris": "http://localhost:5174/*##http://127.0.0.1:5174/*##http://localhost:5173/*##http://127.0.0.1:5173/*##http://localhost:5175/*##http://127.0.0.1:5175/*##http://localhost:8080/*##http://127.0.0.1:8080/*"
-      },
-      webOrigins: [
-        "http://localhost:5174",
-        "http://127.0.0.1:5174",
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5175",
-        "http://127.0.0.1:5175",
-        "http://localhost:8080",
-        "http://127.0.0.1:8080",
-        "*",
-      ],
-    };
+    const clientPayload = LMS_CLIENT;
 
     if (lmsClient) {
       await kcAdmin.clients.update({
@@ -253,4 +276,7 @@ async function main() {
   }
 }
 
-main();
+module.exports = { seedTargetProblem, LMS_CLIENT, NEW_REALM };
+
+// Run directly: node scripts/seedKeycloakUsers.js (loading it, as the tests do, seeds nothing)
+if (require.main === module) main();

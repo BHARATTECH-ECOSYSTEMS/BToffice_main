@@ -141,8 +141,8 @@ test("an invite that isn't finished is answered as before, not retried", async (
 
 test("only a wrong password is retried, not any other refusal (a switched-off account, say)", async () => {
   accountDisabled = true;
-  // review M8: a switched-off account is told so (403), not "wrong details"
-  assert.equal((await signIn(TYPED)).status, 403);
+  // a switched-off account gets the plain refusal since 2026-10-28 (security report lead 3), and still isn't retried
+  assert.equal((await signIn(TYPED)).status, 401);
   assert.deepEqual(tries, [TYPED]);
 });
 

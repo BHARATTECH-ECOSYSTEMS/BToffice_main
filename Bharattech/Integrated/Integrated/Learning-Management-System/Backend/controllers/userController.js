@@ -340,6 +340,11 @@ const upsertLocalUserFromKeycloak = async (kcUser) => {
   };
 
   if (existing) {
+    // A record already linked to this account keeps the name, username and email admins gave it: the portal changes
+    // them itself (an admin's rename, a new invite for a new email), and only a blank one is filled from Keycloak.
+    if (existing.keycloakId === kcUser.id) {
+      for (const field of ["fullName", "username", "email"]) if (existing[field]) delete update[field];
+    }
     Object.assign(existing, update);
     return existing.save();
   }

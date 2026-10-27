@@ -108,7 +108,7 @@ test("freeUsernameFor gives the wanted name when nobody holds it", async () => {
 
 test("the admin sync uses the same helper: a removed record's copy moves aside, and keeps its email", async () => {
   const ghost = await removed({ username: "asha", email: "asha.old@example.test", keycloakId: "kc-old" });
-  await User.create(userFields({ username: "temp.asha", email: "asha.new@example.test", keycloakId: "kc-new" }));
+  // no record yet for kc-new: since 2026-10-28 a linked record keeps its own username, so the sync makes this one
   keycloak.users = [{ id: "kc-new", username: "asha", email: "asha.new@example.test", firstName: "Asha", lastName: "Rao", enabled: true }];
 
   let status = 200;

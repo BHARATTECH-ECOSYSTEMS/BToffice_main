@@ -5,7 +5,7 @@ const path = require("path");
 const express = require("express");
 const Policy = require("../models/Policy");
 const { uploadPolicyPdf } = require("../middlewares/uploadPolicy");
-const { createPolicy, streamPolicyPdf, deletePolicy } = require("../controllers/policyController");
+const { createPolicy, streamPolicyPdf, streamPolicyPdfFile, deletePolicy } = require("../controllers/policyController");
 const { connectTestDb, clearTestDb, disconnectTestDb } = require("./helpers/testDb");
 
 const DISK_DIR = path.join(__dirname, "..", "uploads", "policies");
@@ -24,6 +24,7 @@ before(async () => {
   });
   app.post("/policies", uploadPolicyPdf, createPolicy);
   app.get("/policies/:id/pdf", streamPolicyPdf);
+  app.get("/policies/file/:filename", streamPolicyPdfFile);
   app.delete("/policies/:id", deletePolicy);
   await new Promise((resolve) => (server = app.listen(0, "127.0.0.1", resolve)));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -111,4 +112,24 @@ test("deleting a document deletes its stored file too", async () => {
   const files = await Policy.db.collection("policyFiles.files").countDocuments({ filename: policy.storedFileName });
   assert.equal(files, 0);
   assert.equal((await fetch(`${base}/policies/${policy._id}/pdf`)).status, 404);
+});
+
+test("a file name that points at a folder is refused, and the server keeps answering", async () => {
+  // security report 2026-10-28 lead 9: "..", typed twice-encoded, opened the uploads folder itself as a file, and the
+  // read error stopped the whole backend
+  fs.mkdirSync(DISK_DIR, { recursive: true });
+
+  // each reaches the controller as a name that ends in "." or ".."
+  for (const name of ["%252E%252E", "%252E", "%2e%2e%2f%2e%2e"]) {
+    assert.equal((await fetch(`${base}/policies/file/${name}`)).status, 400, name);
+  }
+  assert.equal((await fetch(`${base}/policies/file/missing.pdf`)).status, 404);
+});
+
+test("a stored name that turns out to be a folder on disk opens nothing and the server keeps answering", async () => {
+  fs.mkdirSync(DISK_DIR, { recursive: true });
+  const policy = await Policy.create({ name: "Odd", pdfUrl: "/uploads/policies/.", pdfName: "odd.pdf", storedFileName: ".", pages: 1, category: "Policies", uploadedBy: "Admin" });
+
+  assert.equal((await fetch(`${base}/policies/${policy._id}/pdf`)).status, 404);
+  assert.equal((await fetch(`${base}/policies/file/missing.pdf`)).status, 404);
 });

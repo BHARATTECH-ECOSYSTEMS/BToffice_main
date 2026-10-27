@@ -111,6 +111,8 @@ exports.markLeft = async (req, res) => {
     if (!person) throw new Refusal(404, NOT_HERE);
     if (!canDeleteUser(req.user.role, person.role)) throw new Refusal(403, "You can't mark this person as left.");
     if (!person.stream) throw new Refusal(400, "Set their stream in Details first: it decides which community they join.");
+    // a blocked leaver could never be unblocked (People lists current staff only), nor brought back (restoreMember)
+    if (person.isBanned) throw new Refusal(409, "They're blocked. Unblock them in People first, then mark them as left.");
 
     try {
       await setKeycloakEnabled(person.keycloakId, false);
@@ -142,9 +144,11 @@ exports.markLeft = async (req, res) => {
  * Brings a member back to People (the community's "Bring back", and rejoining through an internal job): their
  * Keycloak account is switched on first, so a failure there changes nothing (502); then the record is current staff
  * again, with the same Employee ID, plus any `alsoSet` fields. Resolves with the record and whether they need an
- * invite (their Keycloak account was gone).
+ * invite (their Keycloak account was gone). Someone who left while blocked stays out: switching their Keycloak account
+ * on would undo the block for every other app that signs in with Keycloak, and a leaver can't be unblocked.
  */
 const restoreMember = async (member, alsoSet = {}) => {
+  if (member.isBanned) throw new Refusal(409, "They were blocked when they left, so they can't be brought back.");
   let hasAccount;
   try {
     hasAccount = await setKeycloakEnabled(member.keycloakId, true);
@@ -152,7 +156,15 @@ const restoreMember = async (member, alsoSet = {}) => {
     console.error("Bringing back: switching on the Keycloak account failed:", error.message);
     throw new Refusal(502, "Their sign-in couldn't be switched back on right now, so they're still in the community. Try again in a minute.");
   }
-  const back = await User.findOneAndUpdate({ _id: member._id, ...MEMBER }, { $set: { isDeleted: false, deletedAt: null, ...alsoSet }, $unset: { leftOn: 1 } }, { returnDocument: "after" });
+  let back;
+  try {
+    back = await User.findOneAndUpdate({ _id: member._id, ...MEMBER, isBanned: { $ne: true } }, { $set: { isDeleted: false, deletedAt: null, ...alsoSet }, $unset: { leftOn: 1 } }, { returnDocument: "after" });
+  } finally {
+    // still in the community (a failed save, or someone else changed them meanwhile): their sign-in goes off again
+    if (!back && hasAccount) {
+      await setKeycloakEnabled(member.keycloakId, false).catch((e) => console.error("Bringing back: switching the account off again failed:", e.message));
+    }
+  }
   if (!back) throw new Refusal(404, NOT_A_MEMBER);
   return { person: back, needsInvite: !hasAccount };
 };

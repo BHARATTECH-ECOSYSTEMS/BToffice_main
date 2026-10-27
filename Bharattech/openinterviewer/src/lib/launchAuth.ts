@@ -104,7 +104,7 @@ function hasAdminRole(payload: jose.JWTPayload) {
 // Only BHARATTECH_LAUNCH_SECRET signs a pass. ADMIN_PASSWORD, SESSION_SECRET and the rest sign other things here
 // (sessions, candidate links) and must never double as a way in.
 // Checks a pass without using it up: the launch route makes the session first and uses the pass last (owner's 2A).
-async function checkPortalPass(token: string): Promise<{ id: string; expiresAt: Date } | null> {
+async function checkPortalPass(token: string): Promise<{ id: string; expiresAt: Date; sub: string } | null> {
   const secret = process.env.BHARATTECH_LAUNCH_SECRET;
   if (!secret) return null;
 
@@ -112,7 +112,8 @@ async function checkPortalPass(token: string): Promise<{ id: string; expiresAt: 
   try {
     ({ payload } = await jose.jwtVerify(token, new TextEncoder().encode(secret), {
       algorithms: ['HS256'],
-      requiredClaims: ['jti', 'iat', 'exp'],
+      // sub: whose pass it is (their Keycloak account), kept in the session and checked back with the portal
+      requiredClaims: ['jti', 'iat', 'exp', 'sub'],
       maxTokenAge: PORTAL_PASS_MAX_SECONDS,
       clockTolerance: CLOCK_TOLERANCE_SECONDS,
     }));
@@ -123,36 +124,39 @@ async function checkPortalPass(token: string): Promise<{ id: string; expiresAt: 
   if (payload.type !== PORTAL_PASS_TYPE || !isAdminRole(String(payload.role || ''))) return null;
   if (payload.exp! - payload.iat! > PORTAL_PASS_MAX_SECONDS) return null;
 
-  return { id: payload.jti!, expiresAt: new Date(payload.exp! * 1000) };
+  return { id: payload.jti!, expiresAt: new Date(payload.exp! * 1000), sub: payload.sub! };
 }
 
 // A Keycloak sign-in counts when this app's own Keycloak client got it (the login page's single sign-on check), so a
 // token another BharatTech app holds can't be replayed here.
-async function verifyKeycloakToken(token: string) {
+// Resolves with the signed-in person's Keycloak account, or null.
+async function verifyKeycloakToken(token: string): Promise<string | null> {
   const issuer = getKeycloakIssuer();
-  if (!issuer) return false;
+  if (!issuer) return null;
 
   try {
     const { payload } = await jose.jwtVerify(token, getKeycloakJwks(issuer), { issuer });
     const clientId = process.env.NEXT_PUBLIC_KEYCLOAK_CLIENT_ID || 'openinterviewer-client';
-    return payload.azp === clientId && hasAdminRole(payload);
+    return payload.azp === clientId && hasAdminRole(payload) && payload.sub ? payload.sub : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
 /**
- * A launch token that may open a session, or null. `use()` is called last, once the session is ready: for a portal
- * pass it records the pass as used and is true only the first time; a Keycloak sign-in has nothing to use up.
+ * A launch token that may open a session, or null, with whose it is and how it came. `use()` is called last, once the
+ * session is ready: for a portal pass it records the pass as used and is true only the first time; a Keycloak sign-in
+ * has nothing to use up.
  */
-export async function checkLaunchToken(token: string): Promise<{ use: () => Promise<boolean> } | null> {
+export async function checkLaunchToken(token: string): Promise<{ via: 'portal' | 'keycloak'; sub: string; use: () => Promise<boolean> } | null> {
   const cleanToken = token.trim();
   if (!cleanToken) return null;
 
   const pass = await checkPortalPass(cleanToken);
-  if (pass) return { use: () => claimLaunchPass(pass.id, pass.expiresAt) };
+  if (pass) return { via: 'portal', sub: pass.sub, use: () => claimLaunchPass(pass.id, pass.expiresAt) };
 
-  return (await verifyKeycloakToken(cleanToken)) ? { use: async () => true } : null;
+  const sub = await verifyKeycloakToken(cleanToken);
+  return sub ? { via: 'keycloak', sub, use: async () => true } : null;
 }
 
 export async function verifyLaunchToken(token: string) {

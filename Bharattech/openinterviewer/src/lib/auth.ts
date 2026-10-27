@@ -6,44 +6,91 @@ import { createHash } from 'crypto';
 import type { StudyConfig } from '@/types';
 
 const SESSION_COOKIE_NAME = 'research-auth';
-const SESSION_DURATION = 60 * 60 * 24 * 7; // 7 days in seconds
+// Security report 2026-10-28 leads 7 + 8 (owner's F6A): a working day, not 7 days.
+const SESSION_DURATION = 60 * 60 * 8;
+
+// How a researcher signed in: through the BharatTech portal's pass or Keycloak (both name the person), or with the
+// shared ADMIN_PASSWORD (names nobody).
+export type SessionOrigin = 'portal' | 'keycloak' | 'password';
 
 interface SessionPayload {
   type: 'session';
+  via: SessionOrigin;
+  sub?: string;
   iat: number;
   exp: number;
 }
 
-// Get the signing secret from environment
-// Uses SESSION_SECRET if available, falls back to ADMIN_PASSWORD
+// Only SESSION_SECRET signs sessions. It used to fall back to ADMIN_PASSWORD, so every launched admin's cookie was a
+// way to test guesses at the shared password offline; without it nobody gets a session.
 function getSecret(): Uint8Array {
-  const secret = process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD;
+  const secret = process.env.SESSION_SECRET;
   if (!secret) {
-    throw new Error('SESSION_SECRET or ADMIN_PASSWORD environment variable is required');
+    throw new Error('SESSION_SECRET environment variable is required');
   }
-
-  // Warn if using ADMIN_PASSWORD as session secret (less secure)
-  if (!process.env.SESSION_SECRET && process.env.NODE_ENV === 'production') {
-    console.warn(
-      '[Security] SESSION_SECRET not set - falling back to ADMIN_PASSWORD. ' +
-      'For better security, set a dedicated SESSION_SECRET environment variable.'
-    );
-  }
-
   return new TextEncoder().encode(secret);
 }
 
-// Create a signed session token
-export async function createSessionToken(): Promise<string> {
+/** A signed session: `sub` is the Keycloak account of a portal or Keycloak sign-in, none for the shared password. */
+export async function createSessionToken(origin: { via: SessionOrigin; sub?: string } = { via: 'password' }): Promise<string> {
   const secret = getSecret();
+  if (origin.via !== 'password' && !origin.sub) {
+    throw new Error('A portal or Keycloak session must say whose it is');
+  }
 
-  const token = await new jose.SignJWT({ type: 'session' })
+  let token = new jose.SignJWT({ type: 'session', via: origin.via })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime(`${SESSION_DURATION}s`)
-    .sign(secret);
+    .setExpirationTime(`${SESSION_DURATION}s`);
+  if (origin.sub) token = token.setSubject(origin.sub);
+  return token.sign(secret);
+}
 
-  return token;
+// What the portal backend last said about each person: asked at most once a minute, so blocking, removing, marking
+// as left or demoting someone ends their researcher access within a minute.
+const SESSION_CHECK_SECONDS = 60;
+const sessionChecks = new Map<string, { active: boolean; until: number }>();
+
+/** For tests: as if a minute has passed for everyone. */
+export function forgetSessionChecks() {
+  sessionChecks.clear();
+}
+
+// Asks the portal backend (POST /api/openinterviewer/session-check) whether this Keycloak account is still an active
+// Admin or Super Admin, with a one-minute check signed by the launch secret. No answer counts as no.
+async function stillResearcher(sub: string): Promise<boolean> {
+  const known = sessionChecks.get(sub);
+  if (known && known.until > Date.now()) return known.active;
+
+  const apiUrl = process.env.BHARATTECH_API_URL;
+  const launchSecret = process.env.BHARATTECH_LAUNCH_SECRET;
+  if (!apiUrl || !launchSecret) {
+    console.error('[Security] BHARATTECH_API_URL and BHARATTECH_LAUNCH_SECRET are needed to check portal sessions');
+    return false;
+  }
+
+  let active = false;
+  try {
+    const check = await new jose.SignJWT({ type: 'openinterviewer-session-check' })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setSubject(sub)
+      .setIssuedAt()
+      .setExpirationTime(`${SESSION_CHECK_SECONDS}s`)
+      .sign(new TextEncoder().encode(launchSecret));
+    const res = await fetch(new URL('/api/openinterviewer/session-check', apiUrl), {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${check}` },
+      signal: AbortSignal.timeout(5000),
+      cache: 'no-store',
+    });
+    active = res.ok && (await res.json())?.active === true;
+  } catch (error) {
+    console.error('Session check with the portal backend failed:', error instanceof Error ? error.message : error);
+    return false; // not remembered: the next request asks again
+  }
+
+  sessionChecks.set(sub, { active, until: Date.now() + SESSION_CHECK_SECONDS * 1000 });
+  return active;
 }
 
 // Verify a session token - returns true if valid
@@ -52,20 +99,19 @@ export async function verifySessionToken(token: string): Promise<boolean> {
     return false;
   }
 
+  let payload: jose.JWTPayload;
   try {
-    const secret = getSecret();
-    const { payload } = await jose.jwtVerify(token, secret);
-
-    // Check that it's a session token (not a participant token)
-    if (payload.type !== 'session') {
-      return false;
-    }
-
-    return true;
-  } catch (error) {
-    // Token invalid, expired, or tampered with
+    ({ payload } = await jose.jwtVerify(token, getSecret(), { algorithms: ['HS256'] }));
+  } catch {
+    // invalid, expired, tampered with, or no SESSION_SECRET to check it with
     return false;
   }
+
+  // Check that it's a session token (not a participant token), made since sessions say how they were opened
+  if (payload.type !== 'session') return false;
+  if (payload.via === 'password') return true;
+  // a portal or Keycloak session: only while that person is still an admin (an older session names nobody)
+  return typeof payload.sub === 'string' && payload.sub !== '' && stillResearcher(payload.sub);
 }
 
 // Cookie configuration for session token

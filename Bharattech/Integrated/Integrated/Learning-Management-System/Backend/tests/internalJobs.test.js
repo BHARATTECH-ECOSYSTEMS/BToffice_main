@@ -505,3 +505,19 @@ test("the welcome email never prints 'undefined' for a missing Employee ID", asy
   for (const part of [m.text, m.html]) assert.ok(!part.includes("undefined"), part);
   assert.ok(m.text.includes(neha.email), "the work email is still there");
 });
+
+test("someone who left while blocked can't rejoin: the move is refused and their sign-in stays off", async () => {
+  // security report 2026-10-28 lead 10 (owner's A2)
+  const p = await people();
+  const job = await postJob(p);
+  const neha = await member({ personalEmail: "neha.home@example.net", isBanned: true });
+  const app = await toChecking(p, job, neha);
+  kc.updates = [];
+
+  const res = await move(p.admin, job, app, "checking", "rejoined");
+  assert.equal(res.status, 409);
+  assert.match(res.body.message, /blocked/i);
+  assert.deepEqual(kc.updates, []);
+  assert.equal((await JobApplication.findById(app.id).lean()).stage, "checking");
+  assert.equal((await User.findById(neha._id).lean()).isDeleted, true);
+});

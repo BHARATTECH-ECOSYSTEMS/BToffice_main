@@ -1,10 +1,10 @@
 const { test, before, beforeEach, afterEach, after } = require("node:test");
 const assert = require("node:assert/strict");
 
-// Review 2026-10-26 M8 (owner's 5A): someone blocked (or who left) typing their right password was told "details don't
-// match", so they kept retrying into the lockout. Keycloak says "Account disabled" only when the password is right (a
-// wrong one, or an unknown name, gets "Invalid user credentials": checked on the laptop's Keycloak), so saying the
-// sign-in is switched off tells nothing to someone guessing.
+// Review 2026-10-26 M8 (owner's 5A) told a switched-off account so, trusting Keycloak to say "Account disabled" only for
+// a right password. Security report 2026-10-28 lead 3 (owner's F3A): Keycloak 24.0.5, the company's, says it for a WRONG
+// password too (checked on the laptop's Docker Keycloak 24.0.5), so anyone could find who is blocked or has left. Sign-in
+// now gives a switched-off account the same answer as a wrong password.
 
 const { installFakeKeycloakAdmin } = require("./helpers/fakeKeycloakAdmin");
 const realm = installFakeKeycloakAdmin();
@@ -43,12 +43,14 @@ const signIn = async (password = "Right-Pass-1") => {
   return reply;
 };
 
-test("the right password on a switched-off account says the sign-in is switched off", async () => {
+test("a switched-off account gets the same answer as a wrong password, whatever password was typed", async () => {
+  fakeTokenEndpoint("wrong");
+  const wrong = await signIn("not-it");
   fakeTokenEndpoint("disabled");
-  const reply = await signIn();
-  assert.equal(reply.status, 403);
-  assert.equal(reply.body.code, "switched-off");
-  assert.equal(reply.body.message, "Your sign-in is switched off. Ask an admin if you think this is a mistake.");
+  const switchedOff = await signIn();
+
+  assert.equal(switchedOff.status, 401);
+  assert.deepEqual(switchedOff.body, wrong.body);
 });
 
 test("a wrong password still gets the usual answer", async () => {

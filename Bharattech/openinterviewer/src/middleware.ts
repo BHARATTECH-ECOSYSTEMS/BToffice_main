@@ -13,23 +13,19 @@ async function verifySession(token: string, request: NextRequest): Promise<boole
     return false;
   }
 
-  // Use SESSION_SECRET if available, fall back to ADMIN_PASSWORD
-  // This must match the secret used in src/lib/auth.ts
-  const secret = process.env.SESSION_SECRET || process.env.ADMIN_PASSWORD;
+  // Only SESSION_SECRET signs sessions (src/lib/auth.ts); it no longer falls back to ADMIN_PASSWORD
+  const secret = process.env.SESSION_SECRET;
   if (!secret) {
     return false;
   }
 
   try {
     const secretKey = new TextEncoder().encode(secret);
-    const { payload } = await jose.jwtVerify(token, secretKey);
+    const { payload } = await jose.jwtVerify(token, secretKey, { algorithms: ['HS256'] });
 
-    // Check that it's a session token
-    if (payload.type !== 'session') {
-      return false;
-    }
-
-    return true;
+    // A session that says how it was opened. Whether a named researcher is still an admin is asked by the API routes
+    // (verifySessionToken), which every page loads its data from: the edge runtime here keeps no answers between calls.
+    return payload.type === 'session' && ['portal', 'keycloak', 'password'].includes(String(payload.via));
   } catch (error) {
     // Token invalid, expired, or tampered with
     return false;

@@ -26,7 +26,8 @@ async function portalPass({ signWith = 'test-launch-secret', type = 'bharattech-
     .setIssuedAt(issuedAt)
     .setExpirationTime(issuedAt + lifeSeconds);
   if (id) pass = pass.setJti(id);
-  return pass.sign(encode(signWith));
+  // whose pass it is (since 2026-10-28 a pass must say so; tests/sessions.test.cjs)
+  return pass.setSubject('kc-test-admin').sign(encode(signWith));
 }
 
 before(emptyDatabase);
@@ -111,6 +112,7 @@ test("a Keycloak sign-in counts only from this app's own client, from the config
   const token = ({ azp = 'openinterviewer-client', roles = ['Admin'], issuer = `${keycloak}/realms/bharattech` } = {}) =>
     new jose.SignJWT({ azp, realm_access: { roles } })
       .setProtectedHeader({ alg: 'RS256', kid: 'test-key' })
+      .setSubject('kc-test-admin')
       .setIssuer(issuer)
       .setIssuedAt()
       .setExpirationTime('5m')

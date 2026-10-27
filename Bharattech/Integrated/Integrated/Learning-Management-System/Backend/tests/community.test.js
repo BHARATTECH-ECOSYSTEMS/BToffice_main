@@ -503,3 +503,42 @@ test("someone who joined early moves to the members wall when they leave, and of
   assert.deepEqual(removed.body, { personalEmail: "" });
   assert.deepEqual(await joiners(p.subadmin), []);
 });
+
+/* ── Blocked people (security report 2026-10-28 lead 10, owner's A2) ── */
+
+test("a blocked person can't be marked as left: they're unblocked in People first, and nothing changes", async () => {
+  const p = await people();
+  const blocked = await User.create(userFields({ role: "Employee", stream: "tech", isBanned: true }));
+
+  const res = await leave(p.admin, blocked);
+  assert.equal(res.status, 409);
+  assert.match(res.body.message, /unblock/i);
+  assert.equal(kc.calls, 0);
+  const saved = await User.findById(blocked._id).lean();
+  assert.deepEqual([saved.isDeleted, saved.leftOn, saved.isBanned], [false, undefined, true]);
+});
+
+test("someone who left while blocked isn't brought back, and their sign-in stays off", async () => {
+  const p = await people();
+  const former = await formerColleague({ isBanned: true });
+
+  const res = await bringBack(p.superadmin, former);
+  assert.equal(res.status, 409);
+  assert.match(res.body.message, /blocked/i);
+  assert.deepEqual(kc.updates, []);
+  const saved = await User.findById(former._id).lean();
+  assert.deepEqual([saved.isDeleted, saved.leftOn], [true, former.leftOn]);
+});
+
+test("when their record can't be saved after the sign-in was switched back on, the sign-in is switched off again", async (t) => {
+  const p = await people();
+  const former = await formerColleague();
+  t.mock.method(User, "findOneAndUpdate", async () => {
+    throw new Error("connection lost");
+  });
+
+  assert.equal((await bringBack(p.admin, former)).status, 500);
+  t.mock.restoreAll();
+  assert.deepEqual(kc.updates.map(([, rep]) => rep.enabled), [true, false]);
+  assert.equal((await User.findById(former._id).lean()).isDeleted, true);
+});
