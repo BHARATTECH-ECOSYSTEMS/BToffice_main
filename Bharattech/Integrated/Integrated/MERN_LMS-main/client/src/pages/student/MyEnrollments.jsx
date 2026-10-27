@@ -5,6 +5,8 @@ import { primaryButton } from "../../components/students/ui";
 import { useCourses } from "../../context/CourseContext";
 import { useMyLearning } from "../../hooks/useMyLearning";
 import { withCovers } from "../../utils/courseHelpers";
+import { staggerDelay } from "../../utils/entrance";
+import { useFirstShow } from "../../hooks/useFirstShow";
 
 // Your courses, unfinished first, from one request (owner's 4A, 2026-10-26): it used to ask for each course's progress
 // separately and showed a table header over "Check back later!", though only you can enroll yourself.
@@ -13,6 +15,7 @@ function MyEnrollments() {
   const mine = useMyLearning();
   const courses = withCovers(mine.courses, allCourses);
   const finished = courses.filter((c) => c.completed).length;
+  const rowsFirst = useFirstShow("my-courses", courses.length > 0);
 
   return (
     <>
@@ -43,8 +46,8 @@ function MyEnrollments() {
               {finished ? `, ${finished} finished` : ""}.
             </p>
             <ul className="mt-8 flex flex-col gap-3">
-              {courses.map((course) => (
-                <LearningRow key={course.courseId} course={course} />
+              {courses.map((course, i) => (
+                <LearningRow key={course.courseId} course={course} entrance={rowsFirst ? staggerDelay(i) : undefined} />
               ))}
             </ul>
           </>

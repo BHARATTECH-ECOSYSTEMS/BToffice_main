@@ -7,7 +7,7 @@ function ProgressBar({ percent, label, className = "" }) {
 
   return (
     <div
-      className={`h-1.5 w-full overflow-hidden rounded-full bg-tangerine-wash ${className}`}
+      className={`h-2 w-full overflow-hidden rounded-full bg-ink/[0.07] ${className}`}
       role="progressbar"
       aria-label={label}
       aria-valuemin={0}

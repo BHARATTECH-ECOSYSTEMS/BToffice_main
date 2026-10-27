@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react";
+import { useCallback, useLayoutEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, PlayCircle, Check, Star } from "lucide-react";
-import { primaryButton } from "../../components/students/ui";
+import { ArrowLeft, ChevronDown, Check, Star } from "lucide-react";
+import { metaList, primaryButton } from "../../components/students/ui";
 import { useAppConfig } from "../../context/AppContext";
 import { safeDescription } from "../../utils/safeDescription";
 
@@ -10,6 +10,7 @@ import {
   enrolledCountOf,
   calculateNumOfLectures,
   excerptOf,
+  lessonNumberStarts,
   lessonsLabel,
   minutesLabel,
   ratingSummary,
@@ -46,6 +47,11 @@ function CourseDetails() {
   const [enrolling, setEnrolling] = useState(false);
   const [playerData, setPlayerData] = useState(null);
   const [showFullDesc, setShowFullDesc] = useState(false);
+
+  // a course opens at its top; before the new page is drawn, so a card's cover morph lands in the right place
+  useLayoutEffect(() => {
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [id]);
 
   const isAlreadyEnrolled = Boolean(enrolledCourses?.some((c) => String(c._id) === String(id)));
 
@@ -91,6 +97,7 @@ function CourseDetails() {
   const length = minutesLabel(minutesOf(courseData.courseContent.flatMap((chapter) => chapter.chapterContent || [])));
   const excerpt = excerptOf(courseData.courseDescription, EXCERPT);
   const longDescription = excerptOf(courseData.courseDescription, Infinity).length > EXCERPT;
+  const numberStarts = lessonNumberStarts(courseData.courseContent);
 
   return (
     <>
@@ -103,24 +110,24 @@ function CourseDetails() {
           <h1 className="mt-3 font-display text-[40px] font-bold leading-[1.08] tracking-[-0.02em] text-ink">
             {courseData.courseTitle}
           </h1>
-          <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[15px] text-muted">
-            <span>
+          <ul className={`mt-4 text-[15px] tabular-nums text-muted ${metaList}`}>
+            <li>
               By <span className="font-medium text-ink">{courseData.educator?.name || "Bharattech"}</span>
-            </span>
-            <span>{lessonsLabel(lectures)}</span>
-            {length && <span>{length}</span>}
-            <span>
+            </li>
+            <li>{lessonsLabel(lectures)}</li>
+            {length && <li>{length}</li>}
+            <li>
               {learners} {learners === 1 ? "learner" : "learners"}
-            </span>
+            </li>
             {rating && (
-              <span className="inline-flex items-center gap-1">
+              <li className="inline-flex items-center gap-1">
                 <Star className="h-4 w-4 fill-tangerine text-tangerine" aria-hidden="true" />
                 {rating.average} from {rating.count} {rating.count === 1 ? "rating" : "ratings"}
-              </span>
+              </li>
             )}
-          </p>
+          </ul>
 
-          <section aria-labelledby="about" className="mt-8 max-w-[68ch]">
+          <section aria-labelledby="about" className="mt-8 max-w-[66ch]">
             <h2 id="about" className="sr-only">
               About this course
             </h2>
@@ -141,11 +148,11 @@ function CourseDetails() {
             )}
           </section>
 
-          <section aria-labelledby="content" className="mt-10">
+          <section aria-labelledby="content" className="mt-12">
             <h2 id="content" className="font-display text-[22px] font-semibold tracking-[-0.01em] text-ink">
               What you'll watch
             </h2>
-            <ul className="mt-4 overflow-hidden rounded-2xl border border-line bg-card">
+            <ul className="mt-5 overflow-hidden rounded-2xl border border-line bg-card">
               {courseData.courseContent.map((chapter, index) => {
                 const isOpen = openSections.has(index);
                 const chapterLectures = chapter.chapterContent || [];
@@ -161,16 +168,17 @@ function CourseDetails() {
                         <ChevronDown className={`h-4 w-4 shrink-0 text-muted transition-transform duration-200 ease-snappy ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
                         <span className="font-semibold text-ink">{chapter.chapterTitle}</span>
                       </span>
-                      <span className="shrink-0 text-[13px] text-muted">
+                      <span className="shrink-0 text-[13px] tabular-nums text-muted">
                         {lessonsLabel(chapterLectures.length)}
-                        {minutesOf(chapterLectures) ? `, ${minutesLabel(minutesOf(chapterLectures))}` : ""}
+                        {minutesOf(chapterLectures) ? ` · ${minutesLabel(minutesOf(chapterLectures))}` : ""}
                       </span>
                     </button>
                     {isOpen && (
                       <ul className="pb-3 motion-safe:animate-chapter-in">
                         {chapterLectures.map((lecture, i) => (
-                          <li key={i} className="flex items-center gap-3 px-5 py-2 pl-12 text-[15px] text-ink-soft">
-                            <PlayCircle className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+                          // the number sits under the chapter's arrow, so lesson titles line up with the chapter title
+                          <li key={i} className="flex items-center gap-3 px-5 py-2.5 text-[15px] text-ink-soft">
+                            <span className="w-4 shrink-0 text-right text-[13px] tabular-nums text-muted">{numberStarts[index] + i}</span>
                             <span className="min-w-0 flex-1">{lecture.lectureTitle}</span>
                             {lecture.isPreviewFree && (
                               <button
@@ -181,7 +189,7 @@ function CourseDetails() {
                                 Preview
                               </button>
                             )}
-                            <span className="shrink-0 text-[13px] text-muted">{minutesLabel(lecture.lectureDuration)}</span>
+                            <span className="w-14 shrink-0 text-right text-[13px] tabular-nums text-muted">{minutesLabel(lecture.lectureDuration)}</span>
                           </li>
                         ))}
                       </ul>
@@ -195,7 +203,8 @@ function CourseDetails() {
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="overflow-hidden rounded-2xl border border-line bg-card">
-            <div className="aspect-video bg-ink/5">
+            {/* a clicked course card's cover grows into this one (hooks/useCoverMorph.js) */}
+            <div data-course-cover className="aspect-video overflow-hidden rounded-t-2xl bg-ink/5" style={{ viewTransitionName: "course-cover" }}>
               <img className="h-full w-full object-cover" src={courseData.courseThumbnail} alt="" />
             </div>
             <div className="p-5">

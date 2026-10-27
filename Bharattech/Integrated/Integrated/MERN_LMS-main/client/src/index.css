@@ -78,6 +78,22 @@ html.learn-page {
   scrollbar-color: rgb(20 19 15 / 0.28) transparent;
 }
 
+/* a clicked course card's cover grows into the course page's cover (hooks/useCoverMorph.js); the rest of the page
+   crossfades quickly. Reduced motion never starts the morph. */
+::view-transition-group(course-cover) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
+}
+/* both covers have rounded top corners; the moving picture keeps them */
+::view-transition-image-pair(course-cover) {
+  overflow: hidden;
+  border-radius: 16px 16px 0 0;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+}
+
 /* the course description editor (Quill) inside the Add a course form: one frame, the form's own */
 .learn .course-editor .ql-toolbar.ql-snow {
   border: 0;

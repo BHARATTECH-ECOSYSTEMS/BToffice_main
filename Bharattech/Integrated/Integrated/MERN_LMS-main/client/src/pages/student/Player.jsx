@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, ChevronDown, CheckCircle2, PlayCircle } from "lucide-react";
+import { ArrowLeft, ChevronDown, CheckCircle2 } from "lucide-react";
 
 import { useCourseData } from "../../hooks/useCourseData";
 import { useCourseProgress } from "../../hooks/useCourseProgress";
-import { lessonsLabel, minutesLabel, nextLectureAfter } from "../../utils/courseHelpers";
+import { lessonNumberStarts, lessonsLabel, minutesLabel, nextLectureAfter, upNextLecture } from "../../utils/courseHelpers";
+import { metaList, primaryButton } from "../../components/students/ui";
 import { useAuth } from "../../context/AuthContext";
 import { useAppConfig } from "../../context/AppContext";
 
@@ -64,6 +65,9 @@ function Player() {
   const percent = lectures.length ? Math.round((done / lectures.length) * 100) : 0;
   // the lesson the video window offers once this one is marked watched (owner's refinement A)
   const next = playerData ? nextLectureAfter(courseData, playerData.lectureId) : null;
+  // the side card's "Up next" (owner's 4A, 2026-10-27): the first lesson you haven't watched yet
+  const upNext = upNextLecture(courseData, completed);
+  const numberStarts = lessonNumberStarts(courseData.courseContent);
 
   return (
     <>
@@ -76,14 +80,14 @@ function Player() {
           <h1 className="mt-3 font-display text-[40px] font-bold leading-[1.08] tracking-[-0.02em] text-ink">
             {courseData.courseTitle}
           </h1>
-          <div className="mt-4 flex items-center gap-3">
-            <ProgressBar percent={percent} label="Course progress" className="max-w-sm" />
+          <div className="mt-5 flex items-center gap-4">
+            <ProgressBar percent={percent} label="Course progress" className="max-w-md flex-1" />
             <p className="shrink-0 text-sm tabular-nums text-muted">
               {lectures.length && done === lectures.length ? "Completed" : `${done} of ${lessonsLabel(lectures.length)} watched`}
             </p>
           </div>
 
-          <ul className="mt-8 overflow-hidden rounded-2xl border border-line bg-card">
+          <ul className="mt-10 overflow-hidden rounded-2xl border border-line bg-card">
             {courseData.courseContent.map((chapter, chapterIndex) => {
               const isOpen = openSections.has(chapterIndex);
               return (
@@ -98,19 +102,23 @@ function Player() {
                       <ChevronDown className={`h-4 w-4 shrink-0 text-muted transition-transform duration-200 ease-snappy ${isOpen ? "rotate-180" : ""}`} aria-hidden="true" />
                       <span className="font-semibold text-ink">{chapter.chapterTitle}</span>
                     </span>
-                    <span className="shrink-0 text-[13px] text-muted">{lessonsLabel(chapter.chapterContent?.length || 0)}</span>
+                    <span className="shrink-0 text-[13px] tabular-nums text-muted">{lessonsLabel(chapter.chapterContent?.length || 0)}</span>
                   </button>
                   {isOpen && (
                     <ul className="pb-3 motion-safe:animate-chapter-in">
                       {chapter.chapterContent.map((lecture, lectureIndex) => {
                         const watched = completed.includes(lecture.lectureId);
-                        const Icon = watched ? CheckCircle2 : PlayCircle;
+                        // the number (a tick once watched) sits under the chapter's arrow, so titles line up
                         const row = (
                           <>
-                            <Icon className={`h-4 w-4 shrink-0 ${watched ? "text-tangerine" : "text-muted"}`} aria-hidden="true" />
+                            {watched ? (
+                              <CheckCircle2 className="h-4 w-4 shrink-0 text-tangerine" aria-hidden="true" />
+                            ) : (
+                              <span className="w-4 shrink-0 text-right text-[13px] tabular-nums text-muted">{numberStarts[chapterIndex] + lectureIndex}</span>
+                            )}
                             <span className="min-w-0 flex-1 truncate">{lecture.lectureTitle}</span>
                             {watched && <span className="sr-only">(watched)</span>}
-                            <span className="shrink-0 text-[13px] text-muted">{minutesLabel(lecture.lectureDuration)}</span>
+                            <span className="w-14 shrink-0 text-right text-[13px] tabular-nums text-muted">{minutesLabel(lecture.lectureDuration)}</span>
                           </>
                         );
                         return (
@@ -119,12 +127,12 @@ function Player() {
                               <button
                                 type="button"
                                 onClick={() => handlePlayLecture(lecture, chapterIndex, lectureIndex)}
-                                className="flex w-full items-center gap-3 px-5 py-2 pl-12 text-left text-[15px] text-ink-soft transition-colors duration-150 ease-snappy mhover:bg-act-wash mhover:text-ink"
+                                className="flex w-full items-center gap-3 px-5 py-2.5 text-left text-[15px] text-ink-soft transition-colors duration-150 ease-snappy mhover:bg-act-wash mhover:text-ink"
                               >
                                 {row}
                               </button>
                             ) : (
-                              <div className="flex items-center gap-3 px-5 py-2 pl-12 text-[15px] text-muted">{row}</div>
+                              <div className="flex items-center gap-3 px-5 py-2.5 text-[15px] text-muted">{row}</div>
                             )}
                           </li>
                         );
@@ -139,11 +147,33 @@ function Player() {
 
         <aside className="lg:sticky lg:top-24 lg:self-start">
           <div className="overflow-hidden rounded-2xl border border-line bg-card">
-            <div className="aspect-video bg-ink/5">
+            <div className="aspect-video overflow-hidden rounded-t-2xl bg-ink/5">
               <img src={courseData.courseThumbnail} alt="" className="h-full w-full object-cover" />
             </div>
             <div className="p-5">
-              <p className="text-[15px] text-ink-soft">Pick a lesson from the list to watch it. Mark it as watched when you're done, and your progress is saved.</p>
+              {upNext ? (
+                <>
+                  <h2 className="text-sm font-semibold text-ink">Up next</h2>
+                  <p className="mt-2 text-[17px] font-semibold leading-[1.3] text-ink">{upNext.lecture.lectureTitle}</p>
+                  <ul className={`mt-1.5 text-[13px] tabular-nums text-muted ${metaList}`}>
+                    <li>Lesson {numberStarts[upNext.chapterIndex] + upNext.lectureIndex}</li>
+                    {minutesLabel(upNext.lecture.lectureDuration) && <li>{minutesLabel(upNext.lecture.lectureDuration)}</li>}
+                  </ul>
+                  <button
+                    type="button"
+                    onClick={() => handlePlayLecture(upNext.lecture, upNext.chapterIndex, upNext.lectureIndex)}
+                    className={`mt-4 w-full py-3 text-[15px] ${primaryButton}`}
+                  >
+                    {done ? "Play next lesson" : "Start the course"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <h2 className="text-sm font-semibold text-ink">You've watched every lesson</h2>
+                  <p className="mt-2 text-[15px] text-ink-soft">Pick any lesson from the list to watch it again.</p>
+                </>
+              )}
+              <p className="mt-3 text-[13px] text-muted">Mark each lesson as watched when you finish it, and your progress is saved.</p>
               <div className="mt-5 border-t border-line pt-5">
                 <h2 className="text-sm font-semibold text-ink">Rate this course</h2>
                 <div className="mt-2">

@@ -8,6 +8,8 @@ import { useAuth } from "../../context/AuthContext";
 import { useCourses } from "../../context/CourseContext";
 import { useMyLearning } from "../../hooks/useMyLearning";
 import { continueLearning } from "../../utils/courseHelpers";
+import { staggerDelay } from "../../utils/entrance";
+import { useFirstShow } from "../../hooks/useFirstShow";
 import Educator from "../educator/Educator";
 
 // The first page after Learning in the portal (owner's 3A, 2026-10-26): your own courses first, then everything on
@@ -16,6 +18,8 @@ function Home() {
   const { viewRole, loading } = useAuth();
   const { allCourses, loading: coursesLoading, error, refetchCourses } = useCourses();
   const mine = useMyLearning();
+  const cardsFirst = useFirstShow("home-courses", !coursesLoading && allCourses.length > 0);
+  const rowsFirst = useFirstShow("home-continue", mine.courses.length > 0);
 
   if (loading) return null;
 
@@ -46,9 +50,9 @@ function Home() {
             <h2 id="continue" className="font-display text-[22px] font-semibold tracking-[-0.01em] text-ink">
               Continue learning
             </h2>
-            <ul className="mt-4 flex flex-col gap-3">
-              {unfinished.slice(0, 3).map((course) => (
-                <LearningRow key={course.courseId} course={course} />
+            <ul className="mt-5 flex flex-col gap-3">
+              {unfinished.slice(0, 3).map((course, i) => (
+                <LearningRow key={course.courseId} course={course} entrance={rowsFirst ? staggerDelay(i) : undefined} />
               ))}
             </ul>
           </section>
@@ -68,12 +72,17 @@ function Home() {
           ) : !coursesLoading && allCourses.length === 0 ? (
             <p className="mt-4 text-muted">No courses have been published yet.</p>
           ) : (
-            <div className="mt-4 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5">
+            <div className="mt-5 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6">
               {coursesLoading ? (
                 <CourseGridPlaceholder />
               ) : (
-                allCourses.map((course) => (
-                  <CourseCard key={course._id} course={course} enrolled={enrolledIds.has(String(course._id))} />
+                allCourses.map((course, i) => (
+                  <CourseCard
+                    key={course._id}
+                    course={course}
+                    enrolled={enrolledIds.has(String(course._id))}
+                    entrance={cardsFirst ? staggerDelay(i) : undefined}
+                  />
                 ))
               )}
             </div>

@@ -45,9 +45,20 @@ export default {
           from: { opacity: "0", transform: "translateY(-4px)" },
           to: { opacity: "1", transform: "translateY(0)" },
         },
+        // course cards and rows on a list's first show (owner's 1A, 2026-10-27); `backwards` keeps a waiting card hidden
+        "card-in": {
+          from: { opacity: "0", transform: "translateY(8px)" },
+          to: { opacity: "1", transform: "none" },
+        },
+        "card-fade": {
+          from: { opacity: "0" },
+          to: { opacity: "1" },
+        },
       },
       animation: {
         "chapter-in": "chapter-in 200ms cubic-bezier(0.23, 1, 0.32, 1)",
+        "card-in": "card-in 250ms cubic-bezier(0.23, 1, 0.32, 1) backwards",
+        "card-fade": "card-fade 200ms ease backwards",
       },
     },
   },

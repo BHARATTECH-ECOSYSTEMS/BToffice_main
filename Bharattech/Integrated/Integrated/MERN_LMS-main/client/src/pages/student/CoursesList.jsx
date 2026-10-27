@@ -6,12 +6,16 @@ import Footer from "../../components/students/Footer";
 import { useCourses } from "../../context/CourseContext";
 import { useMyLearning } from "../../hooks/useMyLearning";
 import { useEffect } from "react";
+import { staggerDelay } from "../../utils/entrance";
+import { useFirstShow } from "../../hooks/useFirstShow";
 
 function CoursesList() {
   const { query } = useParams();
   const { allCourses, loading } = useCourses();
   const mine = useMyLearning();
   const enrolledIds = new Set(mine.courses.map((c) => c.courseId));
+  // typing a search narrows the list in place: only the first show animates
+  const cardsFirst = useFirstShow("all-courses", !loading && allCourses.length > 0);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -48,11 +52,18 @@ function CoursesList() {
         {!loading && shown.length === 0 ? (
           <p className="mt-10 text-muted">No course title has those words. Try a shorter search.</p>
         ) : (
-          <div className="mt-10 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-5">
+          <div className="mt-10 grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-6">
             {loading ? (
               <CourseGridPlaceholder />
             ) : (
-              shown.map((course) => <CourseCard key={course._id} course={course} enrolled={enrolledIds.has(String(course._id))} />)
+              shown.map((course, i) => (
+                <CourseCard
+                  key={course._id}
+                  course={course}
+                  enrolled={enrolledIds.has(String(course._id))}
+                  entrance={cardsFirst ? staggerDelay(i) : undefined}
+                />
+              ))
             )}
           </div>
         )}

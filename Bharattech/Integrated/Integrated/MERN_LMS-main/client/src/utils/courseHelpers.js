@@ -88,6 +88,30 @@ export function nextLectureAfter(course, lectureId) {
   return all.slice(at + 1).find((item) => item.lecture.lectureUrl) || null;
 }
 
+/**
+ * The player's "Up next" (owner's 4A, 2026-10-27): the first playable lesson you haven't watched, earlier skipped
+ * ones included, as { lecture, chapterIndex, lectureIndex }; null once every playable lesson is watched.
+ */
+export function upNextLecture(course, completedIds) {
+  const watched = new Set(completedIds || []);
+  for (const [chapterIndex, chapter] of (course?.courseContent || []).entries()) {
+    for (const [lectureIndex, lecture] of (chapter.chapterContent || []).entries()) {
+      if (lecture.lectureUrl && !watched.has(lecture.lectureId)) return { lecture, chapterIndex, lectureIndex };
+    }
+  }
+  return null;
+}
+
+/** Lessons are numbered through the whole course: the number each chapter's first lesson gets. */
+export function lessonNumberStarts(courseContent) {
+  let next = 1;
+  return (courseContent || []).map((chapter) => {
+    const start = next;
+    next += chapter.chapterContent?.length || 0;
+    return start;
+  });
+}
+
 /** The signed-in person's own rating of a course (the user from the sign-in carries `id`), or 0. */
 export function ownRating(course, user) {
   if (!user?.id) return 0;
