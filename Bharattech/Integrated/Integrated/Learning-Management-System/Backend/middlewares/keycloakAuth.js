@@ -3,6 +3,7 @@ const jwksClient = require("jwks-rsa");
 const User = require("../models/User");
 const { freeUsernameFor } = require("../utils/takenNames");
 const { createKeyKeeper } = require("../utils/keycloakKeys");
+const { isProduction } = require("../utils/runtime");
 
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 const KEYCLOAK_BASE_URL =
@@ -11,7 +12,6 @@ const KEYCLOAK_BASE_URL =
   "http://localhost:8080";
 // Read at call time (not module load) so configuration and tests take effect without re-importing.
 const demoAuthEnabled = () => process.env.AUTH_MODE === "demo";
-const isProduction = () => process.env.NODE_ENV === "production";
 const keycloakClientId = () => process.env.KEYCLOAK_CLIENT_ID;
 
 /** A token is accepted only when it was issued for this app's Keycloak client (its azp/aud). Skipped, so it can't
@@ -35,6 +35,12 @@ const assertAuthConfig = () => {
   // JWT_SECRET is no longer needed: local tokens aren't accepted since step 17
   const adminPassword = process.env.KEYCLOAK_ADMIN_PASSWORD;
   if (!adminPassword || adminPassword === "admin") throw new Error("KEYCLOAK_ADMIN_PASSWORD must be set to a real password in production.");
+  // without it a token issued for any other app of the realm is accepted (audienceAllowed)
+  if (!keycloakClientId()) throw new Error("KEYCLOAK_CLIENT_ID must be set in production.");
+  // with the interview tool set up, opening it fails for everyone without the launch secret (utils/openInterviewerToken.js)
+  if (process.env.OPEN_INTERVIEWER_URL && !process.env.BHARATTECH_LAUNCH_SECRET) {
+    throw new Error("BHARATTECH_LAUNCH_SECRET must be set in production when OPEN_INTERVIEWER_URL is.");
+  }
 };
 
 // The library only fetches Keycloak's key list; the keeper decides when (utils/keycloakKeys.js), so made-up tokens

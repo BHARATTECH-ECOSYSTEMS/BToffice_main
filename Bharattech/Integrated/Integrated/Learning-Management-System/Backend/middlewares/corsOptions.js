@@ -3,7 +3,7 @@
 // working. A request with no Origin (server to server, or same-origin) is always allowed. The API authenticates with
 // a Bearer token, not a cookie, so credentials stay off.
 
-const isProduction = () => process.env.NODE_ENV === "production";
+const { isProduction } = require("../utils/runtime");
 
 const allowedOrigins = () =>
   [process.env.FRONTEND_URL, ...(process.env.ALLOWED_ORIGINS || "").split(",")]

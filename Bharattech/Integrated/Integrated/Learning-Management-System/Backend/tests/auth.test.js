@@ -183,6 +183,7 @@ test("the config guard is happy with safe production settings, and never complai
   // no local tokens any more (step 17), so JWT_SECRET isn't needed to start
   delete process.env.JWT_SECRET;
   process.env.KEYCLOAK_ADMIN_PASSWORD = "a-real-password";
+  process.env.KEYCLOAK_CLIENT_ID = "lms-client";
   assert.doesNotThrow(() => assertAuthConfig());
   process.env.NODE_ENV = "development";
   delete process.env.JWT_SECRET;
