@@ -70,6 +70,37 @@
   border-radius: 14px;
   box-shadow: 0 12px 32px rgb(20 19 15 / 0.12);
 }
+/* at the top centre, just under the sticky navbar (72 px), so they never cover a button (owner's 2A, 2026-10-27);
+   phones too, where Toastify's own rule would put them over the navbar */
+.learn .Toastify__toast-container--top-center {
+  top: 84px;
+}
+/* a finger-sized tap area on phones (owner's L2A, 2026-10-27): at least 44 x 44 px, a see-through layer centred on the
+   control, so nothing on the page moves */
+@media (max-width: 767px) {
+  /* the toast's close button is placed by Toastify already, which the layer needs too */
+  .learn .tap {
+    position: relative;
+  }
+  .learn .tap::after,
+  .learn .Toastify__close-button::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+}
+@media (max-width: 480px) {
+  /* Toastify runs them edge to edge on phones; keep the page's own 12 px margins */
+  .learn .Toastify__toast-container--top-center {
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+}
 
 /* the company CSS hides every scrollbar; on learner pages the page's own comes back (App.jsx sets the class), so
    you can see how long a page is. The standard properties win over the ::-webkit-scrollbar rule. */

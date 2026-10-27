@@ -14,7 +14,7 @@ function Rating({ initialRating, onRate }) {
     }
   }, [initialRating]);
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-0.5 max-md:gap-5">
       {Array.from({ length: 5 }).map((_, index) => {
         const starValue = index + 1;
         return (
@@ -23,7 +23,7 @@ function Rating({ initialRating, onRate }) {
             key={index}
             aria-label={`Rate ${starValue} out of 5`}
             aria-pressed={starValue === rating}
-            className={`rounded px-0.5 text-2xl leading-none transition-colors duration-150 ease-snappy ${starValue <= rating ? "text-tangerine" : "text-ink/20 mhover:text-tangerine/60"}`}
+            className={`tap rounded px-0.5 text-2xl leading-none transition-colors duration-150 ease-snappy ${starValue <= rating ? "text-tangerine" : "text-ink/20 mhover:text-tangerine/60"}`}
             onClick={() => handleRating(starValue)}
           >
             &#9733;

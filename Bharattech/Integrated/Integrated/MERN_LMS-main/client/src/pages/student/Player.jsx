@@ -72,22 +72,26 @@ function Player() {
   return (
     <>
       <main className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-10 px-6 pb-20 pt-10 text-left lg:grid-cols-[1fr_340px]">
-        <div className="min-w-0">
-          <Link to="/my-enrollments" className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors duration-150 ease-snappy mhover:text-ink">
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            My courses
-          </Link>
-          <h1 className="mt-3 font-display text-[40px] font-bold leading-[1.08] tracking-[-0.02em] text-ink">
-            {courseData.courseTitle}
-          </h1>
-          <div className="mt-5 flex items-center gap-4">
-            <ProgressBar percent={percent} label="Course progress" className="max-w-md flex-1" />
-            <p className="shrink-0 text-sm tabular-nums text-muted">
-              {lectures.length && done === lectures.length ? "Completed" : `${done} of ${lessonsLabel(lectures.length)} watched`}
-            </p>
+        {/* on phones its parts sit in the page's own column, so the Up next card can come right after the title
+            (owner's L3A, 2026-10-27); from 1024 px it is the left column as before */}
+        <div className="contents lg:block lg:min-w-0">
+          <div className="order-1 lg:order-none">
+            <Link to="/my-enrollments" className="tap inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors duration-150 ease-snappy mhover:text-ink">
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+              My courses
+            </Link>
+            <h1 className="mt-3 font-display text-[40px] font-bold leading-[1.08] tracking-[-0.02em] text-ink">
+              {courseData.courseTitle}
+            </h1>
+            <div className="mt-5 flex items-center gap-4">
+              <ProgressBar percent={percent} label="Course progress" className="max-w-md flex-1" />
+              <p className="shrink-0 text-sm tabular-nums text-muted">
+                {lectures.length && done === lectures.length ? "Completed" : `${done} of ${lessonsLabel(lectures.length)} watched`}
+              </p>
+            </div>
           </div>
 
-          <ul className="mt-10 overflow-hidden rounded-2xl border border-line bg-card">
+          <ul className="order-3 mt-10 overflow-hidden rounded-2xl border border-line bg-card max-lg:mt-0 lg:order-none">
             {courseData.courseContent.map((chapter, chapterIndex) => {
               const isOpen = openSections.has(chapterIndex);
               return (
@@ -145,7 +149,7 @@ function Player() {
           </ul>
         </div>
 
-        <aside className="lg:sticky lg:top-24 lg:self-start">
+        <aside className="order-2 lg:sticky lg:top-24 lg:order-none lg:self-start">
           <div className="overflow-hidden rounded-2xl border border-line bg-card">
             <div className="aspect-video overflow-hidden rounded-t-2xl bg-ink/5">
               <img src={courseData.courseThumbnail} alt="" className="h-full w-full object-cover" />

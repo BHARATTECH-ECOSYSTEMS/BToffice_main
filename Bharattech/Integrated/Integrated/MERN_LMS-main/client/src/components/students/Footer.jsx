@@ -20,14 +20,14 @@ function Footer() {
         <ul className="flex flex-wrap items-center gap-5">
           {LEARNING_LINKS.map((link) => (
             <li key={link.to}>
-              <Link to={link.to} className="transition-colors duration-150 ease-snappy mhover:text-ink">
+              <Link to={link.to} className="tap transition-colors duration-150 ease-snappy mhover:text-ink">
                 {link.label}
               </Link>
             </li>
           ))}
           {PORTAL_URL && (
             <li>
-              <a href={PORTAL_URL} className="transition-colors duration-150 ease-snappy mhover:text-ink">
+              <a href={PORTAL_URL} className="tap transition-colors duration-150 ease-snappy mhover:text-ink">
                 Back to the portal
               </a>
             </li>

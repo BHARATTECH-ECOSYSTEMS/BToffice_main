@@ -113,7 +113,7 @@ function CourseDetails() {
               event.preventDefault();
               navigate(-1);
             }}
-            className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors duration-150 ease-snappy mhover:text-ink"
+            className="tap inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors duration-150 ease-snappy mhover:text-ink"
           >
             <ArrowLeft className="h-4 w-4" aria-hidden="true" />
             {back.label}
@@ -151,7 +151,7 @@ function CourseDetails() {
               <button
                 type="button"
                 onClick={() => setShowFullDesc((s) => !s)}
-                className="mt-2 text-sm font-semibold text-act-deep underline-offset-2 mhover:underline"
+                className="tap mt-2 text-sm font-semibold text-act-deep underline-offset-2 mhover:underline"
                 aria-expanded={showFullDesc}
               >
                 {showFullDesc ? "Show less" : "Read the full description"}
@@ -195,7 +195,7 @@ function CourseDetails() {
                               <button
                                 type="button"
                                 onClick={() => setPlayerData({ ...lecture, chapter: index + 1, lecture: i + 1 })}
-                                className="rounded-full bg-act-wash px-3 py-0.5 text-[13px] font-semibold text-act-deep transition-colors duration-150 ease-snappy mhover:bg-act/15"
+                                className="tap rounded-full bg-act-wash px-3 py-0.5 text-[13px] font-semibold text-act-deep transition-colors duration-150 ease-snappy mhover:bg-act/15"
                               >
                                 Preview
                               </button>

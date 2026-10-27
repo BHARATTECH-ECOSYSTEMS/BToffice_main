@@ -31,7 +31,7 @@ function App() {
 
   return (
     <div className="learn text-default min-h-screen bg-paper text-ink">
-      <ToastContainer position="bottom-right" autoClose={3000} />
+      <ToastContainer position="top-center" autoClose={3000} />
 
       {viewRole === "educator" ? <EducatorNavbar /> : <Navbar />}
 
