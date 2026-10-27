@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, BUSY_MESSAGE, type createApi } from './api';
+import { api, ApiError, BUSY_MESSAGE, type createApi, failedText } from './api';
 import { ROLE_LABEL, STREAMS, type PersonRole, type PersonStatus, type Stream } from './data';
 
 /**
@@ -88,7 +88,7 @@ const ACCOUNT_FAILED: Record<ApiError['kind'], string> = {
   unavailable: 'We couldn’t reach the employee records, so nothing was changed. Try again in a moment.',
 };
 /** Block, unblock and reset links: the backend's own words when it sent some (they say what to do), else a plain sentence. */
-export const accountFailedMessage = (e: ApiError) => (e.message && e.message !== e.kind ? e.message : ACCOUNT_FAILED[e.kind]);
+export const accountFailedMessage = (e: ApiError) => (e.message && e.message !== e.kind ? e.message : failedText(e, ACCOUNT_FAILED));
 
 /** Block / Unblock (the edit route's isBanned, which also switches their sign-in) and "Send reset link". */
 export function accountCalls(client: ReturnType<typeof createApi>) {
@@ -313,7 +313,7 @@ const PENDING_FAILED: Record<ApiError['kind'], string> = {
 };
 /** What to say when cancelling (or loading) pending invites failed; the backend's own words are clearest for refusals. */
 export const pendingInviteFailedMessage = (e: ApiError) =>
-  (e.kind === 'forbidden' || e.kind === 'not-found' || e.kind === 'conflict') && e.message !== e.kind ? e.message : PENDING_FAILED[e.kind];
+  (e.kind === 'forbidden' || e.kind === 'not-found' || e.kind === 'conflict') && e.message !== e.kind ? e.message : failedText(e, PENDING_FAILED);
 
 export type PendingInvitesState = { kind: 'off' } | { kind: 'loading' } | { kind: 'ready'; invites: PendingInvite[] } | { kind: 'error'; error: ApiError };
 

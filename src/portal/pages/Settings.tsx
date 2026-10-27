@@ -1,7 +1,7 @@
 import { useRef, useState, type ChangeEvent, type CSSProperties, type FormEvent, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { PortalIconName } from '../data';
-import { api, ApiError, BUSY_MESSAGE } from '../api';
+import { api, ApiError, BUSY_MESSAGE, failedText } from '../api';
 import { auth } from '../auth';
 import { removeMyPhoto, saveMyPhoto, useMyPhoto } from '../myPhoto';
 import { PHOTO_MAX_MB, PHOTO_TYPES, photoFileProblem, toJpeg, toSquare } from '../photos';
@@ -87,7 +87,7 @@ const PHOTO_FAILED: Record<ApiError['kind'], string> = {
   busy: BUSY_MESSAGE,
   unavailable: 'We couldn’t reach the server, so your photo wasn’t changed. Try again in a moment.',
 };
-const photoFailed = (e: ApiError) => (e.kind === 'bad-request' && e.message !== e.kind ? e.message : PHOTO_FAILED[e.kind]);
+const photoFailed = (e: ApiError) => (e.kind === 'bad-request' && e.message !== e.kind ? e.message : failedText(e, PHOTO_FAILED));
 
 /** `roleLabel`: the account's own role ("Super Admin", "Admin"…), which decides who can change the name. */
 function ProfilePanel({ roleLabel }: { roleLabel?: string }) {
@@ -298,7 +298,7 @@ function PhonesForm({ saved: initial }: { saved: AccountProfile }) {
       notify('Your phone numbers were saved.');
     } catch (error) {
       const failed = error instanceof ApiError ? error : new ApiError('unavailable');
-      notify(failed.kind === 'bad-request' && failed.message !== failed.kind ? failed.message : (PHONES_FAILED[failed.kind] ?? PHONES_FAILED.unavailable!));
+      notify(failed.kind === 'bad-request' && failed.message !== failed.kind ? failed.message : (failedText(failed, PHONES_FAILED) ?? PHONES_FAILED.unavailable!));
     } finally {
       setBusy(false);
     }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, BUSY_MESSAGE } from './api';
+import { api, ApiError, BUSY_MESSAGE, failedText } from './api';
 import { turns } from './newestReply';
 
 /**
@@ -216,7 +216,7 @@ const FAILED: Record<ApiError['kind'], string> = {
 };
 /** What to say when something failed; the backend's own words are clearest for refusals. */
 export const attendanceFailedMessage = (e: ApiError) =>
-  (e.kind === 'bad-request' || e.kind === 'forbidden' || e.kind === 'conflict' || e.kind === 'not-found') && e.message !== e.kind ? e.message : FAILED[e.kind];
+  (e.kind === 'bad-request' || e.kind === 'forbidden' || e.kind === 'conflict' || e.kind === 'not-found') && e.message !== e.kind ? e.message : failedText(e, FAILED);
 
 export type Loaded<T> = { kind: 'off' } | { kind: 'loading' } | { kind: 'ready'; value: T } | { kind: 'error'; error: ApiError };
 const asApiError = (error: unknown) => (error instanceof ApiError ? error : new ApiError('unavailable'));

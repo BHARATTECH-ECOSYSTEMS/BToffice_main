@@ -4,6 +4,7 @@ import { Badge, btnClass, BtnLabel, Empty } from '../ui';
 
 const FAILED = {
   'signed-out': 'Your sign-in for Learning has ended. Sign out and in again to see your courses.',
+  forbidden: 'Learning didn’t let your account in. Ask an admin if you think this is a mistake.',
   unavailable: 'We couldn’t reach the LMS Platform. Try again in a moment.',
 };
 

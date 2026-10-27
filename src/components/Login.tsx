@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useId, useRef, useSt
 import { useLocation, useNavigate } from 'react-router';
 import { useScene } from '../gl/Scene';
 import { auth, isEmployeeId, isUsername, resetTokenFrom, USERNAME_SHAPE, type SignInResult } from '../portal/auth';
-import { getSession, startSession } from '../portal/session';
+import { endedSwitchedOff, getSession, startSession } from '../portal/session';
 import { LogoGlass } from './LogoGlass';
 import { Arrow, Brand, BtnText, ThreadMark } from './ui';
 import '../styles/login.css';
@@ -180,7 +180,10 @@ function LoginDialog({ onClose, reset }: { onClose: () => void; reset: { token: 
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
   const [status, setStatus] = useState<Status>(
-    reset && !resetToken.current ? { kind: 'notice', text: auth ? RESET_LINK_BROKEN : RESET_NOT_CONNECTED } : { kind: 'idle' },
+    reset && !resetToken.current
+      ? { kind: 'notice', text: auth ? RESET_LINK_BROKEN : RESET_NOT_CONNECTED }
+      : // the portal was closed because the account was switched off while signed in
+        endedSwitchedOff() ? { kind: 'notice', text: SIGN_IN_FAILED['switched-off'] } : { kind: 'idle' },
   );
   const { lenis } = useScene();
   const navigate = useNavigate();

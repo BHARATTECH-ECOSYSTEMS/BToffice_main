@@ -173,16 +173,17 @@ export function createAuth(config: AuthConfig, send: typeof fetch = (input, init
   const oidc = `${config.keycloak}/realms/${config.realm}/protocol/openid-connect`;
   let { tokens, remember } = loadTokens();
   let renewing: Promise<string | null> | null = null;
-  const expireListeners = new Set<() => void>();
+  // `reason`: 'switched-off' when the backend said the account is blocked or removed
+  const expireListeners = new Set<(reason?: 'switched-off') => void>();
 
   const keep = (next: Tokens | null) => {
     tokens = next;
     saveTokens(next, remember);
   };
 
-  const expire = () => {
+  const expire = (reason?: 'switched-off') => {
     keep(null);
-    expireListeners.forEach((l) => l());
+    expireListeners.forEach((l) => l(reason));
   };
 
   const signedIn = () => !!tokens && expiresAt(tokens.refresh) > Date.now();
@@ -349,12 +350,15 @@ export function createAuth(config: AuthConfig, send: typeof fetch = (input, init
   }
 
   /** Called when the sign-in ends by itself (an expired or revoked session), not when the person signs out. */
-  const onExpire = (listener: () => void) => {
+  /** The backend said this account is blocked or removed: the sign-in is over, and the portal says why. */
+  const switchedOff = () => expire('switched-off');
+
+  const onExpire = (listener: (reason?: 'switched-off') => void) => {
     expireListeners.add(listener);
     return () => expireListeners.delete(listener);
   };
 
-  return { signIn, acceptInvite, changePassword, requestPasswordReset, resetPassword, signOut, accessToken, handoverTokens, signedIn, onExpire };
+  return { signIn, acceptInvite, changePassword, requestPasswordReset, resetPassword, signOut, accessToken, handoverTokens, signedIn, onExpire, switchedOff };
 }
 
 function configFromEnv(): AuthConfig | null {

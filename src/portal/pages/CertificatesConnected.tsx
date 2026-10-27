@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ApiError, ApiErrorKind } from '../api';
-import { BUSY_MESSAGE } from '../api';
+import { BUSY_MESSAGE, failedText } from '../api';
 import { certificateTitle, matchesCertificate, useCertificates, type IssuedCertificate } from '../certificates';
 import { PdfModal } from '../PdfModal';
 import { useDirectory } from '../people';
@@ -34,6 +34,9 @@ const ACTION_FAILED: Record<ApiErrorKind, string> = {
   unavailable: 'We couldn’t reach the employee records, so nothing was changed. Try again in a moment.',
 };
 
+// a refusal (a missing or too-long title, someone blocked or removed) is told in the backend's words
+const actionFailed = (e: ApiError) => ((e.kind === 'bad-request' || e.kind === 'conflict') && e.message !== e.kind ? e.message : failedText(e, ACTION_FAILED));
+
 export function ConnectedCertificates() {
   // the portal's admin view is the backend's Admin or Superadmin, the two roles it lets issue and delete
   const canIssue = useSession()!.role === 'admin';
@@ -61,7 +64,7 @@ export function ConnectedCertificates() {
             try {
               await certificates.issue(personId, type);
             } catch (e) {
-              throw new Error(ACTION_FAILED[(e as ApiError).kind]);
+              throw new Error(actionFailed(e as ApiError));
             }
           }}
           onIssued={(name, title) => {
@@ -93,7 +96,7 @@ function IssueTab({ issue, onIssued }: { issue: Parameters<typeof IssueWizard>[0
     return (
       <section className="p-card" role="alert">
         <Empty icon="alert" title="The people list didn’t load">
-          {state.kind === 'error' ? LOAD_FAILED[state.error.kind] : LOAD_FAILED.unavailable}
+          {state.kind === 'error' ? failedText(state.error, LOAD_FAILED) : LOAD_FAILED.unavailable}
         </Empty>
         <button type="button" className={btnClass('light', { small: true })} onClick={retry}>
           <BtnLabel icon="refresh">Try again</BtnLabel>
@@ -120,7 +123,7 @@ function History({ canManage, certificates, notify }: { canManage: boolean; cert
       await certificates.remove(c.id);
       notify('Certificate deleted.');
     } catch (e) {
-      notify(ACTION_FAILED[(e as ApiError).kind]);
+      notify(actionFailed(e as ApiError));
     } finally {
       setBusy(null);
     }
@@ -152,7 +155,7 @@ function History({ canManage, certificates, notify }: { canManage: boolean; cert
         ) : state.kind === 'error' ? (
           <div role="alert">
             <Empty icon="alert" title="Certificates didn’t load">
-              {LOAD_FAILED[state.error.kind]}
+              {failedText(state.error, LOAD_FAILED)}
             </Empty>
             {state.error.kind !== 'signed-out' && (
               <button type="button" className={btnClass('light', { small: true })} onClick={certificates.retry}>

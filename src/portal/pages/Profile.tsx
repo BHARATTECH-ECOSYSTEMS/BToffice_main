@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import type { ApiErrorKind } from '../api';
-import { ApiError, BUSY_MESSAGE } from '../api';
+import { ApiError, BUSY_MESSAGE, failedText } from '../api';
 import {
   ID_DOC_MAX_MB,
   ID_RETENTION_DAYS,
@@ -247,7 +247,7 @@ function AccountPending({ state, onRetry }: { state: Exclude<ProfileState, { kin
     body = (
       <div role="alert">
         <Empty icon="alert" title="Your details didn’t load">
-          {LOAD_FAILED[state.error.kind]}
+          {failedText(state.error, LOAD_FAILED)}
         </Empty>
         {state.error.kind !== 'signed-out' && (
           <button type="button" className={btnClass('light', { small: true })} onClick={onRetry}>

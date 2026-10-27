@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, BUSY_MESSAGE } from './api';
+import { api, ApiError, BUSY_MESSAGE, failedText } from './api';
 import {
   COMPANY_CHECKS,
   EMPLOYEE_CHECKS,
@@ -203,7 +203,7 @@ const FAILED: Record<ApiError['kind'], string> = {
 };
 const OWN_WORDS: ApiError['kind'][] = ['bad-request', 'forbidden', 'conflict'];
 /** The backend's own words where they say what to fix (refused input, roles, a clash); else a plain explanation. */
-export const verificationFailedMessage = (e: ApiError) => (OWN_WORDS.includes(e.kind) && e.message !== e.kind ? e.message : FAILED[e.kind]);
+export const verificationFailedMessage = (e: ApiError) => (OWN_WORDS.includes(e.kind) && e.message !== e.kind ? e.message : failedText(e, FAILED));
 
 export type VerificationsState = { kind: 'off' } | { kind: 'loading' } | { kind: 'ready'; requests: RemoteVerification[] } | { kind: 'error'; error: ApiError };
 

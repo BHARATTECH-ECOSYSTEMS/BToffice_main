@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { PERSON_STATUS_LABEL } from '../data';
-import type { ApiError } from '../api';
+import { BUSY_MESSAGE, type ApiError } from '../api';
 import type { useCertificates } from '../certificates';
 import { canDelete, canEditDetails, inviteChoices, roleChoices, roleLabel, type AccountRole, type DirectoryPerson, type useDirectory } from '../people';
 import { useSession } from '../session';
@@ -27,7 +27,9 @@ function LoadFailed({ what, error, retry }: { what: string; error: ApiError; ret
           ? 'Your sign-in has ended. Sign out and sign in again.'
           : error.kind === 'forbidden'
             ? `Your account isn’t allowed to see the ${what}.`
-            : 'We couldn’t reach the employee records. Check your connection and try again.'}
+            : error.kind === 'busy'
+              ? BUSY_MESSAGE
+              : 'We couldn’t reach the employee records. Check your connection and try again.'}
       </Empty>
       {error.kind !== 'signed-out' && (
         <button type="button" className={btnClass('light', { small: true })} onClick={retry}>

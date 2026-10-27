@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ApiError, ApiErrorKind } from '../api';
-import { BUSY_MESSAGE } from '../api';
+import { BUSY_MESSAGE, failedText } from '../api';
 import { PdfModal } from '../PdfModal';
 import { READ_CONFIRMATION, usePolicies, type PolicyDocument } from '../policies';
 import { useSession } from '../session';
@@ -57,7 +57,7 @@ export function ConnectedPolicy() {
       notify(done);
     } catch (e) {
       const failure = e as ApiError;
-      notify(failure.kind === 'bad-request' && failure.message !== failure.kind ? failure.message : ACTION_FAILED[failure.kind]);
+      notify(failure.kind === 'bad-request' && failure.message !== failure.kind ? failure.message : failedText(failure, ACTION_FAILED));
     } finally {
       setBusy(null);
     }
@@ -90,7 +90,7 @@ export function ConnectedPolicy() {
         ) : state.kind === 'error' ? (
           <div role="alert">
             <Empty icon="alert" title="Documents didn’t load">
-              {LOAD_FAILED[state.error.kind]}
+              {failedText(state.error, LOAD_FAILED)}
             </Empty>
             {state.error.kind !== 'signed-out' && (
               <button type="button" className={btnClass('light', { small: true })} onClick={policies.retry}>
@@ -228,7 +228,7 @@ export function ConnectedPolicy() {
             } catch (e) {
               const failure = e as ApiError;
               // the backend's own words for a refused file ("over 20 MB", "isn't a real PDF") say exactly what to fix
-              throw new Error(failure.kind === 'bad-request' || failure.message.includes('MB') ? failure.message : ACTION_FAILED[failure.kind]);
+              throw new Error(failure.kind === 'bad-request' || failure.message.includes('MB') ? failure.message : failedText(failure, ACTION_FAILED));
             }
             notify(`${draft.name} was published.`);
           }}

@@ -1,4 +1,4 @@
-import { ApiError, BUSY_MESSAGE } from './api';
+import { ApiError, BUSY_MESSAGE, failedText } from './api';
 
 /**
  * HR OPS → Interview: opens OpenInterviewer (the AI interview tool) in a new tab, signed in. The backend hands an
@@ -31,7 +31,7 @@ const FAILED: Record<ApiError['kind'], string> = {
 };
 
 const failedMessage = (e: ApiError) =>
-  e.message === NOT_SET_UP ? 'The interview tool isn’t set up on the company system yet. Ask whoever runs it to add its launch setting.' : FAILED[e.kind];
+  e.message === NOT_SET_UP ? 'The interview tool isn’t set up on the company system yet. Ask whoever runs it to add its launch setting.' : failedText(e, FAILED);
 
 /** The address the backend sent, if it is a web address; anything else (javascript:, nothing) is not followed. */
 export function launchAddress(reply: unknown): string | null {

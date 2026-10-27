@@ -119,6 +119,7 @@ export function markArrived() {
 /** `name` is the account's name from the real sign-in; the demo sign-in makes one from the email. */
 export function startSession(email: string, role: Role, remember = false, name?: string) {
   signedOutAt = 0;
+  switchedOff = false;
   forgetArrival();
   write({ name: name || nameFromEmail(email), email: email.trim().toLowerCase(), role }, remember);
 }
@@ -163,7 +164,13 @@ export function endSessionForNewSignIn() {
   write(null);
 }
 
-auth?.onExpire(endSessionForNewSignIn);
+// set when the sign-in ended because the account was switched off, so the sign-in box says so; a new sign-in clears it
+let switchedOff = false;
+export const endedSwitchedOff = () => switchedOff;
+auth?.onExpire((reason) => {
+  switchedOff = reason === 'switched-off';
+  endSessionForNewSignIn();
+});
 
 export function getSession(): Session | null {
   if (cached === undefined) cached = read();

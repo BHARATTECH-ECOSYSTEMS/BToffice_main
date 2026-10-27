@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, BUSY_MESSAGE } from './api';
+import { api, ApiError, BUSY_MESSAGE, failedText } from './api';
 import { SKIPPABLE_CHECKS, VERIFICATION_FILES, type FileKind, type SkippableCheck, type VerificationStatus } from './data';
 import { localDay } from './eoffice';
 
@@ -67,7 +67,7 @@ const FAILED: Record<ApiError['kind'], string> = {
   unavailable: 'We couldn’t reach the company system, so nothing was saved. Try again in a moment.',
 };
 const OWN_WORDS: ApiError['kind'][] = ['bad-request', 'conflict'];
-export const myDocumentsFailedMessage = (e: ApiError) => (OWN_WORDS.includes(e.kind) && e.message !== e.kind ? e.message : FAILED[e.kind]);
+export const myDocumentsFailedMessage = (e: ApiError) => (OWN_WORDS.includes(e.kind) && e.message !== e.kind ? e.message : failedText(e, FAILED));
 
 export type MyDocumentsState = { kind: 'off' } | { kind: 'loading' } | { kind: 'ready'; mine: MyDocuments } | { kind: 'error'; error: ApiError };
 const asApiError = (error: unknown) => (error instanceof ApiError ? error : new ApiError('unavailable'));

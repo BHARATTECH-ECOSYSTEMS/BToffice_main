@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, BUSY_MESSAGE } from './api';
+import { api, ApiError, BUSY_MESSAGE, failedText } from './api';
 import { turns } from './newestReply';
 import { EVENT_KINDS, type EventKind } from './data';
 
@@ -58,7 +58,7 @@ const FAILED: Record<ApiError['kind'], string> = {
   unavailable: 'We couldn’t reach the calendar, so nothing was changed. Try again in a moment.',
 };
 /** What to say when a change was refused; the backend's own words are clearest for refused input and roles. */
-export const eventFailedMessage = (e: ApiError) => ((e.kind === 'bad-request' || e.kind === 'forbidden') && e.message !== e.kind ? e.message : FAILED[e.kind]);
+export const eventFailedMessage = (e: ApiError) => ((e.kind === 'bad-request' || e.kind === 'forbidden') && e.message !== e.kind ? e.message : failedText(e, FAILED));
 
 export type EventsState = { kind: 'off' } | { kind: 'loading' } | { kind: 'ready'; events: PortalEvent[] } | { kind: 'error'; error: ApiError };
 

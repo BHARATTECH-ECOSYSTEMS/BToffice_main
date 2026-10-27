@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ApiError, ApiErrorKind } from '../api';
-import { BUSY_MESSAGE } from '../api';
+import { BUSY_MESSAGE, failedText } from '../api';
 import type { LinkResource } from '../data';
 import { useDirectory, type DirectoryState } from '../people';
 import { audience, isWebLink, useResources } from '../resources';
@@ -37,7 +37,7 @@ const ACTION_FAILED: Record<ApiErrorKind, string> = {
 // the backend explains a refused name or address itself ("Enter a full web address starting with http://…")
 const failure = (e: unknown) => {
   const error = e as ApiError;
-  return error.kind === 'bad-request' && error.message !== 'bad-request' ? error.message : ACTION_FAILED[error.kind];
+  return error.kind === 'bad-request' && error.message !== 'bad-request' ? error.message : failedText(error, ACTION_FAILED);
 };
 
 export function ConnectedResources() {
@@ -114,7 +114,7 @@ function Links({
     return (
       <article className="p-card p-resource" role="alert">
         <Empty icon="alert" title="Shared links didn’t load">
-          {LOAD_FAILED[state.error.kind]}
+          {failedText(state.error, LOAD_FAILED)}
         </Empty>
         {state.error.kind !== 'signed-out' && (
           <button type="button" className={btnClass('light', { small: true })} onClick={resources.retry}>

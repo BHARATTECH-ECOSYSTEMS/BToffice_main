@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { type TaskStatus } from '../data';
 import type { ApiError, ApiErrorKind } from '../api';
-import { BUSY_MESSAGE } from '../api';
+import { BUSY_MESSAGE, failedText } from '../api';
 import type { DirectoryPerson } from '../people';
 import { formatDate } from '../store';
 import {
@@ -39,7 +39,7 @@ const TASK_FAILED: Record<ApiErrorKind, string> = {
   unavailable: 'We couldn’t reach the task records, so nothing was changed. Try again in a moment.',
 };
 /** The backend's own words for refused input are more useful than a generic line. */
-export const taskFailedMessage = (e: ApiError) => (e.kind === 'bad-request' && e.message !== e.kind ? e.message : TASK_FAILED[e.kind]);
+export const taskFailedMessage = (e: ApiError) => (e.kind === 'bad-request' && e.message !== e.kind ? e.message : failedText(e, TASK_FAILED));
 
 /** Who is looking: their account role and email decide what they may change; `doer` tasks are their own. */
 export interface TaskViewer {
@@ -494,7 +494,7 @@ export function ConnectedTasksPanel({
       ) : state.kind === 'error' ? (
         <div role="alert">
           <Empty icon="alert" title="The tasks didn’t load">
-            {TASK_FAILED[state.error.kind]}
+            {failedText(state.error, TASK_FAILED)}
           </Empty>
           {state.error.kind !== 'signed-out' && (
             <button type="button" className={btnClass('light', { small: true })} onClick={tasks.retry}>

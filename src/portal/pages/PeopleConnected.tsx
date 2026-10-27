@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import { EMAIL_SHAPE, ID_RETENTION_DAYS, ROLE_LABEL, STREAM_LABEL, STREAMS, type PersonRole, type Stream } from '../data';
-import { api, ApiError, BUSY_MESSAGE } from '../api';
+import { api, ApiError, BUSY_MESSAGE, failedText } from '../api';
 import {
   accountFailedMessage,
   blockProblem,
@@ -51,7 +51,7 @@ const SAVE_FAILED: Record<ApiError['kind'], string> = {
   unavailable: 'We couldn’t reach the employee records, so nothing was changed. Try again in a moment.',
 };
 /** What to tell someone when a change was refused; the backend's own words for refused input are more useful. */
-export const saveFailedMessage = (e: ApiError) => (e.kind === 'bad-request' && e.message !== e.kind ? e.message : SAVE_FAILED[e.kind]);
+export const saveFailedMessage = (e: ApiError) => (e.kind === 'bad-request' && e.message !== e.kind ? e.message : failedText(e, SAVE_FAILED));
 
 const LOAD_FAILED: Record<ApiError['kind'], string> = {
   'signed-out': 'Your sign-in has ended. Sign out and sign in again to see the directory.',
@@ -170,7 +170,7 @@ export function ConnectedPeople() {
         ) : state.kind === 'error' ? (
           <div role="alert">
             <Empty icon="alert" title="The directory didn’t load">
-              {LOAD_FAILED[state.error.kind]}
+              {failedText(state.error, LOAD_FAILED)}
             </Empty>
             {state.error.kind !== 'signed-out' && (
               <button type="button" className={btnClass('light', { small: true })} onClick={directory.retry}>
@@ -410,7 +410,7 @@ function PendingInvites({
       await invite({ name: p.name, email: p.email, role: p.role });
       notify(`Invite sent again to ${p.email}, with a new temporary password.`);
     } catch (error) {
-      notify(inviteEmailFailed(error as ApiError) ? 'The invite email couldn’t be sent. Try again in a moment.' : INVITE_FAILED[(error as ApiError).kind]);
+      notify(inviteEmailFailed(error as ApiError) ? 'The invite email couldn’t be sent. Try again in a moment.' : failedText(error as ApiError, INVITE_FAILED));
     } finally {
       setBusy(null);
       void pending.reload();
@@ -682,7 +682,7 @@ export function InviteModal({
         setError('Their login was made, but the invite email couldn’t be sent. Send it again; they’ll get a new temporary password.');
       } else {
         // someone who left comes back through the Community, and the backend says so
-        setError(failure.kind === 'conflict' && (failure.details as { code?: unknown } | undefined)?.code === 'left' ? failure.message : INVITE_FAILED[failure.kind]);
+        setError(failure.kind === 'conflict' && (failure.details as { code?: unknown } | undefined)?.code === 'left' ? failure.message : failedText(failure, INVITE_FAILED));
       }
     } finally {
       setSending(false);

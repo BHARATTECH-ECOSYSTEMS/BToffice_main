@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, ApiError, BUSY_MESSAGE, type createApi } from './api';
+import { api, ApiError, BUSY_MESSAGE, type createApi, failedText } from './api';
 import { EMAIL_SHAPE, STREAM_LABEL, STREAMS, WORK_MODE_LABEL, type ApplicationStage, type InternalJob, type Referral, type Stream, type WorkMode } from './data';
 import { localDay } from './eoffice';
 import { readJoinDate } from './people';
@@ -250,7 +250,7 @@ const FAILED: Record<ApiError['kind'], string> = {
 };
 // the backend says what to fix, who may do it, and (for a 502) that Keycloak didn't answer and nothing changed
 const OWN_WORDS: ApiError['kind'][] = ['bad-request', 'forbidden', 'conflict', 'unavailable'];
-export const communityFailedMessage = (e: ApiError) => (OWN_WORDS.includes(e.kind) && e.message !== e.kind ? e.message : FAILED[e.kind]);
+export const communityFailedMessage = (e: ApiError) => (OWN_WORDS.includes(e.kind) && e.message !== e.kind ? e.message : failedText(e, FAILED));
 
 type Client = ReturnType<typeof createApi>;
 const personalEmailOf = (raw: unknown) => {

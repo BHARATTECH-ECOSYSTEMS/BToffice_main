@@ -19,7 +19,7 @@ export interface LearningCourse {
   percent: number;
 }
 
-export type MyLearningState = { kind: 'off' } | { kind: 'loading' } | { kind: 'ready'; courses: LearningCourse[] } | { kind: 'error'; reason: 'signed-out' | 'unavailable' };
+export type MyLearningState = { kind: 'off' } | { kind: 'loading' } | { kind: 'ready'; courses: LearningCourse[] } | { kind: 'error'; reason: 'signed-out' | 'forbidden' | 'unavailable' };
 
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
 const count = (value: unknown) => (typeof value === 'number' && Number.isInteger(value) && value >= 0 ? value : 0);
@@ -47,7 +47,9 @@ export async function fetchMyLearning(apiBase: string, token: () => Promise<stri
   if (!access) return { kind: 'error', reason: 'signed-out' };
   try {
     const res = await timed(send, timeoutMs)(new URL('api/user/learning', apiBase.endsWith('/') ? apiBase : `${apiBase}/`).href, { headers: { Authorization: `Bearer ${access}` } });
-    if (res.status === 401 || res.status === 403) return { kind: 'error', reason: 'signed-out' };
+    if (res.status === 401) return { kind: 'error', reason: 'signed-out' };
+    // signed in, but the platform turned the account away: not an ended sign-in
+    if (res.status === 403) return { kind: 'error', reason: 'forbidden' };
     if (!res.ok) return { kind: 'error', reason: 'unavailable' };
     return { kind: 'ready', courses: toMyLearning(await res.json()) };
   } catch {

@@ -16,12 +16,25 @@ export class ApiError extends Error {
   kind: ApiErrorKind;
   /** The backend's whole answer, when it sent one, for pages that need more than the kind. */
   details?: unknown;
-  constructor(kind: ApiErrorKind, message?: string, details?: unknown) {
+  /**
+   * The backend gave its own reason for an answer the portal has no words of its own for (413 too big, 410 gone, 502
+   * a service behind it): pages show that reason (failedText) instead of "couldn't reach".
+   */
+  told: boolean;
+  constructor(kind: ApiErrorKind, message?: string, details?: unknown, told = false) {
     super(message ?? kind);
     this.name = 'ApiError';
     this.kind = kind;
     this.details = details;
+    this.told = told;
   }
+}
+
+/** A page's own words for what went wrong, unless the backend told its reason for an answer they don't cover. */
+export function failedText(e: ApiError, texts: Record<ApiErrorKind, string>): string;
+export function failedText(e: ApiError, texts: Partial<Record<ApiErrorKind, string>>): string | undefined;
+export function failedText(e: ApiError, texts: Partial<Record<ApiErrorKind, string>>) {
+  return e.told ? e.message : texts[e.kind];
 }
 
 const STATUS_KIND: Partial<Record<number, ApiErrorKind>> = { 400: 'bad-request', 401: 'signed-out', 403: 'forbidden', 404: 'not-found', 409: 'conflict', 429: 'busy' };
@@ -33,9 +46,11 @@ interface ApiOptions {
   signedIn: () => boolean;
   request?: typeof fetch;
   timeoutMs?: number;
+  /** Called when the backend says this account is switched off (blocked or removed): the portal signs out. */
+  onSwitchedOff?: () => void;
 }
 
-export function createApi({ base, token, signedIn, request = (input, init) => fetch(input, init), timeoutMs = TIMEOUT_MS }: ApiOptions) {
+export function createApi({ base, token, signedIn, request = (input, init) => fetch(input, init), timeoutMs = TIMEOUT_MS, onSwitchedOff }: ApiOptions) {
   /** `file`: a successful answer comes back as a Blob (a PDF, say) instead of JSON; errors are still JSON. */
   async function send<T>(method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE', path: string, payload?: unknown, limitMs = timeoutMs, file = false): Promise<T> {
     const access = await token();
@@ -63,7 +78,16 @@ export function createApi({ base, token, signedIn, request = (input, init) => fe
     } finally {
       clearTimeout(timer);
     }
-    if (!res.ok) throw new ApiError(STATUS_KIND[res.status] ?? 'unavailable', typeof body?.message === 'string' ? body.message : undefined, body);
+    if (!res.ok) {
+      const kind = STATUS_KIND[res.status];
+      const reason = typeof body?.message === 'string' ? body.message : undefined;
+      // blocked or removed while signed in: the sign-in is over, and the portal says why (owner's 2A)
+      if (res.status === 403 && (body as { code?: unknown } | undefined)?.code === 'switched-off') {
+        onSwitchedOff?.();
+        throw new ApiError('signed-out', reason, body);
+      }
+      throw new ApiError(kind ?? 'unavailable', reason, body, !kind && reason !== undefined);
+    }
     // a 200 that isn't JSON (a proxy's error page, say) is as good as no answer
     if (body === undefined) throw new ApiError('unavailable');
     return body as T;
@@ -86,4 +110,4 @@ export function createApi({ base, token, signedIn, request = (input, init) => fe
   };
 }
 
-export const api = auth && authConfig ? createApi({ base: authConfig.api, token: auth.accessToken, signedIn: auth.signedIn }) : null;
+export const api = auth && authConfig ? createApi({ base: authConfig.api, token: auth.accessToken, signedIn: auth.signedIn, onSwitchedOff: auth.switchedOff }) : null;
