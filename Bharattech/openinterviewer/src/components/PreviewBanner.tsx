@@ -1,19 +1,17 @@
 'use client';
 
 import { useStore } from '@/store';
+import { showsPreviewBanner } from '@/lib/previewBanner';
 import { useRouter, usePathname } from 'next/navigation';
 import { Eye, ArrowLeft } from 'lucide-react';
 
 export default function PreviewBanner() {
-  const { viewMode, setViewMode, setStep, resetParticipant } = useStore();
+  const { viewMode, participantToken, setViewMode, setStep, resetParticipant } = useStore();
   const router = useRouter();
   const pathname = usePathname();
 
-  // Only show on participant flow pages when in preview mode
-  const participantPages = ['/consent', '/interview', '/synthesis', '/export'];
-  const isOnParticipantPage = participantPages.some(p => pathname?.startsWith(p));
-
-  if (viewMode !== 'participant' || !isOnParticipantPage) {
+  // the researcher's own Preview only, never a candidate who came in through their link
+  if (!showsPreviewBanner({ viewMode, participantToken, pathname })) {
     return null;
   }
 

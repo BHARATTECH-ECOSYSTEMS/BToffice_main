@@ -86,7 +86,7 @@ const PROFILE_PRESETS: ProfileField[] = [
 const StudySetup: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setStudyConfig, setStep, studyConfig, loadExampleStudy, setViewMode } = useStore();
+  const { setStudyConfig, setStep, studyConfig, loadExampleStudy, setViewMode, setParticipantToken } = useStore();
 
   // Follow-up study state
   const [parentStudyInfo, setParentStudyInfo] = useState<{ id: string; name: string } | null>(null);
@@ -386,6 +386,8 @@ const StudySetup: React.FC = () => {
     // Generate a temporary preview token for API authentication
 
     setIsPreviewLoading(false);
+    // a candidate link opened earlier in this browser is still kept; without this the Preview bar would stay hidden
+    setParticipantToken(null);
     setViewMode('participant');
     setStep('consent');
     router.push('/consent');
