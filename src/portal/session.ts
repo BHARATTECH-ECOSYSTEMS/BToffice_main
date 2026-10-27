@@ -72,14 +72,19 @@ function read(): Session | null {
   return null;
 }
 
+// false while the session lives only in this page (storage refused it): reading storage again would lose it
+let stored = true;
+
 function write(session: Session | null, remember?: boolean) {
   const [tab, device] = stores();
+  stored = !!tab;
   try {
     tab?.removeItem(KEY);
     device?.removeItem(KEY);
     if (session) (remember ? device : tab)?.setItem(KEY, JSON.stringify(session));
   } catch {
     // storage can be blocked (private windows); the session then lasts only while this page is open
+    stored = false;
   }
   cached = session;
   listeners.forEach((l) => l());
@@ -177,11 +182,28 @@ export function getSession(): Session | null {
   return cached;
 }
 
-const subscribe = (l: () => void) => {
+/**
+ * Looks at the saved sign-in again: another tab may have signed in or out, or the sign-in may have run out while this
+ * tab was in the background. Subscribers hear only of a real change.
+ */
+function recheck() {
+  if (!stored) return;
+  auth?.reload();
+  const next = read();
+  if (JSON.stringify(next) === JSON.stringify(getSession())) return;
+  cached = next;
+  listeners.forEach((l) => l());
+}
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  window.addEventListener('storage', recheck);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && recheck());
+}
+
+export const subscribeSession = (l: () => void) => {
   listeners.add(l);
-  return () => listeners.delete(l);
+  return () => void listeners.delete(l);
 };
 
 export function useSession() {
-  return useSyncExternalStore(subscribe, getSession, () => null);
+  return useSyncExternalStore(subscribeSession, getSession, () => null);
 }

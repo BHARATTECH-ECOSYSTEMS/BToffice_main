@@ -9,8 +9,9 @@ import { useDocumentTheme } from '../theme';
  */
 export function OfficeMap() {
   const host = useRef<HTMLDivElement>(null);
-  const [ready, setReady] = useState(false);
   const theme = useDocumentTheme();
+  // the theme whose map has drawn: after a theme change the flat map shows again until the new one has
+  const [readyFor, setReadyFor] = useState<string | null>(null);
 
   useEffect(() => {
     const el = host.current;
@@ -31,7 +32,7 @@ export function OfficeMap() {
               label: ['Bharattech Origin', 'Headquarters · Kanpur'],
               reduced: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
               dark: document.documentElement.getAttribute('data-theme') === 'dark',
-              onReady: () => setReady(true),
+              onReady: () => setReadyFor(theme),
             });
           })
           // the drawn fallback stays in place; the page itself is unaffected
@@ -50,7 +51,7 @@ export function OfficeMap() {
   }, [theme]);
 
   return (
-    <div className="visit-map" data-ready={ready || undefined}>
+    <div className="visit-map" data-ready={readyFor === theme || undefined}>
       <div ref={host} className="visit-map__stage" role="img" aria-label={`Map: our headquarters in ${HQ}`}>
         <div className="visit-map__fallback" aria-hidden="true">
           <i />

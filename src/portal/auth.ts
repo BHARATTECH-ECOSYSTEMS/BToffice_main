@@ -155,14 +155,18 @@ function loadTokens(): { tokens: Tokens | null; remember: boolean } {
   return { tokens: null, remember: false };
 }
 
+/** False when the browser refused to save them. */
 function saveTokens(tokens: Tokens | null, remember: boolean) {
   const [tab, device] = stores();
+  if (!tab) return false;
   try {
-    tab?.removeItem(KEY);
+    tab.removeItem(KEY);
     device?.removeItem(KEY);
     if (tokens) (remember ? device : tab)?.setItem(KEY, JSON.stringify(tokens));
+    return true;
   } catch {
     // storage can be blocked (private windows); the sign-in then lasts only while this page is open
+    return false;
   }
 }
 
@@ -176,9 +180,12 @@ export function createAuth(config: AuthConfig, send: typeof fetch = (input, init
   // `reason`: 'switched-off' when the backend said the account is blocked or removed
   const expireListeners = new Set<(reason?: 'switched-off') => void>();
 
+  // false while the sign-in lives only in this page (storage refused it): reading storage again would lose it
+  let stored = true;
+
   const keep = (next: Tokens | null) => {
     tokens = next;
-    saveTokens(next, remember);
+    stored = saveTokens(next, remember);
   };
 
   const expire = (reason?: 'switched-off') => {
@@ -187,6 +194,10 @@ export function createAuth(config: AuthConfig, send: typeof fetch = (input, init
   };
 
   const signedIn = () => !!tokens && expiresAt(tokens.refresh) > Date.now();
+  /** Reads the saved sign-in again: another tab may have signed in, renewed or signed out ("Remember me" is shared). */
+  const reload = () => {
+    if (stored) ({ tokens, remember } = loadTokens());
+  };
 
   /** POSTs to one of the backend's sign-in routes; null when it can't be reached. */
   async function post(path: string, payload: object): Promise<{ status: number; ok: boolean; body: LoginReply | null } | null> {
@@ -358,7 +369,7 @@ export function createAuth(config: AuthConfig, send: typeof fetch = (input, init
     return () => expireListeners.delete(listener);
   };
 
-  return { signIn, acceptInvite, changePassword, requestPasswordReset, resetPassword, signOut, accessToken, handoverTokens, signedIn, onExpire, switchedOff };
+  return { signIn, acceptInvite, changePassword, requestPasswordReset, resetPassword, signOut, accessToken, handoverTokens, signedIn, reload, onExpire, switchedOff };
 }
 
 function configFromEnv(): AuthConfig | null {

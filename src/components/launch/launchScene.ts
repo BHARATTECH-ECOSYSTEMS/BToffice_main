@@ -246,8 +246,22 @@ export interface LaunchScene {
   dispose(): void;
 }
 
-export async function createLaunchScene(): Promise<LaunchScene> {
-  const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, premultipliedAlpha: true, powerPreference: 'low-power' });
+const makeRenderer = () => new THREE.WebGLRenderer({ alpha: true, antialias: true, premultipliedAlpha: true, powerPreference: 'low-power' });
+
+export async function createLaunchScene(make: () => THREE.WebGLRenderer = makeRenderer): Promise<LaunchScene> {
+  const renderer = make();
+  try {
+    return await buildLaunchScene(renderer);
+  } catch (err) {
+    // browsers allow a page only a few WebGL contexts: one that failed half-built gives its own back
+    renderer.domElement.remove();
+    renderer.dispose();
+    renderer.forceContextLoss();
+    throw err;
+  }
+}
+
+async function buildLaunchScene(renderer: THREE.WebGLRenderer): Promise<LaunchScene> {
   renderer.setClearColor(0x000000, 0);
   const canvas = renderer.domElement;
   canvas.className = 'launch-canvas';

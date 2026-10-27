@@ -7,7 +7,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { SCULPTURE_FS, SCULPTURE_VS } from './sculpture.glsl';
 import { SAMPLED_THREADS } from './threads';
 import { primePrograms, whenLinked } from './shaderWarmup';
-import { IDLE_AFTER_MS, shouldDraw } from './idlePace';
+import { IDLE_AFTER_MS, shouldDraw, studioBusy } from './idlePace';
 
 /**
  * The home page's film: the logo as one piece of glass in a paper studio, changing as the story is told.
@@ -604,8 +604,12 @@ export class Studio {
     if (!this.running) return;
     this.raf = requestAnimationFrame(this.frame);
     // the entrance, the first big hop and a scroll between beats stay fluid even with nobody touching the page
-    const busy =
-      this.reveal.grow < 0.999 || this.reveal.draw < 0.999 || Math.abs(this.shown - this.beat) > 0.001 || (this.formedAt !== null && this.time - this.formedAt < 2);
+    const busy = studioBusy({
+      revealing: this.reveal.grow < 0.999 || this.reveal.draw < 0.999,
+      settling: Math.abs(this.shown - this.beat) > 0.001,
+      sinceFormed: this.formedAt === null ? null : this.time - this.formedAt,
+      reduced: this.reduced,
+    });
     if (!shouldDraw(now, this.lastInput, this.lastDraw, busy)) return;
     const pacing = !busy && now - this.lastInput >= IDLE_AFTER_MS;
     this.lastDraw = now;

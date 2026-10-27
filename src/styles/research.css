@@ -274,6 +274,8 @@
 .ra-closer { display: grid; place-content: center; justify-items: center; gap: clamp(30px, 4.5vh, 48px); height: 100svh; padding-inline: var(--col-x); text-align: center; }
 .ra-closer__line { font-size: clamp(40px, 4.1vw, 72px); line-height: 1.02; text-wrap: balance; }
 .ra-closer .ra-cta { min-height: 54px; padding-inline: 26px 16px; font-size: 15px; }
+/* under the line, centred with it: the hero's buttons are pinned near the screen's bottom instead */
+.ra-closer .ra-actions { position: static; }
 
 /* ── where you are: the section's name and a ring that fills through the story */
 .ra-where {

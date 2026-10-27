@@ -12,6 +12,13 @@ export const IDLE_FPS = 30;
  * (a transition or entrance that should stay fluid); otherwise at most IDLE_FPS a second. The interval allows 4 ms
  * of slack, so on a 60 Hz screen every second frame draws instead of every third.
  */
+/**
+ * Whether the Studio hero is mid-move: its entrance, a scroll between beats, or the first 2 s after the mark forms
+ * (its big hop). With reduced motion there is no hop, and the scene's clock stands still, so the hop never counts.
+ */
+export const studioBusy = ({ revealing, settling, sinceFormed, reduced }: { revealing: boolean; settling: boolean; sinceFormed: number | null; reduced: boolean }) =>
+  revealing || settling || (!reduced && sinceFormed !== null && sinceFormed < 2);
+
 export function shouldDraw(now: number, lastInput: number, lastDraw: number, busy: boolean): boolean {
   if (busy || now - lastInput < IDLE_AFTER_MS) return true;
   return now - lastDraw >= 1000 / IDLE_FPS - 4;
