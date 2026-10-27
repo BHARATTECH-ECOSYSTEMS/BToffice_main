@@ -39,14 +39,20 @@ export const userEnrolledCourses = async (req, res) => {
     }
 
     await ensureUser(req);
-    const userData = await User.findById(userId).populate("enrolledCourses").lean();
+    // without the list of who else is enrolled
+    const userData = await User.findById(userId).populate({ path: "enrolledCourses", select: "-enrolledStudents" }).lean();
     if (!userData) {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
+    // and of the ratings only their own (the player shows it)
+    const enrolledCourses = userData.enrolledCourses.map((course) => ({
+      ...course,
+      courseRatings: (course.courseRatings || []).filter((r) => r.userId === userId),
+    }));
     res.status(200).json({
       status: "success",
-      data: { enrolledCourses: userData.enrolledCourses },
+      data: { enrolledCourses },
     });
   } catch (error) {
     console.error("userEnrolledCourses error:", error);
