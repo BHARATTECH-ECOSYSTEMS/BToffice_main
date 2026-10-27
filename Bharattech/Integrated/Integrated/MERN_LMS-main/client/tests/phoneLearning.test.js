@@ -18,21 +18,26 @@ test("L1: below 768 px the navbar is the logo and a Menu button; the desktop row
   assert.match(nav, /className="hidden items-center gap-5 md:flex"/, "the tabs are desktop only");
   assert.match(nav, /className="hidden shrink-0 items-center gap-2 md:flex"/, "the right-hand buttons are desktop only");
   assert.match(nav, /aria-controls="learn-menu"\s+aria-expanded=\{menuOpen\}/);
-  assert.match(nav, /className=\{`[^`]*md:hidden[^`]*`\}/, "the Menu button is phones only");
+  // the Menu button's classes are shared with the educator navbar since 2026-10-27 (E1A)
+  assert.match(nav, /className=\{menuButton\}/);
+  assert.match(read("components/students/ui.js"), /export const menuButton = `[^`]*md:hidden[^`]*`/, "the Menu button is phones only");
 });
 
 test("L1: the menu panel holds every navbar link, each a full-width 48 px row", () => {
   const nav = read("components/students/Navbar.jsx");
   const panel = nav.slice(nav.indexOf('id="learn-menu"'));
   for (const label of ["Courses", "My courses", "Back to the portal", "View as educator", "Sign out"]) assert.ok(panel.includes(label), label);
-  assert.match(nav, /const menuRow = `[^`]*min-h-12[^`]*`/);
+  // shared with the educator menu since 2026-10-27 (E1A)
+  assert.match(read("components/students/ui.js"), /export const menuRow = `[^`]*min-h-12[^`]*`/);
 });
 
 test("L1: the menu closes on a new page, on Escape, and on a tap outside it", () => {
-  const nav = read("components/students/Navbar.jsx");
-  assert.match(nav, /useEffect\(\(\) => setMenuOpen\(false\), \[pathname\]\)/);
-  assert.match(nav, /event\.key === "Escape"/);
-  assert.match(nav, /!navRef\.current\?\.contains\(event\.target\)/);
+  // the closing rules live in the hook both navbars share since 2026-10-27 (E1A)
+  assert.match(read("components/students/Navbar.jsx"), /usePhoneMenu\(\)/);
+  const hook = read("hooks/usePhoneMenu.js");
+  assert.match(hook, /useEffect\(\(\) => setMenuOpen\(false\), \[pathname\]\)/);
+  assert.match(hook, /event\.key === "Escape"/);
+  assert.match(hook, /!navRef\.current\?\.contains\(event\.target\)/);
 });
 
 test("L2: the tap class adds a 44 px see-through tap area on phones only", () => {

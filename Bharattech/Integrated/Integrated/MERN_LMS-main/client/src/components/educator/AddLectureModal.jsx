@@ -46,7 +46,7 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
             type="button"
             onClick={resetModal}
             aria-label="Close"
-            className="rounded-full p-2 transition-colors duration-150 ease-snappy mhover:bg-ink/5"
+            className="tap rounded-full p-2 transition-colors duration-150 ease-snappy mhover:bg-ink/5"
           >
             <img src={assets.cross_icon} alt="" className="h-4 w-4" />
           </button>
@@ -123,7 +123,7 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
                 People can watch it on the course page before they enroll.
               </p>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
+            <label className="tap relative inline-flex items-center cursor-pointer">
               <input
                 type="checkbox"
                 className="sr-only peer"
@@ -146,7 +146,7 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
           <button
             onClick={resetModal}
             type="button"
-            className={`flex-1 py-2.5 text-sm ${quietButton}`}
+            className={`tap flex-1 py-2.5 text-sm ${quietButton}`}
           >
             Cancel
           </button>
@@ -154,7 +154,7 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
             onClick={handleAddLecture}
             type="button"
             disabled={!lectureDetails.lectureTitle || !lectureDetails.lectureDuration || !lectureDetails.lectureUrl}
-            className={`flex-1 py-2.5 text-sm ${primaryButton}`}
+            className={`tap flex-1 py-2.5 text-sm ${primaryButton}`}
           >
             Add lesson
           </button>

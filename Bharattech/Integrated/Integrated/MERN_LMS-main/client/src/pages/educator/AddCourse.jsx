@@ -285,7 +285,7 @@ function AddCourse() {
                 <button
                   type="button"
                   onClick={() => handleRemoveChapter(chapter.chapterId)}
-                  className="text-sm font-medium text-muted transition-colors duration-150 ease-snappy mhover:text-[#B42318]"
+                  className="tap text-sm font-medium text-muted transition-colors duration-150 ease-snappy mhover:text-[#B42318]"
                 >
                   Remove chapter<span className="sr-only"> {chapter.chapterTitle}</span>
                 </button>
@@ -298,7 +298,7 @@ function AddCourse() {
                     <button
                       type="button"
                       onClick={() => handleRemoveLecture(chapter.chapterId, i)}
-                      className="text-sm text-muted transition-colors duration-150 ease-snappy mhover:text-[#B42318]"
+                      className="tap text-sm text-muted transition-colors duration-150 ease-snappy mhover:text-[#B42318]"
                     >
                       Remove<span className="sr-only"> {lecture.lectureTitle}</span>
                     </button>
@@ -309,7 +309,7 @@ function AddCourse() {
                 <button
                   type="button"
                   onClick={() => handleOpenLectureModal(chapter.chapterId)}
-                  className="text-sm font-semibold text-act-deep underline-offset-2 mhover:underline"
+                  className="tap text-sm font-semibold text-act-deep underline-offset-2 mhover:underline"
                 >
                   Add a lesson
                 </button>
@@ -317,7 +317,7 @@ function AddCourse() {
             </div>
           ))}
 
-          <button type="button" onClick={() => setShowChapterModal(true)} className={`justify-self-start px-5 py-2 text-sm ${quietButton}`}>
+          <button type="button" onClick={() => setShowChapterModal(true)} className={`tap justify-self-start px-5 py-2 text-sm ${quietButton}`}>
             Add a chapter
           </button>
         </section>

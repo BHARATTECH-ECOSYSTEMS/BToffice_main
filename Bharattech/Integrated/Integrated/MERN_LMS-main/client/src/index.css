@@ -92,6 +92,20 @@
     height: max(100%, 44px);
     transform: translate(-50%, -50%);
   }
+  /* Add a course's description toolbar (owner's E3A, 2026-10-27): its buttons sit edge to edge, so layers would
+     overlap; on phones they are a real 44 px instead (Quill's own 28 x 24, same 18 px icon) and the toolbar wraps */
+  .learn .ql-snow.ql-toolbar button {
+    width: 44px;
+    height: 44px;
+    padding: 13px;
+  }
+  .learn .ql-snow .ql-picker {
+    height: 44px;
+  }
+  .learn .ql-snow .ql-picker-label {
+    display: flex;
+    align-items: center;
+  }
 }
 @media (max-width: 480px) {
   /* Toastify runs them edge to edge on phones; keep the page's own 12 px margins */

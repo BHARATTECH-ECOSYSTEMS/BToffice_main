@@ -42,14 +42,14 @@ const EduPopup = ({ message, onSubmit, onClose }) => {
             <button
               type="button"
               onClick={onClose}
-              className={`px-4 py-2 text-sm ${quietButton}`}
+              className={`tap px-4 py-2 text-sm ${quietButton}`}
             >
               Cancel
             </button>
             <button
               type="button"
               onClick={handleSubmit}
-              className={`px-4 py-2 text-sm ${primaryButton}`}
+              className={`tap px-4 py-2 text-sm ${primaryButton}`}
             >
               Add chapter
             </button>

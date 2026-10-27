@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { useEducatorFetch } from "../../hooks/useEducatorFetch";
 import { educatorFigures, plural, progressLabel, shortDate } from "../../utils/courseHelpers";
 import ProgressBar from "../../components/students/ProgressBar";
-import { FirstLoad, LearnerCell, PageHead, bodyCell, headCell, tableClass } from "../../components/educator/parts";
+import { FirstLoad, LearnerCell, PageHead, bodyCell, enrollmentRow, headCell, tableBody, tableClass, tableHead } from "../../components/educator/parts";
 
 const LATEST = 5;
 const readCourseCount = (data) => data?.totalCourses || 0;
@@ -68,7 +68,7 @@ function Dashboard() {
             ) : (
               <div className="mt-4 overflow-hidden rounded-2xl border border-line bg-card">
                 <table className={tableClass}>
-                  <thead className="border-b border-line">
+                  <thead className={tableHead}>
                     <tr>
                       <th scope="col" className={headCell}>Learner</th>
                       <th scope="col" className={headCell}>Course</th>
@@ -76,11 +76,11 @@ function Dashboard() {
                       <th scope="col" className={`${headCell} text-right`}>Enrolled</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-line">
+                  <tbody className={tableBody}>
                     {latest.map((item) => {
                       const progress = progressLabel(item.progress);
                       return (
-                        <tr key={`${item.student?._id}-${item.courseTitle}-${item.purchaseDate}`}>
+                        <tr key={`${item.student?._id}-${item.courseTitle}-${item.purchaseDate}`} className={enrollmentRow}>
                           <td className={bodyCell}>
                             <LearnerCell student={item.student} />
                           </td>
@@ -91,7 +91,10 @@ function Dashboard() {
                               <span className="whitespace-nowrap text-[13px] tabular-nums text-muted">{progress.text}</span>
                             </div>
                           </td>
-                          <td className={`${bodyCell} text-right text-[13px] tabular-nums text-muted`}>{shortDate(item.purchaseDate)}</td>
+                          <td className={`${bodyCell} text-right text-[13px] tabular-nums text-muted max-md:text-left`}>
+                            <span className="md:hidden">Enrolled </span>
+                            {shortDate(item.purchaseDate)}
+                          </td>
                         </tr>
                       );
                     })}

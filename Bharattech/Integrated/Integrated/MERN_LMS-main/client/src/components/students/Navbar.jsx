@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Menu, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { toast } from "react-toastify";
 import EducatorNavbar from "../educator/Navbar";
 import logo from "../../assets/BHARATTECH ORIGIN Logo-01.png";
-import { quietButton } from "./ui";
+import { usePhoneMenu } from "../../hooks/usePhoneMenu";
+import { menuButton, menuPanel, menuRow, quietButton } from "./ui";
 
 const PORTAL_URL = import.meta.env.VITE_PORTAL_URL;
 
@@ -14,8 +14,6 @@ const tab = ({ isActive }) =>
     isActive ? "text-ink after:absolute after:inset-x-1 after:bottom-0 after:h-0.5 after:rounded-full after:bg-act" : "text-muted mhover:text-ink"
   }`;
 const quiet = `${quietButton} px-4 py-1.5 text-sm`;
-// the phone menu's rows: full width and 48 px tall, so each is easy to tap
-const menuRow = `flex min-h-12 w-full items-center rounded-xl px-4 text-left text-[15px] font-medium text-ink transition-colors duration-150 ease-snappy mhover:bg-ink/5`;
 
 function Navbar() {
   const navigate = useNavigate();
@@ -25,26 +23,7 @@ function Navbar() {
   const onMine = pathname.startsWith("/my-enrollments") || pathname.startsWith("/player");
   const onCourses = !onMine && (pathname === "/" || pathname.startsWith("/course"));
   // below 768 px the links live in a Menu panel (owner's L1A, 2026-10-27): in one row they ran 600 px wide on a phone
-  const [menuOpen, setMenuOpen] = useState(false);
-  const navRef = useRef(null);
-
-  useEffect(() => setMenuOpen(false), [pathname]);
-
-  useEffect(() => {
-    if (!menuOpen) return undefined;
-    const onKey = (event) => {
-      if (event.key === "Escape") setMenuOpen(false);
-    };
-    const onPointer = (event) => {
-      if (!navRef.current?.contains(event.target)) setMenuOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    document.addEventListener("pointerdown", onPointer);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("pointerdown", onPointer);
-    };
-  }, [menuOpen]);
+  const { menuOpen, setMenuOpen, navRef } = usePhoneMenu();
 
   if (viewRole === "educator") {
     return <EducatorNavbar />;
@@ -94,7 +73,7 @@ function Navbar() {
           aria-controls="learn-menu"
           aria-expanded={menuOpen}
           onClick={() => setMenuOpen((open) => !open)}
-          className={`${quietButton} inline-flex min-h-11 items-center gap-2 px-4 text-sm md:hidden`}
+          className={menuButton}
         >
           {menuOpen ? <X className="h-4 w-4" aria-hidden="true" /> : <Menu className="h-4 w-4" aria-hidden="true" />}
           Menu
@@ -102,7 +81,7 @@ function Navbar() {
       </div>
 
       {menuOpen && (
-        <div id="learn-menu" className="absolute inset-x-0 top-full border-b border-line bg-paper px-4 pb-4 pt-2 shadow-[0_16px_32px_-16px_rgb(20_19_15_/_0.25)] motion-safe:animate-chapter-in md:hidden">
+        <div id="learn-menu" className={menuPanel}>
           <Link to="/" className={`${menuRow} ${onCourses ? "text-act-deep" : ""}`} aria-current={onCourses ? "page" : undefined}>
             Courses
           </Link>

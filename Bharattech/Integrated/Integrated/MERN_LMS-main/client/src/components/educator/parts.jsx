@@ -47,6 +47,14 @@ export function FirstLoad({ status, retry, what }) {
   );
 }
 
-export const tableClass = "w-full border-collapse text-left text-[15px]";
+// Below 768 px the tables cut off their right-hand columns (owner's E2A, 2026-10-27), so there each row stacks
+// instead: no header row, the row lays out its own cells, and the cells lose their padding to the row.
+export const tableClass = "w-full border-collapse text-left text-[15px] max-md:block";
+export const tableHead = "border-b border-line max-md:hidden";
+export const tableBody = "divide-y divide-line max-md:block";
 export const headCell = "px-5 py-3 text-[13px] font-medium text-muted";
-export const bodyCell = "px-5 py-4 align-middle";
+export const bodyCell = "px-5 py-4 align-middle max-md:p-0";
+// an enrollment: learner, course, progress, then the date, one under the other (beside the learner it cut their name)
+export const enrollmentRow = "max-md:grid max-md:gap-y-2 max-md:px-5 max-md:py-4";
+// a course: cover and title, then learners and the publish date under the title
+export const courseRow = "max-md:flex max-md:flex-wrap max-md:px-5 max-md:py-4";
