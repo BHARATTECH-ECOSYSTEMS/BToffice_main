@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, BUSY_MESSAGE } from './api';
+import { turns } from './newestReply';
 
 /**
  * e-Office attendance on the backend (/api/attendance). Everyone joins and leaves the e-Office for themselves, as often
@@ -224,16 +225,20 @@ const asApiError = (error: unknown) => (error instanceof ApiError ? error : new 
 function useLoaded<T>(path: string | null, read: (raw: unknown) => T) {
   const on = !!api && path !== null;
   const [state, setState] = useState<Loaded<T>>(on ? { kind: 'loading' } : { kind: 'off' });
+  // after a quick change of day, the older day's reply can arrive last: only the newest load's answer is shown
+  const [nextTurn] = useState(turns);
   const load = useCallback(async () => {
+    const current = nextTurn();
     if (!api || path === null) return setState({ kind: 'off' });
     try {
-      setState({ kind: 'ready', value: read(await api.get<unknown>(path)) });
+      const value = read(await api.get<unknown>(path));
+      if (current()) setState({ kind: 'ready', value });
     } catch (error) {
-      setState({ kind: 'error', error: asApiError(error) });
+      if (current()) setState({ kind: 'error', error: asApiError(error) });
     }
     // `read` is a module-level parser, the same on every call
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path]);
+  }, [path, nextTurn]);
   useEffect(() => {
     void load();
   }, [load]);

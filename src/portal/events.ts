@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, BUSY_MESSAGE } from './api';
+import { turns } from './newestReply';
 import { EVENT_KINDS, type EventKind } from './data';
 
 /**
@@ -70,16 +71,19 @@ const asApiError = (error: unknown) => (error instanceof ApiError ? error : new 
  */
 export function useEvents(from: string, to: string) {
   const [state, setState] = useState<EventsState>(api ? { kind: 'loading' } : { kind: 'off' });
+  // after a quick change of month, the older month's reply can arrive last: only the newest load's answer is shown
+  const [nextTurn] = useState(turns);
 
   const load = useCallback(async () => {
     if (!api) return;
+    const current = nextTurn();
     try {
       const events = toEvents(await api.get<unknown>(`/events?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`));
-      setState({ kind: 'ready', events });
+      if (current()) setState({ kind: 'ready', events });
     } catch (error) {
-      setState({ kind: 'error', error: asApiError(error) });
+      if (current()) setState({ kind: 'error', error: asApiError(error) });
     }
-  }, [from, to]);
+  }, [from, to, nextTurn]);
 
   useEffect(() => {
     void load();
