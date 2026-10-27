@@ -73,6 +73,17 @@ export function ConnectedTeamPanel({ directory }: { directory: Directory }) {
     }
   };
 
+  /** A save made from the Manage window: a refusal goes back to the window to show (owner's 4A). */
+  const saveHere = async (person: DirectoryPerson, change: () => Promise<void>, done: string) => {
+    setSaving(person.id);
+    try {
+      await change();
+      notify(done);
+    } finally {
+      setSaving(null);
+    }
+  };
+
   return (
     <section className="p-card" aria-labelledby="team" aria-busy={state.kind === 'loading' || undefined}>
       <div className="p-card-head">
@@ -171,7 +182,7 @@ export function ConnectedTeamPanel({ directory }: { directory: Directory }) {
           roles={roleChoices(actor, managing.accountRole)}
           deletable={canDelete(actor, managing.accountRole)}
           onClose={() => setManaging(null)}
-          onSave={(role) => void save(managing, () => directory.changeRole(managing.id, role), `${managing.name} is now ${roleLabel(role).toLowerCase()}.`)}
+          onSave={(role) => saveHere(managing, () => directory.changeRole(managing.id, role), `${managing.name} is now ${roleLabel(role).toLowerCase()}.`)}
           onDelete={() => (setDeleting(managing), setManaging(null))}
         />
       )}
@@ -203,18 +214,31 @@ function ManageAccountModal({
   roles: AccountRole[];
   deletable: boolean;
   onClose: () => void;
-  onSave: (role: AccountRole) => void;
+  /** Rejects with an ApiError when the backend refuses: the window stays open and says why. */
+  onSave: (role: AccountRole) => Promise<void>;
   onDelete: () => void;
 }) {
   const [role, setRole] = useState<AccountRole>(person.accountRole);
+  const [saving, setSaving] = useState(false);
+  const [failure, setFailure] = useState('');
   return (
     <Modal
       title={`Manage ${person.name}`}
       icon="edit"
       onClose={onClose}
-      onSubmit={() => {
-        if (role !== person.accountRole) onSave(role);
-        onClose();
+      onSubmit={async () => {
+        if (saving) return;
+        setSaving(true);
+        setFailure('');
+        try {
+          if (role !== person.accountRole) await onSave(role);
+          onClose();
+        } catch (e) {
+          // the window stays open with the chosen role, and says why
+          setFailure(saveFailedMessage(e as ApiError));
+        } finally {
+          setSaving(false);
+        }
       }}
       footer={
         <>
@@ -226,12 +250,17 @@ function ManageAccountModal({
           <button type="button" className={btnClass('ghost')} onClick={onClose}>
             <BtnLabel>Cancel</BtnLabel>
           </button>
-          <button type="submit" className={btnClass('primary')} disabled={!roles.length}>
-            <BtnLabel>Save</BtnLabel>
+          <button type="submit" className={btnClass('primary')} disabled={!roles.length || saving}>
+            <BtnLabel>{saving ? 'Saving…' : 'Save'}</BtnLabel>
           </button>
         </>
       }
     >
+      {failure && (
+        <p className="p-error" role="alert">
+          {failure}
+        </p>
+      )}
       <p className="p-modal-text">{person.email}</p>
       {roles.length ? (
         <label className="p-field">

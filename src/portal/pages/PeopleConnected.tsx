@@ -111,6 +111,17 @@ export function ConnectedPeople() {
     }
   };
 
+  /** A save made from a window: the row waits for it, and a refusal goes back to the window to show (owner's 4A). */
+  const saveHere = async (person: DirectoryPerson, change: () => Promise<void>, done: string) => {
+    startSaving(person.id);
+    try {
+      await change();
+      notify(done);
+    } finally {
+      doneSaving(person.id);
+    }
+  };
+
   // Block / Unblock also switch their sign-in; the backend's refusals say what to do next, so they're shown as sent
   const setBlocked = (person: DirectoryPerson, blocked: boolean) =>
     void save(
@@ -335,7 +346,7 @@ export function ConnectedPeople() {
             onResetLink: () => (setEditing(null), setResetting(editing)),
           }}
           onClose={() => setEditing(null)}
-          onSave={(details) => void save(editing, () => directory.saveDetails(editing.id, details), `${details.fullName ?? editing.name}’s details were saved.`)}
+          onSave={(details) => saveHere(editing, () => directory.saveDetails(editing.id, details), `${details.fullName ?? editing.name}’s details were saved.`)}
         />
       )}
       {deleting && (
@@ -402,9 +413,11 @@ function PendingInvites({
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState<PendingInvite | null>(null);
+  const [resending, setResending] = useState<PendingInvite | null>(null);
   const { state } = pending;
 
   const sendAgain = async (p: PendingInvite) => {
+    setResending(null);
     setBusy(p.id);
     try {
       await invite({ name: p.name, email: p.email, role: p.role });
@@ -474,7 +487,7 @@ function PendingInvites({
                     {p.expired && <span className="p-due-flag is-late">Expired: send again</span>}
                   </td>
                   <td className="is-end p-row-actions">
-                    <button type="button" className={btnClass('ghost', { small: true })} disabled={busy === p.id} onClick={() => void sendAgain(p)}>
+                    <button type="button" className={btnClass('ghost', { small: true })} disabled={busy === p.id} onClick={() => setResending(p)}>
                       <BtnLabel icon="refresh">
                         Send again<span className="sr-only"> to {p.email}</span>
                       </BtnLabel>
@@ -492,6 +505,28 @@ function PendingInvites({
         </div>
       ) : (
         <p className="p-muted">Nobody is waiting to accept an invite.</p>
+      )}
+      {resending && (
+        <Modal
+          title={`Send ${resending.name} a new invite?`}
+          icon="refresh"
+          onClose={() => setResending(null)}
+          onSubmit={() => void sendAgain(resending)}
+          footer={
+            <>
+              <button type="button" className={btnClass('ghost')} onClick={() => setResending(null)}>
+                <BtnLabel>Cancel</BtnLabel>
+              </button>
+              <button type="submit" className={btnClass('primary')}>
+                <BtnLabel icon="refresh">Send again</BtnLabel>
+              </button>
+            </>
+          }
+        >
+          <p>
+            We’ll email {resending.email} a new temporary password, and their old temporary password stops working. The invite lasts 12 hours from now.
+          </p>
+        </Modal>
       )}
       {cancelling && (
         <Modal
@@ -760,9 +795,12 @@ function DetailsModal({
   photoProblem: string;
   access: SignInAccess;
   onClose: () => void;
-  onSave: (details: { fullName?: string; stream: Stream | null; team: string; joinedOn?: string | null }) => void;
+  /** Rejects with an ApiError when the backend refuses: the window stays open and says why. */
+  onSave: (details: { fullName?: string; stream: Stream | null; team: string; joinedOn?: string | null }) => Promise<void>;
 }) {
   const [name, setName] = useState(person.name);
+  const [saving, setSaving] = useState(false);
+  const [failure, setFailure] = useState('');
   const [nameError, setNameError] = useState('');
   const [stream, setStream] = useState<Stream | ''>(person.stream ?? '');
   const [team, setTeam] = useState(person.team ?? '');
@@ -774,30 +812,45 @@ function DetailsModal({
       title={`${person.name}’s details`}
       icon="users"
       onClose={onClose}
-      onSubmit={() => {
+      onSubmit={async () => {
+        if (saving) return;
         const fullName = cleanName(name);
         if (!fullName) return setNameError(`Enter a name of ${NAME_MIN} to ${NAME_MAX} characters.`);
         const problem = joinDateProblem(joined, today);
         if (problem) return setJoinedError(problem);
-        onSave({
-          ...(fullName !== person.name && { fullName }),
-          stream: stream || null,
-          team: team.trim(),
-          ...(joined !== (person.joined ?? '') && { joinedOn: joined || null }),
-        });
-        onClose();
+        setSaving(true);
+        setFailure('');
+        try {
+          await onSave({
+            ...(fullName !== person.name && { fullName }),
+            stream: stream || null,
+            team: team.trim(),
+            ...(joined !== (person.joined ?? '') && { joinedOn: joined || null }),
+          });
+          onClose();
+        } catch (e) {
+          // the window stays open with what was typed, and says why
+          setFailure(saveFailedMessage(e as ApiError));
+        } finally {
+          setSaving(false);
+        }
       }}
       footer={
         <>
           <button type="button" className={btnClass('ghost')} onClick={onClose}>
             <BtnLabel>Cancel</BtnLabel>
           </button>
-          <button type="submit" className={btnClass('primary')}>
-            <BtnLabel>Save</BtnLabel>
+          <button type="submit" className={btnClass('primary')} disabled={saving}>
+            <BtnLabel>{saving ? 'Saving…' : 'Save'}</BtnLabel>
           </button>
         </>
       }
     >
+      {failure && (
+        <p className="p-error" role="alert">
+          {failure}
+        </p>
+      )}
       <PhotoField person={person} problem={photoProblem} />
       <label className="p-field">
         <span>Name</span>
@@ -893,6 +946,7 @@ function PhotoField({ person, problem }: { person: DirectoryPerson; problem: str
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   useEffect(() => {
     let open = true;
@@ -932,7 +986,7 @@ function PhotoField({ person, problem }: { person: DirectoryPerson; problem: str
     void change(async () => photoUrl(await calls.save(person.id, await toJpeg(await toSquare(file)))), `Photo saved. ${person.name} is told in their bell.`);
   };
 
-  const remove = () => void change(async () => (await calls.remove(person.id), undefined), `Photo removed. ${person.name} is told in their bell.`);
+  const remove = () => (setConfirmingRemove(false), void change(async () => (await calls.remove(person.id), undefined), `Photo removed. ${person.name} is told in their bell.`));
 
   return (
     <div className="p-field" role="group" aria-labelledby="details-photo">
@@ -945,12 +999,32 @@ function PhotoField({ person, problem }: { person: DirectoryPerson; problem: str
           <BtnLabel icon="upload">{busy ? 'Saving…' : url ? 'Change' : 'Upload'}</BtnLabel>
         </button>
         {url && !problem && (
-          <button type="button" className="p-text-btn is-danger" disabled={busy} onClick={remove}>
+          <button type="button" className="p-text-btn is-danger" disabled={busy} onClick={() => setConfirmingRemove(true)}>
             Remove
           </button>
         )}
         <input ref={input} type="file" accept={PHOTO_TYPES.join(',')} onChange={pick} hidden />
       </div>
+      {confirmingRemove && (
+        <Modal
+          title={`Remove ${person.name}’s photo?`}
+          icon="alert"
+          onClose={() => setConfirmingRemove(false)}
+          onSubmit={remove}
+          footer={
+            <>
+              <button type="button" className={btnClass('ghost')} onClick={() => setConfirmingRemove(false)}>
+                <BtnLabel>Keep it</BtnLabel>
+              </button>
+              <button type="submit" className={btnClass('primary')}>
+                <BtnLabel>Remove photo</BtnLabel>
+              </button>
+            </>
+          }
+        >
+          <p>Their initials show instead, everywhere, and they’re told in their bell.</p>
+        </Modal>
+      )}
       {error ? (
         <span className="p-error" role="alert">
           {error}

@@ -7,7 +7,7 @@ import { removeMyPhoto, saveMyPhoto, useMyPhoto } from '../myPhoto';
 import { PHOTO_MAX_MB, PHOTO_TYPES, photoFileProblem, toJpeg, toSquare } from '../photos';
 import { nameChangeHint, phoneProblem, saveMyPhones, useAccountProfile, type AccountProfile, type ProfileState } from '../profile';
 import { endSessionForNewSignIn, ROLE_NAME, setDisplayName, setPhoto, useSession } from '../session';
-import { Badge, btnClass, BtnLabel, initials, PageHead, PIcon, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, initials, Modal, PageHead, PIcon, useNotice } from '../ui';
 import { ThemeChoices } from '../../components/ThemeSwitch';
 
 const MIN_PASSWORD = 8;
@@ -133,8 +133,11 @@ function ProfilePanel({ roleLabel }: { roleLabel?: string }) {
     );
   };
 
-  const remove = () =>
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
+  const remove = () => {
+    setConfirmingRemove(false);
     void changePhoto(async () => (connected ? removeMyPhoto() : setPhoto(undefined)), connected ? 'Your photo was removed from your account.' : 'Your photo was removed.');
+  };
 
   const save = (e: FormEvent) => {
     e.preventDefault();
@@ -179,12 +182,32 @@ function ProfilePanel({ roleLabel }: { roleLabel?: string }) {
             <BtnLabel icon="upload">{busy ? 'Saving…' : photo ? 'Change' : 'Upload'}</BtnLabel>
           </button>
           {photo && (
-            <button type="button" className="p-text-btn is-danger" disabled={busy} onClick={remove}>
+            <button type="button" className="p-text-btn is-danger" disabled={busy} onClick={() => setConfirmingRemove(true)}>
               Remove
             </button>
           )}
           <input ref={input} type="file" accept={PHOTO_TYPES.join(',')} onChange={pick} hidden />
         </div>
+        {confirmingRemove && (
+          <Modal
+            title="Remove your photo?"
+            icon="alert"
+            onClose={() => setConfirmingRemove(false)}
+            onSubmit={remove}
+            footer={
+              <>
+                <button type="button" className={btnClass('ghost')} onClick={() => setConfirmingRemove(false)}>
+                  <BtnLabel>Keep it</BtnLabel>
+                </button>
+                <button type="submit" className={btnClass('primary')}>
+                  <BtnLabel>Remove photo</BtnLabel>
+                </button>
+              </>
+            }
+          >
+            <p>Your initials show instead, everywhere in the portal.</p>
+          </Modal>
+        )}
         {photoError && (
           <p className="p-error" role="alert">
             {photoError}
