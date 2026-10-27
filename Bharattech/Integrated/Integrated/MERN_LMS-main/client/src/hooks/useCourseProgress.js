@@ -31,8 +31,10 @@ export const useCourseProgress = (courseId, backendUrl, getToken) => {
     }
   }, [courseId, backendUrl, getToken]);
 
+  // `announce: false` from the video window (owner's A, 2026-10-27): its toast covered the window's buttons, and the
+  // window shows "Watched" itself; a failure is still told with a toast
   const markLectureCompleted = useCallback(
-    async (lectureId) => {
+    async (lectureId, { announce = true } = {}) => {
       try {
         const token = await getToken();
         const { data } = await axios.post(
@@ -42,7 +44,7 @@ export const useCourseProgress = (courseId, backendUrl, getToken) => {
         );
 
         if (data.status === "success") {
-          toast.success("Marked as watched.");
+          if (announce) toast.success("Marked as watched.");
           await fetchProgress(); // Refresh progress
         } else {
           toast.error(data.message);

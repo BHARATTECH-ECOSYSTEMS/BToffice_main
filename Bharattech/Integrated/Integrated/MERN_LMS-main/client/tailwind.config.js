@@ -54,11 +54,27 @@ export default {
           from: { opacity: "0" },
           to: { opacity: "1" },
         },
+        // the video window (owner's 3A, 2026-10-27): grows in a little and fades; closing is quicker than opening
+        "window-in": {
+          from: { opacity: "0", transform: "scale(0.96)" },
+          to: { opacity: "1", transform: "none" },
+        },
+        "window-out": {
+          from: { opacity: "1", transform: "none" },
+          to: { opacity: "0", transform: "scale(0.98)" },
+        },
+        "fade-out": {
+          from: { opacity: "1" },
+          to: { opacity: "0" },
+        },
       },
       animation: {
         "chapter-in": "chapter-in 200ms cubic-bezier(0.23, 1, 0.32, 1)",
         "card-in": "card-in 250ms cubic-bezier(0.23, 1, 0.32, 1) backwards",
         "card-fade": "card-fade 200ms ease backwards",
+        "window-in": "window-in 200ms cubic-bezier(0.23, 1, 0.32, 1)",
+        "window-out": "window-out 150ms cubic-bezier(0.23, 1, 0.32, 1) forwards",
+        "fade-out": "fade-out 150ms ease forwards",
       },
     },
   },

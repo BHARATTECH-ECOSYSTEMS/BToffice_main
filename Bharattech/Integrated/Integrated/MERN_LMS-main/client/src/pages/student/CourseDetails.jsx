@@ -256,6 +256,7 @@ function CourseDetails() {
       {playerData && (
         <VideoPlayer
           lecture={playerData}
+          course={courseData}
           onClose={handleClose}
           showMarkComplete={false} // For free-preview ? no need!
           isCompleted={false}

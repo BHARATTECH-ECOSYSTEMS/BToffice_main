@@ -189,9 +189,10 @@ function Player() {
       {playerData && (
         <VideoPlayer
           lecture={playerData}
+          course={courseData}
           onClose={handleClose}
           showMarkComplete={true}
-          onMarkComplete={markLectureCompleted}
+          onMarkComplete={(lectureId) => markLectureCompleted(lectureId, { announce: false })}
           isCompleted={courseProgress?.lectureCompleted?.includes(
             playerData.lectureId
           )}
