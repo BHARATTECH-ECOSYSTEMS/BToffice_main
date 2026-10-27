@@ -218,7 +218,9 @@ test('signing out forgets the tokens and ends the Keycloak session', async () =>
 
 test('signing out still works locally when Keycloak cannot be reached', async () => {
   const auth = createAuth(CONFIG, network(loginOk(), new TypeError('Failed to fetch')).request);
-  await auth.signIn('a@example.test', 'pw', false);
+  // signed in for real, so "signed out" is the sign-out's doing
+  assert.equal((await auth.signIn('a@example.test', 'pw', false)).ok, true);
+  assert.equal(auth.signedIn(), true);
   await auth.signOut();
   assert.equal(auth.signedIn(), false);
 });

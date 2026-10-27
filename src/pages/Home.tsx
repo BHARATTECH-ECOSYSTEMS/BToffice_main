@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router';
 import { setHomeWhole } from './homeWhole';
+import { firstBuilt, isWhole, nextBuilt } from './homeStaging';
 import { Story } from '../sections/Story';
 import { Capabilities } from '../sections/Capabilities';
 import { HowItWorks } from '../sections/HowItWorks';
@@ -51,8 +52,8 @@ export function Home() {
   const { state } = useLocation();
   // a link from another page to one of the sections (Layout scrolls to it) needs it there now
   const jump = !!(state as { scrollTo?: string } | null)?.scrollTo;
-  const [built, setBuilt] = useState(() => (window.matchMedia(STAGED_MEDIA).matches ? 0 : LOWER.length));
-  const whole = jump || built >= LOWER.length;
+  const [built, setBuilt] = useState(() => firstBuilt(LOWER.length, window.matchMedia(STAGED_MEDIA).matches));
+  const whole = isWhole(built, LOWER.length, jump);
 
   useEffect(() => {
     if (whole) {
@@ -60,9 +61,9 @@ export function Home() {
       if (built < LOWER.length) setBuilt(LOWER.length);
       return;
     }
-    const everything = () => setBuilt(LOWER.length);
+    const everything = () => setBuilt((n) => nextBuilt(n, LOWER.length, 'input'));
     BUILD_ALL_ON.forEach((type) => window.addEventListener(type, everything, { capture: true, passive: true }));
-    const cancel = whenQuiet(() => setBuilt((n) => n + 1));
+    const cancel = whenQuiet(() => setBuilt((n) => nextBuilt(n, LOWER.length, 'quiet')));
     return () => {
       BUILD_ALL_ON.forEach((type) => window.removeEventListener(type, everything, { capture: true }));
       cancel();

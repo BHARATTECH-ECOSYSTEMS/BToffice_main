@@ -137,6 +137,8 @@ test('sub admin figures leave out the certificates they are not allowed to list'
 
 test('figures still loading have no value, rather than a made-up 0', () => {
   const figures = managerFigures({ showCertificates: true }, TODAY);
+  // all four are there, so "every one has no value" isn't true of an empty list
+  assert.deepEqual(figures.map((f) => f.label), ['Users', 'Certificates', 'Last 30 days', 'Inactive accounts']);
   assert.ok(figures.every((f) => f.value === undefined));
 });
 

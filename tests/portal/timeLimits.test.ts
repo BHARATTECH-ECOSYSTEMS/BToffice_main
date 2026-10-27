@@ -78,7 +78,9 @@ test('changing the password gives up and nothing changes here', async () => {
 
 test('signing out finishes here even when Keycloak never answers', async () => {
   const auth = createAuth(CONFIG, hangsAfter(loginOk()).request, LIMIT);
-  await auth.signIn('test.employee', 'pw', false);
+  // signed in for real, so there is a Keycloak session to end and "signed out" is the sign-out's doing
+  assert.equal((await auth.signIn('test.employee', 'pw', false)).ok, true);
+  assert.equal(auth.signedIn(), true);
 
   await quickly(auth.signOut());
   assert.equal(auth.signedIn(), false);
