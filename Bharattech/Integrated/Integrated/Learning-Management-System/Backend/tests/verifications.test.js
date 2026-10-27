@@ -232,8 +232,10 @@ test("verifying needs every check ticked; a rejection needs a note; both record 
 
   const reopened = await decide(p.admin, id, "pending");
   assert.deepEqual([reopened.body.status, reopened.body.decidedBy, reopened.body.decidedAt], ["pending", "", null]);
-  assert.equal(reopened.body.log.at(-1).text, "Reopened");
-  assert.equal(reopened.body.note, "Bank letter is for another company", "the last note stays to read");
+  // review 2026-10-26 low list (owner's 2A): the old decision's note goes, so it isn't read as the new one; the log
+  // keeps it
+  assert.equal(reopened.body.log.at(-1).text, "Reopened. The note was: Bank letter is for another company");
+  assert.equal(reopened.body.note, "");
 
   await tick(p.admin, id, "director");
   const verified = await decide(p.admin, id, "verified", "All five on file");

@@ -1,4 +1,5 @@
 const { randomBytes } = require("crypto");
+const mongoose = require("mongoose");
 const InviteSent = require("../models/InviteSent");
 const { kcAdmin, ensureKeycloakAdmin } = require("./keycloakAdmin");
 
@@ -67,13 +68,13 @@ const voidExpiredInvites = async (now = Date.now()) => {
   return voided;
 };
 
-/** Runs the check now and then every hour; a failure is logged and tried again the next hour. */
+/** Runs the check once the database is connected, then every hour; a failure is logged and tried again next hour. */
 const startHourlyInviteCheck = () => {
   const run = () =>
     voidExpiredInvites()
       .then((voided) => voided && console.log(`Invites: ${voided} expired temporary password(s) replaced`))
       .catch((error) => console.error("Invite expiry check failed:", error.message));
-  run();
+  mongoose.connection.asPromise().then(run, () => {});
   setInterval(run, HOUR_MS).unref();
 };
 

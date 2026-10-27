@@ -85,7 +85,8 @@ exports.getDashboard = async (req, res) => {
   try {
     const totalCourses = await Course.countDocuments();
     const pendingCourses = await Course.countDocuments({ approved: false });
-    const totalUsers = await User.countDocuments();
+    // removed people (and those who left) aren't users any more
+    const totalUsers = await User.countDocuments({ isDeleted: { $ne: true } });
 
     res.json({
       success: true,

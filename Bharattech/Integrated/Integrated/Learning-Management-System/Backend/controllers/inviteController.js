@@ -130,9 +130,8 @@ const withTimeout = (promise, timeoutMs, label) =>
 const generateTemporaryPassword = () => {
   // No fixed prefix/suffix — every character is freshly randomized so the
   // result doesn't look like a templated/reused password.
-  // No "$" or "&": the request sanitizers in server.js (mongoSanitize, xss)
-  // change them in the password typed at sign-in, so it would never match the
-  // one set in Keycloak.
+  // No "$" or "&": until step 16 the request cleaner changed them in what was typed. They stay out because the
+  // password is copied from an email, and "&" is the one character HTML email has to escape.
   const charset = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#%*";
   const bytes = randomBytes(16);
   let password = "";

@@ -315,7 +315,12 @@ exports.decide = async (req, res) => {
       const updated = await applyIf(
         request._id,
         { status: request.status },
-        { $set: { status: "pending", decidedByName: "" }, $unset: { decidedBy: 1, decidedAt: 1, answeredAt: 1 }, $push: { log: entry(req.user, "Reopened") } },
+        // the old decision's note goes, so it isn't read as the next one's; the log keeps it
+        {
+          $set: { status: "pending", decidedByName: "", note: "" },
+          $unset: { decidedBy: 1, decidedAt: 1, answeredAt: 1 },
+          $push: { log: entry(req.user, request.note ? `Reopened. The note was: ${request.note}` : "Reopened") },
+        },
         "Someone changed this request a moment ago. Reload it and try again."
       );
       return res.status(200).json(await viewOne(updated));

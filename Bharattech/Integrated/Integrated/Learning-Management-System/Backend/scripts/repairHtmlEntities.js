@@ -2,7 +2,8 @@
 // Run once after deploying that change. First without --apply: it only lists what it would change.
 //   node scripts/repairHtmlEntities.js           (report only)
 //   node scripts/repairHtmlEntities.js --apply   (write the repairs)
-// Tags the cleaner deleted can't be brought back. Safe to run more than once.
+// Tags the cleaner deleted can't be brought back. Run it once: a second run decodes what someone typed as an entity
+// ("&lt;b&gt;", saved as "&amp;lt;b&amp;gt;") a second time, into "<b>".
 
 const path = require("path");
 const mongoose = require("mongoose");

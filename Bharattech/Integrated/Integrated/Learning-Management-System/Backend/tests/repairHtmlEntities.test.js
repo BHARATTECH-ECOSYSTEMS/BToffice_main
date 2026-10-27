@@ -83,11 +83,23 @@ test("someone who typed an entity gets it back as typed, not decoded twice", asy
   assert.equal((await db().collection("resources").findOne({ _id: insertedId })).title, "Write &lt;b&gt; for bold");
 });
 
-test("running it again finds nothing more to change", async () => {
+test("running it again finds nothing more to change when nobody typed an entity", async () => {
   await seedDamaged();
   await db().collection("resources").insertOne({ title: "Already fine & clean", link: "https://example.test/?a=1&b=2" });
 
   await repairHtmlEntities({ apply: true });
 
   assert.deepEqual(await repairHtmlEntities({ apply: true }), []);
+});
+
+// Review 2026-10-26 low list: its comment said it was safe to run more than once. It isn't: a second run decodes what
+// someone typed as an entity ("&lt;b&gt;") a second time. So it says to run it once.
+test("a second run would decode typed entities again, so the script says to run it once", async () => {
+  const { insertedId } = await db().collection("resources").insertOne({ title: "Write &amp;lt;b&amp;gt; for bold", link: "https://example.test" });
+  await repairHtmlEntities({ apply: true });
+  await repairHtmlEntities({ apply: true });
+  assert.equal((await db().collection("resources").findOne({ _id: insertedId })).title, "Write <b> for bold");
+  const script = require("fs").readFileSync(require("path").join(__dirname, "..", "scripts", "repairHtmlEntities.js"), "utf8");
+  assert.doesNotMatch(script, /safe to run more than once/i);
+  assert.match(script, /Run it once/);
 });

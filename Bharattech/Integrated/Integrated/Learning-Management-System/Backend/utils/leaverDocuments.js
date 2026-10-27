@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Verification = require("../models/Verification");
 const { removeFilesOf } = require("../controllers/idDocumentController");
@@ -41,13 +42,13 @@ const deleteDueIdDocuments = async ({ today = todayInIndia() } = {}) => {
   return cleared;
 };
 
-/** Runs the check now and then every 24 hours; a failure is logged and tried again the next day. */
+/** Runs the check once the database is connected, then every 24 hours; a failure is logged and tried again next day. */
 const startDailyLeaverCheck = () => {
   const run = () =>
     deleteDueIdDocuments()
       .then((cleared) => cleared && console.log(`ID documents: cleared ${cleared} request(s) past the ${ID_RETENTION_DAYS}-day rule`))
       .catch((error) => console.error("ID documents clean-up failed:", error.message));
-  run();
+  mongoose.connection.asPromise().then(run, () => {});
   setInterval(run, DAY_MS).unref();
 };
 
