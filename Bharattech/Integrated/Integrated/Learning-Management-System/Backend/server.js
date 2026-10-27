@@ -42,6 +42,7 @@ const communityRoutes = require("./routes/communityRoutes");
 const attendanceRoutes = require("./routes/attendanceRoutes");
 const { startDailyLeaverCheck } = require("./utils/leaverDocuments");
 const { startHourlyInviteCheck } = require("./utils/inviteExpiry");
+const { startHourlyFileSweep } = require("./utils/fileSweep");
 const courseProgressRoutes = require("./routes/courseProgressRoutes");
 const certificateRoutes = require("./routes/certificateRoutes");
 const adminRoutes = require("./routes/adminRoutes");
@@ -149,4 +150,6 @@ app.listen(PORT, () => {
   startDailyLeaverCheck();
   // invites past their 12 hours: now, then hourly
   startHourlyInviteCheck();
+  // stored ID documents and task files no record refers to any more: once connected, then hourly
+  startHourlyFileSweep();
 });

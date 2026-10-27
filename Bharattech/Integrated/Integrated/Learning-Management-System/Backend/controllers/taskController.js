@@ -405,7 +405,8 @@ exports.deleteTask = async (req, res) => {
     const task = await findTask(req.params.id, req.user);
     if (!canChange(task, req.user)) throw new Refusal(403, "You can only delete tasks you gave.");
     await Task.findByIdAndDelete(task._id);
-    await deleteTaskFiles(storedFileIds(task));
+    // the task is gone either way; files that can't go now are taken by the hourly clean-up (utils/fileSweep.js)
+    await deleteTaskFiles(storedFileIds(task)).catch((error) => console.error("Delete task: its files stay for the clean-up:", error.message));
     await forgetNotesAbout(task._id);
     return res.status(200).json({ message: "Task deleted successfully" });
   } catch (error) {

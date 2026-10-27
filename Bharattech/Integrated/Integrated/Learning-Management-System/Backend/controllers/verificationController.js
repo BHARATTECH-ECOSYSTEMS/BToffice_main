@@ -366,7 +366,8 @@ exports.removeRequest = async (req, res) => {
     if (!deletedCount) throw new Refusal(409, decided);
     // its bell notes (admins' for an outside request, the employee's for theirs) and an employee's uploaded IDs go too
     await forgetNotesAbout(request._id);
-    await removeFilesOf(request);
+    // the request is gone either way; files that can't go now are taken by the hourly clean-up (utils/fileSweep.js)
+    await removeFilesOf(request).catch((error) => console.error("Delete verification: its files stay for the clean-up:", error.message));
     return res.status(200).json({ id: String(request._id), message: "The request was deleted." });
   } catch (error) {
     return answerError(res, error, "Delete verification");
