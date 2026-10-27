@@ -811,128 +811,154 @@ function DetailsModal({
   const [team, setTeam] = useState(person.team ?? '');
   const [joined, setJoined] = useState(person.joined ?? '');
   const [joinedError, setJoinedError] = useState('');
+  // the photo field's remove, waiting for "Remove photo"; its confirm is drawn after this window's form (see below)
+  const [removingPhoto, setRemovingPhoto] = useState<(() => void) | null>(null);
   const today = localDay();
   return (
-    <Modal
-      title={`${person.name}’s details`}
-      icon="users"
-      onClose={onClose}
-      onSubmit={async () => {
-        if (saving) return;
-        const fullName = cleanName(name);
-        if (!fullName) return setNameError(`Enter a name of ${NAME_MIN} to ${NAME_MAX} characters.`);
-        const problem = joinDateProblem(joined, today);
-        if (problem) return setJoinedError(problem);
-        setSaving(true);
-        setFailure('');
-        try {
-          await onSave({
-            ...(fullName !== person.name && { fullName }),
-            stream: stream || null,
-            team: team.trim(),
-            ...(joined !== (person.joined ?? '') && { joinedOn: joined || null }),
-          });
-          onClose();
-        } catch (e) {
-          // the window stays open with what was typed, and says why
-          setFailure(saveFailedMessage(e as ApiError));
-        } finally {
-          setSaving(false);
+    <>
+      <Modal
+        title={`${person.name}’s details`}
+        icon="users"
+        onClose={onClose}
+        onSubmit={async () => {
+          if (saving) return;
+          const fullName = cleanName(name);
+          if (!fullName) return setNameError(`Enter a name of ${NAME_MIN} to ${NAME_MAX} characters.`);
+          const problem = joinDateProblem(joined, today);
+          if (problem) return setJoinedError(problem);
+          setSaving(true);
+          setFailure('');
+          try {
+            await onSave({
+              ...(fullName !== person.name && { fullName }),
+              stream: stream || null,
+              team: team.trim(),
+              ...(joined !== (person.joined ?? '') && { joinedOn: joined || null }),
+            });
+            onClose();
+          } catch (e) {
+            // the window stays open with what was typed, and says why
+            setFailure(saveFailedMessage(e as ApiError));
+          } finally {
+            setSaving(false);
+          }
+        }}
+        footer={
+          <>
+            <button type="button" className={btnClass('ghost')} onClick={onClose}>
+              <BtnLabel>Cancel</BtnLabel>
+            </button>
+            <button type="submit" className={btnClass('primary')} disabled={saving}>
+              <BtnLabel>{saving ? 'Saving…' : 'Save'}</BtnLabel>
+            </button>
+          </>
         }
-      }}
-      footer={
-        <>
-          <button type="button" className={btnClass('ghost')} onClick={onClose}>
-            <BtnLabel>Cancel</BtnLabel>
-          </button>
-          <button type="submit" className={btnClass('primary')} disabled={saving}>
-            <BtnLabel>{saving ? 'Saving…' : 'Save'}</BtnLabel>
-          </button>
-        </>
-      }
-    >
-      {failure && (
-        <p className="p-error" role="alert">
-          {failure}
-        </p>
-      )}
-      <PhotoField person={person} problem={photoProblem} />
-      <label className="p-field">
-        <span>Name</span>
-        <input
-          value={name}
-          maxLength={NAME_MAX + 20}
-          onChange={(e) => (setName(e.target.value), setNameError(''))}
-          autoComplete="off"
-          aria-invalid={!!nameError || undefined}
-          aria-describedby={nameError ? 'details-name-err' : undefined}
-          autoFocus
-        />
-        {nameError && (
-          <span id="details-name-err" className="p-error" role="alert">
-            {nameError}
-          </span>
+      >
+        {failure && (
+          <p className="p-error" role="alert">
+            {failure}
+          </p>
         )}
-      </label>
-      <label className="p-field">
-        <span>Stream</span>
-        <select className="p-select" value={stream} onChange={(e) => setStream(e.target.value as Stream | '')}>
-          <option value="">Not set</option>
-          {STREAMS.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label className="p-field">
-        <span>Team</span>
-        <input value={team} maxLength={TEAM_MAX} onChange={(e) => setTeam(e.target.value)} placeholder="e.g. Platform" />
-      </label>
-      <label className="p-field">
-        <span>Joined (first working day)</span>
-        <input
-          type="date"
-          value={joined}
-          min={JOIN_EARLIEST}
-          max={latestJoinDate(today)}
-          onChange={(e) => (setJoined(e.target.value), setJoinedError(''))}
-          aria-invalid={!!joinedError || undefined}
-          aria-describedby={joinedError ? 'details-joined-err' : 'details-joined-hint'}
-        />
-        {joinedError ? (
-          <span id="details-joined-err" className="p-error" role="alert">
-            {joinedError}
+        <PhotoField person={person} problem={photoProblem} onAskRemove={(remove) => setRemovingPhoto(() => remove)} />
+        <label className="p-field">
+          <span>Name</span>
+          <input
+            value={name}
+            maxLength={NAME_MAX + 20}
+            onChange={(e) => (setName(e.target.value), setNameError(''))}
+            autoComplete="off"
+            aria-invalid={!!nameError || undefined}
+            aria-describedby={nameError ? 'details-name-err' : undefined}
+            autoFocus
+          />
+          {nameError && (
+            <span id="details-name-err" className="p-error" role="alert">
+              {nameError}
+            </span>
+          )}
+        </label>
+        <label className="p-field">
+          <span>Stream</span>
+          <select className="p-select" value={stream} onChange={(e) => setStream(e.target.value as Stream | '')}>
+            <option value="">Not set</option>
+            {STREAMS.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="p-field">
+          <span>Team</span>
+          <input value={team} maxLength={TEAM_MAX} onChange={(e) => setTeam(e.target.value)} placeholder="e.g. Platform" />
+        </label>
+        <label className="p-field">
+          <span>Joined (first working day)</span>
+          <input
+            type="date"
+            value={joined}
+            min={JOIN_EARLIEST}
+            max={latestJoinDate(today)}
+            onChange={(e) => (setJoined(e.target.value), setJoinedError(''))}
+            aria-invalid={!!joinedError || undefined}
+            aria-describedby={joinedError ? 'details-joined-err' : 'details-joined-hint'}
+          />
+          {joinedError ? (
+            <span id="details-joined-err" className="p-error" role="alert">
+              {joinedError}
+            </span>
+          ) : (
+            <span id="details-joined-hint" className="p-field-hint">
+              Shown on their ID card and as work anniversaries on everyone’s calendar. Clear it to remove it.
+            </span>
+          )}
+        </label>
+        <div className="p-field" role="group" aria-labelledby="details-signin">
+          <span id="details-signin">Sign-in</span>
+          <div className="p-row-actions">
+            <button
+              type="button"
+              className={btnClass('ghost', { small: true })}
+              disabled={!!access.blockProblem}
+              title={access.blockProblem || undefined}
+              onClick={person.status === 'inactive' ? access.onUnblock : access.onBlock}
+            >
+              <BtnLabel icon="lock">{person.status === 'inactive' ? 'Unblock' : 'Block account'}</BtnLabel>
+            </button>
+            <button type="button" className={btnClass('ghost', { small: true })} disabled={!!access.resetProblem} title={access.resetProblem || undefined} onClick={access.onResetLink}>
+              <BtnLabel icon="key">Send reset link</BtnLabel>
+            </button>
+          </div>
+          <span className="p-field-hint">
+            {person.status === 'inactive'
+              ? 'Blocked: they can’t sign in to the portal or any app that uses the company sign-in until you unblock them.'
+              : 'Blocking signs them out everywhere until you unblock them. A reset link lets them choose a new password.'}
           </span>
-        ) : (
-          <span id="details-joined-hint" className="p-field-hint">
-            Shown on their ID card and as work anniversaries on everyone’s calendar. Clear it to remove it.
-          </span>
-        )}
-      </label>
-      <div className="p-field" role="group" aria-labelledby="details-signin">
-        <span id="details-signin">Sign-in</span>
-        <div className="p-row-actions">
-          <button
-            type="button"
-            className={btnClass('ghost', { small: true })}
-            disabled={!!access.blockProblem}
-            title={access.blockProblem || undefined}
-            onClick={person.status === 'inactive' ? access.onUnblock : access.onBlock}
-          >
-            <BtnLabel icon="lock">{person.status === 'inactive' ? 'Unblock' : 'Block account'}</BtnLabel>
-          </button>
-          <button type="button" className={btnClass('ghost', { small: true })} disabled={!!access.resetProblem} title={access.resetProblem || undefined} onClick={access.onResetLink}>
-            <BtnLabel icon="key">Send reset link</BtnLabel>
-          </button>
         </div>
-        <span className="p-field-hint">
-          {person.status === 'inactive'
-            ? 'Blocked: they can’t sign in to the portal or any app that uses the company sign-in until you unblock them.'
-            : 'Blocking signs them out everywhere until you unblock them. A reset link lets them choose a new password.'}
-        </span>
-      </div>
-    </Modal>
+      </Modal>
+      {/* outside the Details window: it is a form, and a window's form inside it never reached React in Chrome, so the
+          browser submitted it and reloaded the page (re-check 2026-10-27) */}
+      {removingPhoto && (
+        <Modal
+          title={`Remove ${person.name}’s photo?`}
+          icon="alert"
+          onClose={() => setRemovingPhoto(null)}
+          onSubmit={() => (setRemovingPhoto(null), removingPhoto())}
+          footer={
+            <>
+              <button type="button" className={btnClass('ghost')} onClick={() => setRemovingPhoto(null)}>
+                <BtnLabel>Keep it</BtnLabel>
+              </button>
+              <button type="submit" className={btnClass('primary')}>
+                <BtnLabel>Remove photo</BtnLabel>
+              </button>
+            </>
+          }
+        >
+          <p>Their initials show instead, everywhere, and they’re told in their bell.</p>
+        </Modal>
+      )}
+    </>
   );
 }
 
@@ -944,14 +970,13 @@ const photoUrl = async (source: PhotoSource | undefined) =>
  * Their photo in Details. A change is saved at once, not with Save, like Block and Send reset link; the backend
  * tells them in their bell.
  */
-function PhotoField({ person, problem }: { person: DirectoryPerson; problem: string }) {
+function PhotoField({ person, problem, onAskRemove }: { person: DirectoryPerson; problem: string; onAskRemove: (remove: () => void) => void }) {
   const calls = useMemo(() => personPhotoCalls(api!), []);
   const input = useRef<HTMLInputElement>(null);
   const [url, setUrl] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
-  const [confirmingRemove, setConfirmingRemove] = useState(false);
 
   useEffect(() => {
     let open = true;
@@ -991,7 +1016,7 @@ function PhotoField({ person, problem }: { person: DirectoryPerson; problem: str
     void change(async () => photoUrl(await calls.save(person.id, await toJpeg(await toSquare(file)))), `Photo saved. ${person.name} is told in their bell.`);
   };
 
-  const remove = () => (setConfirmingRemove(false), void change(async () => (await calls.remove(person.id), undefined), `Photo removed. ${person.name} is told in their bell.`));
+  const remove = () => void change(async () => (await calls.remove(person.id), undefined), `Photo removed. ${person.name} is told in their bell.`);
 
   return (
     <div className="p-field" role="group" aria-labelledby="details-photo">
@@ -1004,32 +1029,12 @@ function PhotoField({ person, problem }: { person: DirectoryPerson; problem: str
           <BtnLabel icon="upload">{busy ? 'Saving…' : url ? 'Change' : 'Upload'}</BtnLabel>
         </button>
         {url && !problem && (
-          <button type="button" className="p-text-btn is-danger" disabled={busy} onClick={() => setConfirmingRemove(true)}>
+          <button type="button" className="p-text-btn is-danger" disabled={busy} onClick={() => onAskRemove(remove)}>
             Remove
           </button>
         )}
         <input ref={input} type="file" accept={PHOTO_TYPES.join(',')} onChange={pick} hidden />
       </div>
-      {confirmingRemove && (
-        <Modal
-          title={`Remove ${person.name}’s photo?`}
-          icon="alert"
-          onClose={() => setConfirmingRemove(false)}
-          onSubmit={remove}
-          footer={
-            <>
-              <button type="button" className={btnClass('ghost')} onClick={() => setConfirmingRemove(false)}>
-                <BtnLabel>Keep it</BtnLabel>
-              </button>
-              <button type="submit" className={btnClass('primary')}>
-                <BtnLabel>Remove photo</BtnLabel>
-              </button>
-            </>
-          }
-        >
-          <p>Their initials show instead, everywhere, and they’re told in their bell.</p>
-        </Modal>
-      )}
       {error ? (
         <span className="p-error" role="alert">
           {error}

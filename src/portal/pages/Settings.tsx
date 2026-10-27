@@ -150,107 +150,111 @@ function ProfilePanel({ roleLabel }: { roleLabel?: string }) {
   };
 
   return (
-    <SettingsCard
-      id="settings-profile"
-      title="Profile"
-      sub="How you appear to your team across the portal."
-      onSubmit={save}
-      footer={
-        <>
-          {notice}
-          {!connected && (
-            <span className="p-set-foot-actions">
-              {dirty && (
-                <button type="button" className={btnClass('ghost')} onClick={() => (setName(session.name), setError(''))}>
-                  <BtnLabel>Reset</BtnLabel>
+    <>
+      <SettingsCard
+        id="settings-profile"
+        title="Profile"
+        sub="How you appear to your team across the portal."
+        onSubmit={save}
+        footer={
+          <>
+            {notice}
+            {!connected && (
+              <span className="p-set-foot-actions">
+                {dirty && (
+                  <button type="button" className={btnClass('ghost')} onClick={() => (setName(session.name), setError(''))}>
+                    <BtnLabel>Reset</BtnLabel>
+                  </button>
+                )}
+                <button type="submit" className={btnClass('primary')} disabled={!dirty}>
+                  <BtnLabel>Save changes</BtnLabel>
                 </button>
-              )}
-              <button type="submit" className={btnClass('primary')} disabled={!dirty}>
-                <BtnLabel>Save changes</BtnLabel>
-              </button>
+              </span>
+            )}
+          </>
+        }
+      >
+        <Row label="Photo" hint={`PNG, JPG or WebP, up to ${PHOTO_MAX_MB} MB.${connected ? ' Saved to your account, so it shows on any device.' : ''}`}>
+          <div className="p-set-photo" aria-busy={busy || undefined}>
+            <span className="p-avatar is-large" aria-hidden="true">
+              {photo ? <img src={photo} alt="" /> : initials(session.name)}
             </span>
-          )}
-        </>
-      }
-    >
-      <Row label="Photo" hint={`PNG, JPG or WebP, up to ${PHOTO_MAX_MB} MB.${connected ? ' Saved to your account, so it shows on any device.' : ''}`}>
-        <div className="p-set-photo" aria-busy={busy || undefined}>
-          <span className="p-avatar is-large" aria-hidden="true">
-            {photo ? <img src={photo} alt="" /> : initials(session.name)}
-          </span>
-          <button type="button" className={btnClass('ghost', { small: true })} disabled={busy} onClick={() => input.current?.click()}>
-            <BtnLabel icon="upload">{busy ? 'Saving…' : photo ? 'Change' : 'Upload'}</BtnLabel>
-          </button>
-          {photo && (
-            <button type="button" className="p-text-btn is-danger" disabled={busy} onClick={() => setConfirmingRemove(true)}>
-              Remove
+            <button type="button" className={btnClass('ghost', { small: true })} disabled={busy} onClick={() => input.current?.click()}>
+              <BtnLabel icon="upload">{busy ? 'Saving…' : photo ? 'Change' : 'Upload'}</BtnLabel>
             </button>
-          )}
-          <input ref={input} type="file" accept={PHOTO_TYPES.join(',')} onChange={pick} hidden />
-        </div>
-        {confirmingRemove && (
-          <Modal
-            title="Remove your photo?"
-            icon="alert"
-            onClose={() => setConfirmingRemove(false)}
-            onSubmit={remove}
-            footer={
-              <>
-                <button type="button" className={btnClass('ghost')} onClick={() => setConfirmingRemove(false)}>
-                  <BtnLabel>Keep it</BtnLabel>
-                </button>
-                <button type="submit" className={btnClass('primary')}>
-                  <BtnLabel>Remove photo</BtnLabel>
-                </button>
-              </>
-            }
-          >
-            <p>Your initials show instead, everywhere in the portal.</p>
-          </Modal>
-        )}
-        {photoError && (
-          <p className="p-error" role="alert">
-            {photoError}
-          </p>
-        )}
-      </Row>
-      {connected ? (
-        <Row label="Name" hint={nameChangeHint(roleLabel)}>
-          <p className="p-set-value">
-            {session.name}
-            <PIcon name="lock" size={14} />
-          </p>
-        </Row>
-      ) : (
-        <Row label="Username" hint="Shown on your profile, tasks and certificates." htmlFor="settings-name">
-          <input
-            id="settings-name"
-            className="p-set-input"
-            value={name}
-            onChange={(e) => (setName(e.target.value), setError(''))}
-            autoComplete="name"
-            aria-invalid={!!error || undefined}
-            aria-describedby={error ? 'settings-name-err' : undefined}
-          />
-          {error && (
-            <p id="settings-name-err" className="p-error" role="alert">
-              {error}
+            {photo && (
+              <button type="button" className="p-text-btn is-danger" disabled={busy} onClick={() => setConfirmingRemove(true)}>
+                Remove
+              </button>
+            )}
+            <input ref={input} type="file" accept={PHOTO_TYPES.join(',')} onChange={pick} hidden />
+          </div>
+          {photoError && (
+            <p className="p-error" role="alert">
+              {photoError}
             </p>
           )}
         </Row>
+        {connected ? (
+          <Row label="Name" hint={nameChangeHint(roleLabel)}>
+            <p className="p-set-value">
+              {session.name}
+              <PIcon name="lock" size={14} />
+            </p>
+          </Row>
+        ) : (
+          <Row label="Username" hint="Shown on your profile, tasks and certificates." htmlFor="settings-name">
+            <input
+              id="settings-name"
+              className="p-set-input"
+              value={name}
+              onChange={(e) => (setName(e.target.value), setError(''))}
+              autoComplete="name"
+              aria-invalid={!!error || undefined}
+              aria-describedby={error ? 'settings-name-err' : undefined}
+            />
+            {error && (
+              <p id="settings-name-err" className="p-error" role="alert">
+                {error}
+              </p>
+            )}
+          </Row>
+        )}
+        <Row label="Work email" hint="Comes from your company account.">
+          <p className="p-set-value">
+            {session.email}
+            <PIcon name="lock" size={14} />
+          </p>
+        </Row>
+        <Row label="Role" hint="Only an admin can change it.">
+          <p className="p-set-value">
+            <Badge kind={session.role}>{ROLE_NAME[session.role]}</Badge>
+          </p>
+        </Row>
+      </SettingsCard>
+      {/* outside the card: the card is a form, and a window's form inside it never reached React in Chrome, so the
+          browser submitted it and reloaded the page (re-check 2026-10-27) */}
+      {confirmingRemove && (
+        <Modal
+          title="Remove your photo?"
+          icon="alert"
+          onClose={() => setConfirmingRemove(false)}
+          onSubmit={remove}
+          footer={
+            <>
+              <button type="button" className={btnClass('ghost')} onClick={() => setConfirmingRemove(false)}>
+                <BtnLabel>Keep it</BtnLabel>
+              </button>
+              <button type="submit" className={btnClass('primary')}>
+                <BtnLabel>Remove photo</BtnLabel>
+              </button>
+            </>
+          }
+        >
+          <p>Your initials show instead, everywhere in the portal.</p>
+        </Modal>
       )}
-      <Row label="Work email" hint="Comes from your company account.">
-        <p className="p-set-value">
-          {session.email}
-          <PIcon name="lock" size={14} />
-        </p>
-      </Row>
-      <Row label="Role" hint="Only an admin can change it.">
-        <p className="p-set-value">
-          <Badge kind={session.role}>{ROLE_NAME[session.role]}</Badge>
-        </p>
-      </Row>
-    </SettingsCard>
+    </>
   );
 }
 

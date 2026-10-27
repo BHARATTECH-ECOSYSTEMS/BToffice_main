@@ -42,6 +42,7 @@ test('sending an invite again asks first: the old temporary password stops worki
 test('removing a photo asks first, in Settings and in Details', () => {
   assert.match(settings, /onClick=\{\(\) => setConfirmingRemove\(true\)\}/);
   assert.match(settings, /title="Remove your photo\?"/);
-  assert.match(people, /onClick=\{\(\) => setConfirmingRemove\(true\)\}/);
+  // Details: the photo field asks the Details window, which draws the confirm (confirmOutsideForms.test.ts)
+  assert.match(people, /onClick=\{\(\) => onAskRemove\(remove\)\}/);
   assert.match(people, /title=\{`Remove \$\{person\.name\}’s photo\?`\}/);
 });
