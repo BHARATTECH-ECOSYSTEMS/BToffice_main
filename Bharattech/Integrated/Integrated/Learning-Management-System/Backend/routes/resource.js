@@ -4,6 +4,11 @@ const Resource = require("../models/Resource");
 const User = require("../models/User");
 
 const router = express.Router();
+const { mustBeObjectId } = require("../utils/refusal");
+// an id that can't be a record is a plain 400, not a failed database lookup (500)
+router.param("resourceId", mustBeObjectId);
+router.param("userId", mustBeObjectId);
+router.param("id", mustBeObjectId);
 
 const hasAdminAccess = (role = "") => {
   const normalizedRole = String(role).trim().toLowerCase().replace(/[-_\s]/g, "");

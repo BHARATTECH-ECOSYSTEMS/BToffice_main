@@ -231,3 +231,13 @@ test("the stream counts from the person's community, today's leavers included", 
   await share(p.admin, GO);
   assert.deepEqual(mail.sent.map((m) => m.to), ["today.home@example.net"]);
 });
+
+// Review 2026-10-26 low list: the length was checked before the link was tidied into a web address, and characters
+// like "é" grow when they're written out, so a link could pass the check and then fail to save (500).
+test("a link that grows past 2048 characters once written out is refused, not a server error", async () => {
+  const { admin } = await people();
+  const res = await share(admin, { stream: "tech", title: "Data Engineer", company: "Acme", link: `https://jobs.example.com/${"é".repeat(400)}`, note: "" });
+  assert.equal(res.status, 400);
+  assert.match(res.body.message, /2048/);
+  assert.equal(await Referral.countDocuments(), 0);
+});

@@ -46,6 +46,8 @@ const verificationApp = () => {
       const text = await res.text();
       return { status: res.status, body: text ? JSON.parse(text) : null };
     },
+    /** The answer itself, for its headers. */
+    raw: (who, method, path) => fetch(root + path, { method, headers: header(who) }),
     upload: async (who, kind, file = PDF, fileName = `${kind} scan.pdf`) => {
       const form = new FormData();
       form.append("file", new Blob([file], { type: "application/pdf" }), fileName);

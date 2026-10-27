@@ -1,5 +1,8 @@
 const express = require("express");
 const router = express.Router();
+const { mustBeObjectId } = require("../utils/refusal");
+// an id that can't be a record is a plain 400, not a failed database lookup (500)
+router.param("id", mustBeObjectId);
 const {
   getUsers,
   getKeycloakUsers,

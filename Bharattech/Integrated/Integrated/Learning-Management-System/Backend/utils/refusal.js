@@ -20,4 +20,7 @@ const isAdmin = (user) => ["admin", "superadmin"].includes(roleKey(user.role));
 const isManager = (user) => isAdmin(user) || roleKey(user.role) === "subadmin";
 const isObjectId = (value) => /^[0-9a-f]{24}$/i.test(String(value ?? ""));
 
-module.exports = { Refusal, answerError, isAdmin, isManager, isObjectId };
+/** For router.param: an id that can't be a record is a plain 400, before the database lookup fails on it. */
+const mustBeObjectId = (_req, res, next, value) => (isObjectId(value) ? next() : res.status(400).json({ message: "That id isn't valid." }));
+
+module.exports = { Refusal, answerError, isAdmin, isManager, isObjectId, mustBeObjectId };

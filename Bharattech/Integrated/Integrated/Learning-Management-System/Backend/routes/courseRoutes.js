@@ -17,6 +17,10 @@ const { requireAdmin } = require("../middlewares/keycloakAuth");
 const mongoose = require("mongoose");
 
 const router = express.Router();
+const { mustBeObjectId } = require("../utils/refusal");
+// an id that can't be a record is a plain 400, not a failed database lookup (500)
+router.param("courseId", mustBeObjectId);
+router.param("id", mustBeObjectId);
 
 // ✅ Create Course (Admin only - simplified from Trainer/Admin)
 router.post(

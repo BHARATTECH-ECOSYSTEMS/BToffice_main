@@ -30,6 +30,8 @@ const readLink = (value) => {
   try {
     const url = new URL(raw);
     if (url.protocol !== "http:" && url.protocol !== "https:") throw new Error("not a web link");
+    // written out ("é" becomes "%C3%A9") it can grow past the limit
+    if (url.href.length > LINK_MAX) throw new Error("too long");
     return url.href;
   } catch {
     throw new Refusal(400, problem);

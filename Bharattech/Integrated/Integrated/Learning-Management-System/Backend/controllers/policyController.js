@@ -50,8 +50,11 @@ const streamPolicyFile = async (res, storedFileName, displayName = storedFileNam
     return openPolicyFile(stored._id)
       .once("error", (error) => {
         console.error("Stream stored policy PDF error:", error);
-        if (!res.headersSent) res.status(500).send("Failed to load PDF");
-        else res.end();
+        if (res.headersSent) return res.end();
+        // the answer is a message now, not the PDF it was going to be
+        res.removeHeader("Content-Type");
+        res.removeHeader("Content-Disposition");
+        res.status(500).json({ message: "Failed to load PDF" });
       })
       .pipe(res);
   }
@@ -175,22 +178,23 @@ exports.acceptPolicy = async (req, res) => {
       return res.status(404).json({ message: "Policy not found" });
     }
 
-    const alreadyAccepted = policy.acceptedBy.some(
-      (acceptance) => acceptance.userId === req.user?.id
+    // one step that adds the acceptance only if theirs isn't there yet, so two clicks at once record it once
+    await Policy.updateOne(
+      { _id: policy._id, "acceptedBy.userId": { $ne: req.user?.id } },
+      {
+        $push: {
+          acceptedBy: {
+            userId: req.user?.id,
+            username: req.user?.decoded?.preferred_username || "",
+            fullName: req.user?.fullName || "",
+            email: req.user?.email || "",
+            role: req.user?.role || "",
+          },
+        },
+      }
     );
 
-    if (!alreadyAccepted) {
-      policy.acceptedBy.push({
-        userId: req.user?.id,
-        username: req.user?.decoded?.preferred_username || "",
-        fullName: req.user?.fullName || "",
-        email: req.user?.email || "",
-        role: req.user?.role || "",
-      });
-      await policy.save();
-    }
-
-    res.json(normalizePolicy(policy, req));
+    res.json(normalizePolicy(await Policy.findById(policy._id), req));
   } catch (error) {
     console.error("Accept policy error:", error);
     res.status(500).json({ message: "Failed to accept policy" });

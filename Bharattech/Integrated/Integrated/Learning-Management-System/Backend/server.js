@@ -54,10 +54,12 @@ const librechatBridge = require("./routes/librechatBridge");
 
 // 🔐 Keycloak middleware
 const { keycloakAuth } = require("./middlewares/keycloakAuth");
+const { emptyBody } = require("./middlewares/emptyBody");
 
 /* ------------------ BODY PARSING ------------------ */
 
 app.use(express.json());
+app.use(emptyBody);
 
 /* ------------------ INPUT SANITIZATION ------------------ */
 const { applyRequestSanitizers } = require("./middlewares/requestSanitizers");

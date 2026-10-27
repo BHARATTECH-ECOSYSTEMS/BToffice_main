@@ -67,7 +67,13 @@ const streamFile = (res, doc) => {
   res.setHeader("Content-Disposition", `inline; filename="${doc.kind}.pdf"`);
   store
     .open(doc.fileId)
-    .on("error", () => (res.headersSent ? res.end() : res.status(404).json({ message: "That file isn't there any more." })))
+    .on("error", () => {
+      if (res.headersSent) return res.end();
+      // the answer is a message now, not the PDF it was going to be
+      res.removeHeader("Content-Type");
+      res.removeHeader("Content-Disposition");
+      return res.status(404).json({ message: "That file isn't there any more." });
+    })
     .pipe(res);
 };
 

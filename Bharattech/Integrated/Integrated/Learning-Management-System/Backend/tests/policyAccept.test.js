@@ -63,3 +63,14 @@ test("the company's own Policy page sends its tick too, so it keeps working", ()
   const page = fs.readFileSync(path.join(__dirname, "..", "..", "frontend", "src", "pages", "PolicyCompliance.jsx"), "utf8");
   assert.match(page, /api\.post\(`\/policies\/\$\{selectedPdf\._id\}\/accept`, \{ readConfirmed: isAgreed \}\)/);
 });
+
+// Review 2026-10-26 low list: two clicks at once both read "not accepted yet" and both saved an acceptance.
+test("two accepts at the same moment are recorded once", async () => {
+  const doc = await policy();
+  const replies = await Promise.all([accept(doc, { readConfirmed: true }), accept(doc, { readConfirmed: true })]);
+  assert.deepEqual(replies.map((r) => r.status), [200, 200]);
+  const [only] = (await Policy.findById(doc._id).lean()).acceptedBy;
+  assert.equal((await Policy.findById(doc._id).lean()).acceptedBy.length, 1);
+  assert.ok(only.acceptedAt instanceof Date, "when they accepted is kept");
+  assert.equal(only.fullName, "Asha Rao");
+});
