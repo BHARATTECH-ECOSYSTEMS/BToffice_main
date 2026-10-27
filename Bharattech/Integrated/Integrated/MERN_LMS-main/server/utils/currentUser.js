@@ -5,20 +5,45 @@ import User from "../models/User.js";
 
 /**
  * Points everything that belonged to an old record at the person's new sign-in account, then removes the old record.
- * Each step can be run again, so a move cut short is simply finished on the next visit.
+ * Each step can be run again, so a move cut short is simply finished on the next visit. A move cut short can find the
+ * new account already using a course (one enrollment and one progress record per person per course): the two are
+ * combined instead of moved, and the new account's rating stays.
  */
 async function finishMove(oldId, newId) {
   // (the new record got the old one's course list when it was made, in moveToNewAccount)
-  await Purchase.updateMany({ userId: oldId }, { $set: { userId: newId } });
-  await CourseProgress.updateMany({ userId: oldId }, { $set: { userId: newId } });
+  for (const purchase of await Purchase.find({ userId: oldId }).lean()) {
+    const kept = await Purchase.exists({ userId: newId, courseId: purchase.courseId });
+    if (kept) await Purchase.deleteOne({ _id: purchase._id });
+    else await Purchase.updateOne({ _id: purchase._id }, { $set: { userId: newId } });
+  }
+  for (const progress of await CourseProgress.find({ userId: oldId }).lean()) {
+    const kept = await CourseProgress.findOne({ userId: newId, courseId: progress.courseId });
+    if (!kept) {
+      await CourseProgress.updateOne({ _id: progress._id }, { $set: { userId: newId } });
+      continue;
+    }
+    const done = [...new Set([...kept.lectureCompleted, ...progress.lectureCompleted])];
+    const lectures = await lectureIdsOf(progress.courseId);
+    const completed = kept.completed || progress.completed || (lectures.length > 0 && lectures.every((id) => done.includes(id)));
+    await CourseProgress.updateOne({ _id: kept._id }, { $set: { lectureCompleted: done, completed } });
+    await CourseProgress.deleteOne({ _id: progress._id });
+  }
   await Course.updateMany({ educator: oldId }, { $set: { educator: newId } });
-  await Course.updateMany({ enrolledStudents: oldId }, { $set: { "enrolledStudents.$": newId } });
+  await Course.updateMany({ enrolledStudents: oldId }, { $addToSet: { enrolledStudents: newId } });
+  await Course.updateMany({ enrolledStudents: oldId }, { $pull: { enrolledStudents: oldId } });
+  await Course.updateMany({ $and: [{ "courseRatings.userId": oldId }, { "courseRatings.userId": newId }] }, { $pull: { courseRatings: { userId: oldId } } });
   await Course.updateMany(
     { "courseRatings.userId": oldId },
     { $set: { "courseRatings.$[mine].userId": newId } },
     { arrayFilters: [{ "mine.userId": oldId }] }
   );
   await User.deleteOne({ _id: oldId });
+}
+
+/** Every lecture id in a course, to tell whether combined progress finishes it. */
+async function lectureIdsOf(courseId) {
+  const course = await Course.findById(courseId).select("courseContent.chapterContent.lectureId").lean();
+  return (course?.courseContent ?? []).flatMap((chapter) => (chapter.chapterContent ?? []).map((lecture) => lecture.lectureId));
 }
 
 /**
