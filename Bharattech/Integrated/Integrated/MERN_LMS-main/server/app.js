@@ -25,11 +25,14 @@ const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
   .map((o) => o.trim())
   .filter(Boolean);
 
-const isAllowedOrigin = (origin) => {
+// Render sets RENDER on its servers, so one counts as live even without NODE_ENV
+const isLive = () => process.env.NODE_ENV === "production" || Boolean(process.env.RENDER);
+
+export const isAllowedOrigin = (origin) => {
   if (!origin) return true;
   if (ALLOWED_ORIGINS.includes(origin)) return true;
-  // Allow all local dev hosts/ports
-  if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
+  // local dev hosts/ports, only while it isn't live
+  if (!isLive() && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return true;
   return false;
 };
 
@@ -39,7 +42,8 @@ const corsOptions = {
       return callback(null, true);
     }
     console.warn(`Blocked CORS: ${origin}`);
-    callback(new Error("Not allowed by CORS"));
+    // no CORS headers, so the browser refuses it; an error here answered 500
+    callback(null, false);
   },
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],

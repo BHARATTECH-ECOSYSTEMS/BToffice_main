@@ -37,3 +37,24 @@ test("my enrolled courses don't list the other students, and carry only my own r
   assert.deepEqual(mine.courseRatings.map((r) => [r.userId, r.rating]), [["kc-me", 4]]);
   assert.ok(!JSON.stringify(res.data).includes("kc-other"));
 });
+
+test("localhost sites may call the server only when it isn't live", async () => {
+  // app.js loads after startApp: its sign-in check reads the stand-in Keycloak's address when it loads
+  const { isAllowedOrigin } = await import("../app.js");
+  process.env.NODE_ENV = "development";
+  assert.equal(isAllowedOrigin("http://localhost:5175"), true);
+  process.env.NODE_ENV = "production";
+  assert.equal(isAllowedOrigin("http://localhost:5175"), false);
+  delete process.env.NODE_ENV;
+  process.env.RENDER = "true";
+  assert.equal(isAllowedOrigin("http://127.0.0.1:5175"), false, "a Render server is live too");
+  delete process.env.RENDER;
+  process.env.NODE_ENV = "test";
+  assert.equal(isAllowedOrigin(undefined), true, "no Origin: a server-to-server call");
+});
+
+test("a site that isn't allowed is refused plainly, not with a server error", async () => {
+  const res = await fetch(`${baseUrl}/api/courses/all`, { headers: { Origin: "https://not-ours.example" } });
+  assert.notEqual(res.status, 500);
+  assert.equal(res.headers.get("access-control-allow-origin"), null);
+});
