@@ -77,8 +77,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'This interview has reached its limit of questions.' }, { status: 429 });
     }
 
-    // Get the configured AI provider (Gemini or Claude)
-    // Priority: studyConfig.aiProvider > env.AI_PROVIDER > 'gemini'
+    // Groq, on the study's model (lib/aiDefaults.ts studyModel)
     const provider = getInterviewProvider(studyConfig);
 
     // Generate synthesis using the provider

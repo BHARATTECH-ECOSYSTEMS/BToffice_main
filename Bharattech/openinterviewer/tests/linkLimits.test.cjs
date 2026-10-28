@@ -154,7 +154,9 @@ test('R5 a link gets a limited number of interview turns, counted on the server'
   }
   const over = await interviewTurn(jsonRequest('/api/interview', { body: { ...turnBody, history: [] }, headers: bearer('busy-link') }));
   assert.equal(over.status, 429);
-  assert.equal(providerCalls.length, MAX_TURNS_PER_LINK);
+  // the AI writes only the interview's steps (introduction, project, 3 project questions, 3 snippets: 8); every turn
+  // after the last one gets the closing line without an AI call (lib/interviewFlow.ts, 2026-10-28)
+  assert.equal(providerCalls.length, 8);
 });
 
 test('R5 the researcher preview has no link and no limit', async () => {

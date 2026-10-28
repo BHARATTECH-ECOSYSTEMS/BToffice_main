@@ -24,6 +24,8 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import AppBar, { PageHeader } from './AppBar';
+import { ScoreCard } from './ScoreCard';
+import { scorecardOf } from '@/lib/scoring';
 
 interface InterviewDetailProps {
   interviewId: string;
@@ -35,6 +37,8 @@ const InterviewDetail: React.FC<InterviewDetailProps> = ({ interviewId }) => {
   const [interview, setInterview] = useState<StoredInterview | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'transcript' | 'analysis'>('transcript');
+  const [scoreState, setScoreState] = useState<'idle' | 'scoring' | 'failed' | 'none'>('idle');
+  const [scoreError, setScoreError] = useState('');
 
   useEffect(() => {
     if (loaded.current) return;
@@ -42,6 +46,34 @@ const InterviewDetail: React.FC<InterviewDetailProps> = ({ interviewId }) => {
 
     loadInterview();
   }, [interviewId]);
+
+  // an interview held before answers were scored gets its (estimated) score from the server, kept there once
+  const scoreAnswers = async () => {
+    setScoreState('scoring');
+    try {
+      const res = await fetch(`/api/interviews/${interviewId}/score`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}'
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.scorecard) {
+        setInterview((current) => current && { ...current, scorecard: data.scorecard });
+        setScoreState('idle');
+        return;
+      }
+      setScoreError(data.error || "Scoring didn't work this time.");
+      setScoreState(res.status === 422 ? 'none' : 'failed');
+    } catch {
+      setScoreError("Scoring didn't work this time.");
+      setScoreState('failed');
+    }
+  };
+
+  // the first time the Synthesis & Insights tab opens on an interview with no score yet
+  useEffect(() => {
+    if (activeTab === 'analysis' && interview && !scorecardOf(interview) && scoreState === 'idle') void scoreAnswers();
+  }, [activeTab, interview, scoreState]);
 
   const loadInterview = async () => {
   setLoading(true);
@@ -429,6 +461,7 @@ const InterviewDetail: React.FC<InterviewDetailProps> = ({ interviewId }) => {
     (typeof nameField?.value === "string" && nameField.value.trim()) ||
     "Participant";
   const synthesis = interview.synthesis;
+  const scorecard = interview ? scorecardOf(interview) : null;
   const statedPreferences = (synthesis?.statedPreferences || [])
     .filter(item => !isPlaceholderAnalysis(item));
   const revealedPreferences = (synthesis?.revealedPreferences || [])
@@ -558,6 +591,30 @@ const InterviewDetail: React.FC<InterviewDetailProps> = ({ interviewId }) => {
                 transition={{ duration: 0.2 }}
                 className="space-y-6"
               >
+                {/* How many answers were correct: scored at the end, or estimated later for an older interview */}
+                {scorecard ? (
+                  <ScoreCard scorecard={scorecard} />
+                ) : scoreState === 'scoring' ? (
+                  <p role="status" className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-600">
+                    Scoring answers…
+                  </p>
+                ) : scoreState === 'failed' ? (
+                  <div role="alert" className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-5 text-sm font-medium text-amber-900">
+                    <span>{scoreError}</span>
+                    <button
+                      type="button"
+                      onClick={() => void scoreAnswers()}
+                      className="rounded-xl border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 hover:bg-amber-100"
+                    >
+                      Try again
+                    </button>
+                  </div>
+                ) : scoreState === 'none' ? (
+                  <p className="rounded-2xl border border-slate-200 bg-slate-50 p-5 text-sm font-medium text-slate-500">
+                    Not enough answers to score.
+                  </p>
+                ) : null}
+
                 {synthesis ? (
                   <>
                     {/* Key Insight */}

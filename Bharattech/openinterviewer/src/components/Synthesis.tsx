@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { useStore } from '@/store';
-import { synthesizeInterview } from '@/services/mistralService';
+import { synthesizeInterview } from '@/services/synthesisService';
 import { saveCompletedInterview } from '@/services/storageService';
 import {
   Loader2,

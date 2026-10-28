@@ -10,6 +10,7 @@ import { DEMO_STORED_STUDY } from '@/lib/demoData';
 import { cookies } from 'next/headers';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth';
 import { StudyConfig, StoredStudy } from '@/types';
+import { studyProblem } from '@/lib/studyRules';
 import { randomUUID } from 'crypto';
 
 // Verify admin session
@@ -89,9 +90,10 @@ export async function POST(request: Request) {
     }
 
     // Validate required fields
-    if (!config.name || !config.researchQuestion) {
+    const problem = studyProblem(config);
+    if (problem) {
       return NextResponse.json(
-        { error: 'Study must have Post name and Topic' },
+        { error: problem },
         { status: 400 }
       );
     }

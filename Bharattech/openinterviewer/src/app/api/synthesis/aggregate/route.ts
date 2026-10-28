@@ -214,8 +214,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Get the configured AI provider
-    // Priority: studyConfig.aiProvider > env.AI_PROVIDER > 'gemini'
+    // Groq, on the study's model (lib/aiDefaults.ts studyModel)
     const provider = getInterviewProvider(study.config);
 
     // Generate or repair missing per-interview analyses before aggregating.

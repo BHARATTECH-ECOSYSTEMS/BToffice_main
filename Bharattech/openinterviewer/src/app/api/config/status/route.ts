@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth';
-import { serverDefaultProvider } from '@/lib/aiDefaults';
+import { serverDefaultModel } from '@/lib/aiDefaults';
 
 export async function GET() {
   try {
@@ -23,17 +23,9 @@ export async function GET() {
 
     // Check which keys are configured (server-side check)
     const status = {
-      // Claude provider support
-      hasAnthropicKey: !!process.env.ANTHROPIC_API_KEY,
-
-      // Gemini provider support
-      hasGeminiKey: !!process.env.GEMINI_API_KEY,
-
-      // Gemini provider support
-       hasMistralKey: !!process.env.MISTRAL_API_KEY,
-
-      // the AI a study uses when it names none: the setup screen shows it as chosen
-      defaultProvider: serverDefaultProvider(),
+      hasGroqKey: !!process.env.GROQ_API_KEY?.trim(),
+      // the model a study uses when it names none: the setup screen shows it as chosen
+      defaultModel: serverDefaultModel(),
     };
 
     return NextResponse.json(status);

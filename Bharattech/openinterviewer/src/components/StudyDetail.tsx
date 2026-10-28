@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { StoredStudy, StoredInterview, AggregateSynthesisResult } from '@/types';
 import { getStudy, getStudyInterviews } from '@/services/storageService';
+import { scorecardOf } from '@/lib/scoring';
 import {
   Loader2,
   ArrowLeft,
@@ -48,6 +49,36 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
   const [isTogglingLinks, setIsTogglingLinks] = useState(false);
   const [participantLink, setParticipantLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  // scoring older interviews (held before answers were scored), one request at a time to stay inside the AI's limits
+  const [scoring, setScoring] = useState<{ done: number; of: number } | null>(null);
+  const [unscorable, setUnscorable] = useState<Set<string>>(new Set());
+  const toScore = interviews.filter((interview) => !scorecardOf(interview) && !unscorable.has(interview.id));
+
+  const scoreOlderInterviews = async () => {
+    const queue = [...toScore];
+    setScoring({ done: 0, of: queue.length });
+    for (let n = 0; n < queue.length; n++) {
+      const item = queue[n];
+      try {
+        const res = await fetch(`/api/interviews/${item.id}/score`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: '{}'
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.scorecard) {
+          setInterviews((list) => list.map((interview) => (interview.id === item.id ? { ...interview, scorecard: data.scorecard } : interview)));
+        } else if (res.status === 422) {
+          // nothing to score in it: it leaves the count
+          setUnscorable((ids) => new Set(ids).add(item.id));
+        }
+      } catch {
+        // this one stays unscored; the button offers it again
+      }
+      setScoring({ done: n + 1, of: queue.length });
+    }
+    setScoring(null);
+  };
   const [generatingLink, setGeneratingLink] = useState(false);
 
   useEffect(() => {
@@ -540,6 +571,24 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
 
               {activeTab === 'interviews' && (
                 <div className="space-y-4">
+                  {/* interviews held before answers were scored can get their (estimated) score here, one at a time */}
+                  {toScore.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl bg-white p-4 shadow-card">
+                      <p role="status" className="text-xs font-medium text-slate-600">
+                        {scoring
+                          ? `Scoring ${Math.min(scoring.done + 1, scoring.of)} of ${scoring.of}…`
+                          : `${toScore.length} older ${toScore.length === 1 ? 'interview has' : 'interviews have'} no answer score yet.`}
+                      </p>
+                      <button
+                        type="button"
+                        disabled={!!scoring}
+                        onClick={() => void scoreOlderInterviews()}
+                        className="rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-semibold text-white shadow-xs hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        Score older interviews
+                      </button>
+                    </div>
+                  )}
                   {interviews.length === 0 ? (
                     <div className="bg-white rounded-2xl p-12 text-center shadow-card">
                       <Users size={32} className="text-slate-400 mx-auto mb-3" />
@@ -565,6 +614,19 @@ const StudyDetail: React.FC<StudyDetailProps> = ({ studyId }) => {
                               <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
                                 {interview.participantName || "Participant"}
                               </h4>
+                              {/* how many answers were correct, to compare candidates at a glance (lib/scoring.ts);
+                                  "≈" marks an older interview's score, estimated from its transcript */}
+                              {(() => {
+                                const card = scorecardOf(interview);
+                                return card && (
+                                  <span
+                                    title={card.estimated ? 'Answers correct (estimated from the transcript)' : 'Answers correct'}
+                                    className="rounded-full border border-blue-100 bg-blue-50 px-2 py-0.5 text-xs font-bold text-blue-700 tabular-nums"
+                                  >
+                                    {card.estimated ? '≈ ' : ''}{card.overall}%
+                                  </span>
+                                );
+                              })()}
                             </div>
 
                             {/* Participant info */}

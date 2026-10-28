@@ -1,21 +1,26 @@
 // Research Interview Tool Types
 
+import type { Scorecard } from '@/lib/scoring';
+
 // ============================================
 // Interview Phase & Progress Tracking
 // ============================================
 
+// The stages the chat's progress bar shows (lib/interviewFlow.ts phaseOf maps each step onto one)
 export type InterviewPhase =
-  | 'introduction'    // AI asks candidate to introduce themselves (name, etc.)
-  | 'education'       // Education history + skill set
-  | 'project'         // A project the candidate has worked on, explored in depth
-  | 'functionality'   // Tech-stack / functionality deep-dive questions on that project
-  | 'ending';          // AI concludes, interview complete
+  | 'introduction'    // The candidate introduces themselves
+  | 'project'         // A project the candidate has built
+  | 'questions'       // 3 or 4 questions drawn from that project, then the researcher's fixed questions
+  | 'code'            // Three code snippets (frontend, backend, database), each with one planted bug
+  | 'ending';          // Interview complete
 
 export interface QuestionProgress {
   questionsAsked: number[];  // Indices of completed questions
   total: number;
   currentPhase: InterviewPhase;
   isComplete: boolean;
+  // a researcher's preview only (it has no candidate link for the server to keep the steps on)
+  steps?: { step: string; planned?: number }[];
 }
 
 // ============================================
@@ -52,8 +57,6 @@ export interface ParticipantProfile {
 
 export type AIBehavior = 'structured' | 'standard' | 'exploratory';
 
-export type AIProviderType = 'gemini' | 'claude' | 'mistral';
-
 // ============================================
 // AI Model Configuration
 // ============================================
@@ -64,36 +67,14 @@ export interface AIModelOption {
   desc: string;
 }
 
-// Available Gemini models (verified from official docs)
-export const GEMINI_MODELS: AIModelOption[] = [
-  { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', desc: 'Fast, cost-effective' },
-  { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', desc: 'Higher quality' },
-  { id: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview', desc: 'Most intelligent (preview)' },
+// The Groq models a study may pick (Groq's own model list for our key, checked 2026-10-28). Groq runs every study.
+export const GROQ_MODELS: AIModelOption[] = [
+  { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B', desc: 'Most capable' },
+  { id: 'openai/gpt-oss-20b', label: 'GPT-OSS 20B', desc: 'Faster, lighter' },
+  { id: 'qwen/qwen3.8-27b', label: 'Qwen3.8 27B', desc: 'Alibaba Cloud model' },
 ];
 
-// Available Claude models (verified from official docs)
-export const CLAUDE_MODELS: AIModelOption[] = [
-  { id: 'claude-haiku-4-5', label: 'Claude Haiku 4.5', desc: 'Fastest ($1/$5 per MTok)' },
-  { id: 'claude-sonnet-4-5', label: 'Claude Sonnet 4.5', desc: 'Balanced ($3/$15 per MTok)' },
-  { id: 'claude-opus-4-5', label: 'Claude Opus 4.5', desc: 'Most capable ($15/$75 per MTok)' },
-];
-
-export const MISTRAL_MODELS: AIModelOption[] = [
-  { id: 'mistral-small-latest', label: 'Mistral Small', desc: 'Fast & efficient' },
-  { id: 'mistral-large-latest', label: 'Mistral Large', desc: 'Top-tier reasoning' },
-  { id: 'pixtral-12b-2409', label: 'Pixtral 12B', desc: 'Specialized performance' },
-];
-
-// Default models for each provider
-export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
-export const DEFAULT_CLAUDE_MODEL = 'claude-sonnet-4-5';
-
-// Synthesis models (auto-upgrade to best available for reasoning tasks)
-export const GEMINI_SYNTHESIS_MODEL = 'gemini-3-pro-preview';
-export const CLAUDE_SYNTHESIS_MODEL = 'claude-opus-4-5';
-
-export const DEFAULT_MISTRAL_MODEL = 'mistral-large-latest';
-export const MISTRAL_SYNTHESIS_MODEL = 'mistral-large-latest';
+export const DEFAULT_GROQ_MODEL = 'openai/gpt-oss-120b';
 
 // Link expiration options
 export type LinkExpirationOption = 'never' | '7days' | '30days' | '90days';
@@ -114,8 +95,7 @@ export interface StudyConfig {
   topicAreas: string[];           // General topic areas for synthesis
   profileSchema: ProfileField[];  // Fields to collect during interview
   aiBehavior: AIBehavior;
-  aiProvider?: AIProviderType;    // Optional, defaults to env or 'gemini'
-  aiModel?: string;               // Optional, defaults to provider-specific env or default
+  aiModel?: string;               // One of GROQ_MODELS, else the server's GROQ_MODEL (lib/aiDefaults.ts studyModel)
   consentText: string;
   createdAt: number;
   // Follow-up study lineage
@@ -160,6 +140,8 @@ export interface SynthesisResult {
   contradictions: string[];
   keyInsights: string[];
   bottomLine: string;
+  // how many answers were correct (lib/scoring.ts); only for a candidate's interview, and only when the AI gave verdicts
+  scorecard?: Scorecard;
 
   extractedProfile?: {
     role?: string;
@@ -195,16 +177,19 @@ export interface ContextEntry {
 // AI Response Structure (for API routes)
 // ============================================
 
+// What the AI writes for one interview step (lib/interviewFlow.ts). The server decides the step; the AI only writes it.
 export interface AIInterviewResponse {
   message: string;
-  questionAddressed: number | null;     // Which core question was covered (0-indexed)
-  phaseTransition: InterviewPhase | null;  // If moving to new phase
   profileUpdates: {
     fieldId: string;
     value: string | null;
     status: 'extracted' | 'vague' | 'refused';
   }[];
-  shouldConclude: boolean;              // AI signals interview should end
+  answered?: boolean;                   // false: the latest answer didn't address the question, and it was asked again
+  failed?: boolean;                     // the AI couldn't be reached or answered nonsense; the step is not taken
+  analysis?: string;                    // first project question only: the AI's reading of the project (never shown)
+  plannedQuestions?: number;            // first project question only: 3 or 4 project questions in all
+  bug?: { line?: number; explanation: string; fix: string };  // a code snippet's planted bug (never shown)
 }
 
 // ============================================
@@ -222,6 +207,8 @@ export interface StoredInterview {
   participantProfile: ParticipantProfile;
   transcript: InterviewMessage[];
   synthesis: SynthesisResult | null;
+  // an interview held before answers were scored: its estimated score, worked out later (lib/scoring.ts scorecardOf)
+  scorecard?: Scorecard | null;
   behaviorData: BehaviorData;
   createdAt: number;
   completedAt: number;

@@ -10,6 +10,7 @@ import { getStudy, saveStudy, deleteStudy, isKVAvailable } from '@/lib/kv';
 import { cookies } from 'next/headers';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth';
 import { StudyConfig } from '@/types';
+import { studyProblem } from '@/lib/studyRules';
 
 // Verify admin session
 async function verifyAuth() {
@@ -116,6 +117,15 @@ export async function PUT(
         { error: 'Missing required field: config' },
         { status: 400 }
       );
+    }
+
+    // An edit may not empty the job description. Only an edit that sends one is checked: the links switch sends the
+    // whole study back, and an older study saved without a job description must still be able to switch its links off.
+    if ('jobRequirements' in config) {
+      const problem = studyProblem({ ...study.config, ...config });
+      if (problem) {
+        return NextResponse.json({ error: problem }, { status: 400 });
+      }
     }
 
     // Update config while preserving ID and createdAt

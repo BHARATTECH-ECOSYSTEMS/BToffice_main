@@ -11,10 +11,15 @@ import ParticipantToken from '@/models/ParticipantToken';
 import Study from '@/models/Study';
 import UsedLaunchPass from '@/models/UsedLaunchPass';
 import { StoredInterview, StoredStudy } from '@/types';
+import type { Scorecard } from '@/lib/scoring';
 import { DEMO_INTERVIEWS, DEMO_STUDY_CONFIG } from '@/lib/demoData';
 
 /** One interview turn on a link: the candidate's answer and the interviewer's reply. */
-export type ParticipantExchange = { answer: string; question: string; at: number };
+// One turn: the candidate's answer and the question that followed. `step` is the interview step that question belongs
+// to (lib/interviewFlow.ts); `note` is what the AI noted for the hiring team (the project analysis, a planted bug), never
+// shown to the candidate; `planned` the number of project questions the AI planned.
+export type ParticipantExchange = { answer: string; question: string; at: number; step?: string; note?: string; planned?: number };
+export type ExchangeExtra = Pick<ParticipantExchange, 'step' | 'note' | 'planned'>;
 
 type LocalStore = {
   interviews: Record<string, StoredInterview>;
@@ -401,6 +406,29 @@ export async function setInterviewSynthesis(id: string, synthesis: StoredIntervi
     return found;
   } catch (error) {
     console.error('Error saving interview synthesis:', error);
+    return false;
+  }
+}
+
+// An older interview's estimated score (lib/scoring.ts), kept beside its summary: only when it has none yet, so two
+// requests at once keep the first, and an interview deleted meanwhile stays deleted.
+export async function setInterviewScorecard(id: string, scorecard: Scorecard): Promise<boolean> {
+  try {
+    if (await shouldUseMongo()) {
+      const result = await Interview.updateOne({ id, $or: [{ scorecard: { $exists: false } }, { scorecard: null }] }, { $set: { scorecard } });
+      return result.matchedCount > 0;
+    }
+
+    let kept = false;
+    await updateLocalStore((store) => {
+      const interview = store.interviews[id];
+      if (!interview || interview.scorecard) return;
+      interview.scorecard = scorecard;
+      kept = true;
+    });
+    return kept;
+  } catch (error) {
+    console.error('Error saving interview scorecard:', error);
     return false;
   }
 }
@@ -823,7 +851,14 @@ export async function getParticipantToken(token: string): Promise<{
         terminationReason: tokenData.terminationReason,
         terminatedAt: tokenData.terminatedAt ? toTimestamp(tokenData.terminatedAt) : undefined,
         completedAt: tokenData.completedAt ? toTimestamp(tokenData.completedAt) : undefined,
-        exchanges: (tokenData.exchanges || []).map((e: any) => ({ answer: e.answer || '', question: e.question || '', at: toTimestamp(e.at) }))
+        exchanges: (tokenData.exchanges || []).map((e: any) => ({
+          answer: e.answer || '',
+          question: e.question || '',
+          at: toTimestamp(e.at),
+          ...(e.step && { step: e.step }),
+          ...(e.note && { note: e.note }),
+          ...(Number.isInteger(e.planned) && { planned: e.planned })
+        }))
       };
     }
 
@@ -876,9 +911,9 @@ export async function claimParticipantTurn(token: string, max: number): Promise<
 }
 
 // Keeps one interview turn (the candidate's answer and the interviewer's reply) on the link.
-export async function recordParticipantExchange(token: string, answer: string, question: string): Promise<boolean> {
+export async function recordParticipantExchange(token: string, answer: string, question: string, extra: ExchangeExtra = {}): Promise<boolean> {
   try {
-    const exchange = { answer, question, at: Date.now() };
+    const exchange = { answer, question, at: Date.now(), ...extra };
     if (await shouldUseMongo()) {
       const result = await ParticipantToken.updateOne({ token }, { $push: { exchanges: { ...exchange, at: new Date(exchange.at) } } });
       return result.modifiedCount === 1;

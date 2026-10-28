@@ -25,9 +25,9 @@ import { data } from 'framer-motion/m';
 // Phase display labels
 const phaseLabels: Record<InterviewPhase, string> = {
   introduction: 'Introduction',
-  education: 'Education & Skills',
-  project: 'Project Deep-Dive',
-  functionality: 'Technical Questions',
+  project: 'Your Project',
+  questions: 'Project Questions',
+  code: 'Code Review',
   ending: 'Wrapping up'
 };
 
@@ -530,27 +530,18 @@ const InterviewChat: React.FC = () => {
         markQuestionAsked(response.questionAddressed);
       }
 
-      const msg = response.message?.toLowerCase() || "";
+      // a researcher's preview has no candidate link, so it keeps the steps asked so far itself (lib/interviewFlow.ts)
+      if (typeof response.step === "string") {
+        useStore.setState((state) => ({
+          questionProgress: {
+            ...state.questionProgress,
+            steps: [...(state.questionProgress.steps ?? []), { step: response.step, ...(response.planned && { planned: response.planned }) }]
+          }
+        }));
+      }
 
-      const isClosingMessage =
-        msg.includes("conclude") ||
-        msg.includes("concludes") ||
-        msg.includes("thank you for your time") ||
-        msg.includes("that concludes our interview") ||
-        msg.includes("interview is complete");
-
-      console.log("CHECK TRIGGER:", {
-        shouldConclude: response.shouldConclude,
-        isClosingMessage
-      });
-
-      console.log("🚨 FINAL CHECK:", {
-        shouldConclude: response.shouldConclude,
-        isClosingMessage,
-        message: response.message
-      });
-
-      if (response.shouldConclude || isClosingMessage) {
+      // only the server ends the interview: a question that merely uses a word like "conclude" must not
+      if (response.shouldConclude) {
         console.log("🔥 ENTERED COMPLETE BLOCK");
 
         setIsFinishing(true);     // 🔥 show loader immediately
@@ -616,17 +607,8 @@ const totalQuestions = studyConfig?.questionCount ?? studyConfig?.coreQuestions?
   const questionsCompleted = questionProgress.questionsAsked.length;
   const isComplete = isFinishing || Boolean(terminationReason);
 
-  const getProgressDisplay = () => {
-    if (questionProgress.currentPhase === 'introduction') {
-      return phaseLabels.introduction;
-    }
-    if (totalQuestions > 0 && questionProgress.currentPhase === 'functionality') {
-      // Legacy hand-typed core questions are ground through during the
-      // functionality phase - show a numeric counter for that case.
-      return `Question ${Math.min(questionsCompleted + 1, totalQuestions)} of ${totalQuestions}`;
-    }
-    return phaseLabels[questionProgress.currentPhase];
-  };
+  // a stage this screen doesn't know (one kept in the browser from before the 2026-10-28 order) reads as the start
+  const getProgressDisplay = () => phaseLabels[questionProgress.currentPhase] ?? phaseLabels.introduction;
 
   if (isFinishing) {
     return (

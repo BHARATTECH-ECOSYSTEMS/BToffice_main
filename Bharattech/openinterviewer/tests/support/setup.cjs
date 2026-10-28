@@ -32,7 +32,7 @@ Object.assign(process.env, {
   BHARATTECH_LAUNCH_SECRET: 'test-launch-secret',
   NEXT_PUBLIC_KEYCLOAK_CLIENT_ID: 'openinterviewer-client',
 });
-for (const name of ['KEYCLOAK_URL', 'NEXT_PUBLIC_KEYCLOAK_URL', 'VITE_KEYCLOAK_URL', 'ADMIN_SECRET', 'MISTRAL_API_KEY', 'GEMINI_API_KEY', 'ANTHROPIC_API_KEY']) {
+for (const name of ['KEYCLOAK_URL', 'NEXT_PUBLIC_KEYCLOAK_URL', 'VITE_KEYCLOAK_URL', 'ADMIN_SECRET', 'GROQ_API_KEY', 'GROQ_MODEL']) {
   delete process.env[name];
 }
 

@@ -8,13 +8,12 @@ import {
   StudyConfig,
   ProfileField,
   AIBehavior,
-  AIProviderType,
   LinkExpirationOption,
-  GEMINI_MODELS,
-  CLAUDE_MODELS,
-  MISTRAL_MODELS,
+  GROQ_MODELS,
+  DEFAULT_GROQ_MODEL,
 } from '@/types';
-import { aiChoiceToSave, defaultModelFor, shownProvider } from '@/lib/aiDefaults';
+import { aiChoiceToSave, knownGroqModel } from '@/lib/aiDefaults';
+import { studyProblem } from '@/lib/studyRules';
 import { createSetupLink, saveStudyConfig } from '@/lib/setupLink';
 
 import {
@@ -92,6 +91,7 @@ const StudySetup: React.FC = () => {
   const [parentStudyInfo, setParentStudyInfo] = useState<{ id: string; name: string } | null>(null);
 
   const [name, setName] = useState(studyConfig?.name || '');
+  // no longer edited on this screen (owner, 2026-10-28); an older study keeps the description it was saved with
   const [description, setDescription] = useState(studyConfig?.description || '');
   const [researchQuestion, setResearchQuestion] = useState(studyConfig?.researchQuestion || '');
   const [jobTitle, setJobTitle] = useState(studyConfig?.jobTitle || '');
@@ -108,14 +108,11 @@ const StudySetup: React.FC = () => {
   const [aiBehavior, setAiBehavior] = useState<AIBehavior>(
     studyConfig?.aiBehavior || 'standard'
   );
-  const [aiProvider, setAiProvider] = useState<AIProviderType>(
-    shownProvider(studyConfig?.aiProvider)
-  );
-  // A study keeps an AI only once the researcher picks one (or it already had one); until then it runs on the
-  // server's AI_PROVIDER, which the screen shows as chosen (lib/aiDefaults.ts).
-  const [aiChosen, setAiChosen] = useState(Boolean(studyConfig?.aiProvider));
+  // Groq runs every study. A study keeps a model only once the researcher picks one (or it already had one of ours);
+  // until then it runs on the server's GROQ_MODEL, which the screen shows as chosen (lib/aiDefaults.ts).
+  const [aiChosen, setAiChosen] = useState(Boolean(knownGroqModel(studyConfig?.aiModel)));
   const [aiModel, setAiModel] = useState<string>(
-    studyConfig?.aiModel || defaultModelFor(shownProvider(studyConfig?.aiProvider))
+    knownGroqModel(studyConfig?.aiModel) || DEFAULT_GROQ_MODEL
   );
   const [enableReasoning, setEnableReasoning] = useState<boolean | undefined>(
     studyConfig?.enableReasoning
@@ -149,20 +146,15 @@ const StudySetup: React.FC = () => {
 
   // Config status (API keys)
   const [configStatus, setConfigStatus] = useState<{
-    hasAnthropicKey: boolean;
-    hasGeminiKey: boolean;
-    hasMistralKey: boolean;
-    defaultProvider?: AIProviderType;
+    hasGroqKey: boolean;
+    defaultModel?: string;
   } | null>(null);
 
-  // Until the researcher picks an AI, show the one the server will use
+  // Until the researcher picks a model, show the one the server will use (when it is one the list offers)
   useEffect(() => {
-    const serverProvider = configStatus?.defaultProvider;
-    if (!aiChosen && serverProvider) {
-      setAiProvider(serverProvider);
-      setAiModel(defaultModelFor(serverProvider));
-    }
-  }, [configStatus?.defaultProvider, aiChosen]);
+    const serverModel = knownGroqModel(configStatus?.defaultModel);
+    if (!aiChosen && serverModel) setAiModel(serverModel);
+  }, [configStatus?.defaultModel, aiChosen]);
 
 
   // Sync savedStudyId with persisted config
@@ -226,11 +218,11 @@ const StudySetup: React.FC = () => {
           if (config.topicAreas?.length) setTopicAreas(config.topicAreas);
           if (config.profileSchema?.length) setProfileSchema(config.profileSchema);
           if (config.aiBehavior) setAiBehavior(config.aiBehavior);
-          if (config.aiProvider) {
-            setAiProvider(config.aiProvider);
+          const prefillModel = knownGroqModel(config.aiModel);
+          if (prefillModel) {
+            setAiModel(prefillModel);
             setAiChosen(true);
           }
-          if (config.aiModel) setAiModel(config.aiModel);
           if (config.enableReasoning !== undefined) setEnableReasoning(config.enableReasoning);
           if (config.linkExpiration) setLinkExpiration(config.linkExpiration);
           if (config.consentText) setConsentText(config.consentText);
@@ -276,10 +268,9 @@ const StudySetup: React.FC = () => {
       setTopicAreas(studyConfig.topicAreas.length > 0 ? studyConfig.topicAreas : ['']);
       setProfileSchema(studyConfig.profileSchema || []);
       setAiBehavior(studyConfig.aiBehavior);
-      const provider = shownProvider(studyConfig.aiProvider, configStatus?.defaultProvider);
-      setAiProvider(provider);
-      setAiChosen(Boolean(studyConfig.aiProvider));
-      setAiModel(studyConfig.aiModel || defaultModelFor(provider));
+      const savedModel = knownGroqModel(studyConfig.aiModel);
+      setAiChosen(Boolean(savedModel));
+      setAiModel(savedModel || knownGroqModel(configStatus?.defaultModel) || DEFAULT_GROQ_MODEL);
       setEnableReasoning(studyConfig.enableReasoning);
       setLinkExpiration(studyConfig.linkExpiration || 'never');
       setConsentText(studyConfig.consentText);
@@ -363,7 +354,7 @@ const StudySetup: React.FC = () => {
     topicAreas: topicAreas.filter(t => t.trim()),
     profileSchema: profileSchema.filter(f => f.label.trim()),
     aiBehavior,
-    ...aiChoiceToSave(aiChosen, aiProvider, aiModel),
+    ...aiChoiceToSave(aiChosen, aiModel),
     enableReasoning,
     linkExpiration,
     linksEnabled: true, // Always true when creating/editing (revocation is in StudyDetail)
@@ -470,7 +461,7 @@ const StudySetup: React.FC = () => {
     router.push(`/studies/${result.study.id}`);
   };
 
-  const isValid = name.trim() && researchQuestion.trim();
+  const isValid = !studyProblem({ name, researchQuestion, jobRequirements });
 
   const behaviorOptions: { id: AIBehavior; label: string; desc: string }[] = [
     {
@@ -487,24 +478,6 @@ const StudySetup: React.FC = () => {
       id: 'exploratory',
       label: 'Focus on uncovering new insights (Exploratory)',
       desc: 'Prioritize depth. Chase interesting threads, probe emotions.'
-    }
-  ];
-
-   const providerOptions: { id: AIProviderType; label: string; desc: string }[] = [
-    {
-      id: 'gemini',
-      label: 'Google Gemini',
-      desc: 'Fast, cost-effective. Best for high-volume studies.'
-    },
-    {
-      id: 'claude',
-      label: 'Anthropic Claude',
-      desc: 'Nuanced reasoning. Best for complex, exploratory interviews.'
-    },
-    {
-      id: 'mistral',
-      label: 'Mistral AI',
-      desc: 'Open-weight models. Balanced performance and cost.'
     }
   ];
 
@@ -531,6 +504,12 @@ const StudySetup: React.FC = () => {
                 <Lightbulb size={16} className="text-slate-500" />
                 Load Example
               </button>
+              {/* Save stays hidden until the study is complete; say what's still missing */}
+              {!isValid && (
+                <p className="text-xs font-medium text-slate-500 self-center">
+                  {studyProblem({ name, researchQuestion, jobRequirements })}
+                </p>
+              )}
               {isValid && (
                 <>
                   <button
@@ -621,12 +600,17 @@ const StudySetup: React.FC = () => {
             </div>
           )}
 
-          {/* Basic Info */}
+          {/* The post and the role it hires for: the AI builds its questions from the job description */}
           <div className="space-y-4">
-            <h2 className="font-bold text-base sm:text-lg text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-2.5">
-              <Sparkles size={18} className="text-blue-600" />
-              Study Details
-            </h2>
+            <div className="border-b border-slate-100 pb-2.5">
+              <h2 className="font-bold text-base sm:text-lg text-slate-900 flex items-center gap-2">
+                <Sparkles size={18} className="text-blue-600" />
+                Target Role Details (AI Adaptive Questioning)
+              </h2>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                The AI adapts its technical interview questions to this role and to the candidate's own tools and background.
+              </p>
+            </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
@@ -643,25 +627,38 @@ const StudySetup: React.FC = () => {
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Job Title
+              </label>
+              <input
+                type="text"
+                value={jobTitle}
+                onChange={(e) => { setJobTitle(e.target.value); setIsDirty(true); }}
+                placeholder="e.g. Senior Frontend Engineer (React / TypeScript)"
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50/60 border border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-xs font-medium text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Job Description / Technical Requirements *
+              </label>
+              <textarea
+                value={jobRequirements}
+                onChange={(e) => { setJobRequirements(e.target.value); setIsDirty(true); }}
+                placeholder="Paste the job description, required skill sets, and interview rubric..."
+                rows={4}
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50/60 border border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none shadow-xs font-medium text-sm"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
                 Research Objective / Topic *
               </label>
               <textarea
                 value={researchQuestion}
                 onChange={(e) => { setResearchQuestion(e.target.value); setIsDirty(true); }}
                 placeholder="What core insights or answers are you seeking to discover?"
-                rows={2}
-                className="w-full px-4 py-3 rounded-xl bg-slate-50/60 border border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none text-sm font-medium shadow-xs transition-all"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Description (optional)
-              </label>
-              <textarea
-                value={description}
-                onChange={(e) => { setDescription(e.target.value); setIsDirty(true); }}
-                placeholder="Brief internal context about the research cohort or criteria..."
                 rows={2}
                 className="w-full px-4 py-3 rounded-xl bg-slate-50/60 border border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none text-sm font-medium shadow-xs transition-all"
               />
@@ -759,42 +756,6 @@ const StudySetup: React.FC = () => {
             </div>
           </div>
 
-          {/* Role Details */}
-          <div className="space-y-4">
-            <div className="border-b border-slate-100 pb-2.5">
-              <h2 className="font-bold text-base sm:text-lg text-slate-900">
-                Target Role Details (AI Adaptive Questioning)
-              </h2>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Fill these in to allow the AI to adaptively synthesize technical interview questions matching the candidate's exact tools and background.
-              </p>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Job Title
-              </label>
-              <input
-                type="text"
-                value={jobTitle}
-                onChange={(e) => { setJobTitle(e.target.value); setIsDirty(true); }}
-                placeholder="e.g. Senior Frontend Engineer (React / TypeScript)"
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50/60 border border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-xs font-medium text-sm"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1.5">
-                Job Description / Technical Requirements
-              </label>
-              <textarea
-                value={jobRequirements}
-                onChange={(e) => { setJobRequirements(e.target.value); setIsDirty(true); }}
-                placeholder="Paste the job description, required skill sets, and interview rubric..."
-                rows={4}
-                className="w-full px-4 py-2.5 rounded-xl bg-slate-50/60 border border-slate-200 text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none shadow-xs font-medium text-sm"
-              />
-            </div>
-          </div>
-
           {/* Core Questions */}
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-2.5">
@@ -881,66 +842,35 @@ const StudySetup: React.FC = () => {
             </div>
           </div>
 
-          {/* AI Provider & Models */}
+          {/* AI model (Groq runs every study) */}
           <div className="space-y-4">
             <div className="border-b border-slate-100 pb-2.5">
-              <h2 className="font-bold text-base sm:text-lg text-slate-900">AI Intelligence Provider</h2>
+              <h2 className="font-bold text-base sm:text-lg text-slate-900">AI Model</h2>
               <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Select LLM engine powering interview interactions and synthesis
+                Runs the interviews and their summaries, through Groq
               </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {providerOptions.map((option) => (
-                <label
-                  key={option.id}
-                  className={`flex flex-col p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                    aiProvider === option.id
-                      ? 'border-blue-600 bg-blue-50/40 shadow-xs'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-1.5">
-                    <span className="font-bold text-slate-900 text-sm">{option.label}</span>
-                    <input
-                      type="radio"
-                      name="aiProvider"
-                      checked={aiProvider === option.id}
-                      onChange={() => {
-                        setAiProvider(option.id);
-                        setAiChosen(true);
-                        setAiModel(defaultModelFor(option.id));
-                        setIsDirty(true);
-                      }}
-                      className="accent-blue-600"
-                    />
-                  </div>
-                  <span className="text-xs text-slate-500 font-medium leading-relaxed">{option.desc}</span>
-                </label>
-              ))}
-            </div>
-
-            {/* Model Selection */}
-            <div className="mt-4 space-y-1.5">
-              <label className="block text-xs font-bold text-slate-700">
-                Specific Model Version
+            <div className="space-y-1.5">
+              <label htmlFor="ai-model" className="block text-xs font-bold text-slate-700">
+                Model
               </label>
               <select
+                id="ai-model"
                 value={aiModel}
                 onChange={(e) => { setAiModel(e.target.value); setAiChosen(true); setIsDirty(true); }}
                 className="w-full px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-xs text-sm font-semibold"
               >
-                {(
-                  aiProvider === 'gemini'
-                    ? GEMINI_MODELS
-                    : aiProvider === 'claude'
-                    ? CLAUDE_MODELS
-                    : MISTRAL_MODELS
-                ).map((model) => (
+                {GROQ_MODELS.map((model) => (
                   <option key={model.id} value={model.id}>
-                    {model.label}
+                    {model.label} – {model.desc}
                   </option>
                 ))}
               </select>
+              {configStatus && !configStatus.hasGroqKey && (
+                <p role="alert" className="text-xs font-medium text-amber-700">
+                  The server has no Groq key (GROQ_API_KEY), so interviews can&apos;t reach the AI yet.
+                </p>
+              )}
             </div>
           </div>
 

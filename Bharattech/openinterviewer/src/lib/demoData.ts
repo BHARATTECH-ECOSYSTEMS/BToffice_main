@@ -45,7 +45,6 @@ export const DEMO_STUDY_CONFIG: StudyConfig = {
     { id: 'years_experience', label: 'Years in Role', extractionHint: 'How long they have been in their current role or profession', required: false }
   ],
   aiBehavior: 'standard',
-  aiProvider: 'gemini',
   enableReasoning: true,
   consentText: 'This interview is part of a research study on professional adaptation to AI tools. Your responses will be anonymized and used for research purposes only. The interview takes approximately 15-20 minutes. You may skip any question or end the interview at any time.',
   createdAt: Date.now() - 7 * 24 * 60 * 60 * 1000 // 7 days ago

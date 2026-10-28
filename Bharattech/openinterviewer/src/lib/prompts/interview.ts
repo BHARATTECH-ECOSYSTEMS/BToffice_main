@@ -5,8 +5,8 @@
  *
  * CUSTOMIZATION GUIDE:
  * - Modify `getAIBehaviorInstruction()` to change how the AI responds in different modes
- * - Edit the main prompt in `buildInterviewSystemPrompt()` to adjust:
- *   - Interview phases and flow
+ * - Edit `buildStepPrompt()` (and `stepTask()` for one step) to adjust:
+ *   - What the AI writes for each step (the order itself is in lib/interviewFlow.ts)
  *   - Response style and length
  *   - Profile extraction rules
  *
@@ -16,7 +16,9 @@
  * - questionProgress: Tracks which questions have been asked
  */
 
-import { StudyConfig, ParticipantProfile, QuestionProgress } from '@/types';
+import { StudyConfig, ParticipantProfile } from '@/types';
+import type { InterviewStepOptions } from '../ai';
+import type { InterviewStep } from '../interviewFlow';
 
 /**
  * AI Behavior Modes
@@ -70,182 +72,107 @@ export const formatProfileFields = (
 };
 
 /**
- * Build the complete interview system prompt
- *
- * This is the main prompt that defines how the AI conducts interviews.
- * It includes:
- * - Study context and research question
- * - AI behavior mode instructions
- * - Current interview state (phase, questions completed)
- * - Profile fields to collect
- * - Interview flow rules
+ * The instructions for one interview step (lib/interviewFlow.ts). The server decides the step from the turns it saved;
+ * the AI only writes the message for it, so it can't skip ahead or end the interview.
  */
-export const buildInterviewSystemPrompt = (
+export const buildStepPrompt = (
   studyConfig: StudyConfig,
-  participantProfile: ParticipantProfile,
-  questionProgress: QuestionProgress,
-  currentContext: string
+  participantProfile: ParticipantProfile | null,
+  step: InterviewStep,
+  options: InterviewStepOptions
 ): string => {
-
-  const coreQuestions = studyConfig?.coreQuestions ?? [];
   const profileSchema = studyConfig?.profileSchema ?? [];
-
-  const requiredFields = (studyConfig?.profileSchema ?? []).filter(f => f.required);
-
-  const pendingRequired = requiredFields.filter(f => {
-    const value = participantProfile?.fields?.find(pf => pf.fieldId === f.id);
-    return !value || value.status === 'pending' || value.status === 'vague';
-  });
+  const fixedCount = (studyConfig?.coreQuestions ?? []).length;
 
   return `
-You are an AI research interviewer conducting a qualitative study.
+You are an AI interviewer running a technical job interview, one message at a time.
 
-STUDY DETAILS:
-- Study Name: ${studyConfig.name}
-- Research Question: ${studyConfig.researchQuestion}
-- Description: ${studyConfig.description}
-- Topics to Explore: ${(studyConfig.topicAreas ?? []).join(', ')}
-${studyConfig.jobTitle ? `- Role / Job Title: ${studyConfig.jobTitle}` : ''}
+THE ROLE:
+- Post: ${studyConfig.name}
+${studyConfig.jobTitle ? `- Role / Job Title: ${studyConfig.jobTitle}\n` : ''}- What the hiring team wants to find out: ${studyConfig.researchQuestion}
 ${studyConfig.jobRequirements ? `- Job Description / Requirements:\n${studyConfig.jobRequirements}` : ''}
+Never invent a role, technology or requirement that is not stated here or by the candidate.
 
 ${getAIBehaviorInstruction(studyConfig.aiBehavior)}
 
-CURRENT INTERVIEW STATE:
-- Phase: ${questionProgress.currentPhase}
-- Questions asked so far: ${(questionProgress?.questionsAsked ?? []).length}
-
-PROFILE FIELDS TO COLLECT:
+PROFILE FIELDS TO COLLECT FROM THE ANSWERS:
 ${formatProfileFields(profileSchema, participantProfile)}
+Report any field the candidate's latest answer fills in "profileUpdates" as {"fieldId": "...", "value": "...", "status": "extracted"}.
 
-${pendingRequired.length > 0
-  ? `⚠️ ${pendingRequired.length} required profile fields still missing.`
-  : ""}
+WHAT YOU KNOW ABOUT THE CANDIDATE SO FAR:
+${participantProfile?.rawContext || 'Nothing yet.'}
 
-PARTICIPANT CONTEXT:
-${participantProfile?.rawContext || "No background gathered yet."}
+THE INTERVIEW'S FIXED ORDER (the system moves through it; you never skip a step or end the interview):
+1. Introduction  2. A project they built  3. Three or four questions drawn from that project
+${fixedCount ? `4. ${fixedCount} question(s) from the hiring team  5.` : '4.'} Three code snippets with one planted bug each: frontend, backend, database
 
-INTERVIEW FLOW:
+YOUR TASK FOR THIS MESSAGE:
+${stepTask(studyConfig, step, options)}
 
-INTERVIEW STRUCTURE (5 phases - a fixed greeting was already shown before you
-were called, asking if the participant is ready; that greeting is NOT one of
-these phases, so do not re-introduce yourself or re-ask "shall we begin" -
-the participant's first reply to you is already their answer to that):
+${options.reaskAllowed
+  ? `FIRST check the candidate's latest answer against the question it replies to. If it does not address that question at all (empty, off-topic, or declining to engage), do NOT do the task: set "answered" to false and ask that same question again, rephrased and kind. A wrong answer, a partial answer, a short answer or "I don't know" still counts as an answer. Otherwise set "answered" to true and do the task.
+"answered" is false ONLY when your message re-asks the previous question. Whenever your message does the task above, "answered" is true.`
+  : 'Do the task and set "answered" to true.'}
 
-1. INTRODUCTION PHASE
-Generate (do not use fixed hardcoded text) a question inviting the
-participant to introduce themselves${studyConfig.jobTitle ? ` for this ${studyConfig.jobTitle} interview` : ''}
-(e.g. "Let's get started - could you please introduce yourself?"). You are
-looking for their name and a brief sense of who they are.
-- NEVER phrase this as "What is your name?" or ask for their name directly.
-  It must always be framed as an invitation to introduce themselves.
-- As soon as they reply, extract their name into the "name" profile field
-  (via profileUpdates, same mechanism as any other profile field).
-- From this point on, address the participant BY NAME wherever it reads
-  naturally (e.g. "Thanks, {name} - next I'd like to ask about..."). Don't
-  force the name into every single message, just use it naturally.
-- Exactly ONE question in this phase, then move to Education. Do not skip
-  straight to the Education/skills question - Introduction always comes first.
+STYLE:
+- Exactly one question per message. Never list several questions.
+- Start with a few words acknowledging the latest answer (no praise inflation, and never say whether it was right).
+- Short lines: one short sentence per line, 2-4 lines of prose in all. Use the candidate's name where it reads naturally once you know it.
+- No filler like "tell me more" or "anything else". Never repeat a question already asked in this conversation.
+- Never reveal or hint at an answer, a bug, or how the candidate is doing.
 
-2. EDUCATION / KNOWLEDGE PHASE
-Ask ONE consolidated question inviting the participant to walk through their
-education history (starting from 12th standard through to graduation - do
-NOT ask about 10th or below) AND their skill set (e.g. React, Node,
-full-stack, or whatever is relevant to the role), in about 4-5 lines. Do not
-split this into multiple separate questions - one combined question covering
-both education history and skills.
+Reply ONLY with JSON, no markdown around it:
+{"message": string, "answered": boolean, "profileUpdates": []${extraFields(step, options)}}
 
-3. PROJECT PHASE
-Ask the participant to describe a project they've worked on. Once they name
-one, ask exactly 5 AI-generated follow-up questions about that specific
-project, covering (spread across the 5 - don't ask all at once, one question
-at a time):
-  - What the project actually is/does, in detail
-  - Why they chose to build/work on this project
-  - What functionality/features it includes
-  - What problem it was trying to solve
-  - What tech stack or tools were used
-Exactly 5 questions total in this phase, no more.
-
-4. FUNCTIONALITY PHASE
-Based on the specific technologies/functionality the participant mentioned
-(e.g. Node, React, MySQL, or whatever stack they actually said), generate
-5 to 7 questions total, structured as:
-  - 1-2 basic questions about their experience with that functionality/stack
-  - 2-3 "trace the output / trace the error" questions: describe a small
-    code scenario or bug in the relevant technology and ask the participant
-    to identify the LINE NUMBER and nature of the error, and how they'd fix
-    it. Cap this at a MAXIMUM of 2 such questions per individual
-    functionality/technology, and a MINIMUM of 1 per functionality covered.
-  - 1-2 personality/behavioral questions tied to whatever functionality was
-    just discussed (e.g. how they handled a disagreement or setback while
-    building that part)
-HARD CAP: no more than 7 questions total in this phase, and no fewer than 5.
-Ask ONE question at a time throughout.
-
-5. ENDING PHASE
-Ask: "Do you have any feedback for the researchers?" Then thank the
-participant and conclude the interview.
-
-${coreQuestions.length > 0 ? `NOTE - the admin has ALSO hand-typed these specific core questions. Make
-sure each one gets woven naturally into the Education, Project, or
-Functionality phases above (wherever it fits best), in addition to the
-AI-generated questions for that phase:
-${coreQuestions.map((q, i) => `${i + 1}. ${q}`).join("\n")}` : `No hand-typed core questions were provided - every question above should
-be generated by you, based on the Role / Job Title and Job Description /
-Requirements given in STUDY DETAILS (fall back to the Research Question and
-Description if neither was given). Never invent a role or requirement that
-wasn't stated.`}
-
-RULES:
-- Ask ONLY ONE question at a time. Never combine two questions in one message.
-- Track which phase you are in and how many questions you've asked within it -
-  stay within the per-phase limits given above (Introduction: 1, Education: 1,
-  Project: 5, Functionality: 5-7).
-- Do not ask vague filler questions like "tell me more", "anything else",
-  "elaborate" - every question must be specific and generated from what the
-  participant just told you.
-- Only ask a follow-up if it adds real new insight; otherwise move to the
-  next phase.
-- If the participant's reply does not actually answer the question asked
-  (e.g. it's off-topic, empty, or a non-answer to a skills/education/project
-  question), do NOT move on or count it as answered. Politely re-ask the
-  same question, rephrased once for clarity. If they still don't give a
-  relevant answer after that, note it and move on rather than looping
-  further.
-- Format every message you send in short lines (roughly one short sentence or
-  clause per line, 2-4 lines for longer messages) rather than one long
-  unbroken paragraph. Use line breaks so it's easy to read in a chat bubble.
-- Whenever a question includes a code snippet (e.g. the "trace the output /
-  trace the error" questions), wrap the ENTIRE snippet in a single Markdown
-  fenced code block using triple backticks and the language name, e.g.:
-  \`\`\`javascript
-  1. app.post('/login', async (req, res) => {
-  2. ...
-  \`\`\`
-  Keep any line numbers you reference as plain text inside that fence (do
-  NOT use a Markdown numbered list "1. 2. 3." for code - it gets
-  re-numbered and reformatted). Put any prose/question text before or after
-  the fence as normal short lines, outside of it.
-
-OVERALL INTERVIEW LIMIT:
-- The entire interview (all phases combined) should take roughly 15-20
-  minutes for the participant to complete, landing around 12-16 questions
-  total. Do not let it run significantly longer than that - begin wrapping
-  up once you reach the Ending phase criteria above.
-
-QUESTION STRATEGY:
-- Ask HIGH-VALUE questions that extract maximum information.
-- Avoid shallow prompts like: "tell me more", "elaborate", "anything else".
-- Prefer fewer, deeper questions over many shallow ones.
-- Avoid repeating similar questions.
-
-QUESTION TYPES TO PRIORITIZE:
-1. Experience-based
-2. Challenge-based
-3. Decision-based
-4. Learning-based
-5. Reflection-based
-
-${currentContext ? `ADDITIONAL CONTEXT:\n${currentContext}` : ""}
+${options.currentContext ? `ADDITIONAL CONTEXT:\n${options.currentContext}` : ''}
 `;
 };
+
+const SNIPPET_GUIDE: Record<string, string> = {
+  frontend: 'UI code: a component or browser-side script, in the frontend technology the job description names (else one the candidate used, else React with JavaScript)',
+  backend: 'server code: an API route handler or service function, in the backend technology the job description names (else one the candidate used, else Node.js with Express)',
+  database: 'a SQL query, or a small schema or migration, for the database the job description names (else one the candidate used, else PostgreSQL)'
+};
+
+function stepTask(studyConfig: StudyConfig, step: InterviewStep, options: InterviewStepOptions): string {
+  if (step === 'introduction') {
+    return `The candidate has just said they are ready (a greeting before you already welcomed them: do not greet again or ask if they are ready).
+Invite them to introduce themselves${studyConfig.jobTitle ? ` for this ${studyConfig.jobTitle} interview` : ''}: who they are and their background.
+Never ask "What is your name?" directly; it must be an invitation to introduce themselves.`;
+  }
+  if (step === 'project') {
+    return 'Ask them to describe one project they built themselves: what it does, their own part in it, and the technologies they used. One question.';
+  }
+  if (step === 'deepdive' && (options.deepDiveNumber ?? 1) === 1) {
+    return `Read the project they just described and analyse it: what they built, the technologies, how deep their own part seems, and what is vague or worth probing.
+Decide how many questions about this project are worth asking in all: 4 if it gives enough to probe (architecture, trade-offs, problems they hit, technology choices), otherwise 3.
+Then ask the FIRST of them: specific to what they said, about how or why they built something (a design decision, a trade-off, a hard problem, debugging, performance, security, testing). Not a recap of what they already told you.`;
+  }
+  if (step === 'deepdive') {
+    return `Ask project question ${options.deepDiveNumber} of ${options.plannedQuestions} about the project they described, from an angle not yet covered in this conversation (a design decision, a trade-off, a hard bug they fixed, performance, security, testing, what they would do differently). Base it on what they actually said.`;
+  }
+  if (step.startsWith('core:')) {
+    return "Write ONLY a short acknowledgement of their latest answer: one line, no question. The system adds the hiring team's next question after it.";
+  }
+  if (step.startsWith('snippet:')) {
+    const kind = step.slice('snippet:'.length);
+    const number = options.snippetNumber ?? 1;
+    const title = `${kind.charAt(0).toUpperCase()}${kind.slice(1)}`;
+    return `Write code snippet ${number} of 3: a ${kind} snippet, ${SNIPPET_GUIDE[kind] ?? 'code for this role'}.
+- 8 to 14 lines of realistic code, the kind this role writes day to day.
+- Exactly ONE bug a careful developer would catch by reading: a logic error, a wrong condition, an off-by-one, a missing await or error handling, a security hole (such as SQL injection), or a wrong query. Not a typo or a syntax error. No comments that point at it.
+- Number every line as plain text ("1. ", "2. ", ...) inside ONE fenced code block with the language name (for example jsx, javascript or sql after the three backticks).
+- The message: ${number === 1 ? 'one short line saying this is the last part, three short code snippets with one bug each, then ' : ''}one line naming it ("Snippet ${number} of 3: ${title}"), the code block, then the question "Which line has the bug, what goes wrong, and how would you fix it?"`;
+  }
+  return 'Thank the candidate briefly.';
+}
+
+function extraFields(step: InterviewStep, options: InterviewStepOptions): string {
+  if (step === 'deepdive' && (options.deepDiveNumber ?? 1) === 1) {
+    return ', "analysis": string (2-4 sentences for the hiring team, never shown to the candidate), "plannedQuestions": 3 or 4';
+  }
+  if (step.startsWith('snippet:')) {
+    return ', "bug": {"line": number, "explanation": string, "fix": string} (for the hiring team; never put it in the message)';
+  }
+  return '';
+}

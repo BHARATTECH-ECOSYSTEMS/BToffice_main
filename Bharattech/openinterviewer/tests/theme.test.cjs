@@ -59,12 +59,13 @@ test('text stays readable on the new colours', () => {
 });
 
 test("the chat's phase bar follows the interview's five phases", () => {
-  assert.deepEqual(INTERVIEW_PHASES, ['introduction', 'education', 'project', 'functionality', 'ending']);
+  // the 2026-10-28 order (lib/interviewFlow.ts); a stage kept in a browser from before reads as the start
+  assert.deepEqual(INTERVIEW_PHASES, ['introduction', 'project', 'questions', 'code', 'ending']);
   assert.equal(phaseStep('introduction'), 0);
-  assert.equal(phaseStep('functionality'), 3);
+  assert.equal(phaseStep('code'), 3);
   assert.equal(phaseStep('ending'), 4);
   assert.equal(phaseStep(undefined), 0);
-  assert.equal(phaseStep('wrap-up'), 0);
+  assert.equal(phaseStep('functionality'), 0);
 });
 
 test('the chat moves gently, and not at all with reduced motion', () => {

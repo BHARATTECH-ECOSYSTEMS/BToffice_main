@@ -1,5 +1,5 @@
 // AI Provider Abstraction Layer
-// Supports Gemini, Claude, and Mistral
+// One provider: Groq (lib/providers/groq.ts)
 
 import {
   StudyConfig,
@@ -8,16 +8,16 @@ import {
   SynthesisResult,
   BehaviorData,
   AIInterviewResponse,
-  QuestionProgress,
   AggregateSynthesisResult
 } from '@/types';
+import type { ScoredQuestion, TranscriptPair } from './scoring';
 
 // =============================
 // Re-export prompts
 // =============================
 
 export {
-  buildInterviewSystemPrompt,
+  buildStepPrompt,
   getAIBehaviorInstruction,
   formatProfileFields
 } from './prompts';
@@ -26,14 +26,25 @@ export {
 // Provider Interface
 // =============================
 
+export interface InterviewStepOptions {
+  // whether the AI may ask the last question again instead (once in a row) when the latest answer doesn't address it
+  reaskAllowed: boolean;
+  currentContext: string;
+  deepDiveNumber?: number;    // which project question this is (1-based)
+  plannedQuestions?: number;  // how many project questions were planned (known from the second one on)
+  snippetNumber?: number;     // which code snippet this is (1-based)
+  fixedQuestion?: string;     // a 'core:<n>' step: the researcher's own question, asked as written
+}
+
 export interface AIProvider {
   generateRawResponse(extractionPrompt: string): unknown;
+  // writes the question for one step the server chose (lib/interviewFlow.ts)
   generateInterviewResponse(
     history: InterviewMessage[],
     studyConfig: StudyConfig,
     participantProfile: ParticipantProfile | null,
-    questionProgress: QuestionProgress,
-    currentContext: string
+    step: string,
+    options: InterviewStepOptions
   ): Promise<AIInterviewResponse>;
 
   getInterviewGreeting(studyConfig: StudyConfig): Promise<string>;
@@ -42,8 +53,16 @@ export interface AIProvider {
     history: InterviewMessage[],
     studyConfig: StudyConfig,
     behaviorData: BehaviorData,
-    participantProfile: ParticipantProfile | null
+    participantProfile: ParticipantProfile | null,
+    // the interviewer's hidden notes (the project analysis, the planted bugs), to judge the answers against
+    notes?: string,
+    // the questions to score, each with the candidate's final answer (lib/scoring.ts); the result then has a scorecard
+    questions?: ScoredQuestion[]
   ): Promise<SynthesisResult>;
+
+  // an interview held before answers were scored: per pair, its kind (project / fixed / code / skip) and a verdict;
+  // null when the AI couldn't be reached or answered nonsense
+  scoreTranscript(studyConfig: StudyConfig, pairs: TranscriptPair[]): Promise<unknown[] | null>;
 
   synthesizeAggregate(
     studyConfig: StudyConfig,
@@ -95,12 +114,11 @@ export const cleanJSON = (text: string): string => {
 // Default Fallback Responses
 // =============================
 
+// what a turn gets when the AI can't be reached or answers nonsense: the route asks for the answer again
 export const defaultInterviewResponse: AIInterviewResponse = {
   message: "I appreciate you sharing that. What else comes to mind?",
-  questionAddressed: null,
-  phaseTransition: null,
   profileUpdates: [],
-  shouldConclude: false
+  failed: true
 };
 
 export const defaultSynthesisResult: SynthesisResult = {

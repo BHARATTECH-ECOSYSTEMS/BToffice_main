@@ -16,6 +16,8 @@ const InterviewSchema = new Schema(
     messages: { type: Array, default: [] },
     history: { type: Array, default: [] },
     synthesis: { type: Object, default: null },
+    // an interview held before answers were scored: its estimated score, kept beside the summary (lib/kv.ts)
+    scorecard: { type: Object, default: null },
     behaviorData: { type: Object, default: null },
     status: {
       type: String,

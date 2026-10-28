@@ -1,36 +1,25 @@
-import {
-  AIProviderType,
-  DEFAULT_CLAUDE_MODEL,
-  DEFAULT_GEMINI_MODEL,
-  DEFAULT_MISTRAL_MODEL
-} from '@/types';
+import { DEFAULT_GROQ_MODEL, GROQ_MODELS, StudyConfig } from '@/types';
 
-// Which AI runs a study's interviews. A study that names none runs on the server's (AI_PROVIDER), so a new study
-// works with whichever key the server has; the setup screen used to save Google Gemini into every study, which
-// failed on every turn on a server with only the Mistral key.
+// Which model runs a study's interviews. Groq runs every study (owner, 2026-10-28: Gemini, Claude and Mistral were
+// removed). A study keeps a model only when the researcher picked one of GROQ_MODELS; anything else it carries (a model
+// of the removed AIs, or none) runs on the server's GROQ_MODEL, else the default.
 
-const PROVIDERS: AIProviderType[] = ['gemini', 'claude', 'mistral'];
-
-/** Server side only: AI_PROVIDER when it names one of ours, else Mistral (the key the setup doc asks for). */
-export function serverDefaultProvider(): AIProviderType {
-  const configured = process.env.AI_PROVIDER;
-  return PROVIDERS.includes(configured as AIProviderType) ? configured as AIProviderType : 'mistral';
+/** Server side only: GROQ_MODEL when set (any model the key can use), else the default. */
+export function serverDefaultModel(): string {
+  return process.env.GROQ_MODEL?.trim() || DEFAULT_GROQ_MODEL;
 }
 
-export function defaultModelFor(provider: AIProviderType) {
-  return provider === 'claude'
-    ? DEFAULT_CLAUDE_MODEL
-    : provider === 'mistral'
-    ? DEFAULT_MISTRAL_MODEL
-    : DEFAULT_GEMINI_MODEL;
+/** The saved model when it is one the setup screen offers, else undefined. */
+export function knownGroqModel(saved?: string): string | undefined {
+  return GROQ_MODELS.some((m) => m.id === saved) ? saved : undefined;
 }
 
-/** The AI the setup screen shows as chosen: the study's own, else the server's, else Mistral until the server answers. */
-export function shownProvider(saved?: AIProviderType, server?: AIProviderType): AIProviderType {
-  return saved || server || 'mistral';
+/** Server side only: the model a study's interviews and summaries run on. */
+export function studyModel(studyConfig: Partial<StudyConfig>): string {
+  return knownGroqModel(studyConfig?.aiModel) || serverDefaultModel();
 }
 
-/** A study keeps an AI (and its model) only when the researcher picked one; otherwise it follows the server. */
-export function aiChoiceToSave(chosen: boolean, aiProvider: AIProviderType, aiModel: string) {
-  return chosen ? { aiProvider, aiModel } : {};
+/** A study keeps a model only when the researcher picked one; otherwise it follows the server. */
+export function aiChoiceToSave(chosen: boolean, aiModel: string) {
+  return chosen ? { aiModel } : {};
 }

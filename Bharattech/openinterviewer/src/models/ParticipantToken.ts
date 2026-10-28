@@ -13,7 +13,8 @@ const ParticipantTokenSchema = new Schema(
     turns: { type: Number, default: 0 },
     // each interview turn's answer and the interviewer's reply, as the server saw them: the saved transcript is built
     // from these, never from what the browser sends (security report 2026-10-28 lead 17)
-    exchanges: { type: [{ _id: false, answer: String, question: String, at: Date }], default: [] },
+    // step / note / planned: which interview step the reply belongs to and the AI's hidden notes (lib/kv.ts)
+    exchanges: { type: [{ _id: false, answer: String, question: String, at: Date, step: String, note: String, planned: Number }], default: [] },
     expiresAt: { type: Date, required: true, expires: 0 }
   },
   {

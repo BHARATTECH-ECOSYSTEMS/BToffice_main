@@ -70,8 +70,7 @@ export async function POST(
       );
     }
 
-    // Get the configured AI provider
-    // Priority: studyConfig.aiProvider > env.AI_PROVIDER > 'gemini'
+    // Groq, on the study's model (lib/aiDefaults.ts studyModel)
     const provider = getInterviewProvider(parentStudy.config);
 
     // Generate follow-up study suggestions
@@ -99,7 +98,6 @@ export async function POST(
       aiBehavior: parentStudy.config.aiBehavior,
       consentText: parentStudy.config.consentText,
       // Inherit AI settings
-      aiProvider: parentStudy.config.aiProvider,
       aiModel: parentStudy.config.aiModel,
       enableReasoning: parentStudy.config.enableReasoning,
       // Link to parent

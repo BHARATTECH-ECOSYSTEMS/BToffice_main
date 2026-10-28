@@ -3,13 +3,16 @@
 
 import { NextResponse } from 'next/server';
 import { MAX_TURNS_PER_LINK, verifyParticipantToken } from '@/lib/auth';
-import { claimParticipantTurn, recordParticipantExchange } from '@/lib/kv';
+import { claimParticipantTurn, getParticipantToken, recordParticipantExchange, type ExchangeExtra } from '@/lib/kv';
 import { getInterviewProvider } from '@/lib/providers';
+import type { InterviewStepOptions } from '@/lib/ai';
+import { nextStep, phaseOf, plannedDeepDives, SNIPPET_KINDS, type AskedStep, type SnippetKind } from '@/lib/interviewFlow';
 import {
   StudyConfig,
   ParticipantProfile,
   InterviewMessage,
-  QuestionProgress
+  QuestionProgress,
+  AIInterviewResponse
 } from '@/types';
 
 const MAX_MESSAGE_LENGTH = 5000;
@@ -55,6 +58,10 @@ function cleanMessage(value: unknown) {
     text = wholeMessageFence[1].trim();
   }
 
+  // A model sometimes writes the line break after a closing fence as the two characters "\n" ("```\nWhich line…"),
+  // which leaves the code block unclosed in the chat. Only a "\n" right after a fence changes; one inside code stays.
+  text = text.replace(/```\\n/g, '```\n');
+
   return text.slice(0, MAX_MESSAGE_LENGTH);
 }
 
@@ -72,13 +79,6 @@ function getShortAcknowledgement(message: string) {
     .trim();
 }
 
-function extractFirstQuestion(message: string, fallback: string) {
-  const text = cleanMessage(message);
-  const match = text.match(/[^?]*\?/);
-  const question = match?.[0]?.replace(/^[-*\d.)\s]+/, '').trim();
-  return question && question.length >= 12 ? question : fallback;
-}
-
 function buildCoreQuestionTurn(aiMessage: string, nextQuestion: string) {
   const normalizedMessage = normalizeText(aiMessage);
   const normalizedQuestion = normalizeText(nextQuestion);
@@ -89,33 +89,25 @@ function buildCoreQuestionTurn(aiMessage: string, nextQuestion: string) {
   return `${acknowledgement}\n\n${nextQuestion}`;
 }
 
-function getNextCoreQuestion(studyConfig: StudyConfig, questionProgress?: QuestionProgress) {
-  const coreQuestions = studyConfig?.coreQuestions || [];
-  const askedIndexes = new Set(questionProgress?.questionsAsked || []);
-  const nextIndex = coreQuestions.findIndex((_, index) => !askedIndexes.has(index));
+// Hard safety cap - whatever happens, the interview ends once the candidate has answered this many times.
+const MAX_PARTICIPANT_ANSWERS = 20;
+const CLOSING_MESSAGE = 'Thank you for your time and valuable insights. This concludes the interview.';
+const RETRY_MESSAGE = "Sorry, something went wrong on my side.\nCould you send your answer again?";
 
-  if (nextIndex === -1) {
-    return {
-      index: null,
-      question: null,
-      total: coreQuestions.length
-    };
-  }
-
-  return {
-    index: nextIndex,
-    question: coreQuestions[nextIndex],
-    total: coreQuestions.length
-  };
+/** A researcher's preview keeps its steps in the browser (it has no candidate link); only well-formed ones are used. */
+function previewSteps(questionProgress: QuestionProgress | undefined): AskedStep[] {
+  const steps = Array.isArray(questionProgress?.steps) ? questionProgress!.steps : [];
+  return steps
+    .filter((s) => typeof s?.step === 'string' && s.step.length <= 40)
+    .slice(0, MAX_PARTICIPANT_ANSWERS + 10)
+    .map((s) => ({ step: s.step, ...(Number.isInteger(s.planned) && { planned: s.planned }) }));
 }
 
-const VALID_PHASES: QuestionProgress['currentPhase'][] = [
-  'introduction', 'education', 'project', 'functionality', 'ending'
-];
-
-// Hard safety cap - regardless of what the AI decides, force wrap-up once the
-// participant has answered this many times. Prevents runaway interviews.
-const MAX_PARTICIPANT_ANSWERS = 20;
+/** The planted bug as the summary reads it: "frontend snippet: line 4: off by one. Fix: use <". */
+function bugNote(kind: string, bug: NonNullable<AIInterviewResponse['bug']>) {
+  const explanation = bug.explanation.trim().replace(/\.+$/, '');
+  return `${kind} snippet: ${bug.line ? `line ${bug.line}: ` : ''}${explanation}. Fix: ${bug.fix.trim()}`;
+}
 
 export async function POST(request: Request) {
   try {
@@ -160,19 +152,78 @@ export async function POST(request: Request) {
       );
     }
 
-    const coreQuestions = studyConfig?.coreQuestions || [];
-    const { index: nextQuestionIndex, question: nextQuestion, total } =
-      getNextCoreQuestion(studyConfig, questionProgress);
-    const participantAnswerCount = history.filter(message => message.role === 'user').length;
-    const provider = getInterviewProvider(studyConfig);
+    // The steps asked so far: a candidate's from the turns the server saved, never from what the browser says.
+    const link = auth.isAdmin ? null : await getParticipantToken(auth.token!);
+    if (!auth.isAdmin && !link) {
+      return NextResponse.json({ error: 'This interview link is no longer active.' }, { status: 410 });
+    }
+    const asked: AskedStep[] = link
+      ? link.exchanges.map((e) => ({ step: e.step ?? 'unknown', ...(e.planned && { planned: e.planned }) }))
+      : previewSteps(questionProgress);
 
-    const result = await provider.generateInterviewResponse(
-      history.slice(-20),
-      studyConfig,
-      participantProfile,
-      questionProgress,
-      currentContext
-    );
+    const fixedQuestions = (studyConfig.coreQuestions || []).filter((q) => typeof q === 'string' && q.trim());
+    const step = asked.length >= MAX_PARTICIPANT_ANSWERS ? 'ending' : nextStep(asked, fixedQuestions.length);
+    // a failed turn ('retry') doesn't end a re-ask: the question still counts as asked again
+    const lastStep = [...asked].reverse().find((a) => a.step !== 'retry')?.step;
+    // where the progress bar stays when this turn re-asks or retries: the stage of the question last asked
+    const lastRealStep = [...asked].reverse().find((a) => a.step !== 'reask' && a.step !== 'retry')?.step;
+
+    let message: string;
+    let extra: ExchangeExtra = { step };
+    let profileUpdates: AIInterviewResponse['profileUpdates'] = [];
+
+    if (step === 'ending') {
+      // no AI call: the close is always the same
+      message = CLOSING_MESSAGE;
+    } else {
+      const deepDiveNumber = asked.filter((a) => a.step === 'deepdive').length + 1;
+      const kind = step.startsWith('snippet:') ? step.slice('snippet:'.length) : '';
+      const options: InterviewStepOptions = {
+        // the first reply is to the greeting ("ready?"), and a question is asked again at most once in a row
+        reaskAllowed: step !== 'introduction' && lastStep !== 'reask',
+        currentContext: String(currentContext ?? ''),
+        ...(step === 'deepdive' && { deepDiveNumber }),
+        ...(step === 'deepdive' && deepDiveNumber > 1 && { plannedQuestions: plannedDeepDives(asked) }),
+        ...(kind && { snippetNumber: SNIPPET_KINDS.indexOf(kind as SnippetKind) + 1 }),
+        ...(step.startsWith('core:') && { fixedQuestion: fixedQuestions[Number(step.slice('core:'.length))] })
+      };
+      const ask = () => getInterviewProvider(studyConfig).generateInterviewResponse(
+        history.slice(-20),
+        studyConfig,
+        participantProfile,
+        step,
+        options
+      );
+      // What the step needs from the AI: a re-ask or a question has a question in it (Groq once sent just "Understood."),
+      // a snippet has its code and its planted bug (without them it can't be judged later), a fixed question's
+      // acknowledgement just has to be there.
+      const usable = (r: AIInterviewResponse) => {
+        if (r.failed || !r.message.trim()) return false;
+        if (r.answered === false && options.reaskAllowed) return r.message.includes('?');
+        if (kind) return /```/.test(r.message) && Boolean(r.bug);
+        return step.startsWith('core:') || r.message.includes('?');
+      };
+      // an unusable reply is asked for once more before the candidate is told anything went wrong
+      let result = await ask();
+      if (!usable(result)) result = await ask();
+      const reasked = result.answered === false && options.reaskAllowed;
+      const broken = !usable(result);
+
+      if (broken) {
+        message = RETRY_MESSAGE;
+        extra = { step: 'retry' };
+      } else if (reasked) {
+        message = cleanMessage(result.message);
+        extra = { step: 'reask' };
+      } else {
+        message = step.startsWith('core:') ? buildCoreQuestionTurn(result.message, options.fixedQuestion!) : cleanMessage(result.message);
+        if (step === 'deepdive' && deepDiveNumber === 1) {
+          extra = { step, planned: result.plannedQuestions === 4 ? 4 : 3, ...(result.analysis && { note: `Project analysis: ${result.analysis}` }) };
+        }
+        if (kind) extra = { step, note: bugNote(kind, result.bug!) };
+      }
+      profileUpdates = result.profileUpdates || [];
+    }
 
     const nameField = participantProfile?.fields?.find(
       (field: any) => field.fieldId === 'name'
@@ -180,8 +231,8 @@ export async function POST(request: Request) {
     const extractedName = nameField?.value || null;
 
     if (extractedName) {
-      result.profileUpdates = [
-        ...(result.profileUpdates || []),
+      profileUpdates = [
+        ...profileUpdates,
         {
           fieldId: 'name',
           value: extractedName,
@@ -192,11 +243,11 @@ export async function POST(request: Request) {
 
     let updatedProfile = participantProfile;
 
-    if (participantProfile && result.profileUpdates?.length) {
+    if (participantProfile && profileUpdates.length) {
       updatedProfile = {
         ...participantProfile,
         fields: participantProfile.fields.map((field: any) => {
-          const update = result.profileUpdates.find(
+          const update = profileUpdates.find(
             (item: any) => item.fieldId === field.fieldId
           );
 
@@ -216,90 +267,35 @@ export async function POST(request: Request) {
       };
     }
 
-    let shouldConclude = Boolean(result.shouldConclude);
-    let finalMessage: string;
-    let questionAddressed: number | null = null;
-    let phaseTransition: QuestionProgress['currentPhase'] | null = null;
-
-    if (coreQuestions.length > 0 && nextQuestion && nextQuestionIndex !== null) {
-      // Legacy path: admin hand-typed specific core questions. Grind through
-      // them one by one, same as before, just mapped onto the new phase names
-      // (there's no exact old->new equivalent, so this sits in 'functionality'
-      // until the list is exhausted, then moves to 'ending').
-      finalMessage = buildCoreQuestionTurn(result.message, nextQuestion);
-      questionAddressed = nextQuestionIndex;
-      phaseTransition = nextQuestionIndex + 1 >= total ? 'ending' : 'functionality';
-      shouldConclude = false;
-    } else if (coreQuestions.length > 0) {
-      // Legacy path, core questions exhausted - wrap up.
-      const fallback = 'Do you have any final thoughts you would like to add?';
-      const cleaned = cleanMessage(result.message);
-      finalMessage = cleaned && cleaned.length >= 12 ? cleaned : fallback;
-      phaseTransition = 'ending';
-      shouldConclude = true;
-    } else {
-      // AI-generated-question path (no hand-typed core questions): trust the
-      // phase the AI itself declared, since interview.ts instructs it to
-      // track its own progress through Introduction -> Education -> Project
-      // -> Functionality -> Ending. Only fall back to the previous phase if
-      // the AI didn't return a valid one.
-      const fallbackQuestion = 'Could you tell me a bit more about that?';
-      const cleaned = cleanMessage(result.message);
-      finalMessage = cleaned && cleaned.length >= 12 ? cleaned : fallbackQuestion;
-
-      const aiPhase = result.phaseTransition as QuestionProgress['currentPhase'] | undefined;
-      phaseTransition = aiPhase && VALID_PHASES.includes(aiPhase)
-        ? aiPhase
-        : (questionProgress?.currentPhase || 'introduction');
-
-      // Hard safety cap - force wrap-up regardless of what the AI thinks,
-      // so the interview can never run away indefinitely.
-      if (participantAnswerCount >= MAX_PARTICIPANT_ANSWERS) {
-        phaseTransition = 'ending';
-        shouldConclude = true;
-      } else {
-        shouldConclude = shouldConclude || phaseTransition === 'ending';
-      }
-    }
-
-    const closingText = cleanMessage(finalMessage).toLowerCase();
-    if (
-      closingText.includes('concludes our interview') ||
-      closingText.includes('this concludes') ||
-      closingText.includes('thank you for your time')
-    ) {
-      shouldConclude = true;
-      phaseTransition = 'ending';
-    }
-
-    if (shouldConclude) {
-      finalMessage = 'Thank you for your time and valuable insights. This concludes the interview.';
-    }
-
-    // the server keeps this turn (the candidate's answer and this reply); finishing saves those, not the browser's copy
+    // the server keeps this turn (the candidate's answer, this reply, its step and any hidden note); finishing saves
+    // those, not the browser's copy
     if (!auth.isAdmin) {
       const answer = [...history].reverse().find((message) => message.role === 'user');
-      await recordParticipantExchange(auth.token!, String(answer?.content ?? '').slice(0, MAX_MESSAGE_LENGTH), finalMessage);
+      await recordParticipantExchange(auth.token!, String(answer?.content ?? '').slice(0, MAX_MESSAGE_LENGTH), message, extra);
     }
 
     const updatedHistory = history.slice(-20);
     const last = updatedHistory[updatedHistory.length - 1];
 
-    if (!last || last.role !== 'ai' || last.content !== finalMessage) {
+    if (!last || last.role !== 'ai' || last.content !== message) {
       updatedHistory.push({
         id: `msg-${Date.now()}`,
         role: 'ai',
-        content: finalMessage,
+        content: message,
         timestamp: Date.now()
       });
     }
 
+    const shownStep = extra.step === 'reask' || extra.step === 'retry' ? lastRealStep ?? 'introduction' : extra.step!;
+    // the browser gets the message and where the interview stands; the hidden notes (analysis, planted bug) stay here
     return NextResponse.json({
-      ...result,
-      message: finalMessage,
-      questionAddressed,
-      phaseTransition,
-      shouldConclude,
+      message,
+      step: extra.step,
+      ...(extra.planned && { planned: extra.planned }),
+      questionAddressed: null,
+      phaseTransition: phaseOf(shownStep),
+      shouldConclude: extra.step === 'ending',
+      profileUpdates,
       history: updatedHistory,
       participantProfile: updatedProfile
     });

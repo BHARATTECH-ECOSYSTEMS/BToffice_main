@@ -1,28 +1,72 @@
-import { Mistral } from '@mistralai/mistralai';
-import { buildAggregateSynthesisPrompt, buildInterviewSystemPrompt, getFixedGreeting } from '../prompts';
+import { buildAggregateSynthesisPrompt, buildStepPrompt, getFixedGreeting } from '../prompts';
 
 import {
   StudyConfig,
   InterviewMessage,
   AIInterviewResponse,
   ParticipantProfile,
-  QuestionProgress,
   SynthesisResult,
   BehaviorData,
-  AggregateSynthesisResult,
-  MISTRAL_SYNTHESIS_MODEL
+  AggregateSynthesisResult
 } from '@/types';
 
 import {
   AIProvider,
+  InterviewStepOptions,
   defaultInterviewResponse,
   defaultSynthesisResult,
   cleanJSON
 } from '../ai';
+import { studyModel } from '../aiDefaults';
+import { buildScorecard, type ScoredQuestion, type TranscriptPair } from '../scoring';
 
-const apiKey = process.env.MISTRAL_API_KEY;
-const client = apiKey ? new Mistral({ apiKey }) : null;
-const SYNTHESIS_TIMEOUT_MS = 15000;
+// Groq runs every interview (owner, 2026-10-28). Its API takes OpenAI-style chat messages, so no SDK is needed.
+const GROQ_CHAT_URL = 'https://api.groq.com/openai/v1/chat/completions';
+// the summary is written after the candidate has left (interview/complete), so it may take the time scoring every
+// answer needs, a rate-limit wait included
+const SYNTHESIS_TIMEOUT_MS = 40000;
+// an interview turn the candidate waits on; a request still hanging after this is given up (the turn then falls back)
+const REQUEST_TIMEOUT_MS = 30000;
+
+type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
+
+// Past its tokens-per-minute limit Groq answers 429 and says how long to wait ("Please try again in 727.5ms" / "9.57s").
+// A wait up to this long is waited out once, so a busy minute costs the candidate a pause, not a failed turn.
+const RATE_LIMIT_MAX_WAIT_MS = 12000;
+
+function rateLimitWait(res: Response, detail: string): number | null {
+  const header = Number(res.headers.get('retry-after'));
+  if (Number.isFinite(header) && header > 0) return header * 1000;
+  const said = detail.match(/try again in ([\d.]+)(ms|s)/i);
+  if (!said) return null;
+  return Number(said[1]) * (said[2].toLowerCase() === 'ms' ? 1 : 1000);
+}
+
+/** One chat completion; the reply's text, or an error that names Groq's status (never the key). */
+async function groqChat(apiKey: string, model: string, messages: ChatMessage[], temperature: number, retried = false): Promise<string> {
+  const res = await fetch(GROQ_CHAT_URL, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    // every prompt here asks for JSON; Groq's JSON mode makes it hold to that
+    body: JSON.stringify({ model, messages, temperature, response_format: { type: 'json_object' } }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS)
+  });
+  if (res.status === 429 && !retried) {
+    const detail = await res.text().catch(() => '');
+    const wait = rateLimitWait(res, detail);
+    if (wait !== null && wait <= RATE_LIMIT_MAX_WAIT_MS) {
+      await new Promise((resolve) => setTimeout(resolve, wait + 250));
+      return groqChat(apiKey, model, messages, temperature, true);
+    }
+    throw new Error(`Groq answered 429: ${detail.slice(0, 300)}`);
+  }
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '');
+    throw new Error(`Groq answered ${res.status}: ${detail.slice(0, 300)}`);
+  }
+  const data = await res.json();
+  return data?.choices?.[0]?.message?.content ?? '';
+}
 
 function stringifyInsight(value: unknown): string {
   if (value === null || value === undefined) return '';
@@ -265,15 +309,12 @@ function deterministicAggregate(
   };
 }
 
-export class MistralProvider implements AIProvider {
+export class GroqProvider implements AIProvider {
 
-  private model?: string;
-  private client: Mistral | null;
+  private apiKey: string | null;
 
-  constructor(model?: string) {
-    this.model = model;
-    const apiKey = process.env.MISTRAL_API_KEY;
-    this.client = apiKey ? new Mistral({ apiKey }) : null;
+  constructor() {
+    this.apiKey = process.env.GROQ_API_KEY?.trim() || null;
   }
 
   // ============================================
@@ -284,185 +325,72 @@ export class MistralProvider implements AIProvider {
     history: InterviewMessage[],
     studyConfig: StudyConfig,
     participantProfile: ParticipantProfile | null,
-    questionProgress: QuestionProgress,
-    currentContext: string
+    step: string,
+    options: InterviewStepOptions
   ): Promise<AIInterviewResponse> {
 
-    if (!this.client) {
-      console.error("Mistral API key missing");
+    if (!this.apiKey) {
+      console.error("GROQ_API_KEY missing");
       return defaultInterviewResponse;
     }
 
     try {
-
-      const systemPrompt = `
-      ${buildInterviewSystemPrompt(
-        studyConfig,
-        participantProfile || {} as ParticipantProfile,
-        questionProgress,
-        currentContext
-      )}
-
-You MUST respond ONLY with valid JSON in this exact format:
-
-{
-  "message": string,
-  "questionAddressed": number | null,
-  "phaseTransition": "introduction" | "education" | "project" | "functionality" | "ending" | null,
-  "profileUpdates": [],
-  "shouldConclude": boolean
-}
-
-Rules:
-- No markdown
-- No explanations
-- No text outside JSON
-- Always include all required fields
-- Ask exactly ONE question in "message"
-- Do not list multiple questions
-- Do not repeat earlier questions from the conversation
-`;
-
-      const cleanedHistory: any[] = (history || [])
-        .slice(-10) // 🔥 reduce from 20 → 10
+      const conversation: ChatMessage[] = (history || [])
+        .slice(-12)
         .filter(msg => msg?.content && typeof msg.content === "string")
-        .map(msg => ({
+        .map((msg): ChatMessage => ({
           role: msg.role === "ai" ? "assistant" : "user",
-          content: String(msg.content).slice(0, 500) // 🔥 limit size
+          // a code snippet and its answer must arrive whole, or the next question loses its context
+          content: String(msg.content).slice(0, 2000)
         }));
 
-      if (!cleanedHistory.length) {
-        return {
-          message: "Let's continue. Could you tell me more?",
-          questionAddressed: null,
-          phaseTransition: null,
-          profileUpdates: [],
-          shouldConclude: false
-        };
-      }
+      const raw = await groqChat(
+        this.apiKey,
+        studyModel(studyConfig),
+        [{ role: "system", content: buildStepPrompt(studyConfig, participantProfile, step, options) }, ...conversation],
+        // a planted bug wants a steadier hand than a conversational question
+        step.startsWith("snippet:") ? 0.4 : 0.2
+      );
 
-          const coreQuestions = studyConfig?.coreQuestions ?? [];
-
-          const totalQuestionsAsked = questionProgress?.questionsAsked?.length || 0;
-          const askedIndexes = new Set(questionProgress?.questionsAsked || []);
-          const nextCoreQuestion = coreQuestions.find((_, index) => !askedIndexes.has(index)) || null;
-
-          if (totalQuestionsAsked >= 12) {
-            return {
-              message: "Thank you for your time and insights. This concludes the interview.",
-              questionAddressed: null,
-              phaseTransition: "ending",
-              profileUpdates: [],
-              shouldConclude: true
-            };
-          }
-
-
-      const response = await this.client.chat.complete({
-        model:
-          this.model ||
-          studyConfig.aiModel ||
-          process.env.MISTRAL_MODEL ||
-          "mistral-large-latest",
-
-        messages: [
-          {
-            role: "system",
-            content: systemPrompt
-          },
-          {
-            role: "user",
-            content: `Phase: ${questionProgress?.currentPhase || "introduction"}
-      Questions Completed: ${questionProgress?.questionsAsked?.length || 0}
-      Total Questions: ${coreQuestions.length}
-      Next Question Focus: ${nextCoreQuestion || "Ask one concise exploratory follow-up based only on the participant's latest answer."}
-
-      Interviewing Rules:
-      - Ask only the next question focus above, or one concise exploratory follow-up if there is no next core question.
-      - Never include more than one question in the message.
-      - Never copy or list previous questions.`
-          },
-          ...cleanedHistory
-        ],
-
-        temperature: 0.2
-      });
-
-      const content = response.choices?.[0]?.message?.content || "";
-
-      let raw =
-        typeof content === "string"
-          ? content
-          : JSON.stringify(content || "");
-
-      // Only unwrap a fence around the WHOLE response, not any ```code```
-      // fence that legitimately lives inside a string field (e.g. a code
-      // snippet in "message") - see cleanJSON in ai.ts for the same fix.
-      raw = raw.replace(/^\s*```(?:json)?\s*/, "").replace(/```\s*$/, "").trim();
-      if (!raw || raw.length < 5) {
-        return {
-          message: "Could you elaborate a bit more?",
-          questionAddressed: null,
-          phaseTransition: null,
-          profileUpdates: [],
-          shouldConclude: false
-        };
-      }
-
+      let parsed: any;
       try {
-        const rawString = typeof raw === "string" ? raw : JSON.stringify(raw);
-        const parsed = JSON.parse(cleanJSON(rawString));
+        parsed = JSON.parse(cleanJSON(raw));
+      } catch {
+        console.error("Groq JSON Parse Error:", raw.slice(0, 500));
+        return defaultInterviewResponse;
+      }
 
-        if (!parsed?.message) {
-          return {
-            message: "Could you tell me a bit more about that?",
-            questionAddressed: null,
-            phaseTransition: null,
-            profileUpdates: [],
-            shouldConclude: false
-          };
-        }
+      // NOTE: the message passes through as written: a ```code``` fence inside it is the snippet itself, and route.ts's
+      // cleanMessage only unwraps a fence around the WHOLE message.
+      const message = typeof parsed?.message === "string" ? parsed.message.trim() : "";
+      if (!message) return defaultInterviewResponse;
 
-        // NOTE: previously this ran a global .replace(/```/g, "") over the
-        // message here, which strips out any legitimate ```code``` fence
-        // the AI included (e.g. showing the participant a code snippet to
-        // trace). That's exactly the corruption route.ts's cleanMessage
-        // guards against safely (only unwrapping a fence that wraps the
-        // ENTIRE message) - so we just pass the message through as-is here
-        // and let that shared logic handle it once, correctly.
-        const cleanMessage = (parsed.message || "").trim();
-
-        return {
-          message: cleanMessage,
-          questionAddressed: parsed.questionAddressed ?? null,
-          phaseTransition: parsed.phaseTransition ?? null,
-          profileUpdates: Array.isArray(parsed.profileUpdates)
-            ? parsed.profileUpdates.filter(
-                (p: any) =>
-                  p &&
-                  typeof p.fieldId === "string" &&
-                  p.fieldId.length > 0 &&
-                  p.value !== undefined
-              )
-            : [],
-          shouldConclude: parsed.shouldConclude ?? false
-        };
-
-      } catch (parseError) {
-        console.error("Mistral JSON Parse Error:", raw);
-
-        // 🔒 Safe fallback instead of freezing interview
-        return {
-          message: "Could you tell me a bit more about that?",
-          questionAddressed: null,
-          phaseTransition: null,
-          profileUpdates: [],
-          shouldConclude: false
+      const reply: AIInterviewResponse = {
+        message,
+        answered: parsed.answered !== false,
+        profileUpdates: Array.isArray(parsed.profileUpdates)
+          ? parsed.profileUpdates.filter(
+              (p: any) =>
+                p &&
+                typeof p.fieldId === "string" &&
+                p.fieldId.length > 0 &&
+                p.value !== undefined
+            )
+          : []
+      };
+      if (typeof parsed.analysis === "string") reply.analysis = parsed.analysis.slice(0, 1500);
+      if (Number.isInteger(parsed.plannedQuestions)) reply.plannedQuestions = parsed.plannedQuestions;
+      if (parsed.bug && typeof parsed.bug === "object") {
+        reply.bug = {
+          ...(Number.isInteger(parsed.bug.line) && { line: parsed.bug.line }),
+          explanation: String(parsed.bug.explanation ?? "").slice(0, 600),
+          fix: String(parsed.bug.fix ?? "").slice(0, 600)
         };
       }
+      return reply;
 
     } catch (error) {
-      console.error("Mistral Interview Error:", error instanceof Error ? error.message : String(error));
+      console.error("Groq Interview Error:", error instanceof Error ? error.message : String(error));
       return defaultInterviewResponse;
     }
   }
@@ -485,36 +413,22 @@ Rules:
   // ============================================
 
   async generateRawResponse(extractionPrompt: string): Promise<unknown> {
-    if (!this.client) {
-      console.error("Mistral API key missing");
+    if (!this.apiKey) {
+      console.error("GROQ_API_KEY missing");
       return null;
     }
-    
+
     try {
-      const response = await this.client.chat.complete({
-        model:
-          this.model ||
-          process.env.MISTRAL_MODEL ||
-          'mistral-large-latest',
-
-        messages: [
-          { role: "user", content: extractionPrompt }
-        ],
-
-        temperature: 0.7
-      });
-
-      const raw = response.choices?.[0]?.message?.content || "";
+      const raw = await groqChat(this.apiKey, studyModel({}), [{ role: "user", content: extractionPrompt }], 0.7);
 
       try {
-        const rawString = typeof raw === 'string' ? raw : JSON.stringify(raw);
-        return JSON.parse(cleanJSON(rawString));
+        return JSON.parse(cleanJSON(raw));
       } catch (parseError) {
-        console.error("Mistral Raw Response JSON Parse Error:", raw);
+        console.error("Groq Raw Response JSON Parse Error:", raw);
         return raw;
       }
     } catch (error) {
-      console.error("Mistral Raw Response Error:", error);
+      console.error("Groq Raw Response Error:", error);
       return null;
     }
   }
@@ -527,12 +441,14 @@ Rules:
     history: InterviewMessage[],
     studyConfig: StudyConfig,
     behaviorData: BehaviorData,
-    participantProfile: ParticipantProfile | null
+    participantProfile: ParticipantProfile | null,
+    notes?: string,
+    questions: ScoredQuestion[] = []
   ): Promise<SynthesisResult> {
     const fallback = deterministicSynthesisResult(history, studyConfig, participantProfile);
 
-    if (!this.client) {
-      console.error("Mistral API key missing");
+    if (!this.apiKey) {
+      console.error("GROQ_API_KEY missing");
       return fallback;
     }
 
@@ -573,43 +489,45 @@ Rules:
   - No text outside JSON
   - If a profile field is not mentioned, return null
   - frequency should be numeric
+${notes ? `  - For each code snippet, add one keyInsights entry saying whether the candidate found the planted bug in the INTERVIEWER'S NOTES (found / partly / missed) and how good their fix was
 
+  INTERVIEWER'S NOTES (never shown to the candidate):
+  ${notes}
+` : ''}${questions.length ? `
+  SCORE EACH ANSWER BELOW. Add to the JSON: "scores": [{"id": "Q1", "verdict": "correct" | "partly" | "wrong", "reason": string}], one entry per question, same ids.
+  - project / fixed questions: correct = technically sound and specific; partly = on the right lines but vague, shallow or with a mistake; wrong = incorrect, off the point or no real answer ("I don't know" is wrong).
+  - code questions: judge against the PLANTED BUG: correct = names that bug (its line or its effect) with a fix that works; partly = finds it but the fix is wrong or missing, or names it only vaguely; wrong = misses it.
+  - reason: one short sentence a hiring manager can read.
+
+${questions.map((q) => `  ${q.id} (${q.kind}) QUESTION: ${q.question}
+  CANDIDATE'S ANSWER: ${q.answer}${q.bug ? `\n  PLANTED BUG: ${q.bug}` : ''}`).join('\n\n')}
+` : ''}
   Transcript:
   ${history
-    .slice(-20) // 🔥 limit history
-    .map(m => `${m.role.toUpperCase()}: ${m.content.slice(0, 300)}`)
+    .slice(-24)
+    // whole enough that a code snippet and the candidate's answer to it arrive intact
+    .map(m => `${m.role.toUpperCase()}: ${m.content.slice(0, 1200)}`)
     .join("\n")}
   `;
 
-      const response = await Promise.race([
-        this.client.chat.complete({
-          model:
-            this.model ||
-            studyConfig.aiModel ||
-            process.env.MISTRAL_MODEL ||
-            'mistral-large-latest',
-
-          messages: [
-            { role: "user", content: synthesisPrompt }
-          ],
-
-          temperature: 0.3
-        }),
+      const raw = await Promise.race([
+        groqChat(this.apiKey, studyModel(studyConfig), [{ role: "user", content: synthesisPrompt }], 0.3),
         new Promise<null>((resolve) => {
           setTimeout(() => resolve(null), SYNTHESIS_TIMEOUT_MS);
         })
       ]);
 
-      if (!response) {
-        console.warn("Mistral Synthesis timed out; using transcript fallback.");
+      if (raw === null) {
+        console.warn("Groq Synthesis timed out; using transcript fallback.");
         return fallback;
       }
 
-      const raw = response.choices?.[0]?.message?.content || "";
-
       try {
-        const rawString = typeof raw === 'string' ? raw : JSON.stringify(raw);
-        const parsed = normalizeSynthesisResult(JSON.parse(cleanJSON(rawString)));
+        const json = JSON.parse(cleanJSON(raw));
+        const parsed = normalizeSynthesisResult(json);
+        // the AI only gives verdicts; the percentages are worked out from them (lib/scoring.ts)
+        const scorecard = buildScorecard(questions, json?.scores);
+        if (scorecard) parsed.scorecard = scorecard;
         if (
           parsed.keyInsights.some(insight => /analysis pending/i.test(insight)) ||
           /synthesis in progress/i.test(parsed.bottomLine)
@@ -626,16 +544,49 @@ Rules:
           bottomLine: parsed.bottomLine || fallback.bottomLine
         };
       } catch (parseError) {
-        console.error("Mistral Synthesis JSON Parse Error:", raw);
+        console.error("Groq Synthesis JSON Parse Error:", raw);
         return fallback;
       }
 
     } catch (error) {
-      console.error("Mistral Synthesis Error:", error);
+      console.error("Groq Synthesis Error:", error);
       return fallback;
     }
   }
 
+  // ============================================
+  // SCORING AN OLDER INTERVIEW
+  // ============================================
+
+  async scoreTranscript(studyConfig: StudyConfig, pairs: TranscriptPair[]): Promise<unknown[] | null> {
+    if (!this.apiKey) {
+      console.error("GROQ_API_KEY missing");
+      return null;
+    }
+
+    const prompt = `You are scoring a candidate's answers in a technical job interview held before answers were scored automatically.
+
+THE ROLE:
+- Post: ${studyConfig.name}
+${studyConfig.jobTitle ? `- Role / Job Title: ${studyConfig.jobTitle}\n` : ''}${studyConfig.jobRequirements ? `- Job Description / Requirements:\n${studyConfig.jobRequirements}\n` : ''}
+Each numbered pair below is one interviewer message and the candidate's reply. For EVERY pair decide:
+- "kind": "code" if the message shows code and asks about a bug, an error or its output; "project" for any other question with a better and a worse answer (their project, experience, technical knowledge, how they would handle something); "skip" for greetings, "are you ready", asking them to introduce themselves, education history, consent, logistics and the closing.
+- "verdict" (not for skip): "correct" = technically sound and specific; "partly" = on the right lines but vague, shallow or with a mistake; "wrong" = incorrect, off the point or no real answer ("I don't know" is wrong). For code, judge from your own careful reading of the code.
+- "reason": one short sentence a hiring manager can read.
+
+Reply ONLY with JSON: {"scores": [{"id": "P1", "kind": "project" | "code" | "skip", "verdict": "correct" | "partly" | "wrong", "reason": string}]}
+
+${pairs.map((p) => `${p.id} INTERVIEWER: ${p.question}\n${p.id} CANDIDATE: ${p.answer}`).join('\n\n')}`;
+
+    try {
+      const raw = await groqChat(this.apiKey, studyModel(studyConfig), [{ role: "user", content: prompt }], 0.2);
+      const parsed = JSON.parse(cleanJSON(raw));
+      return Array.isArray(parsed?.scores) ? parsed.scores : null;
+    } catch (error) {
+      console.error("Groq Scoring Error:", error instanceof Error ? error.message : String(error));
+      return null;
+    }
+  }
 
   async synthesizeAggregate(
     studyConfig: StudyConfig,
@@ -644,8 +595,8 @@ Rules:
   ): Promise<Omit<AggregateSynthesisResult, 'studyId' | 'interviewCount' | 'generatedAt'>> {
     const fallback = deterministicAggregate(studyConfig, syntheses, interviewCount);
 
-    if (!this.client) {
-      console.error("Mistral API key missing");
+    if (!this.apiKey) {
+      console.error("GROQ_API_KEY missing");
       return fallback;
     }
 
@@ -679,23 +630,8 @@ Rules:
 - Use concrete findings from the interview syntheses
 - Do not return placeholder text such as "analysis pending"`;
 
-      const response = await this.client.chat.complete({
-        model:
-          this.model ||
-          studyConfig.aiModel ||
-          process.env.MISTRAL_MODEL ||
-          MISTRAL_SYNTHESIS_MODEL,
-
-        messages: [
-          { role: "user", content: prompt }
-        ],
-
-        temperature: 0.2
-      });
-
-      const raw = response.choices?.[0]?.message?.content || "";
-      const rawString = typeof raw === 'string' ? raw : JSON.stringify(raw);
-      const parsed = normalizeAggregateResult(JSON.parse(cleanJSON(rawString)));
+      const raw = await groqChat(this.apiKey, studyModel(studyConfig), [{ role: "user", content: prompt }], 0.2);
+      const parsed = normalizeAggregateResult(JSON.parse(cleanJSON(raw)));
 
       if (
         parsed.keyFindings.some(finding => /analysis pending/i.test(finding)) ||
@@ -713,7 +649,7 @@ Rules:
         bottomLine: parsed.bottomLine || fallback.bottomLine
       };
     } catch (error) {
-      console.error("Mistral Aggregate Synthesis Error:", error);
+      console.error("Groq Aggregate Synthesis Error:", error);
       return fallback;
     }
   }
@@ -733,28 +669,4 @@ Rules:
       coreQuestions: []
     };
   }
-}
-
-
-// Optional helper if still used elsewhere
-export async function generateMistralResponse(
-  messages: any[],
-  model?: string
-) {
-  if (!client){
-    throw new Error("MISTRAL_API_KEY is not configured.");
-  }
-
-  const selectedModel =
-    model ||
-    process.env.MISTRAL_MODEL ||
-    'mistral-large-latest';
-
-  const response = await client.chat.complete({
-    model: selectedModel,
-    messages,
-    temperature: 0.7
-  });
-
-  return response.choices?.[0]?.message?.content || "";
 }

@@ -33,7 +33,7 @@ const linkWorks = async (url) => {
 };
 const studies = () => mongoose.connection.collection('studies');
 const interviews = () => mongoose.connection.collection('interviews');
-const draft = (overrides = {}) => studyConfig(`study-${Date.now()}`, { name: 'Backend developer', ...overrides });
+const draft = (overrides = {}) => studyConfig(`study-${Date.now()}`, { name: 'Backend developer', jobRequirements: 'Go, PostgreSQL', ...overrides });
 const neverAsked = () => {
   throw new Error('confirm should not be asked');
 };

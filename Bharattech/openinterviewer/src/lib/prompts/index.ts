@@ -14,7 +14,7 @@
 
 // Interview system prompt and helpers
 export {
-  buildInterviewSystemPrompt,
+  buildStepPrompt,
   getAIBehaviorInstruction,
   formatProfileFields
 } from './interview';

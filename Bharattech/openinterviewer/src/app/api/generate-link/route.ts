@@ -120,6 +120,13 @@ export async function POST(request: Request) {
         { status: 404 }
       );
     }
+    // the AI builds the candidate's questions from the job description, so a study without one gets no link
+    if (!study.config.jobRequirements?.trim()) {
+      return NextResponse.json(
+        { error: 'Add the job description to this study first: the AI builds its questions from it.' },
+        { status: 409 }
+      );
+    }
     const studyConfig: StudyConfig = { ...study.config, id: study.id };
 
     // Get expiration time from study config

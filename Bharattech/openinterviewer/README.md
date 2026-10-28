@@ -12,32 +12,16 @@ Open-source AI-powered qualitative research interview platform. Conduct deep, nu
 - **Aggregate Synthesis**: Cross-interview analysis to identify patterns across all participants
 - **Follow-up Studies**: Generate new studies based on synthesis findings
 - **Secure Deployment**: API keys stay server-side, never exposed to participants
-- **One-Click Deploy**: Deploy your own instance to Vercel in minutes
 
 ## Deploy Your Own Instance
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/linxule/openinterviewer&env=GEMINI_API_KEY,ADMIN_PASSWORD&envDescription=API%20key%20for%20Gemini%20and%20admin%20password%20for%20researcher%20access&envLink=https://aistudio.google.com/apikey&project-name=openinterviewer&repository-name=openinterviewer&stores=%5B%7B%22type%22:%22kv%22%7D%5D)
-
-### Quick Start
-
-1. Click the "Deploy with Vercel" button above
-2. Connect your GitHub account (if not already)
-3. Enter the required environment variables:
-   - `GEMINI_API_KEY`: Your Google Gemini API key ([Get one here](https://aistudio.google.com/apikey))
-   - `ADMIN_PASSWORD`: Password to access the researcher dashboard
-4. Click "Deploy"
-5. Wait for deployment to complete (~2 minutes)
-6. Visit your app and configure your study!
-
-### Environment Variables
+The AI runs on [Groq](https://console.groq.com/keys). Set these environment variables wherever the app runs:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `GEMINI_API_KEY` | Yes | Google Gemini API key for AI interviews |
+| `GROQ_API_KEY` | Yes | Groq API key for interviews and summaries |
 | `ADMIN_PASSWORD` | Yes | Password to protect researcher dashboard |
-| `ANTHROPIC_API_KEY` | No | Optional: Use Claude instead of Gemini for interviews |
-| `AI_PROVIDER` | No | `gemini` (default) or `claude` |
-| `AI_MODEL` | No | Override default model (see Model Selection below) |
+| `GROQ_MODEL` | No | Model for studies that don't pick one (default `openai/gpt-oss-120b`) |
 
 ## How It Works
 
@@ -69,7 +53,7 @@ Researcher                          Participant
     │                                    ├── Consent
     │                                    ├── Interview
     │                                    │       ↓
-    │                                    │   AI Interviewer (Gemini/Claude)
+    │                                    │   AI Interviewer (Groq)
     │                                    │       ↓
     │                                    └── Complete
     │                                           ↓
@@ -210,7 +194,7 @@ Click **"Clear Demo"** (amber button in header) to remove all demo data and star
 ├── hooks/                    # Custom React hooks
 ├── lib/                      # Server-side utilities
 │   ├── ai.ts                 # AI provider abstraction
-│   ├── providers/            # Gemini & Claude implementations
+│   ├── providers/            # Groq implementation
 │   └── kv.ts                 # MongoDB-backed storage API
 ├── utils/                    # Client-side utilities
 ├── services/                 # Client-side services
@@ -219,128 +203,36 @@ Click **"Clear Demo"** (amber button in header) to remove all demo data and star
 └── middleware.ts             # Auth protection
 ```
 
-## AI Provider Configuration
+## AI Configuration
 
-### Default: Gemini
-
-The app uses Gemini by default for all AI operations:
-- Interview responses
-- Greeting generation
-- Interview synthesis
+Every study runs on Groq: interview turns, the per-interview summary, the cross-interview summary and follow-up studies. Groq's API takes OpenAI-style chat messages, so the app calls it directly (`src/lib/providers/groq.ts`, no SDK).
 
 ### Model Selection
 
-Models can be selected at two levels:
-
-1. **Per-study (UI)**: Choose a model in the Study Setup page for each study
-2. **Environment default**: Set default models via environment variables
-
-**Priority:** Study UI selection > Provider-specific env var > Legacy `AI_MODEL` > Default
-
-#### Environment Variables
-
-```env
-# Gemini default model
-GEMINI_MODEL=gemini-2.5-flash
-
-# Claude default model
-CLAUDE_MODEL=claude-sonnet-4-5
-
-# Legacy (deprecated - use provider-specific vars above)
-AI_MODEL=gemini-2.5-flash
-```
-
-#### Available Models
-
-**Gemini:**
+1. **Per-study (UI)**: pick a model in Study Setup
+2. **Server default**: `GROQ_MODEL`, else `openai/gpt-oss-120b`
 
 | Model | Description |
 |-------|-------------|
-| `gemini-2.5-flash` | Fast, cost-effective (default) |
-| `gemini-2.5-pro` | Higher quality |
-| `gemini-3-pro-preview` | Most intelligent (preview, may require allowlisting) |
+| `openai/gpt-oss-120b` | Most capable (default) |
+| `openai/gpt-oss-20b` | Faster, lighter |
+| `qwen/qwen3.8-27b` | Alibaba Cloud model |
 
-**Claude:**
+A study saved before the switch to Groq (with Gemini, Claude or Mistral) runs on the server default. Check [Groq's model list](https://console.groq.com/docs/models) before setting `GROQ_MODEL` to another model.
 
-| Model | Description | Pricing |
-|-------|-------------|---------|
-| `claude-haiku-4-5` | Fastest | $1/$5 per MTok |
-| `claude-sonnet-4-5` | Balanced (default) | $3/$15 per MTok |
-| `claude-opus-4-5` | Most capable | $15/$75 per MTok |
-
-**Note:** Preview models may require API access approval. Check [Google AI docs](https://ai.google.dev/gemini-api/docs/models) and [Anthropic docs](https://docs.anthropic.com/en/docs/about-claude/models) for the latest model availability.
-
-### Optional: Claude for Interviews
-
-To use Claude instead of Gemini:
-
-```env
-AI_PROVIDER=claude
-ANTHROPIC_API_KEY=your-claude-api-key
-CLAUDE_MODEL=claude-sonnet-4-5
-```
-
-### AI Reasoning Mode
-
-The app automatically uses enhanced reasoning (thinking mode) for analytical operations like synthesis, while keeping interviews fast and conversational.
-
-**Default Behavior:**
-
-| Operation | Reasoning | Model Used |
-|-----------|-----------|------------|
-| Interview responses | OFF | User-selected model |
-| Greeting generation | OFF | User-selected model | 
-| Per-interview synthesis | ON (high) | Auto-upgraded (Gemini 3 Pro / Claude Opus) |
-| Aggregate synthesis | ON (high) | Auto-upgraded |
-| Follow-up study generation | ON (high) | Auto-upgraded |
-
-**Per-Study Override:**
-
-In Study Setup, you can override the default behavior:
-- **Automatic (recommended)**: Use defaults above
-- **Always enabled**: Force reasoning ON for all operations (slower interviews)
-- **Always disabled**: Force reasoning OFF for all operations (faster but less thorough synthesis)
-
-**Cost Implications:**
-- Synthesis operations automatically use premium models for best quality
-- Gemini: Uses `gemini-3-pro-preview` for synthesis
-- Claude: Uses `claude-opus-4-5` ($15/$75 per MTok) for synthesis
-- Reasoning tokens count toward billing
-
-**Troubleshooting:**
-- If synthesis fails silently, check API quotas for premium models
-- `gemini-3-pro-preview` may require allowlisting in Google AI Studio
-- Claude Opus ($15/$75/MTok) is used for synthesis - monitor costs
-- Set reasoning to "Always disabled" if you want to use your selected model without upgrades
+If a request fails or takes too long, an interview turn falls back to a neutral follow-up line and a summary to one built from the transcript, so an interview never stops on an AI error.
 
 ## Configuring API Keys
 
-API keys are managed through environment variables in your Vercel dashboard:
-
-1. Go to your Vercel project → **Settings** → **Environment Variables**
-2. Add or update the required variables
-
-### Required Keys
-
 | Variable | Purpose |
 |----------|---------|
-| `GEMINI_API_KEY` | Powers AI interviews (server-side) |
+| `GROQ_API_KEY` | Powers AI interviews and summaries (server-side) |
 | `ADMIN_PASSWORD` | Protects researcher dashboard |
+| `GROQ_MODEL` | Optional: the default model |
+| `SESSION_SECRET` | Separate session signing key |
+| `PARTICIPANT_TOKEN_SECRET` | Separate token signing key |
 
-### Optional Keys
-
-| Variable | Purpose | When Needed |
-|----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | Use Claude for interviews | When AI Provider is set to "Claude" |
-| `GEMINI_MODEL` | Override default Gemini model | To change from `gemini-2.5-flash` |
-| `CLAUDE_MODEL` | Override default Claude model | To change from `claude-sonnet-4-5` |
-| `SESSION_SECRET` | Separate session signing key | Advanced: separate from ADMIN_PASSWORD |
-| `PARTICIPANT_TOKEN_SECRET` | Separate token signing key | Advanced: separate from ADMIN_PASSWORD |
-
-### Getting API Keys
-
-- **Gemini**: [Google AI Studio](https://aistudio.google.com/apikey) - Free tier available
-- **Claude**: [Anthropic Console](https://console.anthropic.com/) - Requires account with credits
+Get a key at the [Groq console](https://console.groq.com/keys).
 
 ## Link Management
 
@@ -367,7 +259,7 @@ From the Study Detail page, you can instantly revoke all participant links by to
 
 ### API Key Protection
 
-- **Server-side keys** (`GEMINI_API_KEY`, `ANTHROPIC_API_KEY`): Stored as environment variables, never exposed to browser
+- **Server-side keys** (`GROQ_API_KEY`): Stored as environment variables, never exposed to browser
 - **Participant URLs**: Signed JWT tokens that cannot be tampered with
 - **Dashboard**: Password-protected with HTTP-only cookie authentication
 - **Data**: Stored in MongoDB Atlas with encrypted connections

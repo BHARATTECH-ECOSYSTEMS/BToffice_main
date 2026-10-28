@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { verifyParticipantToken } from '@/lib/auth';
 import { getInterviewProvider } from '@/lib/providers';
 import { serverTranscript } from '@/lib/transcript';
+import { scoredQuestions, type ScoredQuestion } from '@/lib/scoring';
 import {
   finishParticipantToken,
   getParticipantToken,
@@ -44,14 +45,18 @@ const nameMessage = history.find((message: any, index: number) => {
   return extractedName || 'Participant';
 }
 
-async function writeSynthesis(interview: StoredInterview, studyConfig: any, behaviorData: StoredInterview['behaviorData']) {
+// notes: the interviewer's hidden notes kept with the turns (the project analysis, the planted bugs); questions: the
+// answers to score (lib/scoring.ts)
+async function writeSynthesis(interview: StoredInterview, studyConfig: any, behaviorData: StoredInterview['behaviorData'], notes?: string, questions?: ScoredQuestion[]) {
   try {
     const provider = getInterviewProvider(studyConfig);
     const synthesis = await provider.synthesizeInterview(
       interview.transcript,
       studyConfig,
       behaviorData,
-      interview.participantProfile
+      interview.participantProfile,
+      notes,
+      questions
     );
 
     if (!(await setInterviewSynthesis(interview.id, synthesis))) {
@@ -160,7 +165,8 @@ export async function POST(request: Request) {
     // The summary is for the researcher; the candidate's thank-you page never shows it, so they don't wait on the AI
     // (up to 15 s). The server runs as one long-lived process, so the write finishes after the reply; until then the
     // researcher's page says no analysis is available yet.
-    void writeSynthesis(baseInterview, studyConfig, behaviorData);
+    const notes = (link?.exchanges ?? []).flatMap((e) => (e.note ? [e.note] : [])).join('\n') || undefined;
+    void writeSynthesis(baseInterview, studyConfig, behaviorData, notes, link ? scoredQuestions(link.exchanges) : undefined);
 
     return NextResponse.json({ interviewId });
   } catch (error) {

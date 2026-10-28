@@ -39,7 +39,7 @@ AI in real time.
    if they're ready to begin.
 4. Once they reply, every message from then on is sent to
    `/api/interview`, which builds a large prompt (see below) and asks the AI
-   provider (Gemini, Claude, or Mistral — configurable) what to say next.
+   (Groq, on the study's model) what to say next.
 5. When the interview naturally wraps up, the transcript is saved, and the
    researcher can trigger a synthesis pass on it.
 
