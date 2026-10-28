@@ -2508,6 +2508,12 @@ a.p-cal-item-title {
   font-size: 12.5px;
   color: var(--ink-soft);
 }
+/* IDs, phone numbers and role badges read as one unit: never broken across lines ("BT-" / "0010") */
+.p-table .is-mono,
+.p-table .is-nowrap,
+.p-table .p-badge {
+  white-space: nowrap;
+}
 .p-table .is-end {
   text-align: right;
 }
@@ -3569,6 +3575,7 @@ a.p-cal-item-title {
   gap: 16px;
 }
 .p-field-hint {
+  max-width: 75ch;
   font-size: 12.5px;
   font-weight: 500;
   color: var(--ink-soft);
@@ -3726,10 +3733,12 @@ a.p-cal-item-title {
 .p-eoffice {
   gap: 14px;
 }
+/* 4px down: the row's other titles sit centred on a 36px button row, so their text starts that much lower */
 .p-eoffice-head {
   display: flex;
   align-items: flex-start;
   gap: 12px;
+  margin-top: 4px;
 }
 .p-eoffice-head > div {
   flex: 1;
@@ -4298,6 +4307,7 @@ a.p-cal-item-title {
 .p-board-empty {
   margin: auto 0;
   padding: 24px 6px;
+  text-align: center;
   font-size: 14px;
   color: rgb(255 255 255 / 0.6);
 }
@@ -5277,6 +5287,10 @@ html:has(.portal),
   gap: 8px;
   margin-bottom: 14px;
 }
+/* "No stream yet" broke onto two lines in a 207px card */
+.p-comm-card-top .p-badge {
+  white-space: nowrap;
+}
 /* initials in a ring of the stream's colour */
 .p-comm-face {
   display: grid;
@@ -5447,10 +5461,11 @@ html:has(.portal),
 }
 
 /* the internal job postings, for admins and sub admins, below the wall across the full width */
+/* 14px + the page's 18px gap = the wall's 32px between sections */
 .p-comm-jobs {
   display: grid;
   gap: 14px;
-  margin-top: 36px;
+  margin-top: 14px;
   min-width: 0;
 }
 .p-comm-ref {

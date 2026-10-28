@@ -234,7 +234,7 @@ export function ConnectedPeople() {
                         <Badge kind={p.role}>{p.roleLabel}</Badge>
                         {blocked && <Badge kind="inactive">Blocked</Badge>}
                       </td>
-                      <td>
+                      <td className="is-nowrap">
                         {p.phone || (
                           <span className="p-dim" title="Not set">
                             -

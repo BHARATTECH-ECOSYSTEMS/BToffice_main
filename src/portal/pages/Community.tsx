@@ -230,7 +230,9 @@ export function Community() {
                 ))}
               </ul>
             ) : (
-              <p className="p-muted">{stream ? `Nobody in the ${label} has joined ahead of leaving yet.` : 'Nobody has joined ahead of leaving yet.'}</p>
+              <section className="p-card">
+                <Empty icon="clock" title={stream ? `Nobody in the ${label} has joined ahead of leaving yet` : 'Nobody has joined ahead of leaving yet'} />
+              </section>
             )}
           </section>
         )}
