@@ -36,6 +36,20 @@ import { Badge, btnClass, BtnLabel, DELETE_MS, DeleteButton, Empty, initials, Mo
 import { WAVE_MS, WaveButton } from './People';
 import { communityFailedMessage } from '../community';
 
+// an address has no spaces, so it held its column at full width: it may wrap right after its "@", and only there
+const emailWithBreak = (email: string) => {
+  const at = email.indexOf('@');
+  return at < 0 ? (
+    email
+  ) : (
+    <>
+      {email.slice(0, at + 1)}
+      <wbr />
+      {email.slice(at + 1)}
+    </>
+  );
+};
+
 /**
  * The People page with the real sign-in: the backend's directory, and for admins and superadmins the changes and
  * invites the backend allows them (src/portal/people.ts), including "Mark as left", which moves someone to their
@@ -229,7 +243,7 @@ export function ConnectedPeople() {
                         {p.name}
                         {self && <span className="p-you">You</span>}
                       </td>
-                      <td>{p.email}</td>
+                      <td>{emailWithBreak(p.email)}</td>
                       <td>
                         <Badge kind={p.role}>{p.roleLabel}</Badge>
                         {blocked && <Badge kind="inactive">Blocked</Badge>}
@@ -276,12 +290,12 @@ export function ConnectedPeople() {
                         </td>
                       )}
                       {manages && (
-                        <td className="is-end p-row-actions">
+                        <td className="is-end p-row-actions p-people-actions">
                           <button
                             type="button"
                             className={btnClass('ghost', { small: true })}
                             disabled={busy || !editable}
-                            title={editable ? undefined : 'Your role can’t change this person’s details'}
+                            title={editable ? `Details for ${p.name}` : 'Your role can’t change this person’s details'}
                             onClick={() => setEditing(p)}
                           >
                             <BtnLabel icon="edit">
@@ -291,7 +305,7 @@ export function ConnectedPeople() {
                           <WaveButton
                             srText={p.name}
                             disabled={leavingNow !== p.id && (busy || !!cantLeave)}
-                            title={cantLeave || undefined}
+                            title={cantLeave || `Mark ${p.name} as left`}
                             going={leavingNow === p.id}
                             onAsk={() => setLeaving(p)}
                           />
@@ -299,7 +313,7 @@ export function ConnectedPeople() {
                             small
                             srText={p.name}
                             disabled={deletingNow !== p.id && (busy || !deletable)}
-                            title={deletable ? undefined : self ? "You can't delete your own account" : 'Your role can’t delete this account'}
+                            title={deletable ? `Delete ${p.name}` : self ? "You can't delete your own account" : 'Your role can’t delete this account'}
                             going={deletingNow === p.id}
                             onAsk={() => setDeleting(p)}
                           />

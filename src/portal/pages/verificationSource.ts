@@ -1,7 +1,7 @@
 import { api, type ApiError } from '../api';
 import { ID_DOCS, ROLE_LABEL, type FileKind, type IdDocument, type SkippableCheck, type Verification, type VerificationKind, type VerificationStatus } from '../data';
 import { usePeopleById, usePortal } from '../store';
-import { checkReady, useRemoteVerifications, type DirectoryLead, type NotApplicableMark, type RemoteVerification, type VerificationDraft } from '../verifications';
+import { canDeleteRequest, checkReady, useRemoteVerifications, type DirectoryLead, type NotApplicableMark, type RemoteVerification, type VerificationDraft } from '../verifications';
 
 /**
  * Where the HR OPS desk gets one kind of request and sends what admins do: the demo's in-browser samples, or the
@@ -82,7 +82,7 @@ export function useVerificationSource(kind: VerificationKind, enabled: boolean):
       markNotApplicable: remote.markNotApplicable,
       leftOn: () => undefined,
       deletedOn: () => undefined,
-      canDelete: (v) => v.status === 'pending',
+      canDelete: canDeleteRequest,
       leadOf: (v) => (v as RemoteVerification).lead ?? null,
       answerEmailed: (v) => (v as RemoteVerification).answerEmailed === true,
       open: remote.open,

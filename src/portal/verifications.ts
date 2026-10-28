@@ -173,6 +173,12 @@ export function checkReady(v: RemoteVerification, check: string) {
   return (v.documents ?? []).some((d) => checkOfFile.get(d.kind) === check);
 }
 
+/**
+ * Whether a request may be deleted (the backend's rule): only a pending one, and never one decided before and reopened,
+ * which is kept as the record. Every reopening writes "Reopened" in the log, so the log is the mark.
+ */
+export const canDeleteRequest = (v: Verification) => v.status === 'pending' && !v.log.some((e) => /^Reopened/.test(e.text));
+
 /** What's wrong with a not-applicable reason, or '' when it can be sent. */
 export const notApplicableProblem = (reason: string) => {
   const r = reason.trim();

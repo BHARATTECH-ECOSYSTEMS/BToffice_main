@@ -1783,6 +1783,8 @@ body:has(.portal) .scene {
 /* People, for admins: a number its owner hid from colleagues, so it isn't passed on */
 .p-phone-hidden {
   display: block;
+  /* the number above it stays on one line (.is-nowrap); this note may wrap */
+  white-space: normal;
   font-size: 12px;
   color: var(--muted);
 }
@@ -5555,6 +5557,14 @@ html:has(.portal),
 }
 .p-row-actions > * + * {
   margin-left: 6px;
+}
+/* People's three labelled row buttons pushed the admin table into a sideways scroll at laptop widths: there they keep
+   their icons, and each names itself on hover and to screen readers */
+@media (min-width: 900px) and (max-width: 1365px) {
+  .p-people-actions .btn-text,
+  .p-people-actions .p-del-word {
+    display: none;
+  }
 }
 
 /* ── My profile (pages/Profile.tsx) and the employee's ID documents, also shown in the verification file ── */

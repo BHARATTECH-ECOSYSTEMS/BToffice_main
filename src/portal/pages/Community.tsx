@@ -222,8 +222,13 @@ export function Community() {
                     <strong className="p-comm-name">{j.name}</strong>
                     <small className="p-comm-left">Still at Bharattech</small>
                     {isAdmin && (j.personalEmail || j.employeeId) && (
-                      <span className="p-comm-card-email p-comm-email-text" title={j.personalEmail}>
-                        {[j.employeeId, j.personalEmail].filter(Boolean).join(', ')}
+                      <span className="p-comm-card-email">
+                        {j.employeeId && <span className="p-comm-email-text">{j.employeeId}</span>}
+                        {j.personalEmail && (
+                          <span className="p-comm-email-text" title={j.personalEmail}>
+                            {j.personalEmail}
+                          </span>
+                        )}
                       </span>
                     )}
                   </li>
