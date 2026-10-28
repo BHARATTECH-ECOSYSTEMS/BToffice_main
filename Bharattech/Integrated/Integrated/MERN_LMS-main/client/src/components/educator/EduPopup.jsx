@@ -35,7 +35,7 @@ const EduPopup = ({ message, onSubmit, onClose }) => {
             }}
             placeholder="Chapter title"
             aria-label="Chapter title"
-            className="h-11 rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink outline-none placeholder:text-muted focus:border-act"
+            className="h-11 rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink focus-visible:outline-none focus:ring-1 focus:ring-act placeholder:text-muted focus:border-act"
             autoFocus
           />
           <div className="flex justify-end gap-2 mt-2">

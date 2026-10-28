@@ -18,7 +18,7 @@ import {
   COURSE_ACTIONS,
 } from "../../reducers/courseFormReducer";
 
-const field = "h-11 rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink outline-none transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act";
+const field = "h-11 rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink focus-visible:outline-none focus:ring-1 focus:ring-act transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act";
 
 function AddCourse() {
   // Refs

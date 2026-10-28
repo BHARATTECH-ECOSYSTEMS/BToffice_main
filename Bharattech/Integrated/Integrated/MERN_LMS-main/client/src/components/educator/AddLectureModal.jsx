@@ -62,7 +62,7 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
             <input
               id="lesson-title"
               type="text"
-              className="h-11 w-full rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink outline-none transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act"
+              className="h-11 w-full rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink focus-visible:outline-none focus:ring-1 focus:ring-act transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act"
               placeholder="e.g. Introduction to React Hooks"
               value={lectureDetails.lectureTitle}
               onChange={(e) =>
@@ -83,7 +83,7 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
               id="lesson-length"
               type="number"
               min="1"
-              className="h-11 w-full rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink outline-none transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act"
+              className="h-11 w-full rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink focus-visible:outline-none focus:ring-1 focus:ring-act transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act"
               placeholder="e.g. 15"
               value={lectureDetails.lectureDuration}
               onChange={(e) =>
@@ -103,7 +103,7 @@ const AddLectureModal = ({ isOpen, onClose, onAddLecture }) => {
               <input
                 id="lesson-link"
                 type="url"
-                className="h-11 w-full rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink outline-none transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act"
+                className="h-11 w-full rounded-xl border border-line-strong bg-card px-4 text-[15px] text-ink focus-visible:outline-none focus:ring-1 focus:ring-act transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act"
                 placeholder="https://www.youtube.com/watch?v=..."
                 value={lectureDetails.lectureUrl}
                 onChange={(e) =>

@@ -24,6 +24,26 @@ test("the search box turns the global ring off with a rule that outweighs it", (
   assert.ok(!list.includes("outline-none"), "a bare outline-none loses to *:focus-visible");
 });
 
+// The same two lines on the educator's text boxes (2026-10-28, owner's A): Add course, the Add lesson window, and the
+// pop-up that asks for a chapter name.
+const TEXT_BOXES = ["pages/educator/AddCourse.jsx", "components/educator/AddLectureModal.jsx", "components/educator/EduPopup.jsx"];
+
+test("no text box relies on a bare outline-none against the global ring", () => {
+  for (const file of TEXT_BOXES) assert.doesNotMatch(read(file), /text-ink outline-none/, file);
+});
+
+test("each educator text box shows focus as one violet edge", () => {
+  const counts = TEXT_BOXES.map((file) => (read(file).match(/text-ink focus-visible:outline-none focus:ring-1 focus:ring-act /g) || []).length);
+  assert.deepEqual(counts, [1, 3, 1]);
+});
+
+test("the search box clears with a violet × of its own instead of Chrome's blue one", () => {
+  const src = read("components/students/SearchBar.jsx");
+  assert.ok(classes().includes("[&::-webkit-search-cancel-button]:appearance-none"));
+  assert.match(src, /\{input && \(\s*<button\s+type="button"\s+aria-label="Clear search"/);
+  assert.match(src, /onClick=\{\(\) => \{\s*setInput\(""\);\s*inputRef\.current\?\.focus\(\);/);
+});
+
 test("focus still shows: the violet edge thickens to 2 px with no gap", () => {
   const list = classes();
   for (const name of ["focus:border-act", "focus:ring-1", "focus:ring-act"]) assert.ok(list.includes(name), name);

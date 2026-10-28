@@ -47,14 +47,14 @@ beforeEach(async () => {
   await signInResearcher();
 });
 
-test("a link made for a study that was never saved doesn't work (why the page saves first)", async () => {
+// since 2026-10-28 the server makes no link at all for it (it used to make one that didn't work)
+test("a study that was never saved gets no link (why the page saves first)", async () => {
   const response = await generateLink(new Request('http://localhost:3000/api/generate-link', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ studyConfig: draft() }),
   }));
-  assert.equal(response.status, 200);
-  assert.equal(await linkWorks((await response.json()).url), false);
+  assert.equal(response.status, 404);
 });
 
 test('a new study is saved, then its link works', async () => {

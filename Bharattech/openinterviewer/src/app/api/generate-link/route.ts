@@ -9,7 +9,7 @@ import { cookies } from 'next/headers';
 import * as jose from 'jose';
 import { StudyConfig, ParticipantToken, LinkExpirationOption } from '@/types';
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/auth';
-import { saveParticipantToken } from '@/lib/kv';
+import { getStudy, saveParticipantToken } from '@/lib/kv';
 
 // Convert link expiration option to jose expiration string
 const getExpirationTime = (option?: LinkExpirationOption): string | null => {
@@ -101,15 +101,26 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { studyConfig } = body as { studyConfig: StudyConfig };
+    const sent = (body as { studyConfig?: Partial<StudyConfig> }).studyConfig;
 
     // Validate required fields
-    if (!studyConfig) {
+    if (typeof sent?.id !== 'string' || !sent.id) {
       return NextResponse.json(
         { error: 'Missing required field: studyConfig' },
         { status: 400 }
       );
     }
+
+    // The link carries the study as saved, never the browser's copy of it: a stale or changed copy would give
+    // candidates other questions than the study the researcher saved.
+    const study = await getStudy(sent.id);
+    if (!study) {
+      return NextResponse.json(
+        { error: 'Save the study first: a link is made for a saved study.' },
+        { status: 404 }
+      );
+    }
+    const studyConfig: StudyConfig = { ...study.config, id: study.id };
 
     // Get expiration time from study config
     const expirationTime = getExpirationTime(studyConfig.linkExpiration);
