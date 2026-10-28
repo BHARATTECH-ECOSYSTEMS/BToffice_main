@@ -39,13 +39,14 @@ function SearchBar({ data }) {
         Search courses
       </label>
       <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+      {/* the box's own edge is the focus line: the global *:focus-visible ring would draw a second one 2 px outside it */}
       <input
         id="course-search"
         type="search"
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder="Search courses"
-        className="h-11 w-full rounded-full border border-line-strong bg-card pl-10 pr-4 text-[15px] text-ink outline-none transition-colors duration-150 ease-snappy placeholder:text-muted focus:border-act"
+        className="h-11 w-full rounded-full border border-line-strong bg-card pl-10 pr-4 text-[15px] text-ink transition-colors duration-150 ease-snappy placeholder:text-muted focus-visible:outline-none focus:border-act focus:ring-1 focus:ring-act"
       />
     </form>
   );
