@@ -634,7 +634,7 @@ const totalQuestions = studyConfig?.questionCount ?? studyConfig?.coreQuestions?
         <div className="flex flex-col items-center gap-4">
           <Loader2 size={36} className="animate-spin text-blue-600" />
           <p className="text-sm text-slate-600 font-medium">
-            Generating your interview analysis...
+            Saving your interview...
           </p>
         </div>
       </div>

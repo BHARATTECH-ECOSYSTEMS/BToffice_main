@@ -10,7 +10,8 @@ import {
   isMongoStorageAvailable,
   lockStudy,
   reopenParticipantToken,
-  saveInterview
+  saveInterview,
+  setInterviewSynthesis
 } from '@/lib/kv';
 import { InterviewMessage, StoredInterview } from '@/types';
 
@@ -41,6 +42,24 @@ const nameMessage = history.find((message: any, index: number) => {
     : null;
 
   return extractedName || 'Participant';
+}
+
+async function writeSynthesis(interview: StoredInterview, studyConfig: any, behaviorData: StoredInterview['behaviorData']) {
+  try {
+    const provider = getInterviewProvider(studyConfig);
+    const synthesis = await provider.synthesizeInterview(
+      interview.transcript,
+      studyConfig,
+      behaviorData,
+      interview.participantProfile
+    );
+
+    if (!(await setInterviewSynthesis(interview.id, synthesis))) {
+      console.warn('Interview synthesis not saved: the interview is gone or storage failed');
+    }
+  } catch (synthesisError) {
+    console.warn('Interview saved, but synthesis failed:', synthesisError);
+  }
 }
 
 export async function POST(request: Request) {
@@ -138,26 +157,10 @@ export async function POST(request: Request) {
     await incrementStudyInterviewCount(studyId);
     await lockStudy(studyId);
 
-    try {
-      const provider = getInterviewProvider(studyConfig);
-      const synthesis = await provider.synthesizeInterview(
-        history,
-        studyConfig,
-        behaviorData,
-        baseInterview.participantProfile
-      );
-
-      const synthesisSaved = await saveInterview({
-        ...baseInterview,
-        synthesis
-      });
-
-      if (!synthesisSaved) {
-        console.warn('Interview saved, but synthesis was not persisted to MongoDB');
-      }
-    } catch (synthesisError) {
-      console.warn('Interview saved, but synthesis failed:', synthesisError);
-    }
+    // The summary is for the researcher; the candidate's thank-you page never shows it, so they don't wait on the AI
+    // (up to 15 s). The server runs as one long-lived process, so the write finishes after the reply; until then the
+    // researcher's page says no analysis is available yet.
+    void writeSynthesis(baseInterview, studyConfig, behaviorData);
 
     return NextResponse.json({ interviewId });
   } catch (error) {

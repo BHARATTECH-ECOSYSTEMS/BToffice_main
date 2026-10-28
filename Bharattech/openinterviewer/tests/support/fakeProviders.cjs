@@ -1,6 +1,20 @@
 // Stand-in for @/lib/providers: no AI key and no network. Each call records the study it was given, so tests can
 // check which study settings the interview really ran on.
 const calls = [];
+// a test can keep the summary waiting (like a slow AI) or make it fail, to check what doesn't wait on it
+let gate = null;
+let failNext = false;
+const holdSynthesis = () => {
+  let release;
+  gate = new Promise((resolve) => (release = resolve));
+  return () => {
+    gate = null;
+    release();
+  };
+};
+const failNextSynthesis = () => {
+  failNext = true;
+};
 
 const fakeProvider = (studyConfig) => ({
   async generateInterviewResponse() {
@@ -9,6 +23,11 @@ const fakeProvider = (studyConfig) => ({
   },
   async synthesizeInterview() {
     calls.push({ kind: 'synthesis', studyConfig });
+    if (gate) await gate;
+    if (failNext) {
+      failNext = false;
+      throw new Error('stand-in AI failure');
+    }
     return { statedPreferences: [], revealedPreferences: [], themes: [], contradictions: [], keyInsights: [], bottomLine: 'stand-in' };
   },
 });
@@ -16,4 +35,6 @@ const fakeProvider = (studyConfig) => ({
 module.exports = {
   getInterviewProvider: (studyConfig) => fakeProvider(studyConfig),
   providerCalls: calls,
+  holdSynthesis,
+  failNextSynthesis,
 };

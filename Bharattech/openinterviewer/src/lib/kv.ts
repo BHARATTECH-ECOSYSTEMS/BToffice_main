@@ -382,6 +382,29 @@ export async function saveInterview(interview: StoredInterview): Promise<boolean
   }
 }
 
+// The AI summary lands after the interview was saved (interview/complete), so it only fills in a record that still
+// exists: an interview deleted meanwhile stays deleted, and nothing else in it is overwritten.
+export async function setInterviewSynthesis(id: string, synthesis: StoredInterview['synthesis']): Promise<boolean> {
+  try {
+    if (await shouldUseMongo()) {
+      const result = await Interview.updateOne({ id }, { $set: { synthesis } });
+      return result.matchedCount > 0;
+    }
+
+    let found = false;
+    await updateLocalStore((store) => {
+      const interview = store.interviews[id];
+      if (!interview) return;
+      interview.synthesis = synthesis;
+      found = true;
+    });
+    return found;
+  } catch (error) {
+    console.error('Error saving interview synthesis:', error);
+    return false;
+  }
+}
+
 // Paginated result interface
 export interface PaginatedResult<T> {
   items: T[];
