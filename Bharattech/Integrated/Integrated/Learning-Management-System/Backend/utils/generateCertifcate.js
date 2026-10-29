@@ -1,9 +1,81 @@
 const fs = require("fs");
 const path = require("path");
-const { PDFDocument, StandardFonts, rgb } = require("pdf-lib");
+const {
+  PDFDocument,
+  rgb,
+  degrees,
+  LineCapStyle,
+  LineJoinStyle,
+  setLineJoin,
+  pushGraphicsState,
+  popGraphicsState,
+  moveTo,
+  lineTo,
+  closePath,
+  clip,
+  endPath,
+} = require("pdf-lib");
 const fontkit = require("@pdf-lib/fontkit");
+const { certificateContent } = require("./certificateTemplate");
 
-const ORGANIZATION_NAME = "BharatTech Tech Ecosystem Pvt. Ltd.";
+// The company's certificate design (owner, 2026-10-29), drawn from its 1122 × 1402 px sample: every position below is
+// that sample's pixel, top-left origin, turned into PDF points by px() and top(). The page keeps the sample's shape.
+const SAMPLE_W = 1122;
+const SAMPLE_H = 1402;
+const PAGE_W = 595.28;
+const S = PAGE_W / SAMPLE_W;
+const PAGE_H = SAMPLE_H * S;
+const px = (value) => value * S;
+const top = (y) => PAGE_H - y * S;
+
+const ASSETS = path.join(__dirname, "../assets/certificate");
+const FONTS = path.join(__dirname, "../fonts");
+// Latin-only copies of Montserrat and DM Serif Display (SIL OFL, licences beside them), embedded whole: pdf-lib's own
+// subsetting dropped letters from a font before (a blank name, 2026-10-29)
+const FONT_FILES = {
+  regular: "Montserrat-Regular-Latin.ttf",
+  bold: "Montserrat-Bold-Latin.ttf",
+  heavy: "Montserrat-ExtraBold-Latin.ttf",
+  serif: "DMSerifDisplay-Regular-Latin.ttf",
+};
+
+const hex = (value) => rgb(parseInt(value.slice(1, 3), 16) / 255, parseInt(value.slice(3, 5), 16) / 255, parseInt(value.slice(5, 7), 16) / 255);
+// sampled from the company's image
+const COLORS = {
+  paper: hex("#FDFDFD"),
+  watermark: hex("#EEEEEE"),
+  violetText: hex("#5C35CC"),
+  violetSoft: hex("#9A86D8"),
+  rule: hex("#C9BAEC"),
+  ink: hex("#1E2331"),
+  body: hex("#20222F"),
+  grey: hex("#92939C"),
+  line: hex("#ADADB0"),
+  arrow: hex("#182122"),
+  white: rgb(1, 1, 1),
+  // the left column, block by block
+  b2: hex("#F6F6F6"),
+  b2Disc: hex("#ECECED"),
+  b3Violet: hex("#3D1AB3"),
+  b3Navy: hex("#080C1F"),
+  b4: hex("#EDECEE"),
+  b4Circle: hex("#6E40F9"),
+  b5: hex("#ECECEC"),
+  b5Navy: hex("#0C1229"),
+  b6: hex("#582CE3"),
+};
+
+// Where each part cut from the company's image sat in it ([left, top, right, bottom] sample pixels)
+const CUTS = {
+  logo: [460, 58, 874, 173],
+  columnTop: [228, 13, 406, 191],
+  signature: [436, 922, 720, 989],
+  seal: [815, 919, 1019, 1123],
+};
+
+// the logo mark's three strokes, in its own -1…1 box (the site's favicon), drawn at any centre and radius
+const LOGO_STROKES = [...fs.readFileSync(path.join(ASSETS, "logo-mark.svg"), "utf8").matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]);
+const LOGO_STROKE = 0.17;
 
 const sanitizeName = (value) =>
   String(value || "User")
@@ -16,404 +88,196 @@ const formatLabel = (value) =>
     .replace(/\s+/g, " ")
     .trim();
 
-const splitParagraph = (font, text, fontSize, maxWidth) => {
-  const words = String(text || "").split(/\s+/).filter(Boolean);
-  const lines = [];
-  let currentLine = "";
+/** Everything drawn until `restore()` stays inside the shape `outline` traces (a list of path operators). */
+const clipTo = (page, outline) => page.pushOperators(pushGraphicsState(), ...outline, clip(), endPath());
+const restore = (page) => page.pushOperators(popGraphicsState());
+const rectOutline = (x, y, w, h) => [moveTo(x, y), lineTo(x + w, y), lineTo(x + w, y + h), lineTo(x, y + h), closePath()];
 
-  words.forEach((word) => {
-    const nextLine = currentLine ? `${currentLine} ${word}` : word;
-    const nextWidth = font.widthOfTextAtSize(nextLine, fontSize);
-
-    if (nextWidth <= maxWidth || !currentLine) {
-      currentLine = nextLine;
-      return;
-    }
-
-    lines.push(currentLine);
-    currentLine = word;
-  });
-
-  if (currentLine) {
-    lines.push(currentLine);
+// the path is drawn scaled by `r`, its stroke width included, so the width stays in the mark's own units; round joins
+// keep its many short segments smooth
+const drawLogoStrokes = (page, cx, cy, r, color, opacity = 1) => {
+  page.pushOperators(pushGraphicsState(), setLineJoin(LineJoinStyle.Round));
+  for (const d of LOGO_STROKES) {
+    page.drawSvgPath(d, { x: cx, y: cy, scale: r, borderColor: color, borderWidth: LOGO_STROKE, borderLineCap: LineCapStyle.Round, borderOpacity: opacity });
   }
+  restore(page);
+};
 
+/** Text with extra space between letters, as the sample's small capitals; returns where it ends. */
+const drawSpaced = (page, text, { x, y, size, font, color, spacing, rotate }) => {
+  let at = 0;
+  for (const ch of text) {
+    const w = font.widthOfTextAtSize(ch, size);
+    if (rotate) page.drawText(ch, { x, y: y + at, size, font, color, rotate: degrees(90) });
+    else page.drawText(ch, { x: x + at, y, size, font, color });
+    at += w + spacing;
+  }
+  return at - spacing;
+};
+const spacedWidth = (text, font, size, spacing) => [...text].reduce((sum, ch) => sum + font.widthOfTextAtSize(ch, size), 0) + spacing * (text.length - 1);
+/** The size at which `text` is `width` wide (the sample's measurement), never above `max` once real text is longer. */
+const sizeFor = (font, text, width) => width / font.widthOfTextAtSize(text, 1);
+
+const wrap = (font, text, size, maxWidth) => {
+  const lines = [];
+  let line = "";
+  for (const word of String(text).split(/\s+/).filter(Boolean)) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && font.widthOfTextAtSize(next, size) > maxWidth) {
+      lines.push(line);
+      line = word;
+    } else line = next;
+  }
+  if (line) lines.push(line);
   return lines;
 };
 
-const drawCenteredText = (page, text, options) => {
-  const {
-    font,
-    size,
-    y,
-    color,
-    maxWidth = null,
-    lineHeight = size + 6,
-  } = options;
+/** An image cut from the company's image, drawn over the same sample pixels it was cut from. */
+const drawCut = (page, image, [x0, y0, x1, y1]) => image && page.drawImage(image, { x: px(x0), y: top(y1), width: px(x1 - x0), height: px(y1 - y0) });
 
-  const pageWidth = page.getWidth();
+/** The left column of blocks, circles and curves, top to bottom as in the sample (x 228–405 px). */
+const drawColumn = (page, columnTop) => {
+  const x = px(228);
+  const w = px(177);
+  const block = (from, to) => ({ y: top(to), h: px(to - from) });
 
-  if (!maxWidth) {
-    const textWidth = font.widthOfTextAtSize(text, size);
-    page.drawText(text, {
-      x: (pageWidth - textWidth) / 2,
-      y,
-      size,
-      font,
-      color,
-    });
-    return y - lineHeight;
-  }
+  // 1. the violet square with the logo's two white loops, cut from the company's image
+  drawCut(page, columnTop, CUTS.columnTop);
 
-  const lines = splitParagraph(font, text, size, maxWidth);
-  let currentY = y;
+  // 2. pale, with a slightly darker half disc leaning in from the left
+  const b2 = block(190, 535);
+  page.drawRectangle({ x, y: b2.y, width: w, height: b2.h, color: COLORS.b2 });
+  clipTo(page, rectOutline(x, b2.y, w, b2.h));
+  page.drawCircle({ x, y: b2.y + b2.h / 2, size: b2.h / 2, color: COLORS.b2Disc });
+  restore(page);
 
-  lines.forEach((line) => {
-    const lineWidth = font.widthOfTextAtSize(line, size);
-    page.drawText(line, {
-      x: (pageWidth - lineWidth) / 2,
-      y: currentY,
-      size,
-      font,
-      color,
-    });
-    currentY -= lineHeight;
-  });
+  // 3. navy, with violet sweeping in from the top right
+  const b3 = block(535, 742);
+  page.drawRectangle({ x, y: b3.y, width: w, height: b3.h, color: COLORS.b3Navy });
+  clipTo(page, rectOutline(x, b3.y, w, b3.h));
+  page.drawCircle({ x: x + w, y: b3.y + b3.h, size: w * 1.08, color: COLORS.b3Violet });
+  restore(page);
 
-  return currentY;
+  // 4. pale, with a full violet circle
+  const b4 = block(742, 935);
+  page.drawRectangle({ x, y: b4.y, width: w, height: b4.h, color: COLORS.b4 });
+  page.drawCircle({ x: x + w / 2, y: b4.y + b4.h / 2, size: Math.min(w, b4.h) / 2, color: COLORS.b4Circle });
+
+  // 5. pale, with navy curving up from the bottom left to the top right corner
+  const b5 = block(935, 1128);
+  page.drawRectangle({ x, y: b5.y, width: w, height: b5.h, color: COLORS.b5 });
+  clipTo(page, rectOutline(x, b5.y, w, b5.h));
+  page.drawCircle({ x: x + w, y: b5.y, size: b5.h, color: COLORS.b5Navy });
+  restore(page);
+
+  // 6. violet, with a thin white arch
+  const b6 = block(1128, 1315);
+  page.drawRectangle({ x, y: b6.y, width: w, height: b6.h, color: COLORS.b6 });
+  clipTo(page, rectOutline(x, b6.y, w, b6.h));
+  page.drawCircle({ x: x + w / 2, y: b6.y, size: w * 0.5, borderColor: COLORS.white, borderWidth: 0.9, borderOpacity: 0.75 });
+  restore(page);
 };
 
-const getCertificateMeta = ({ title, name, role, organizationName }) => {
-  const cleanName = formatLabel(name);
-  const cleanRole = formatLabel(role);
-  const roleText = cleanRole ? ` as ${cleanRole}` : "";
-  const orgName = formatLabel(organizationName) || ORGANIZATION_NAME;
-
-  const metaMap = {
-    "Bonafide Certificate": {
-      heading: "BONAFIDE CERTIFICATE",
-      statement: "This is to certify that",
-      body: `${cleanName}${roleText} is currently associated with ${orgName}. This certificate is issued upon request for official and lawful purposes.`,
-      footerLabel: "Human Resources",
-    },
-    "Character Certificate": {
-      heading: "CHARACTER CERTIFICATE",
-      statement: "This is to certify that",
-      body: `${cleanName}${roleText} has been associated with ${orgName} and has maintained good conduct, professionalism, and integrity to the best of our knowledge during the period of association.`,
-      footerLabel: "Administration",
-    },
-    "Transfer Certificate": {
-      heading: "TRANSFER CERTIFICATE",
-      statement: "This is to certify that",
-      body: `${cleanName}${roleText} has been associated with ${orgName}. This certificate is issued on request to support transfer and documentation formalities for official use.`,
-      footerLabel: "HR Operations",
-    },
-    "Course Completion": {
-      heading: "COURSE COMPLETION CERTIFICATE",
-      statement: "This is proudly presented to",
-      body: `${cleanName} has successfully completed the prescribed learning requirements under the training and development initiatives conducted by ${orgName}. This certificate recognizes satisfactory participation and completion.`,
-      footerLabel: "Learning & Development",
-    },
-  };
-
-  return (
-    metaMap[title] || {
-      heading: String(title || "CERTIFICATE").toUpperCase(),
-      statement: "This is to certify that",
-      body: `${cleanName} has been issued this certificate by ${orgName}.`,
-      footerLabel: "Authorized Department",
-    }
-  );
+const optionalPng = async (doc, file) => {
+  const at = path.join(ASSETS, file);
+  return fs.existsSync(at) ? doc.embedPng(fs.readFileSync(at)) : null;
 };
-
-const issueDateText = (date) =>
-  new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-    timeZone: "Asia/Kolkata",
-  }).format(date);
 
 // Builds the certificate PDF in memory. `issuedAt` is printed as the issue date, so a certificate made again later
 // (GET /api/certificates/:id/pdf) shows the day it was really issued.
-const buildCertificatePdf = async ({
-  name,
-  title,
-  certificateNumber,
-  role,
-  email,
-  username,
-  issuedAt = new Date(),
-}) => {
-  const pdfDoc = await PDFDocument.create();
-  pdfDoc.registerFontkit(fontkit);
+const buildCertificatePdf = async (details) => {
+  const content = certificateContent(details);
+  const doc = await PDFDocument.create();
+  doc.registerFontkit(fontkit);
+  doc.setTitle(`${details.title || "Certificate"}: ${content.name}`);
+  doc.setAuthor("Bharattech Origin Pvt. Ltd.");
+  const font = {};
+  for (const [key, file] of Object.entries(FONT_FILES)) font[key] = await doc.embedFont(fs.readFileSync(path.join(FONTS, file)));
+  // parts cut from the company's image (assets/certificate); a certificate still draws if one is missing
+  const [logo, columnTop, signature, seal] = await Promise.all(["logo", "column-top", "signature", "seal"].map((name) => optionalPng(doc, `${name}.png`)));
 
-  const page = pdfDoc.addPage([841.89, 595.28]);
-  const { width, height } = page.getSize();
+  const page = doc.addPage([PAGE_W, PAGE_H]);
+  page.drawRectangle({ x: 0, y: 0, width: PAGE_W, height: PAGE_H, color: COLORS.paper });
 
-  const fontPath = path.join(__dirname, "../fonts/GreatVibes-Regular.ttf");
-  const fontBytes = fs.readFileSync(fontPath);
+  // the large faint mark behind the text, cut off by the page (centre and size fitted to the company's image)
+  clipTo(page, rectOutline(0, 0, PAGE_W, PAGE_H));
+  drawLogoStrokes(page, px(920), top(850), px(850), COLORS.watermark);
+  restore(page);
 
-  const cursiveFont = await pdfDoc.embedFont(fontBytes);
-  const headingFont = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
-  const bodyFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  drawColumn(page, columnTop);
 
-  const colors = {
-    paper: rgb(0.99, 0.985, 0.97),
-    border: rgb(0.96, 0.45, 0.09),
-    borderAlt: rgb(0.16, 0.25, 0.55),
-    title: rgb(0.10, 0.14, 0.22),
-    body: rgb(0.25, 0.29, 0.36),
-    muted: rgb(0.43, 0.47, 0.54),
-    warmFill: rgb(1, 0.97, 0.93),
-  };
+  // "CERTIFICATE" and the type's side words, reading upwards
+  const word = "CERTIFICATE";
+  const bigSize = sizeFor(font.heavy, word, px(715));
+  page.drawText(word, { x: px(120), y: top(1060), size: bigSize, font: font.heavy, color: COLORS.grey, rotate: degrees(90) });
+  const sideSize = px(40);
+  const sideSpacing = (px(540) - spacedWidth("OF EXPERIENCE", font.regular, sideSize, 0)) / 12;
+  const sideLength = spacedWidth(content.sideWords, font.regular, sideSize, sideSpacing);
+  drawSpaced(page, content.sideWords, { x: px(188), y: top(715) - sideLength / 2, size: sideSize, font: font.regular, color: COLORS.violetSoft, spacing: sideSpacing, rotate: true });
 
-  const cleanName = formatLabel(name) || "User";
-  const meta = getCertificateMeta({
-    title,
-    name: cleanName,
-    role,
-    organizationName: ORGANIZATION_NAME,
-  });
+  // the logo: the mark, "Bharattech" and "ORIGIN", cut from the company's image (its own lettering)
+  drawCut(page, logo, CUTS.logo);
 
-  page.drawRectangle({
-    x: 0,
-    y: 0,
-    width,
-    height,
-    color: colors.paper,
-  });
+  // the statement, the name and its short rule
+  const leadSize = px(22);
+  drawSpaced(page, content.statement, { x: px(453), y: top(294), size: leadSize, font: font.regular, color: COLORS.body, spacing: (px(333) - spacedWidth(content.statement, font.regular, leadSize, 0)) / (content.statement.length - 1) });
+  const right = px(1062);
+  const nameSize = Math.min(sizeFor(font.serif, "Dev Bhatt", px(317)), sizeFor(font.serif, content.name, right - px(453)));
+  page.drawText(content.name, { x: px(453), y: top(405), size: nameSize, font: font.serif, color: COLORS.ink });
+  page.drawRectangle({ x: px(450), y: top(468), width: px(75), height: px(4), color: COLORS.violetText });
 
-  page.drawRectangle({
-    x: 24,
-    y: 24,
-    width: width - 48,
-    height: height - 48,
-    borderColor: colors.border,
-    borderWidth: 1.5,
-  });
-
-  page.drawRectangle({
-    x: 34,
-    y: 34,
-    width: width - 68,
-    height: height - 68,
-    borderColor: colors.borderAlt,
-    borderWidth: 0.9,
-  });
-
-  page.drawRectangle({
-    x: 24,
-    y: height - 88,
-    width: 180,
-    height: 10,
-    color: colors.border,
-  });
-
-  page.drawRectangle({
-    x: width - 204,
-    y: height - 88,
-    width: 180,
-    height: 10,
-    color: colors.borderAlt,
-  });
-
-  page.drawRectangle({
-    x: 24,
-    y: 78,
-    width: 180,
-    height: 10,
-    color: colors.borderAlt,
-  });
-
-  page.drawRectangle({
-    x: width - 204,
-    y: 78,
-    width: 180,
-    height: 10,
-    color: colors.border,
-  });
-
-  drawCenteredText(page, "BHARATTECH", {
-    font: headingFont,
-    size: 26,
-    y: 526,
-    color: colors.title,
-  });
-
-  drawCenteredText(page, "TECH ECOSYSTEM PVT. LTD.", {
-    font: bodyFont,
-    size: 11,
-    y: 505,
-    color: colors.border,
-  });
-
-  page.drawLine({
-    start: { x: 250, y: 495 },
-    end: { x: 592, y: 495 },
-    thickness: 1,
-    color: rgb(0.89, 0.89, 0.9),
-  });
-
-  drawCenteredText(page, "CERTIFICATE", {
-    font: headingFont,
-    size: 34,
-    y: 448,
-    color: colors.title,
-  });
-
-  drawCenteredText(page, meta.heading, {
-    font: headingFont,
-    size: 20,
-    y: 410,
-    color: colors.body,
-  });
-
-  drawCenteredText(page, meta.statement, {
-    font: bodyFont,
-    size: 16,
-    y: 367,
-    color: colors.muted,
-  });
-
-  let nameFontSize = 42;
-  let nameWidth = cursiveFont.widthOfTextAtSize(cleanName, nameFontSize);
-
-  while (nameWidth > width - 220 && nameFontSize > 26) {
-    nameFontSize -= 2;
-    nameWidth = cursiveFont.widthOfTextAtSize(cleanName, nameFontSize);
+  // "has served as {job title}" and "from {date} to {date}"
+  const lineSize = px(24);
+  const served = "has served as ";
+  page.drawText(served, { x: px(455), y: top(547), size: lineSize, font: font.regular, color: COLORS.body });
+  const titleX = px(455) + font.regular.widthOfTextAtSize(served, lineSize);
+  const titleSize = Math.min(lineSize, sizeFor(font.bold, content.servedAs || " ", right - titleX));
+  page.drawText(content.servedAs, { x: titleX, y: top(547), size: titleSize, font: font.bold, color: COLORS.violetText });
+  if (content.from) {
+    const small = px(20);
+    const dateSize = px(22);
+    page.drawText("from", { x: px(449), y: top(588), size: small, font: font.regular, color: COLORS.body });
+    let x = px(547);
+    page.drawText(content.from, { x, y: top(593), size: dateSize, font: font.bold, color: COLORS.violetText });
+    x += font.bold.widthOfTextAtSize(content.from, dateSize) + px(40);
+    page.drawText("to", { x, y: top(593), size: small, font: font.regular, color: COLORS.body });
+    x += font.regular.widthOfTextAtSize("to", small) + px(32);
+    page.drawText(content.to, { x, y: top(593), size: dateSize, font: font.bold, color: COLORS.violetText });
   }
 
-  page.drawText(cleanName, {
-    x: (width - nameWidth) / 2,
-    y: 307,
-    size: nameFontSize,
-    font: cursiveFont,
-    color: colors.title,
-  });
-
-  page.drawLine({
-    start: { x: 250, y: 300 },
-    end: { x: 592, y: 300 },
-    thickness: 1,
-    color: rgb(0.87, 0.86, 0.84),
-  });
-
-  const bodyBottomY = drawCenteredText(page, meta.body, {
-    font: bodyFont,
-    size: 15,
-    y: 258,
-    color: colors.body,
-    maxWidth: 520,
-    lineHeight: 23,
-  });
-
-  const referenceText = [email, username].filter(Boolean).join("  |  ");
-  if (referenceText) {
-    drawCenteredText(page, referenceText, {
-      font: bodyFont,
-      size: 11,
-      y: bodyBottomY - 4,
-      color: colors.muted,
-      maxWidth: 560,
-      lineHeight: 14,
-    });
+  // the two sentences
+  const bodySize = sizeFor(font.regular, "During this tenure, the individual has", px(476));
+  let line = 645;
+  for (const [i, paragraph] of content.paragraphs.entries()) {
+    if (i) line += 43;
+    for (const text of wrap(font.regular, paragraph, bodySize, right - px(438))) {
+      page.drawText(text, { x: px(438), y: top(line), size: bodySize, font: font.regular, color: COLORS.body });
+      line += 43;
+    }
   }
 
-  const issueDate = issueDateText(issuedAt);
+  // the signatory: the signature, a rule ending in a small arrowhead, name, title and company; the signature and the
+  // seal are cut from the company's image (assets/certificate) and sit where they sit there
+  drawCut(page, signature, CUTS.signature);
+  page.drawLine({ start: { x: px(441), y: top(1012) }, end: { x: px(726), y: top(1012) }, thickness: px(3), color: COLORS.line });
+  page.drawSvgPath(`M${px(732)} ${px(1006)} L${px(732)} ${px(1019)} L${px(724)} ${px(1012.5)} Z`, { x: 0, y: PAGE_H, color: COLORS.arrow });
+  page.drawText(content.signatory.name, { x: px(444), y: top(1068), size: sizeFor(font.bold, "TUSHAR TRIVEDI", px(220)), font: font.bold, color: COLORS.violetText });
+  const roleSize = px(21);
+  page.drawText(content.signatory.title, { x: px(444), y: top(1112), size: roleSize, font: font.regular, color: COLORS.body });
+  page.drawText(content.signatory.company, { x: px(444), y: top(1145), size: roleSize, font: font.regular, color: COLORS.body });
+  drawCut(page, seal, CUTS.seal);
 
-  page.drawRectangle({
-    x: 70,
-    y: 124,
-    width: 220,
-    height: 48,
-    color: colors.warmFill,
-    borderColor: rgb(0.98, 0.85, 0.73),
-    borderWidth: 1,
-  });
+  // the foot: a violet rule, the certificate ID and the issue date
+  page.drawLine({ start: { x: px(75), y: top(1326) }, end: { x: px(1045), y: top(1326) }, thickness: px(2), color: COLORS.rule });
+  const footSize = px(13);
+  const footSpacing = px(1.3);
+  const idEnd = drawSpaced(page, "CERTIFICATE ID:", { x: px(75), y: top(1364), size: footSize, font: font.regular, color: COLORS.body, spacing: footSpacing });
+  page.drawText(content.id, { x: px(75) + idEnd + px(7), y: top(1364), size: footSize, font: font.bold, color: COLORS.violetText });
+  const issuedWidth = font.bold.widthOfTextAtSize(content.issued, footSize);
+  page.drawText(content.issued, { x: px(1058) - issuedWidth, y: top(1364), size: footSize, font: font.bold, color: COLORS.violetText });
+  drawSpaced(page, "ISSUED ON:", { x: px(862), y: top(1364), size: footSize, font: font.regular, color: COLORS.body, spacing: footSpacing });
 
-  page.drawRectangle({
-    x: width - 290,
-    y: 124,
-    width: 220,
-    height: 48,
-    color: colors.warmFill,
-    borderColor: rgb(0.98, 0.85, 0.73),
-    borderWidth: 1,
-  });
-
-  page.drawText("Issued On", {
-    x: 88,
-    y: 154,
-    size: 10,
-    font: bodyFont,
-    color: colors.muted,
-  });
-
-  page.drawText(issueDate, {
-    x: 88,
-    y: 136,
-    size: 14,
-    font: headingFont,
-    color: colors.title,
-  });
-
-  page.drawText("Certificate No.", {
-    x: width - 272,
-    y: 154,
-    size: 10,
-    font: bodyFont,
-    color: colors.muted,
-  });
-
-  const certNumberFontSize = String(certificateNumber || "").length > 24 ? 8.5 : 10;
-
-  page.drawText(String(certificateNumber || ""), {
-    x: width - 272,
-    y: 136,
-    size: certNumberFontSize,
-    font: headingFont,
-    color: colors.title,
-  });
-
-  page.drawLine({
-    start: { x: 110, y: 100 },
-    end: { x: 280, y: 100 },
-    thickness: 1.2,
-    color: colors.title,
-  });
-
-  page.drawLine({
-    start: { x: width - 280, y: 100 },
-    end: { x: width - 110, y: 100 },
-    thickness: 1.2,
-    color: colors.title,
-  });
-
-  page.drawText("Authorized Signatory", {
-    x: 118,
-    y: 78,
-    size: 12,
-    font: bodyFont,
-    color: colors.muted,
-  });
-
-  page.drawText(meta.footerLabel, {
-    x: width - 245,
-    y: 78,
-    size: 12,
-    font: bodyFont,
-    color: colors.muted,
-  });
-
-  drawCenteredText(page, ORGANIZATION_NAME, {
-    font: bodyFont,
-    size: 10,
-    y: 48,
-    color: colors.muted,
-  });
-
-  return pdfDoc.save();
+  return doc.save();
 };
 
 // Saves the PDF under /certificates and returns its path, for clients that open the stored file. Files there don't
@@ -437,4 +301,3 @@ const generateCertificate = async (details) => {
 
 module.exports = generateCertificate;
 module.exports.buildCertificatePdf = buildCertificatePdf;
-module.exports.issueDateText = issueDateText;

@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const User = require("../models/User");
 const Certificate = require("../models/Certificate");
 const { myCertificates, certificatePdf, pdfDetails } = require("../controllers/certificateAccessController");
-const { issueDateText } = require("../utils/generateCertifcate");
+const { certificateContent } = require("../utils/certificateTemplate");
 const { connectTestDb, clearTestDb, disconnectTestDb, userFields } = require("./helpers/testDb");
 
 before(connectTestDb);
@@ -132,43 +132,33 @@ test("the fresh PDF carries the original issue date and number, not today's", as
     email: "asha@example.test",
     username: "asha",
     issuedAt,
+    // issued before job titles were asked for: the role and the (missing) join date stand in
+    jobTitle: "Employee",
+    fromDate: undefined,
+    toDate: undefined,
   });
 });
 
+// Since the company's design (2026-10-29) the PDF's text is in embedded fonts and can't be read back here, so these
+// check what the certificate says (utils/certificateTemplate.js); certificateTemplate.test.js checks the PDF itself.
 test("issue dates read the way the certificate prints them", () => {
-  assert.equal(issueDateText(new Date("2026-03-05T10:00:00Z")), "05 March 2026");
+  assert.equal(certificateContent({ title: "Bonafide Certificate", name: "Asha Rao", issuedAt: new Date("2026-03-05T10:00:00Z") }).issued, "MAR 5, 2026");
 });
 
-/** The plain-font text drawn in a PDF made by pdf-lib: its page streams are deflated and its text is hex. */
-const pdfText = (bytes) => {
-  const raw = Buffer.from(bytes).toString("latin1");
-  let text = "";
-  for (const [, body] of raw.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)) {
-    try {
-      const content = require("zlib").inflateSync(Buffer.from(body, "latin1")).toString("latin1");
-      for (const [, hex] of content.matchAll(/<([0-9A-Fa-f]+)>\s*Tj/g)) text += `${Buffer.from(hex, "hex").toString("latin1")}\n`;
-    } catch {
-      // not a deflated stream (an embedded font, say)
-    }
-  }
-  return text;
-};
-
-test("a certificate opened months later still prints the day it was issued", async () => {
-  const { buildCertificatePdf } = require("../utils/generateCertifcate");
-  const pdf = await buildCertificatePdf({ name: "Asha Rao", title: "Bonafide Certificate", certificateNumber: "CERT-TEST-1", role: "Employee", email: "asha@example.test", issuedAt: new Date("2026-03-05T10:00:00Z") });
-  const text = pdfText(pdf);
-
-  assert.match(text, /05 March 2026/);
-  assert.match(text, /CERT-TEST-1/);
-  assert.doesNotMatch(text, new RegExp(issueDateText(new Date())));
+test("a certificate opened months later still prints the day it was issued", () => {
+  const content = certificateContent({ name: "Asha Rao", title: "Bonafide Certificate", certificateNumber: "CERT-TEST-1", issuedAt: new Date("2026-03-05T10:00:00Z") });
+  assert.equal(content.issued, "MAR 5, 2026");
+  assert.equal(content.id, "CERT-TEST-1");
+  assert.notEqual(content.issued, certificateContent({ title: "Bonafide Certificate", name: "Asha Rao" }).issued);
 });
 
-test("a name with & prints on the certificate as typed", async () => {
-  const { buildCertificatePdf } = require("../utils/generateCertifcate");
-  const pdf = await buildCertificatePdf({ name: "Lal & Sons", title: "Bonafide Certificate", certificateNumber: "CERT-TEST-2", role: "Employee", email: "lal@example.test", issuedAt: new Date("2026-03-05T10:00:00Z") });
-  const text = pdfText(pdf);
+test("a name with & prints on the certificate as typed", () => {
+  assert.equal(certificateContent({ name: "Lal & Sons", title: "Bonafide Certificate" }).name, "Lal & Sons");
+});
 
-  assert.match(text, /Lal & Sons/);
-  assert.doesNotMatch(text, /&amp;/);
+// 2026-10-29: pdf-lib's font subsetting made a PDF 7 KB, but the owner saw the name come out blank. Fonts go in whole
+// (Latin-only copies keep them small), so every letter prints.
+test("the certificate's fonts are embedded whole, so every letter prints", () => {
+  const source = require("fs").readFileSync(require.resolve("../utils/generateCertifcate"), "utf8");
+  assert.doesNotMatch(source, /subset:\s*true/);
 });

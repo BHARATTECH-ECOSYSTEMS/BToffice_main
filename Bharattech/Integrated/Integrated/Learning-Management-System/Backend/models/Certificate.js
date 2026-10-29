@@ -32,6 +32,11 @@ const certificateSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+    // What the certificate states (utils/certificateTemplate.js): the job title and the period, "YYYY-MM-DD" as the
+    // admin chose them. Certificates issued before 2026-10-29 have none; their PDF fills them from the profile.
+    jobTitle: { type: String, trim: true, maxlength: 80 },
+    fromDate: { type: String, match: /^\d{4}-\d{2}-\d{2}$/ },
+    toDate: { type: String, match: /^\d{4}-\d{2}-\d{2}$/ },
   },
   { timestamps: true }
 );

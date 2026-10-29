@@ -12,6 +12,7 @@ const generateCertificate = require("../utils/generateCertifcate");
 const User = require("../models/User");
 const { notifyCertificateIssued, forgetNotesAbout } = require("../utils/notify");
 const { myCertificates, certificatePdf } = require("../controllers/certificateAccessController");
+const { readCertificateDetails } = require("../utils/certificateTemplate");
 
 // the portal's certificate types are far shorter; this keeps a typed title on the page
 const TITLE_MAX = 120;
@@ -73,6 +74,9 @@ router.post("/generate", requireAdmin, async (req, res) => {
       return res.status(403).json({ message: "Your account has no record here, so it can't issue certificates." });
     }
 
+    const details = readCertificateDetails(req.body);
+    if (details.error) return res.status(400).json({ message: details.error });
+
     const name =
       user.fullName ||
       `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
@@ -90,6 +94,7 @@ router.post("/generate", requireAdmin, async (req, res) => {
       role: user.role,
       email: user.email,
       username: user.username,
+      ...details,
     });
 
     const cert = new Certificate({
@@ -98,6 +103,9 @@ router.post("/generate", requireAdmin, async (req, res) => {
       certificateNumber,
       filePath,
       issuedBy: issuer._id,
+      jobTitle: details.jobTitle,
+      fromDate: details.fromDate,
+      toDate: details.toDate,
     });
 
     await cert.save();

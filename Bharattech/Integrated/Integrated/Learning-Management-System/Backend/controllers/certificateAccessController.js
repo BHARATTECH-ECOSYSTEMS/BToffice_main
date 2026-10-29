@@ -39,7 +39,10 @@ exports.myCertificates = async (req, res) => {
   }
 };
 
-/** What goes on the certificate: the recipient as they are now, and the number and date it was issued with. */
+/**
+ * What goes on the certificate: the recipient as they are now, and the number, date, job title and period it was
+ * issued with. One issued before job titles were asked for takes the role and join date from the profile.
+ */
 exports.pdfDetails = (certificate, recipient) => ({
   name: recipient?.fullName || recipient?.email || "User",
   title: certificate.title,
@@ -48,6 +51,9 @@ exports.pdfDetails = (certificate, recipient) => ({
   email: recipient?.email,
   username: recipient?.username,
   issuedAt: certificate.issuedAt,
+  jobTitle: certificate.jobTitle || recipient?.role,
+  fromDate: certificate.fromDate || recipient?.joinedOn,
+  toDate: certificate.toDate,
 });
 
 /**
