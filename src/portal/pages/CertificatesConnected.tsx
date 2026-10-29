@@ -4,6 +4,7 @@ import { BUSY_MESSAGE, failedText } from '../api';
 import { certificateTitle, matchesCertificate, useCertificates, type IssuedCertificate } from '../certificates';
 import { headStart } from '../headStart';
 import { PdfModal } from '../PdfModal';
+import { preloadPdfPage } from '../PdfPage';
 import { useDirectory } from '../people';
 import { useSession } from '../session';
 import { formatDate } from '../store';
@@ -196,8 +197,8 @@ function History({ canManage, certificates, notify }: { canManage: boolean; cert
                         <button
                           type="button"
                           className={btnClass('ghost', { small: true })}
-                          onPointerEnter={() => pdfs.warm(c.id)}
-                          onFocus={() => pdfs.warm(c.id)}
+                          onPointerEnter={() => (pdfs.warm(c.id), preloadPdfPage())}
+                          onFocus={() => (pdfs.warm(c.id), preloadPdfPage())}
                           onClick={() => setViewing(c)}
                         >
                           <BtnLabel icon="eye">

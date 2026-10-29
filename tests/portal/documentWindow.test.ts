@@ -35,6 +35,21 @@ test('the window says what is loading, and a failed load can be tried again', ()
   assert.match(pdfModal, /Open in new tab/);
 });
 
+// Owner, 2026-10-29: "when we click on view there is one sec of black screen". Chrome's own PDF viewer starts on a dark
+// grey page, and a web page can't tell when it has drawn. A one-page document is drawn on the page with pdf.js instead,
+// behind the loading sheet until it is drawn; pdf.js loads only then, and Chrome's viewer stays as the fallback.
+test('a one-page document is drawn on the page, behind the loading sheet until it is ready', () => {
+  assert.match(pdfModal, /<PdfPage[\s\S]*?onDrawn=/);
+  const pdfPage = readFileSync('src/portal/PdfPage.tsx', 'utf8');
+  assert.match(pdfPage, /await import\('pdfjs-dist'\)/, 'pdf.js loads only when a document is drawn');
+  const certificates = readFileSync('src/portal/pages/CertificatesConnected.tsx', 'utf8');
+  assert.match(certificates, /onPointerEnter=\{\(\) => \(pdfs\.warm\(c\.id\), preloadPdfPage\(\)\)\}/, 'View warms pdf.js too');
+  assert.doesNotMatch(pdfPage, /^import [^;]*from 'pdfjs-dist'/m, 'never in the main bundle');
+  assert.match(pdfPage, /<canvas/);
+  assert.match(pdfModal, /data-drawn=/);
+  assert.match(pdfModal, /onFailed=\{[\s\S]*?setFallback\(true\)/, "Chrome's viewer if drawing fails");
+});
+
 test('a certificate opens whole, with its number, recipient and date as facts under the title', () => {
   const page = readFileSync('src/portal/pages/CertificatesConnected.tsx', 'utf8');
   const call = page.slice(page.indexOf('<PdfModal'), page.indexOf('/>', page.indexOf('<PdfModal')));

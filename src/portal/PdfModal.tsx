@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { ApiError, ApiErrorKind } from './api';
 import type { PortalIconName } from './data';
+import { PdfPage } from './PdfPage';
 import { pdfViewUrl } from './pdfView';
 import { btnClass, BtnLabel, Modal, PIcon } from './ui';
 
@@ -37,8 +38,11 @@ export function PdfModal({
   onOpened?: () => void;
   onClose: () => void;
 }) {
-  const [pdf, setPdf] = useState<{ url: string } | { error: ApiErrorKind } | null>(null);
+  const [pdf, setPdf] = useState<{ url: string; blob: Blob } | { error: ApiErrorKind } | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // a one-page document is drawn on the page (PdfPage); the loading sheet stays until it is drawn
+  const [drawn, setDrawn] = useState(false);
+  const [fallback, setFallback] = useState(false);
   // the load and onOpened the window opened with; later re-renders don't fetch again, only Try again does
   const first = useRef({ load, onOpened, opened: false });
 
@@ -49,7 +53,7 @@ export function PdfModal({
       (blob) => {
         url = URL.createObjectURL(blob);
         if (!current) return URL.revokeObjectURL(url);
-        setPdf({ url });
+        setPdf({ url, blob });
         if (!first.current.opened) {
           first.current.opened = true;
           first.current.onOpened?.();
@@ -113,11 +117,22 @@ export function PdfModal({
               className={btnClass('ghost', { small: true })}
               onClick={() => {
                 setPdf(null);
+                setDrawn(false);
+                setFallback(false);
                 setAttempt((n) => n + 1);
               }}
             >
               <BtnLabel icon="refresh">Try again</BtnLabel>
             </button>
+          </div>
+        ) : wholePage && !fallback ? (
+          <div className="p-doc-paper" data-drawn={drawn || undefined}>
+            {!drawn && (
+              <div className="p-doc-sheet is-loading" role="status">
+                <span>Opening the document…</span>
+              </div>
+            )}
+            <PdfPage blob={pdf.blob} title={title} onDrawn={() => setDrawn(true)} onFailed={() => setFallback(true)} />
           </div>
         ) : (
           <iframe className="p-doc-frame" src={pdfViewUrl(pdf.url, wholePage)} title={title} />

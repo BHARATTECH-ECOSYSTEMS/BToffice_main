@@ -59,7 +59,8 @@ test('a failed head start is dropped, so the click tries again', async () => {
 test('View warms the certificate on pointer and focus, and the window takes it', () => {
   const page = readFileSync('src/portal/pages/CertificatesConnected.tsx', 'utf8');
   const view = page.slice(page.indexOf('onClick={() => setViewing(c)}') - 300, page.indexOf('onClick={() => setViewing(c)}') + 200);
-  assert.match(view, /onPointerEnter=\{\(\) => pdfs\.warm\(c\.id\)\}/);
-  assert.match(view, /onFocus=\{\(\) => pdfs\.warm\(c\.id\)\}/);
+  // (pdf.js is warmed alongside since 2026-10-29: documentWindow.test.ts)
+  assert.match(view, /onPointerEnter=\{\(\) => \(pdfs\.warm\(c\.id\)/);
+  assert.match(view, /onFocus=\{\(\) => \(pdfs\.warm\(c\.id\)/);
   assert.match(page, /load=\{\(\) => pdfs\.take\(viewing\.id\)\}/);
 });
