@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { ApiError, ApiErrorKind } from '../api';
 import { BUSY_MESSAGE, failedText } from '../api';
 import { certificateTitle, matchesCertificate, useCertificates, type IssuedCertificate } from '../certificates';
+import { headStart } from '../headStart';
 import { PdfModal } from '../PdfModal';
 import { useDirectory } from '../people';
 import { useSession } from '../session';
@@ -60,9 +61,9 @@ export function ConnectedCertificates() {
       )}
       {canIssue && tab === 'issue' ? (
         <IssueTab
-          issue={async (type, personId) => {
+          issue={async (type, personId, details) => {
             try {
-              await certificates.issue(personId, type);
+              await certificates.issue(personId, type, details);
             } catch (e) {
               throw new Error(actionFailed(e as ApiError));
             }
@@ -113,6 +114,10 @@ function History({ canManage, certificates, notify }: { canManage: boolean; cert
   const [viewing, setViewing] = useState<IssuedCertificate | null>(null);
   const [deleting, setDeleting] = useState<IssuedCertificate | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // a certificate starts downloading while the pointer rests on its View, so the window opens on a ready PDF
+  const certificatesNow = useRef(certificates);
+  certificatesNow.current = certificates;
+  const pdfs = useRef(headStart((id) => certificatesNow.current.openPdf(id))).current;
   const list = state.kind === 'ready' ? state.certificates : [];
   const rows = list.filter((c) => matchesCertificate(c, q));
   const latest = list[0];
@@ -188,7 +193,13 @@ function History({ canManage, certificates, notify }: { canManage: boolean; cert
                     <td>{c.issuedAt ? formatDate(c.issuedAt) : '-'}</td>
                     <td className="is-end">
                       <div className="p-row is-end">
-                        <button type="button" className={btnClass('ghost', { small: true })} onClick={() => setViewing(c)}>
+                        <button
+                          type="button"
+                          className={btnClass('ghost', { small: true })}
+                          onPointerEnter={() => pdfs.warm(c.id)}
+                          onFocus={() => pdfs.warm(c.id)}
+                          onClick={() => setViewing(c)}
+                        >
                           <BtnLabel icon="eye">
                             View<span className="sr-only"> {c.title}</span>
                           </BtnLabel>
@@ -225,9 +236,11 @@ function History({ canManage, certificates, notify }: { canManage: boolean; cert
         <PdfModal
           title={viewing.title}
           fileName={`${viewing.number || 'certificate'}.pdf`}
-          load={() => certificates.openPdf(viewing.id)}
+          load={() => pdfs.take(viewing.id)}
           failure={(kind) => (kind === 'forbidden' ? 'You can only open your own certificates.' : ACTION_FAILED[kind])}
-          details={[`No. ${viewing.number || '-'}`, viewing.recipient?.name, viewing.issuedAt && `issued ${formatDate(viewing.issuedAt)}`].filter(Boolean).join(' · ')}
+          icon="award"
+          wholePage
+          facts={[`No. ${viewing.number || '-'}`, viewing.recipient?.name, viewing.issuedAt && `Issued ${formatDate(viewing.issuedAt)}`]}
           onClose={() => setViewing(null)}
         />
       )}

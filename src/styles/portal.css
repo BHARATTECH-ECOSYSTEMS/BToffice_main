@@ -780,14 +780,96 @@ body:has(.portal) .scene {
 .p-file-facts a {
   color: var(--p-accent-text);
 }
-/* a certificate's PDF inside its window: the page is A4 landscape, so the frame keeps that shape */
-.p-cert-pdf {
+/* ── The document window (PdfModal): a PDF large enough to read, lying on a quiet stage like a sheet on a desk. A
+   one-page document (a certificate: the company design's 1122 × 1402 portrait page) keeps its page shape and fits the
+   screen's height; a longer one
+   fills the stage and pages in Chrome's own viewer. `--doc-room` is the height left after the title, facts and
+   buttons. */
+.p-modal.is-doc {
+  --doc-room: max(320px, calc(100vh - 300px));
+  width: min(1040px, calc(100vw - 48px));
+  max-height: calc(100vh - 32px);
+}
+.p-modal.is-doc .p-modal-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.p-doc-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.p-doc-facts li {
+  padding: 3px 10px;
+  border-radius: var(--r-pill);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--ink) 6%, var(--paper));
+}
+.p-doc-stage {
+  display: grid;
+  place-items: center;
+  padding: clamp(14px, 2.2vw, 24px);
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--violet) 6%, var(--paper));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--violet) 12%, transparent);
+}
+.p-doc-frame,
+.p-doc-sheet {
   display: block;
   width: 100%;
-  aspect-ratio: 297 / 210;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--paper, #fff);
+  height: var(--doc-room);
+  border: 0;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgb(20 19 15 / 0.08), 0 18px 40px -18px rgb(20 19 15 / 0.35);
+}
+/* the PDF itself is always a white page, whatever the theme */
+.p-doc-frame {
+  background: #fff;
+}
+.p-doc-stage[data-whole] .p-doc-frame,
+.p-doc-stage[data-whole] .p-doc-sheet {
+  width: min(100%, calc(var(--doc-room) * 1122 / 1402));
+  height: auto;
+  aspect-ratio: 1122 / 1402;
+}
+.p-doc-sheet {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 24px;
+  text-align: center;
+  color: var(--ink-soft);
+  background: var(--paper);
+}
+.p-doc-sheet.is-loading {
+  background: linear-gradient(100deg, var(--paper) 40%, color-mix(in srgb, var(--violet) 8%, var(--paper)) 50%, var(--paper) 60%) 0 0 / 220% 100%;
+  animation: p-doc-shimmer 1.4s ease-in-out infinite;
+}
+@keyframes p-doc-shimmer {
+  to {
+    background-position: -120% 0;
+  }
+}
+.p-doc-sheet.is-error {
+  color: var(--p-error-text);
+}
+.p-doc-sheet.is-error p {
+  max-width: 46ch;
+  margin: 0;
+  color: var(--ink-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  .p-doc-sheet.is-loading {
+    animation: none;
+  }
 }
 /* a detail the account doesn't have yet reads quieter than real data */
 .p-file-facts dd.is-unset {

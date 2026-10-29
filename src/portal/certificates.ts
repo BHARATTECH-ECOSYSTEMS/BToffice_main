@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError } from './api';
+import { indiaToday } from './attendance';
 import { CERTIFICATE_TYPES, type CertificateType } from './data';
+import { readJoinDate } from './people';
 import { afterReel } from './reel';
 
 /**
@@ -11,6 +13,35 @@ import { afterReel } from './reel';
 /** The backend stores a certificate's type as its title; the website's names are the same words. */
 export const certificateTitle = (type: CertificateType) => CERTIFICATE_TYPES.find((t) => t.id === type)!.name;
 const typeOfTitle = (title: string) => CERTIFICATE_TYPES.find((t) => t.name === title)?.id;
+
+/** What every certificate states (the company's design): the job title and the period, "YYYY-MM-DD". */
+export interface CertificateDetails {
+  jobTitle: string;
+  fromDate: string;
+  toDate: string;
+}
+export const JOB_TITLE_MAX = 80;
+
+/** What to fix before issuing, in the backend's words (utils/certificateTemplate.js), or '' when it can go. */
+export function certificateDetailsProblem({ jobTitle, fromDate, toDate }: CertificateDetails, today = indiaToday()) {
+  const title = jobTitle.trim();
+  if (!title) return 'Add the job title the certificate names (for example, Fullstack Intern).';
+  if (title.length > JOB_TITLE_MAX) return `Keep the job title to ${JOB_TITLE_MAX} characters.`;
+  if (!readJoinDate(fromDate)) return 'Choose the start date.';
+  if (!readJoinDate(toDate)) return 'Choose the end date.';
+  if (fromDate > toDate) return 'The start date has to be before the end date.';
+  if (toDate > today) return "The end date can't be in the future.";
+  return '';
+}
+
+/** POST /api/certificates/generate's body. */
+export const issueBody = (personId: string, type: CertificateType, details: CertificateDetails) => ({
+  userId: personId,
+  title: certificateTitle(type),
+  jobTitle: details.jobTitle.trim(),
+  fromDate: details.fromDate,
+  toDate: details.toDate,
+});
 
 export interface IssuedCertificate {
   id: string;
@@ -108,8 +139,8 @@ export function useCertificates(scope: 'all' | 'mine') {
   return {
     state,
     retry: () => void load(),
-    issue: (personId: string, type: CertificateType) =>
-      act(() => api!.post('/certificates/generate', { userId: personId, title: certificateTitle(type) }, { timeoutMs: ISSUE_TIMEOUT_MS })),
+    issue: (personId: string, type: CertificateType, details: CertificateDetails) =>
+      act(() => api!.post('/certificates/generate', issueBody(personId, type, details), { timeoutMs: ISSUE_TIMEOUT_MS })),
     remove: (id: string, played?: Promise<unknown>) => act(() => afterReel(api!.del(`/certificates/${id}`), played)),
     openPdf: async (id: string) => {
       try {

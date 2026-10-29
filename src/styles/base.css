@@ -409,6 +409,7 @@ main:focus {
 [data-offscreen] .notfound-num span,
 [data-offscreen] .p-del[data-going],
 [data-offscreen] .p-logout:not([data-leaving]):hover .p-logout-fig,
+[data-offscreen] .p-doc-sheet.is-loading,
 [data-offscreen] .svc-caption__hint::before,
 [data-offscreen] .scene-learn .is-ping,
 [data-offscreen] .cover .cv-ping,

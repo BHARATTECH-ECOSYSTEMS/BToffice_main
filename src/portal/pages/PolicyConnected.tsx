@@ -244,7 +244,7 @@ export function ConnectedPolicy() {
           fileName={viewing.fileName}
           load={() => policies.openPdf(viewing.id)}
           failure={(kind) => (kind === 'not-found' ? 'This document’s file isn’t on the server any more. An admin needs to upload it again.' : ACTION_FAILED[kind])}
-          details={[viewing.categoryLabel, viewing.pages ? `${viewing.pages} pages` : '', viewing.uploadedAt && `published ${formatDate(viewing.uploadedAt)}`].filter(Boolean).join(' · ')}
+          facts={[viewing.categoryLabel, viewing.pages ? `${viewing.pages} pages` : '', viewing.uploadedAt && `Published ${formatDate(viewing.uploadedAt)}`]}
           onOpened={() => setOpened((s) => new Set(s).add(viewing.id))}
           onClose={() => setViewing(null)}
         />

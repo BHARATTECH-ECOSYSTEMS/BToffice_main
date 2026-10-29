@@ -361,6 +361,8 @@ export function Modal({
   children,
   footer,
   onSubmit,
+  size,
+  meta,
 }: {
   title: string;
   icon?: PortalIconName;
@@ -369,6 +371,10 @@ export function Modal({
   footer: ReactNode;
   /** When set, the body is a form and the footer's submit button submits it. */
   onSubmit?: () => void;
+  /** `doc`: the large window a document is read in (PdfModal), instead of the form-sized one. */
+  size?: 'doc';
+  /** A line under the title, such as a document's facts. */
+  meta?: ReactNode;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -418,7 +424,7 @@ export function Modal({
   return (
     <dialog
       ref={ref}
-      className="p-modal"
+      className={size ? `p-modal is-${size}` : 'p-modal'}
       data-lenis-prevent
       aria-labelledby={`${id}-t`}
       onCancel={(e) => {
@@ -438,6 +444,7 @@ export function Modal({
             <h2 id={`${id}-t`} className="p-modal-title">
               {title}
             </h2>
+            {meta}
           </div>
           <button type="button" className="p-icon-btn" onClick={onClose} aria-label="Close">
             <PIcon name="close" />

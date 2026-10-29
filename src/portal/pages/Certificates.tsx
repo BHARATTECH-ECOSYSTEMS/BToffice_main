@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { api } from '../api';
+import { indiaToday } from '../attendance';
+import { certificateDetailsProblem, JOB_TITLE_MAX, type CertificateDetails } from '../certificates';
 import { CERTIFICATE_TYPES, type Certificate, type CertificateType } from '../data';
 import { useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
@@ -61,9 +63,10 @@ export function IssueWizard({
   issue,
   onIssued,
 }: {
-  people: { id: string; name: string; email: string }[];
+  /** `joined` ("YYYY-MM-DD") starts the certificate's period. */
+  people: { id: string; name: string; email: string; joined?: string }[];
   /** Whatever it returns is ignored; a promise is waited for. */
-  issue: (type: CertificateType, personId: string) => unknown;
+  issue: (type: CertificateType, personId: string, details: CertificateDetails) => unknown;
   onIssued: (name: string, type: CertificateType) => void;
 }) {
   const [step, setStep] = useState(0);
@@ -72,24 +75,32 @@ export function IssueWizard({
   const [type, setType] = useState<CertificateType | null>(null);
   const [personId, setPersonId] = useState<string | null>(null);
   const [q, setQ] = useState('');
+  // every certificate states a job title and a period (the company's design); the period runs from the join date
+  const [details, setDetails] = useState<CertificateDetails>({ jobTitle: '', fromDate: '', toDate: indiaToday() });
   const person = people.find((p) => p.id === personId);
   const query = q.trim().toLowerCase();
   const matches = people.filter((p) => !query || p.name.toLowerCase().includes(query) || p.email.toLowerCase().includes(query));
-  const canNext = (step === 0 && type) || (step === 1 && person);
-  const steps = ['Certificate type', 'Person', 'Review'];
-  const percent = Math.round(((step + 1) / 3) * 100);
+  const problem = certificateDetailsProblem(details);
+  const canNext = (step === 0 && type) || (step === 1 && person) || (step === 2 && !problem);
+  const steps = ['Certificate type', 'Person', 'Details', 'Review'];
+  const percent = Math.round(((step + 1) / steps.length) * 100);
+  const choosePerson = (id: string) => {
+    const chosen = people.find((p) => p.id === id);
+    setPersonId(id);
+    if (chosen) setDetails((d) => ({ ...d, fromDate: chosen.joined ?? '' }));
+  };
 
   return (
     <section className="p-card" aria-labelledby="wiz-title">
       <div className="p-progress">
         <p className="p-progress-line">
           <span>
-            Step {step + 1} of 3 <span className="p-dim">· {steps[step]}</span>
+            Step {step + 1} of {steps.length} <span className="p-dim">· {steps[step]}</span>
           </span>
           <span className="p-progress-pct">{percent}%</span>
         </p>
-        <div className="p-progress-bar" role="progressbar" aria-valuemin={1} aria-valuemax={3} aria-valuenow={step + 1} aria-label="Certificate steps">
-          <i style={{ scale: `${(step + 1) / 3} 1` }} />
+        <div className="p-progress-bar" role="progressbar" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={step + 1} aria-label="Certificate steps">
+          <i style={{ scale: `${(step + 1) / steps.length} 1` }} />
         </div>
       </div>
 
@@ -126,7 +137,7 @@ export function IssueWizard({
           <div className="p-choices is-list" data-lenis-prevent>
             {matches.map((p) => (
               <label key={p.id} className="p-choice">
-                <input type="radio" name="cert-person" value={p.id} checked={personId === p.id} onChange={() => setPersonId(p.id)} />
+                <input type="radio" name="cert-person" value={p.id} checked={personId === p.id} onChange={() => choosePerson(p.id)} />
                 <span className="p-avatar is-soft" aria-hidden="true">
                   {p.name[0]}
                 </span>
@@ -141,7 +152,36 @@ export function IssueWizard({
         </fieldset>
       )}
 
-      {step === 2 && type && person && (
+      {step === 2 && person && (
+        <fieldset className="p-step">
+          <legend id="wiz-title" className="p-card-title">
+            Job title and period
+          </legend>
+          <p className="p-muted">The certificate says {person.name} has served as this, from the first date to the second.</p>
+          <label className="p-field">
+            <span>Job title</span>
+            <input
+              value={details.jobTitle}
+              maxLength={JOB_TITLE_MAX}
+              placeholder="For example, Fullstack Intern"
+              onChange={(e) => setDetails({ ...details, jobTitle: e.target.value })}
+            />
+          </label>
+          <div className="p-form-row">
+            <label className="p-field">
+              <span>From</span>
+              <input type="date" value={details.fromDate} max={details.toDate || indiaToday()} onChange={(e) => setDetails({ ...details, fromDate: e.target.value })} />
+            </label>
+            <label className="p-field">
+              <span>To</span>
+              <input type="date" value={details.toDate} min={details.fromDate || undefined} max={indiaToday()} onChange={(e) => setDetails({ ...details, toDate: e.target.value })} />
+            </label>
+          </div>
+          <p className="p-field-hint">{problem || (person.joined === details.fromDate ? `From is ${person.name}’s join date; change it if the period started later.` : 'Check the period before you go on.')}</p>
+        </fieldset>
+      )}
+
+      {step === 3 && type && person && (
         <div className="p-step">
           <h2 id="wiz-title" className="p-card-title">
             Review and generate
@@ -158,6 +198,16 @@ export function IssueWizard({
                 {person.name} <span className="p-muted">{person.email}</span>
               </dd>
             </div>
+            <div>
+              <dt>Job title</dt>
+              <dd>{details.jobTitle.trim()}</dd>
+            </div>
+            <div>
+              <dt>Period</dt>
+              <dd>
+                {formatDate(details.fromDate)} to {formatDate(details.toDate)}
+              </dd>
+            </div>
           </dl>
           <p className="p-hint">Check the details first. Once generated, the certificate appears in the history, where it can be viewed.</p>
           {error && (
@@ -172,7 +222,7 @@ export function IssueWizard({
         <button type="button" className={btnClass('ghost')} onClick={() => (setStep((s) => s - 1), setError(''))} disabled={step === 0 || busy}>
           <BtnLabel arrow="left">Back</BtnLabel>
         </button>
-        {step < 2 ? (
+        {step < steps.length - 1 ? (
           <button type="button" className={btnClass('primary')} onClick={() => setStep((s) => s + 1)} disabled={!canNext}>
             <BtnLabel arrow="right">Next</BtnLabel>
           </button>
@@ -185,7 +235,7 @@ export function IssueWizard({
               setBusy(true);
               setError('');
               try {
-                await issue(type!, person!.id);
+                await issue(type!, person!.id, details);
                 onIssued(person!.name, type!);
               } catch (e) {
                 setError(e instanceof Error && e.message ? e.message : 'The certificate couldn’t be generated. Please try again.');
