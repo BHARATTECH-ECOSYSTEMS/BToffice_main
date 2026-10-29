@@ -41,6 +41,13 @@ test('Workspace, HRMS and File Transfer open their addresses', () => {
   assert.equal(tool(tools, 'filesync').url, 'https://files.example.test/');
 });
 
+test('e-Office opens its address, read and trimmed the same way as Workspace', () => {
+  const links = readToolLinks({ VITE_EOFFICE_URL: ' https://office.example.test/_accounts/auth/openid ' });
+  assert.deepEqual(links, { eOffice: 'https://office.example.test/_accounts/auth/openid' });
+  assert.equal(tool(withToolLinks(TOOLS, links), 'eoffice').url, 'https://office.example.test/_accounts/auth/openid');
+  assert.deepEqual(readToolLinks({ VITE_EOFFICE_URL: 'javascript:alert(1)' }), {});
+});
+
 // The company's LibreChat answers its sign-in link (/oauth/openid) with a server error, so both buttons open it plainly
 // and LibreChat shows its own login. Switch the main one back once their sign-in works.
 test('LibreChat opens at its plain address, not the sign-in link that currently fails', () => {

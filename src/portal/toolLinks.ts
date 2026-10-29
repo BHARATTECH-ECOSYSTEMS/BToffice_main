@@ -7,6 +7,8 @@ import type { Tool } from './data';
  */
 export interface ToolLinks {
   workspace?: string;
+  /** The online office the e-Office card's Join opens (Huly locally, the same sign-in link as Workspace). */
+  eOffice?: string;
   librechat?: string;
   hrms?: string;
   fileTransfer?: string;
@@ -19,6 +21,7 @@ export interface ToolLinks {
 
 const SETTINGS: Record<keyof ToolLinks, string> = {
   workspace: 'VITE_WORKSPACE_URL',
+  eOffice: 'VITE_EOFFICE_URL',
   librechat: 'VITE_LIBRECHAT_URL',
   hrms: 'VITE_HRMS_URL',
   fileTransfer: 'VITE_FILE_TRANSFER_URL',
@@ -64,6 +67,7 @@ export function readToolLinks(env: Record<string, string | undefined> | undefine
 export function withToolLinks(tools: Tool[], links: ToolLinks): Tool[] {
   const urls: Record<string, { url?: string; secondary?: string }> = {
     huly: { url: links.workspace, secondary: links.workspace },
+    eoffice: { url: links.eOffice },
     // Plain address for now: the company's LibreChat answers its company sign-in link (<address>/oauth/openid) with a
     // server error (checked 2026-10-23). Point `url` there again once their sign-in works.
     librechat: { url: links.librechat, secondary: links.librechat },
