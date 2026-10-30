@@ -7,6 +7,7 @@ import { Arrow, BtnText } from '../components/ui';
 import { StoryOpening } from '../components/StoryOpening';
 import { pageScroll, trackBox, viewHeight } from '../components/trackBox';
 import { holdWarmUntil } from '../components/warmQueue';
+import { isPageCovered, onPageCover } from '../components/pageCover';
 import { PILLARS_PLAIN, PROBLEMS } from '../content';
 import { useDocumentTheme } from '../theme';
 
@@ -106,20 +107,26 @@ export function Story() {
     let visible = false;
     let warmed = false;
     let dead = false;
+    // ...and not while a window (the sign-in pop-up) covers the page: drawing behind it held that window's own glass
+    // logo at ~30 fps
+    const play = () => {
+      if (visible && warmed && !isPageCovered()) studio?.start();
+      else studio?.stop();
+    };
     const io = new IntersectionObserver(
       ([e]) => {
         visible = e.isIntersecting;
-        if (!visible) studio?.stop();
-        else if (warmed) studio?.start();
+        play();
       },
       { rootMargin: '10% 0px' }
     );
     io.observe(cv);
+    const offCover = onPageCover(play);
     const warming = studio?.warm().then(() => {
       if (dead) return;
       warmed = true;
       cv.dataset.ready = '';
-      if (visible) studio?.start();
+      play();
     });
     // the page's other 3D builds wait their turn, so the hero's shaders get the compile threads to themselves
     if (warming) holdWarmUntil(warming);
@@ -129,6 +136,7 @@ export function Story() {
     return () => {
       dead = true;
       io.disconnect();
+      offCover();
       release();
       cancelAnimationFrame(raf);
       window.removeEventListener('scroll', onScroll);

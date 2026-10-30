@@ -4,6 +4,7 @@ import { useScene } from '../gl/Scene';
 import { auth, isEmployeeId, isUsername, resetTokenFrom, USERNAME_SHAPE, type SignInResult } from '../portal/auth';
 import { endedSwitchedOff, getSession, startSession } from '../portal/session';
 import { LogoGlass } from './LogoGlass';
+import { coverPage } from './pageCover';
 import { Arrow, Brand, BtnText, ThreadMark } from './ui';
 import '../styles/login.css';
 
@@ -114,7 +115,7 @@ const suggestUsername = (email: string) => {
 const CLOSE_MS = 220;
 // The sign-in moment: the glass logo orb pops in and rolls one full turn while a ring traces a circle round it
 // (ROLL_MS, matching the keyframes in login.css), then the logo breaks into dots (BURST_MS, src/gl/logoBurst.ts).
-const ROLL_MS = 1300;
+const ROLL_MS = 1100;
 const BURST_MS = 1000;
 // the orb's radius in px (.login-orb-ball in login.css): the dots start exactly where the logo was
 const ORB_RADIUS = 17;
@@ -206,6 +207,8 @@ function LoginDialog({ onClose, reset }: { onClose: () => void; reset: { token: 
     d.showModal();
     form.current?.querySelector<HTMLInputElement>('input')?.focus();
     lenis?.stop();
+    // the home hero's glass holds still behind the window, so the window's own glass logo opens smoothly
+    const uncover = coverPage();
     const root = document.documentElement;
     const overflow = root.style.overflow;
     root.style.overflow = 'hidden';
@@ -216,6 +219,7 @@ function LoginDialog({ onClose, reset }: { onClose: () => void; reset: { token: 
       stopBurst.current();
       root.style.overflow = overflow;
       lenis?.start();
+      uncover();
       if (d.open) d.close();
       opener?.focus({ preventScroll: true });
     };

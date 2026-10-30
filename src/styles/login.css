@@ -378,11 +378,12 @@
 }
 /* ── The sign-in moment ──
    The button is 3D glass: violet body, a gloss band on its top half, a lit top edge and a shaded bottom edge.
-   On sign-in the label rises away and the company logo pops in as a glass orb (320ms). The logo rolls one full turn
+   On sign-in the label rises away and the company logo pops in as a glass orb (260ms). The logo rolls one full turn
    under the orb's fixed highlight, so it reads as a ball turning in the light, while a ring draws a full circle round
-   it with a bright comet at its tip (1040ms; together ROLL_MS in Login.tsx). Then the orb lets go and its logo breaks
-   into dots that fly apart in 3D (src/gl/logoBurst.ts, on the canvas beside the button) as "Welcome back" rises in.
-   A rare moment, so it may take its time; with reduced motion only the fades remain. */
+   it with a bright comet at its tip (880ms after 220ms; together ROLL_MS in Login.tsx). Then the orb lets go and its
+   logo breaks into dots that fly apart in 3D (src/gl/logoBurst.ts, on the canvas beside the button) as "Welcome back"
+   rises in. It holds the portal back, so it plays briskly (owner, 2026-10-30: 2.3 s down to 1.1 s, then 2.1 s); with reduced
+   motion only the fades remain. */
 .login-submit.is-glass {
   background: var(--violet-glass);
   border: 1px solid rgb(255 255 255 / 0.28);
@@ -448,8 +449,8 @@
   opacity: 0;
   transform: scale(0.7);
   transition:
-    opacity 320ms var(--ease),
-    transform 320ms var(--ease);
+    opacity 260ms var(--ease),
+    transform 260ms var(--ease);
 }
 .login-orb-ball svg {
   border-radius: 50%;
@@ -471,7 +472,7 @@
   transform: none;
 }
 .login-submit[data-phase='entering'] .login-orb-ball svg {
-  animation: login-roll 1040ms var(--ease-io) 260ms both;
+  animation: login-roll 880ms var(--ease-io) 220ms both;
 }
 @keyframes login-roll {
   to {
@@ -497,7 +498,7 @@
 }
 .login-submit[data-phase='entering'] .login-orb-ring {
   opacity: 1;
-  animation: login-ring 1040ms var(--ease-io) 260ms both;
+  animation: login-ring 880ms var(--ease-io) 220ms both;
 }
 @keyframes login-ring {
   to {
@@ -526,7 +527,7 @@
 }
 .login-submit[data-phase='entering'] .login-orb-comet {
   opacity: 1;
-  animation: login-roll 1040ms var(--ease-io) 260ms both;
+  animation: login-roll 880ms var(--ease-io) 220ms both;
 }
 
 /* the welcome: the orb lets go as its dots take over, and "Welcome back" rises in */
@@ -543,8 +544,8 @@
   opacity: 0;
   transform: translateY(80%);
   transition:
-    opacity 280ms var(--ease) 240ms,
-    transform 280ms var(--ease) 240ms;
+    opacity 280ms var(--ease) 200ms,
+    transform 280ms var(--ease) 200ms;
 }
 .login-submit[data-phase='welcome'] .login-submit-done {
   opacity: 1;
