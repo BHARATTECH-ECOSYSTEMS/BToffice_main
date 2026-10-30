@@ -3,7 +3,7 @@ import { useQuiet, useScene } from '../gl/Scene';
 import { Headline, useQuickChange } from '../components/ui';
 import { CAPABILITIES, CAPABILITY_GROUPS } from '../content';
 import type { HueName } from '../gl/palette';
-import { pageScroll, trackBox } from '../components/trackBox';
+import { pageScroll, trackBox, viewHeight } from '../components/trackBox';
 
 const TONES: HueName[] = ['violet', 'tangerine', 'saffron'];
 const LINES = [
@@ -60,7 +60,7 @@ export function Capabilities() {
     const { box, release } = trackBox(ref.current!);
     const measure = () => {
       raf = 0;
-      const run = Math.max(1, box.height - window.innerHeight);
+      const run = Math.max(1, box.height - viewHeight());
       const p = Math.min(1, Math.max(0, (pageScroll() - box.top) / run));
       const pos = p * (N - 1);
       // settle on each capability for a moment before turning on to the next

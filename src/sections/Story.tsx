@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties } from 're
 import { Link } from 'react-router';
 import { isCompact, useQuiet, useScene } from '../gl/Scene';
 import { BEATS, Studio } from '../gl/Studio';
+import { beatUpdates } from './storyBeats';
 import { Arrow, BtnText } from '../components/ui';
 import { StoryOpening } from '../components/StoryOpening';
-import { pageScroll, trackBox } from '../components/trackBox';
+import { pageScroll, trackBox, viewHeight } from '../components/trackBox';
 import { holdWarmUntil } from '../components/warmQueue';
 import { PILLARS_PLAIN, PROBLEMS } from '../content';
 import { useDocumentTheme } from '../theme';
@@ -67,29 +68,27 @@ export function Story() {
     // the section's cached position, so the per-frame update never forces a layout
     const { box, release } = trackBox(ref.current!);
     let lastP = -1;
+    const shown: (boolean | undefined)[] = [];
     const measure = () => {
       raf = 0;
       const el = ref.current;
       if (!el) return;
-      const run = Math.max(1, box.height - window.innerHeight);
+      const run = Math.max(1, box.height - viewHeight());
       const p = Math.min(1, Math.max(0, (pageScroll() - box.top) / run));
       // past the film the progress stays pinned at 0 or 1: nothing to redraw
       if (p === lastP) return;
       lastP = p;
       // the veil rides as if fixed to the section's bottom edge, so it rises into the frame over the last stretch
-      if (veil.current) veil.current.style.transform = `translate3d(0, ${Math.min(window.innerHeight, (1 - p) * run).toFixed(1)}px, 0)`;
+      if (veil.current) veil.current.style.transform = `translate3d(0, ${Math.min(viewHeight(), (1 - p) * run).toFixed(1)}px, 0)`;
       const b = p * BEATS;
       studio?.setBeat(b);
-      beats.current.forEach((node, i) => {
+      // only the headlines on screen (or just leaving it) are restyled: all eight each frame cost ~8 ms
+      beatUpdates(b, BEATS, shown).forEach(({ i, d, v, visible }) => {
+        const node = beats.current[i];
         if (!node) return;
-        // The first headline is at rest until the scroll begins. The last one stays settled once it arrives and
-        // leaves by scrolling away with the page: fading it here left it stuck half-faded as the frame let go.
-        const d = i === 0 ? Math.max(0, b - 0.5) : i === BEATS - 1 ? Math.min(0, b - (i + 0.5)) : b - (i + 0.5);
-        // fully set for most of the beat, then out quickly at the edges
-        const v = 1 - Math.min(1, Math.max(0, (Math.abs(d) - 0.3) / 0.2));
-        node.style.setProperty('--d', Math.max(-1, Math.min(1, d)).toFixed(4));
+        node.style.setProperty('--d', d.toFixed(4));
         node.style.setProperty('--v', v.toFixed(4));
-        node.style.visibility = v > 0.001 ? 'visible' : 'hidden';
+        node.style.visibility = visible ? 'visible' : 'hidden';
       });
       const cur = Math.min(BEATS - 1, Math.floor(b));
       setCurrent((c) => (c === cur ? c : cur));

@@ -3,7 +3,7 @@ import { Link } from 'react-router';
 import { Arrow, Headline, toneStyle, BtnText } from '../components/ui';
 import { useQuiet, useScene, WIDE_QUERY } from '../gl/Scene';
 import { Cover } from '../components/art';
-import { pageScroll, trackBox } from '../components/trackBox';
+import { pageScroll, trackBox, viewHeight } from '../components/trackBox';
 import { POSTS } from '../content';
 import type { HueName } from '../gl/palette';
 import { clamp01, easeInOut, smooth01 as smooth } from '../gl/ink';
@@ -56,7 +56,7 @@ export function Journal() {
         last = -2;
         return;
       }
-      const run = Math.max(1, box.height - window.innerHeight);
+      const run = Math.max(1, box.height - viewHeight());
       const b = clamp01((scroll - box.top) / run) * (COUNT - 1);
       if (b === last && !force) return;
       last = b;

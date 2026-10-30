@@ -5,7 +5,7 @@ import { headingPoints } from '../gl/headingPoints';
 import { clamp01, smooth01 as smooth } from '../gl/ink';
 import { Headline, Reveal } from '../components/ui';
 import { Icon, type IconName } from '../components/fx';
-import { pageScroll, trackBox } from '../components/trackBox';
+import { pageScroll, trackBox, viewHeight } from '../components/trackBox';
 import { warmWhenQuiet } from '../components/warmQueue';
 import { useHomeWhole } from '../pages/homeWhole';
 import { NETWORK } from '../content';
@@ -31,7 +31,7 @@ interface Ride {
   riding: boolean;
 }
 
-const progressOf = (r: Ride, y: number) => clamp01((y + window.innerHeight / 2 - r.stageY) / (r.headY - r.stageY));
+const progressOf = (r: Ride, y: number) => clamp01((y + viewHeight() / 2 - r.stageY) / (r.headY - r.stageY));
 
 /**
  * The mark becomes a planet: India in violet, routes of light out to the world. Scrolling on, the globe comes
@@ -77,7 +77,7 @@ export function Network({ landOn }: { landOn?: string }) {
     return {
       key: 'globe',
       // it scrolls in like the page, then holds at the middle of the screen while it comes apart
-      pose: poseAt(r.stageX, Math.max(onStage, window.innerHeight / 2), r.stagePx, GLOBE_SIZE, 0.95),
+      pose: poseAt(r.stageX, Math.max(onStage, viewHeight() / 2), r.stagePx, GLOBE_SIZE, 0.95),
       spin: spin.current,
       labels: 1 - smooth(clamp01(p / HOLD)),
       shadow: 1 - broken,
@@ -133,7 +133,7 @@ export function Network({ landOn }: { landOn?: string }) {
         riding,
       };
       ride.current = r;
-      trackEl.style.height = riding ? `${r.headY + window.innerHeight * 0.1 - onStage.box.top}px` : '0px';
+      trackEl.style.height = riding ? `${r.headY + viewHeight() * 0.1 - onStage.box.top}px` : '0px';
       showHeading(r);
       sample();
     };

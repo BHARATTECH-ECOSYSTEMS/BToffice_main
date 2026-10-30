@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import Lenis from 'lenis';
 import { Engine, type Target } from './Engine';
-import { pageScroll, setPageScroll, trackBox, type Box } from '../components/trackBox';
+import { pageScroll, setPageScroll, trackBox, viewHeight, viewWidth, type Box } from '../components/trackBox';
 
 interface Entry {
   el: HTMLElement;
@@ -33,8 +33,8 @@ export function useScene() {
 
 /** World units per CSS pixel at z = 0. Mirrors the camera set-up in Engine. */
 function perPx() {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+  const w = viewWidth();
+  const h = viewHeight();
   const aspect = w / h;
   const z = aspect < 1 ? 7 / Math.max(0.62, aspect) ** 0.55 : 7;
   return (2 * z * Math.tan((35 / 2) * (Math.PI / 180))) / h;
@@ -61,7 +61,7 @@ export function fitTo(el: HTMLElement | null, size: number, max = 1) {
 export function poseAt(x: number, y: number, px: number, size: number, max = 1) {
   const k = perPx();
   const s = Math.max(0.15, Math.min(max, (px * k) / size));
-  return { x: (x - window.innerWidth / 2) * k, y: (window.innerHeight / 2 - y) * k, s };
+  return { x: (x - viewWidth() / 2) * k, y: (viewHeight() / 2 - y) * k, s };
 }
 
 /**
@@ -133,7 +133,7 @@ export function SceneProvider({ children }: { children: ReactNode }) {
       if (!force && y === lastPickedY) return;
       lastPickedY = y;
 
-      const vh = window.innerHeight;
+      const vh = viewHeight();
       const mid = vh * 0.5;
       let best: Placed | null = null;
       let bestH = Infinity;

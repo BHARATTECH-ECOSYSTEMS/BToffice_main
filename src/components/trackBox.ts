@@ -84,3 +84,24 @@ export const setPageScroll = (y: number) => {
 
 /** The page's scroll position as of the latest scroll event: free to read inside frame callbacks. */
 export const pageScroll = () => scrollTop;
+
+// On a phone or tablet, window.innerHeight / innerWidth also lay the page out on the spot if anything changed since the
+// last frame (60 reads after a style write: 10–17 ms there, 0.2 ms on desktop), so the size is kept here and read
+// again only when the window resizes, which it does when a phone's address bar shows or hides.
+let viewH = typeof window === 'undefined' ? 0 : window.innerHeight;
+let viewW = typeof window === 'undefined' ? 0 : window.innerWidth;
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'resize',
+    () => {
+      viewH = window.innerHeight;
+      viewW = window.innerWidth;
+    },
+    { passive: true }
+  );
+}
+
+/** window.innerHeight as of the last resize: free to read inside scroll handlers and frame callbacks. */
+export const viewHeight = () => viewH;
+/** window.innerWidth as of the last resize. */
+export const viewWidth = () => viewW;

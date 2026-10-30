@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { BtnText, Arrow } from './ui';
 import { Link } from 'react-router';
 import { useScene } from '../gl/Scene';
-import { pageScroll, trackBox } from './trackBox';
+import { pageScroll, trackBox, viewHeight } from './trackBox';
 import {
   type Palette,
   type Pt,
@@ -532,7 +532,7 @@ export function HowWeWorkPipeline() {
     const measure = () => {
       scrollRaf = 0;
       if (!pinned) return;
-      const totalScrollable = box.height - window.innerHeight;
+      const totalScrollable = box.height - viewHeight();
       if (totalScrollable <= 0) return;
       const p = clamp01((pageScroll() - box.top) / totalScrollable);
       // off screen the value stops changing, so there is nothing to update

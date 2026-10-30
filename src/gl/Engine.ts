@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { CONTINENTS, INDIA, INDIA_BBOX, INDIA_HUBS, WORLD, GLOBE_LABELS, inPolygon, lonLatToVec, type LonLat } from './geo';
 import { bakeEnvironment, primePrograms, whenLinked } from './shaderWarmup';
+import { viewHeight, viewWidth } from '../components/trackBox';
 
 /**
  * The site's 3D layer: a physically lit globe, a ceramic planet with raised dot-matrix continents, India in
@@ -720,10 +721,10 @@ export class Engine {
       t.key === 'globe' && !!d && d.show * d.break * globeAmt > 0.002 && this.dust.points.geometry.getAttribute('aTo') !== undefined;
     this.dust.points.visible = dustOn;
     if (dustOn && d) {
-      const k = (2 * this.camera.position.z * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2))) / window.innerHeight;
+      const k = (2 * this.camera.position.z * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2))) / viewHeight();
       const gp = this.slots.globe.group.position;
       du.uK.value = k;
-      du.uToC.value.set((d.at[0] - window.innerWidth / 2) * k, (window.innerHeight / 2 - d.at[1]) * k);
+      du.uToC.value.set((d.at[0] - viewWidth() / 2) * k, (viewHeight() / 2 - d.at[1]) * k);
       du.uFromC.value.copy(gp);
       du.uP.value = d.progress;
       du.uBreak.value = d.break;

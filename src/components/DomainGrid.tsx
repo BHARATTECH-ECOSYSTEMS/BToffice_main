@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { DomainReel } from './DomainReel';
 import { DOMAINS } from '../content';
-import { pageScroll, trackBox } from './trackBox';
+import { pageScroll, trackBox, viewHeight } from './trackBox';
 import '../styles/domain-cinema.css';
 
 export const DOMAIN_TONES = [
@@ -54,7 +54,7 @@ export function DomainGrid({ link = true, numbered = false }: { link?: boolean; 
       offsets.forEach((off, i) => {
         const top = box.top + off - pageScroll();
         // sticky: the card has pinned; not sticky: the card has reached the middle of the screen
-        const reached = Number.isNaN(pinAt[i]) ? top <= window.innerHeight * 0.5 : top <= pinAt[i] + 1;
+        const reached = Number.isNaN(pinAt[i]) ? top <= viewHeight() * 0.5 : top <= pinAt[i] + 1;
         if (reached) next = i;
       });
       if (next !== current) {
