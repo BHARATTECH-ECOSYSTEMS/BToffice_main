@@ -16,6 +16,7 @@ const asha = {
   team: 'People Ops',
   joinedOn: '2024-03-01',
   status: 'active',
+  presence: 'active',
 };
 
 test('the directory becomes the rows the page shows', () => {
@@ -34,6 +35,7 @@ test('the directory becomes the rows the page shows', () => {
       team: 'People Ops',
       joined: '2024-03-01',
       status: 'active',
+      presence: 'active',
     },
   ]);
 });

@@ -4,9 +4,9 @@ import {
   attendanceFailedMessage,
   correctionProblem,
   correctVisit,
-  formatMinutes,
+  formatDuration,
   indiaClock,
-  indiaTime,
+  indiaTimeSec,
   indiaToday,
   rangeProblem,
   REASON_MAX,
@@ -21,7 +21,8 @@ import {
 } from '../attendance';
 import { managesPortal, useSession } from '../session';
 import { formatDate } from '../store';
-import { Badge, btnClass, BtnLabel, Empty, Modal, PageHead, Stat, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, Empty, Modal, PageHead, PresenceDot, Stat, useNotice } from '../ui';
+import { SIGNAL_EVERY_MS } from '../presence';
 
 /**
  * e-Office attendance (attendance.ts): everyone sees their own days (the last 30, or any dates they pick, up to 400
@@ -141,6 +142,15 @@ function TeamDay() {
   const { state } = overview;
   const rows = state.kind === 'ready' ? state.value.people : [];
   const isToday = day === indiaToday();
+  // today's activity dots change by themselves, so today's list reloads quietly while it's on screen
+  const { reload } = overview;
+  useEffect(() => {
+    if (!isToday) return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void reload();
+    }, SIGNAL_EVERY_MS);
+    return () => window.clearInterval(timer);
+  }, [isToday, reload]);
   return (
     <>
       <div className="p-stats is-three">
@@ -176,6 +186,7 @@ function TeamDay() {
                 <tr>
                   <th scope="col">Name</th>
                   <th scope="col">Status</th>
+                  {isToday && <th scope="col">Activity</th>}
                   <th scope="col">First in</th>
                   <th scope="col">Last out</th>
                   <th scope="col">Time in</th>
@@ -200,9 +211,10 @@ function TeamDay() {
                         </>
                       )}
                     </td>
-                    <td>{r.firstIn ? indiaTime(r.firstIn) : '-'}</td>
-                    <td>{r.lastOut ? indiaTime(r.lastOut) : '-'}</td>
-                    <td className="is-mono">{r.visits.length ? formatMinutes(r.minutes) : '-'}</td>
+                    {isToday && <td>{r.inNow ? <PresenceDot presence={r.presence} label /> : <span className="p-dim">-</span>}</td>}
+                    <td>{r.firstIn ? indiaTimeSec(r.firstIn) : '-'}</td>
+                    <td>{r.lastOut ? indiaTimeSec(r.lastOut) : '-'}</td>
+                    <td className="is-mono">{r.visits.length ? formatDuration(r.seconds) : '-'}</td>
                     <td className="is-end">
                       <button type="button" className="p-link" onClick={() => setPerson(r)}>
                         History<span className="sr-only"> of {r.name}</span>
@@ -306,13 +318,14 @@ function Days({
           <div className="p-att-day-head">
             <span className="is-strong">{d.day === indiaToday() ? 'Today' : formatDate(d.day)}</span>
             {d.noCheckOut && <Badge kind="todo">No check-out</Badge>}
-            <span className="p-att-total">{formatMinutes(d.minutes)}</span>
+            {d.idleSeconds > 0 && <Badge kind="inactive">Inactive {formatDuration(d.idleSeconds)}</Badge>}
+            <span className="p-att-total">{formatDuration(d.seconds)}</span>
           </div>
           <ul className="p-att-visits">
             {d.visits.map((v) => (
               <li key={v.id}>
                 <span>
-                  {indiaTime(v.inAt)} – {v.outAt === null ? 'now' : indiaTime(v.outAt)}
+                  {indiaTimeSec(v.inAt)} – {v.outAt === null ? 'now' : indiaTimeSec(v.outAt)}
                   {v.noCheckOut && <span className="p-dim">{v.corrections.length ? ' (no check-out; corrected below)' : ' (ended at midnight, no check-out)'}</span>}
                 </span>
                 {onCorrect && v.outAt !== null && (
@@ -320,9 +333,20 @@ function Days({
                     Correct
                   </button>
                 )}
+                {v.idle.length > 0 && (
+                  <ul className="p-att-idle" aria-label="Inactive">
+                    {v.idle.map((s) => (
+                      <li key={s.from}>
+                        <span className="p-presence-dot is-inactive" aria-hidden="true" />
+                        Inactive {indiaTimeSec(s.from)} – {s.ongoing ? 'now' : indiaTimeSec(s.to)}
+                        <span className="p-dim"> · {formatDuration(s.seconds)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {v.corrections.map((c, i) => (
                   <p key={i} className="p-att-fix">
-                    Corrected by {c.byName || 'an admin'}: “{c.reason}” (was {indiaTime(c.from.inAt)} – {c.from.outAt === null ? '…' : indiaTime(c.from.outAt)})
+                    Corrected by {c.byName || 'an admin'}: “{c.reason}” (was {indiaTimeSec(c.from.inAt)} – {c.from.outAt === null ? '…' : indiaTimeSec(c.from.outAt)})
                   </p>
                 ))}
               </li>

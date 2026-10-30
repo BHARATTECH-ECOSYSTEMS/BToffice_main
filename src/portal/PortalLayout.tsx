@@ -21,6 +21,7 @@ import { menuGroups, type TopItem } from './portalMenu';
 import { useTableLabels } from './tableLabels';
 import { formatDate, PortalDataProvider, usePortal } from './store';
 import { initials, PIcon } from './ui';
+import { useActivitySignal } from './presence';
 import '../styles/portal.css';
 
 const TOP: TopItem[] = [
@@ -123,6 +124,8 @@ export function PortalLayout() {
   const signOut = useSignOut();
   // Learning opens the LMS Platform already signed in, whichever link it is clicked from (lmsHandoff.ts)
   useLmsHandoff();
+  // the live e-Office dot's "still active" signal, on every portal page
+  useActivitySignal();
   const topRef = useRef<HTMLElement>(null);
   const reduceMotion = useReducedMotion();
   usePointerBloom();

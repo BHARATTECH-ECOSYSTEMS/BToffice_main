@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, BUSY_MESSAGE, type createApi, failedText } from './api';
 import { ROLE_LABEL, STREAMS, type PersonRole, type PersonStatus, type Stream } from './data';
 import { afterReel } from './reel';
+import { readPresence, SIGNAL_EVERY_MS, type Presence } from './presence';
 
 /**
  * The people directory from the backend (GET /api/user/directory) and the admin actions on it. The permission
@@ -145,6 +146,8 @@ export interface DirectoryPerson {
   /** First working day, "YYYY-MM-DD", once an admin has set it. */
   joined?: string;
   status: PersonStatus;
+  /** Their live e-Office dot (presence.ts); not the same as `status`, which is whether the account is blocked. */
+  presence?: Presence;
 }
 
 const text = (value: unknown) => (typeof value === 'string' && value.trim() ? value.trim() : undefined);
@@ -194,6 +197,7 @@ export function toDirectory(raw: unknown): DirectoryPerson[] {
       team: text(p.team),
       joined: readJoinDate(p.joinedOn),
       status: p.status === 'inactive' ? 'inactive' : 'active',
+      presence: readPresence(p.presence),
     });
   }
   return rows;
@@ -206,8 +210,9 @@ const asApiError = (error: unknown) => (error instanceof ApiError ? error : new 
 /**
  * Loads the directory; `off` with the demo sign-in. The actions save to the backend, then load the directory again,
  * so the page always shows what the backend actually stored. They throw an ApiError when the backend refuses.
+ * `live` reloads it quietly once a minute while the page is on screen, so colleagues' dots change on their own.
  */
-export function useDirectory() {
+export function useDirectory({ live = false } = {}) {
   const [state, setState] = useState<DirectoryState>(api ? { kind: 'loading' } : { kind: 'off' });
 
   // `quiet` keeps the current list on screen while it reloads after a change
@@ -224,6 +229,14 @@ export function useDirectory() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  useEffect(() => {
+    if (!live || !api) return;
+    const timer = window.setInterval(() => {
+      if (!document.hidden) void load(true);
+    }, SIGNAL_EVERY_MS);
+    return () => window.clearInterval(timer);
+  }, [live, load]);
 
   const act = useCallback(
     async (change: () => Promise<unknown>) => {

@@ -3,8 +3,9 @@ import { Link } from 'react-router';
 import { CERTIFICATE_TYPES, PERSON_STATUS_LABEL, ROLE_LABEL, toolById, type Person, type PersonRole, type PortalIconName, type SecurityEvent, type Task, type TaskStatus } from '../data';
 import { hasArrived, managesPortal, markArrived, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
-import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, NotConnected, PIcon, SearchField, Stat, ToolButton, useListFlip, useNotice } from '../ui';
-import { attendanceFailedMessage, indiaHour, indiaTime, indiaToday, useAttendanceDay } from '../attendance';
+import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, NotConnected, PIcon, PresenceDot, SearchField, Stat, ToolButton, useListFlip, useNotice } from '../ui';
+import { askToWatchActivity, useMyPresence } from '../presence';
+import { attendanceFailedMessage, formatDuration, indiaHour, indiaTimeSec, indiaToday, useAttendanceDay } from '../attendance';
 import { useOfficeSource } from './officeSource';
 import { IdCardDialog } from '../IdCard';
 import { InviteModal } from './People';
@@ -337,7 +338,8 @@ function ManagerWithCertificates({ arrive }: { arrive: boolean }) {
 /** The managing dashboard on the backend's records: the team, every task, the certificates (admins only) and real figures. */
 function ConnectedManaging({ arrive, certificates }: { arrive: boolean; certificates?: ReturnType<typeof useCertificates> }) {
   const email = useSession()!.email;
-  const directory = useDirectory();
+  // live: the team table's dots change on their own
+  const directory = useDirectory({ live: true });
   const tasks = useTasks('team');
   const [profile] = useAccountProfile();
   const [view, setView] = useState<DashboardView>('management');
@@ -411,10 +413,26 @@ function ConnectedManaging({ arrive, certificates }: { arrive: boolean; certific
   );
 }
 
-/** The profile card on the signed-in person's real record; until it loads there's no ID card to show. */
+/**
+ * The profile card on the signed-in person's real record; until it loads there's no ID card to show. Its tag is the
+ * live e-Office dot (presence.ts); whether the account is blocked shows in People and the ID card.
+ */
 function ConnectedProfileCard({ profile }: { profile: ProfileState }) {
   const card = profile.kind === 'ready' ? toCardPerson(profile.profile) : null;
-  return <ProfileCard person={card}>{card ? undefined : <span className="p-profile-tag">{profile.kind === 'error' ? 'Details didn’t load' : 'Loading…'}</span>}</ProfileCard>;
+  const presence = useMyPresence();
+  return (
+    <ProfileCard person={card}>
+      {card ? (
+        presence && (
+          <span className="p-profile-tag">
+            <PresenceDot presence={presence} label />
+          </span>
+        )
+      ) : (
+        <span className="p-profile-tag">{profile.kind === 'error' ? 'Details didn’t load' : 'Loading…'}</span>
+      )}
+    </ProfileCard>
+  );
 }
 
 type Segment = { label: string; value: number; tone: 'ink' | 'violet' | 'hatch' };
@@ -662,11 +680,8 @@ function NextDueCard({ list }: { list?: Task[] }) {
 }
 
 /** The dark task list. People change their own tasks' status here; the team view only reads. */
-const clockTime = (t: number) => new Date(t).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' });
-const duration = (ms: number) => {
-  const mins = Math.max(0, Math.floor(ms / 60000));
-  return mins < 60 ? `${mins}m` : `${Math.floor(mins / 60)}h ${mins % 60}m`;
-};
+const clockTime = (t: number) => new Date(t).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+const duration = (ms: number) => formatDuration(Math.floor(ms / 1000));
 
 /**
  * The person's day in the e-Office: join checks them in and opens the virtual office in a new tab, then the card
@@ -682,16 +697,16 @@ function EOfficeCard({ notify, team = false }: { notify: (t: string) => void; te
   const { inside } = state;
   const teamDay = useAttendanceDay(indiaToday(), team && source.connected);
   const [busy, setBusy] = useState(false);
-  // the running time only needs the minute, so the card re-renders twice a minute while someone is in
+  // the running time shows seconds, so the card re-renders every second while someone is in
   const [now, setNow] = useState(Date.now);
   useEffect(() => {
     if (!inside) return;
     setNow(Date.now());
-    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(timer);
   }, [inside]);
   // the demo shows the browser's clock as it always has; the backend's days are India time
-  const time = source.connected ? indiaTime : clockTime;
+  const time = source.connected ? indiaTimeSec : clockTime;
 
   const open = () => office.url && window.open(office.url, '_blank', 'noopener,noreferrer');
   const act = async (change: () => Promise<void>, done: string) => {
@@ -709,6 +724,7 @@ function EOfficeCard({ notify, team = false }: { notify: (t: string) => void; te
     }
   };
   const enter = async () => {
+    askToWatchActivity();
     if ((await act(source.join, office.url ? 'You checked in to the e-Office.' : "You checked in. The e-Office link isn't connected yet, so nothing opened.")) && office.url) open();
   };
   const loading = source.status.kind === 'loading';

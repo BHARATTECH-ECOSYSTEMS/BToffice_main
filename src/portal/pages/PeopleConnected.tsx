@@ -32,7 +32,7 @@ import type { PhotoSource } from '../profile';
 import { formatDate } from '../store';
 import { useSession } from '../session';
 import { localDay } from '../eoffice';
-import { Badge, btnClass, BtnLabel, DELETE_MS, DeleteButton, Empty, initials, Modal, PageHead, SearchField, useListFlip, useNotice, useReel } from '../ui';
+import { Badge, btnClass, BtnLabel, DELETE_MS, DeleteButton, Empty, initials, Modal, PageHead, PresenceDot, SearchField, useListFlip, useNotice, useReel } from '../ui';
 import { WAVE_MS, WaveButton } from './People';
 import { communityFailedMessage } from '../community';
 
@@ -82,7 +82,7 @@ const FILTERS: (PersonRole | 'all')[] = ['all', 'admin', 'subadmin', 'employee',
 
 export function ConnectedPeople() {
   const myEmail = useSession()!.email;
-  const directory = useDirectory();
+  const directory = useDirectory({ live: true });
   const { state } = directory;
   const [q, setQ] = useState('');
   const [roleFilter, setRoleFilter] = useState<PersonRole | 'all'>('all');
@@ -240,6 +240,7 @@ export function ConnectedPeople() {
                     <tr key={p.id} data-flip={p.id}>
                       <td className="is-mono">{p.employeeId ?? <span className="p-dim">-</span>}</td>
                       <td className="is-strong">
+                        <PresenceDot presence={p.presence} />
                         {p.name}
                         {self && <span className="p-you">You</span>}
                       </td>

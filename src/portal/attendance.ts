@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api, ApiError, BUSY_MESSAGE, failedText } from './api';
 import { turns } from './newestReply';
+import { readPresence, setMyPresence, type Presence } from './presence';
 
 /**
  * e-Office attendance on the backend (/api/attendance). Everyone joins and leaves the e-Office for themselves, as often
@@ -21,21 +22,36 @@ export interface Correction {
   from: VisitTimes;
   to: VisitTimes;
 }
+/** A stretch of 20 seconds or more without use while in (the live dot was red), in working hours. */
+export interface IdleStretch {
+  from: number;
+  to: number;
+  seconds: number;
+  /** Still going: `to` is when it was read. */
+  ongoing: boolean;
+}
 export interface Visit extends VisitTimes {
   id: string;
   noCheckOut: boolean;
+  /** The one still going reaches up to now. */
+  idle: IdleStretch[];
   corrections: Correction[];
 }
 export interface AttendanceDay {
   /** yyyy-mm-dd, India time */
   day: string;
   minutes: number;
+  /** Time in and time inactive, in whole seconds. */
+  seconds: number;
+  idleSeconds: number;
   noCheckOut: boolean;
   visits: Visit[];
 }
 export interface MyAttendance {
   today: string;
   inNow: boolean;
+  /** Your live dot (presence.ts). */
+  presence?: Presence;
   /** Newest day first; only days with a visit. */
   days: AttendanceDay[];
 }
@@ -49,7 +65,11 @@ export interface AttendancePerson {
 }
 export interface DayRow extends AttendancePerson {
   inNow: boolean;
+  /** Their live dot; only on today's overview. */
+  presence?: Presence;
   minutes: number;
+  seconds: number;
+  idleSeconds: number;
   firstIn: number | null;
   lastOut: number | null;
   noCheckOut: boolean;
@@ -94,15 +114,26 @@ function toVisit(raw: unknown): Visit | null {
     const c = record(entry);
     return c ? [{ at: moment(c.at), byName: text(c.byName), reason: text(c.reason), from: toTimes(c.from), to: toTimes(c.to) }] : [];
   });
-  return { id, inAt, outAt, noCheckOut: v.noCheckOut === true, corrections };
+  const idle = (Array.isArray(v.idle) ? v.idle : []).flatMap((entry) => {
+    const s = record(entry);
+    const from = moment(s?.from);
+    const to = moment(s?.to);
+    return s && !Number.isNaN(from) && !Number.isNaN(to) ? [{ from, to, seconds: count(s.seconds), ongoing: s.ongoing === true }] : [];
+  });
+  return { id, inAt, outAt, noCheckOut: v.noCheckOut === true, idle, corrections };
 }
+
+// an answer from before seconds were sent still adds up, from its minutes
+const secondsIn = (r: Record<string, unknown>) => (typeof r.seconds === 'number' ? count(r.seconds) : count(r.minutes) * 60);
 
 const toVisits = (raw: unknown) => (Array.isArray(raw) ? raw.map(toVisit).filter((v): v is Visit => v !== null) : []);
 
 const toDays = (raw: unknown): AttendanceDay[] =>
   list(raw).flatMap((entry) => {
     const d = record(entry);
-    return d && typeof d.day === 'string' && DAY.test(d.day) ? [{ day: d.day, minutes: count(d.minutes), noCheckOut: d.noCheckOut === true, visits: toVisits(d.visits) }] : [];
+    return d && typeof d.day === 'string' && DAY.test(d.day)
+      ? [{ day: d.day, minutes: count(d.minutes), seconds: secondsIn(d), idleSeconds: count(d.idleSeconds), noCheckOut: d.noCheckOut === true, visits: toVisits(d.visits) }]
+      : [];
   });
 
 const toPerson = (raw: unknown): AttendancePerson | null => {
@@ -115,7 +146,7 @@ const toPerson = (raw: unknown): AttendancePerson | null => {
 export function toMyAttendance(raw: unknown): MyAttendance {
   const r = record(raw);
   if (!r || typeof r.today !== 'string' || !DAY.test(r.today)) throw notAttendance();
-  return { today: r.today, inNow: r.inNow === true, days: toDays(r.days) };
+  return { today: r.today, inNow: r.inNow === true, presence: readPresence(r.presence), days: toDays(r.days) };
 }
 
 export function toDayOverview(raw: unknown): DayOverview {
@@ -131,7 +162,10 @@ export function toDayOverview(raw: unknown): DayOverview {
       {
         ...person,
         inNow: p.inNow === true,
+        presence: readPresence(p.presence),
         minutes: count(p.minutes),
+        seconds: secondsIn(p),
+        idleSeconds: count(p.idleSeconds),
         firstIn: Number.isNaN(first) ? null : first,
         lastOut: Number.isNaN(last) ? null : last,
         noCheckOut: p.noCheckOut === true,
@@ -150,6 +184,15 @@ export function toPersonHistory(raw: unknown): PersonHistory {
 }
 
 export const formatMinutes = (minutes: number) => (minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`);
+
+/** A length with its seconds: "45s", "5m 3s", "1h 31m 20s". */
+export function formatDuration(seconds: number) {
+  const s = Math.max(0, Math.floor(seconds));
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (h) return `${h}h ${m}m ${s % 60}s`;
+  return m ? `${m}m ${s % 60}s` : `${s % 60}s`;
+}
 
 /** Time spent in over these visits, the one still going counted up to `now`. */
 export const spentMs = (visits: Visit[], now: number) => visits.reduce((sum, v) => sum + Math.max(0, (v.outAt ?? now) - v.inAt), 0);
@@ -171,6 +214,8 @@ const INDIA_OFFSET_MS = 330 * 60000;
 export const indiaClock = (t: number) => new Date(t + INDIA_OFFSET_MS).toISOString().slice(11, 16);
 /** A time to read, on India's clock: "9:05 am". */
 export const indiaTime = (t: number) => new Date(t).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit' });
+/** The same with seconds: "9:05:12 am". */
+export const indiaTimeSec = (t: number) => new Date(t).toLocaleTimeString('en-IN', { timeZone: 'Asia/Kolkata', hour: 'numeric', minute: '2-digit', second: '2-digit' });
 /** Today in India, yyyy-mm-dd. */
 export const indiaToday = (now = Date.now()) => new Date(now + INDIA_OFFSET_MS).toISOString().slice(0, 10);
 /** The hour on India's clock, 0–23: for anything that greets or counts by the time of day there. */
@@ -273,6 +318,10 @@ export const withRange = (path: string, range?: DayRange) => (range ? `${path}?f
 export function useMyAttendance(range?: DayRange) {
   const path = withRange('/attendance/me', range);
   const { state, setState, reload } = useLoaded(path, toMyAttendance);
+  // joining, leaving and every load also tell the portal's own dot (presence.ts), even when it says the same again
+  useEffect(() => {
+    if (state.kind === 'ready' && state.value.presence) setMyPresence(state.value.presence);
+  }, [state]);
   // join and leave answer with today's attendance; they throw an ApiError when refused, after reloading
   const act = async (path: string) => {
     try {

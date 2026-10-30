@@ -29,7 +29,8 @@ test('the password answer no longer says $ is not allowed (step 16)', () => {
 
 test('each role sees only its own connected topics', () => {
   const employee = questions(true, 'employee');
-  assert.ok(employee.includes('How do I mark myself active or inactive?'));
+  // the live e-Office dots replaced the old "mark myself active" answer, for every role (presence.ts)
+  for (const role of ['employee', 'subadmin', 'admin'] as const) assert.ok(questions(true, role).includes('What do the green, red and grey dots mean?'), role);
   assert.ok(employee.includes('How do I update a task?'));
   assert.ok(!employee.includes('What can admins do?'));
   assert.ok(!employee.includes('What can a sub admin do?'));

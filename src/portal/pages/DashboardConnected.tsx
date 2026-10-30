@@ -6,7 +6,7 @@ import type { useCertificates } from '../certificates';
 import { canDelete, canEditDetails, inviteChoices, roleChoices, roleLabel, type AccountRole, type DirectoryPerson, type useDirectory } from '../people';
 import { useSession } from '../session';
 import { formatDate } from '../store';
-import { Badge, btnClass, BtnLabel, DELETE_MS, Empty, initials, Modal, SearchField, useListFlip, useNotice, useReel } from '../ui';
+import { Badge, btnClass, BtnLabel, DELETE_MS, Empty, initials, Modal, PresenceDot, SearchField, useListFlip, useNotice, useReel } from '../ui';
 import { DeleteAccountModal, InviteModal, saveFailedMessage } from './PeopleConnected';
 
 /**
@@ -135,6 +135,7 @@ export function ConnectedTeamPanel({ directory }: { directory: Directory }) {
                         {initials(p.name)}
                       </span>
                       {p.name}
+                      <PresenceDot presence={p.presence} />
                       {p.email === myEmail && <span className="p-you">You</span>}
                     </span>
                   </td>

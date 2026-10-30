@@ -3866,6 +3866,57 @@ a.p-cal-item-title {
   font-size: 13px;
   color: var(--ink-soft);
 }
+/* the live e-Office dot (presence.ts): green active, red inactive, grey not in or off hours */
+.p-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.p-presence.is-active {
+  color: #16a34a;
+}
+.p-presence.is-inactive {
+  color: #dc2626;
+}
+/* on the profile card's photo the word stays the card's white; the dot carries the colour */
+.p-profile-tag .p-presence {
+  color: inherit;
+}
+.p-presence-dot {
+  flex: none;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9ca3af;
+  transition: background-color var(--dur-ui) var(--ease), box-shadow var(--dur-ui) var(--ease);
+}
+.is-active > .p-presence-dot,
+.p-presence-dot.is-active {
+  background: #16a34a;
+  box-shadow: 0 0 0 3px rgb(22 163 74 / 0.18);
+}
+.is-inactive > .p-presence-dot,
+.p-presence-dot.is-inactive {
+  background: #dc2626;
+  box-shadow: 0 0 0 3px rgb(220 38 38 / 0.16);
+}
+/* beside a name in a table, the dot alone: its word is read out and shown on hover */
+td > .p-presence-dot,
+.p-person > .p-presence-dot {
+  margin-right: 8px;
+  vertical-align: 1px;
+}
+.p-person > .p-presence-dot {
+  margin: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  .p-presence-dot {
+    transition: none;
+  }
+}
 .p-eoffice-dot {
   flex: none;
   width: 8px;
@@ -3959,6 +4010,22 @@ a.p-cal-item-title {
   white-space: pre-line;
   font-size: 13px;
   color: var(--ink-soft);
+}
+/* a visit's stretches without use (the live dot was red), under its times */
+.p-att-idle {
+  flex-basis: 100%;
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0 0 0 4px;
+  list-style: none;
+  font-size: 13px;
+  color: #dc2626;
+}
+.p-att-idle > li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .p-profile {

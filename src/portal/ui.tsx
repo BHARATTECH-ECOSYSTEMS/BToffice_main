@@ -4,6 +4,7 @@ import { SearchPill } from '../components/SearchPill';
 import { Arrow, BtnText, LogoMark } from '../components/ui';
 import { api } from './api';
 import { reelPlayed } from './reel';
+import { PRESENCE_LABEL, type Presence } from './presence';
 import type { PortalIconName } from './data';
 
 const PATHS: Record<PortalIconName, string> = {
@@ -330,6 +331,19 @@ export function PortalNotFound() {
 
 export function Badge({ kind, children }: { kind: string; children: ReactNode }) {
   return <span className={`p-badge is-${kind}`}>{children}</span>;
+}
+
+/** A person's live e-Office dot (presence.ts). With `label` its word shows beside it; without, it's read out and shown on hover. */
+export function PresenceDot({ presence, label = false }: { presence?: Presence; label?: boolean }) {
+  if (!presence) return null;
+  const word = PRESENCE_LABEL[presence];
+  return label ? (
+    <span className={`p-presence is-${presence}`}>
+      <span className="p-presence-dot" aria-hidden="true" /> {word}
+    </span>
+  ) : (
+    <span className={`p-presence-dot is-${presence}`} role="img" aria-label={word} title={word} />
+  );
 }
 
 /** The portal's search box: the shared site-wide search pill (components/SearchPill.tsx), opening from the right. */

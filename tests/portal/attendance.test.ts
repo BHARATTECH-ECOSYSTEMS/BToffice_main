@@ -46,7 +46,7 @@ test('my attendance becomes days of visits with times as numbers', () => {
   assert.equal(mine.today, '2026-10-24');
   assert.equal(mine.inNow, true);
   assert.deepEqual(mine.days.map((d) => [d.day, d.minutes, d.noCheckOut]), [['2026-10-24', 75, false], ['2026-10-23', 510, true]]);
-  assert.deepEqual(mine.days[0].visits[1], { id: 'v2', inAt: ms('2026-10-24', '11:00'), outAt: null, noCheckOut: false, corrections: [] });
+  assert.deepEqual(mine.days[0].visits[1], { id: 'v2', inAt: ms('2026-10-24', '11:00'), outAt: null, noCheckOut: false, idle: [], corrections: [] });
   const [c] = mine.days[1].visits[0].corrections;
   assert.equal(c.byName, 'Test Admin');
   assert.equal(c.reason, 'Forgot to check out');
