@@ -133,7 +133,8 @@ export function mountJourney({
 }): Journey {
   const n = hosts.length;
   const ringR = (n * RING_PITCH) / (2 * Math.PI);
-  const tunnelLen = n * TUN_GAP;
+  // one empty step where the loop joins: the last and first card share a wall there (19 cards) and overlapped one step apart
+  const tunnelLen = (n + 1) * TUN_GAP;
   const helixTop = HELIX_Y + (n / 2) * HELIX_PITCH;
 
   const camera = new THREE.PerspectiveCamera(60, 1, 10, 20000);
