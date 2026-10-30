@@ -1380,6 +1380,40 @@
   }
 }
 
+/* Blog: the panel turns in like a magazine page from its left edge, then each post turns in after it, a leaf at a
+   time; the topics card settles in last. Transform and opacity only. */
+.nav-peek[data-open='blog'] .nav-peek-body {
+  transform-origin: 0 50%;
+  animation: peekTurn 0.5s cubic-bezier(0.22, 0.9, 0.3, 1) backwards;
+}
+.nav-peek[data-open='blog'] .nav-peek-pane[data-on] .peek-list > [style*='--k'] {
+  transform-origin: 0 50%;
+  animation: peekLeaf 0.5s var(--ease-expo) both;
+  animation-delay: calc(0.16s + var(--k) * 60ms);
+}
+.nav-peek[data-open='blog'] .nav-peek-pane[data-on] .peek-side[style*='--k'] {
+  animation: peekFade 0.3s ease-out 0.42s both;
+}
+@keyframes peekTurn {
+  from {
+    opacity: 0;
+    transform: perspective(1600px) rotateY(-62deg);
+  }
+}
+@keyframes peekLeaf {
+  from {
+    opacity: 0;
+    transform: perspective(900px) rotateY(-55deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-peek[data-open='blog'] .nav-peek-body,
+  .nav-peek[data-open='blog'] .nav-peek-pane[data-on] .peek-list > [style*='--k'],
+  .nav-peek[data-open='blog'] .nav-peek-pane[data-on] .peek-side[style*='--k'] {
+    animation: peekFade 0.2s ease-out both;
+  }
+}
+
 /* About: the panel pulls into focus, like a camera finding the subject. */
 .nav-peek[data-open='about'] .nav-peek-body {
   animation: peekFocus 0.45s ease-out backwards;

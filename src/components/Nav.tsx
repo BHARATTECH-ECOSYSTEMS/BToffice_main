@@ -21,7 +21,7 @@ const LINKS: { label: string; to: string; section?: string; tone: HueName; peek?
   { label: 'Services', to: '/services', tone: 'violet', peek: 'services', fx: 'sweep' },
   { label: 'Capabilities', to: '/', section: 'capabilities', tone: 'tangerine', peek: 'capabilities', fx: 'tilt' },
   { label: 'Careers', to: '/careers', tone: 'saffron', peek: 'careers', fx: 'ripple' },
-  { label: 'Blog', to: '/blog', tone: 'tangerine', fx: 'sweep' },
+  { label: 'Blog', to: '/blog', tone: 'tangerine', peek: 'blog', fx: 'sweep' },
   { label: 'About', to: '/about', tone: 'violet', peek: 'about', fx: 'roll' },
   { label: 'Contact', to: '/contact', tone: 'tangerine', peek: 'contact', fx: 'magnet' },
 ];

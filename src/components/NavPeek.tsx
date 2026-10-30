@@ -5,8 +5,8 @@ import { Icon, type IconName } from './fx';
 import { AWARDS, CAPABILITIES, CAPABILITY_GROUPS, DEPT_TONES, DOMAINS, EMAIL, EMAIL_HREF, HQ, POSTS, PRIVACY_EMAIL, ROLES } from '../content';
 import type { HueName } from '../gl/palette';
 
-export type PeekId = 'research' | 'capabilities' | 'services' | 'careers' | 'about' | 'contact';
-const PEEK_ORDER: PeekId[] = ['research', 'services', 'capabilities', 'careers', 'about', 'contact'];
+export type PeekId = 'research' | 'capabilities' | 'services' | 'careers' | 'blog' | 'about' | 'contact';
+const PEEK_ORDER: PeekId[] = ['research', 'services', 'capabilities', 'careers', 'blog', 'about', 'contact'];
 
 const DOMAIN_TONES: HueName[] = ['violet', 'tangerine', 'saffron', 'violet', 'tangerine', 'saffron'];
 const FAMILY_TONES: HueName[] = ['violet', 'tangerine', 'saffron'];
@@ -131,6 +131,7 @@ export const NavPeek = memo(function NavPeek({
                 {id === 'capabilities' && <CapabilitiesPeek go={go} />}
                 {id === 'services' && <ServicesPeek go={go} />}
                 {id === 'careers' && <CareersPeek go={go} />}
+                {id === 'blog' && <BlogPeek go={go} />}
                 {id === 'about' && <AboutPeek go={go} />}
                 {id === 'contact' && <ContactPeek go={go} />}
               </Fragment>
@@ -270,7 +271,48 @@ function CareersPeek({ go }: { go: Go }) {
   );
 }
 
-const ABOUT_ROWS: { icon: IconName; title: string; body: string; tone: HueName; section?: string }[] = [
+// one hue per blog topic, so a post's dot and its topic beside it match
+const TOPIC_TONES: Record<string, HueName> = { Research: 'violet', Technology: 'tangerine', Company: 'saffron' };
+
+function BlogPeek({ go }: { go: Go }) {
+  const topics = Array.from(new Set(POSTS.map((p) => p.category)));
+  return (
+    <div className="peek-grid">
+      <ul className="peek-list">
+        {POSTS.slice(0, 4).map((p, k) => (
+          <li key={p.slug} style={toneStyle(TOPIC_TONES[p.category] ?? 'violet', { '--k': k } as CSSProperties)}>
+            <button className="peek-row" onClick={go(`/blog/${p.slug}`)}>
+              <span className="peek-dot" />
+              <span className="peek-row-text">
+                <b>{p.title}</b>
+                <small>
+                  {p.category} · {p.date} · {p.read}
+                </small>
+              </span>
+              <Arrow size={13} />
+            </button>
+          </li>
+        ))}
+      </ul>
+      <div className="peek-side" style={toneStyle('tangerine', { '--k': 5 } as CSSProperties)}>
+        <p className="peek-side-figure">Topics</p>
+        <ul className="peek-depts">
+          {topics.map((t) => (
+            <li key={t} style={toneStyle(TOPIC_TONES[t] ?? 'violet')}>
+              <i />
+              {t}
+            </li>
+          ))}
+        </ul>
+        <button className="peek-go" onClick={go('/blog')}>
+          Read the blog <Arrow size={13} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+const ABOUT_ROWS:{ icon: IconName; title: string; body: string; tone: HueName; section?: string }[] = [
   { icon: 'building', title: 'Our story', body: 'Deep technology, designed in India.', tone: 'violet' },
   { icon: 'spark', title: 'Principles', body: '6 beliefs about what intelligence should be.', tone: 'tangerine', section: 'principles' },
   { icon: 'rocket', title: 'Recognition', body: `${AWARDS.length} milestones since 2023.`, tone: 'saffron', section: 'recognition' },
