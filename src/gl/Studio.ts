@@ -256,6 +256,8 @@ const GradeShader = {
 
 /** The hero bounce, in world units and seconds: the first hop after the logo forms, then every hop after. */
 const BOUNCE_FIRST = 0.34;
+/** How many pixels a page's small glass logo draws per screen pixel. */
+const SHARP_RATIO = 2;
 const BOUNCE_REST = 0.1;
 const BOUNCE_PERIOD = 1.15;
 
@@ -335,7 +337,9 @@ export class Studio {
     this.bare = !!opts.bare;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: this.bare, powerPreference: 'high-performance' });
     if (this.bare) this.renderer.setClearColor(0x000000, 0);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, lite ? 0.85 : 1.25));
+    // a page's small glass logo (bare) draws twice the screen's pixels: its edge and threads come from the shader, so
+    // only more pixels smooth them (stair-stepped on dark pages otherwise); it is small enough to afford it
+    this.renderer.setPixelRatio(this.bare ? Math.min(window.devicePixelRatio * SHARP_RATIO, 4) : Math.min(window.devicePixelRatio, lite ? 0.85 : 1.25));
     this.renderer.toneMapping = THREE.NeutralToneMapping;
     this.renderer.toneMappingExposure = 1.0;
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -450,11 +454,13 @@ export class Studio {
       uGlow: { value: 0 },
       uOrbs: { value: new THREE.Vector4(0, 1, 0, 0) },
       uBound: { value: 1.2 },
+      uPix: { value: 0.001 },
     };
     const logo = logoTex();
     this.su.uLogo.value = logo;
     this.trash.push(logo);
-    const sm = new THREE.ShaderMaterial({ uniforms: this.su, vertexShader: SCULPTURE_VS, fragmentShader: SCULPTURE_FS });
+    // transparent: its edge is soft (sculpture.glsl.ts, cover), so it blends over what is behind it
+    const sm = new THREE.ShaderMaterial({ uniforms: this.su, vertexShader: SCULPTURE_VS, fragmentShader: SCULPTURE_FS, transparent: true });
     const box = new THREE.BoxGeometry(2, 2, 2); // a proxy, scaled each frame to hold the shape
     this.sculpture = new THREE.Mesh(box, sm);
     this.sculpture.position.copy(CENTER);
@@ -508,6 +514,7 @@ export class Studio {
     this.camera.setViewOffset(w, h, (0.5 - ax) * w, (0.5 - ay) * h, w, h);
     this.camera.updateProjectionMatrix();
     this.dustU.uScale.value = (h * pr) / (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)));
+    this.su.uPix.value = (2 * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2))) / (h * pr);
     (this.grade.uniforms.uRes.value as THREE.Vector2).set(w, h);
   }
 
@@ -563,6 +570,8 @@ export class Studio {
   }
 
   private adapt(dt: number) {
+    // the small glass logo keeps its sharpness; lowering it would bring back the stair-stepped edge
+    if (this.bare) return;
     const p = this.perf;
     if (dt <= 0) return;
     p.n++;

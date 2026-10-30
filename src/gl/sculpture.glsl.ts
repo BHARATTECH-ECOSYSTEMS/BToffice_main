@@ -51,9 +51,12 @@ uniform float uGhost;    // what is left of an erased thread
 uniform float uIrid;
 uniform float uGlow;     // the threads lit from within
 uniform float uBound; // radius of a sphere that holds the shape, in shape space
+uniform float uPix;   // the angle one drawn pixel spans: how wide the soft edge is at any distance
 uniform vec4 uOrbs;   // the orb family: x ring radius, y orb radius, z centre radius, w arm (0 none, 1 short, 2 bridge)
 
 #define PI 3.14159265
+// the soft edge, in drawn pixels: wide enough to hide the stair steps, narrow enough to stay crisp
+#define EDGE_PX 1.5
 
 float smin(float a, float b, float k) { float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0); return mix(b, a, h) - k * h * (1.0 - h); }
 float sdRoundCone(vec3 p, vec3 a, vec3 b, float r1, float r2) {
@@ -226,15 +229,25 @@ void main() {
   float tEnd = -bb + hh;
   bool hit = false;
   vec3 p;
+  float dMin = 1e9;
+  float tMin = t;
   for (int i = 0; i < 110; i++) {
     if (float(i) > uSteps) break;
     p = ro + rd * t;
     float d = map(p);
+    if (d < dMin) { dMin = d; tMin = t; }
     if (d < 0.0015) { hit = true; break; }
     t += d * 0.9;
     if (t > tEnd) break;
   }
-  if (!hit) discard;
+  // A ray that just misses the glass still covers part of its pixel: drawn as nothing, the edge came out in stair
+  // steps (plain on dark pages). It is shaded at the closest point it passed, partly see-through.
+  float cover = 1.0;
+  if (!hit) {
+    cover = 1.0 - dMin / (uPix * tMin * EDGE_PX);
+    if (cover <= 0.0) discard;
+    p = ro + rd * tMin;
+  }
 
   vec3 n = normalAt(p);
   vec3 v = -rd;
@@ -311,5 +324,5 @@ void main() {
 
   vec4 clip = uViewProj * vec4(p, 1.0);
   gl_FragDepth = clip.z / clip.w * 0.5 + 0.5;
-  gl_FragColor = vec4(col, 1.0);
+  gl_FragColor = vec4(col, cover);
 }`;
