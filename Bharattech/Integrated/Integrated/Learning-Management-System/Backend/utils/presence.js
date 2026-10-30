@@ -1,13 +1,14 @@
 // The live dot beside each person (the team's request, 2026-10-29): while someone is in the e-Office, the portal sends a
 // small "still active" signal every few seconds while they use the laptop (POST /api/attendance/active saves it on
 // their open visit as lastActiveAt). The backend decides the colour, so a wrong laptop clock can't fake it:
-// - active: a sign of use (or joining) in the last 20 seconds (owner's choice, 2026-10-30; it was five minutes)
-// - inactive: none for 20 seconds or more
+// - active: a sign of use (or joining) in the last 5 minutes (owner's choice, 2026-10-30: five minutes, then 20 seconds,
+//   then back to five minutes)
+// - inactive: none for 5 minutes or more
 // - out: not in the e-Office
 // - off: outside working hours (10:00–20:30 India time, Monday to Friday), whatever they're doing
 // Colleagues only get the colour; the inactive stretches (idleStretch) go to admins and sub admins only, in History.
 
-const IDLE_MS = 20 * 1000;
+const IDLE_MS = 5 * 60 * 1000;
 // minutes after midnight on India's clock
 const DAY_STARTS = 10 * 60;
 const DAY_ENDS = 20 * 60 + 30;

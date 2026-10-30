@@ -27,8 +27,8 @@ test("working hours follow India's clock whatever the server's time zone", () =>
   assert.equal(inWorkingHours(new Date("2026-11-01T19:00:00Z")), false);
 });
 
-test("someone in the e-Office is active until 20 seconds pass without a sign of use", () => {
-  assert.equal(IDLE_MS, 20_000);
+test("someone in the e-Office is active until 5 minutes pass without a sign of use", () => {
+  assert.equal(IDLE_MS, 5 * 60_000);
   const now = at(MONDAY, "11:00");
   const ago = (ms) => new Date(now.getTime() - ms);
   const visit = (last) => ({ inAt: at(MONDAY, "10:05"), lastActiveAt: last });
@@ -51,7 +51,7 @@ test("nobody in the e-Office shows as out; outside working hours everyone is off
   assert.equal(presenceOf(null, at(SATURDAY, "11:00")), "off");
 });
 
-test("an inactive stretch counts from the last use, only when it lasted 20 seconds, and only in working hours", () => {
+test("an inactive stretch counts from the last use, only when it lasted 5 minutes, and only in working hours", () => {
   const stretch = (from, to, day = MONDAY) => idleStretch(at(day, from), at(day, to), day);
   assert.equal(stretch("11:00", "11:00"), null);
   assert.equal(idleStretch(at(MONDAY, "11:00"), new Date(at(MONDAY, "11:00").getTime() + IDLE_MS - 1), MONDAY), null);

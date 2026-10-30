@@ -374,39 +374,51 @@ test("History lists each inactive stretch with its seconds, the ongoing one up t
   clockAt(t, MONDAY_11AM);
   const { admin, asha } = await people();
   await send(asha, "POST", "/check-in");
-  mock.timers.tick(30_000);
-  await send(asha, "POST", "/active"); // back after 30 s away
+  mock.timers.tick(6 * 60_000);
+  await send(asha, "POST", "/active"); // back after 6 minutes away
   mock.timers.tick(5_000);
   await send(asha, "POST", "/active"); // 5 s: still in use, no stretch
-  mock.timers.tick(25_000); // away again, still going
+  mock.timers.tick(5.5 * 60_000); // away again, still going
 
   const visitOf = (body) => body.days[0].visits[0];
   const mine = await send(admin, "GET", `/people/${asha._id}?from=${todayInIndia()}&to=${todayInIndia()}`);
   assert.deepEqual(
     visitOf(mine.body).idle.map((s) => [s.from, s.to, s.seconds]),
     [
-      [MONDAY_11AM.toISOString(), new Date(MONDAY_11AM.getTime() + 30_000).toISOString(), 30],
-      [new Date(MONDAY_11AM.getTime() + 35_000).toISOString(), new Date(MONDAY_11AM.getTime() + 60_000).toISOString(), 25],
+      [MONDAY_11AM.toISOString(), new Date(MONDAY_11AM.getTime() + 360_000).toISOString(), 360],
+      [new Date(MONDAY_11AM.getTime() + 365_000).toISOString(), new Date(MONDAY_11AM.getTime() + 695_000).toISOString(), 330],
     ]
   );
   // only the stretch still going is marked so; the finished one isn't
   assert.deepEqual(visitOf(mine.body).idle.map((s) => s.ongoing), [false, true]);
-  assert.equal(mine.body.days[0].seconds, 60);
-  assert.equal(mine.body.days[0].idleSeconds, 55);
+  assert.equal(mine.body.days[0].seconds, 695);
+  assert.equal(mine.body.days[0].idleSeconds, 690);
 
   // leaving ends the ongoing stretch where the visit ends
   mock.timers.tick(10_000);
   await send(asha, "POST", "/check-out");
   const history = await send(admin, "GET", `/people/${asha._id}?from=${todayInIndia()}&to=${todayInIndia()}`);
   const [day1] = history.body.days;
-  assert.deepEqual(day1.visits[0].idle.map((s) => s.seconds), [30, 35]);
+  assert.deepEqual(day1.visits[0].idle.map((s) => s.seconds), [360, 340]);
   assert.deepEqual(day1.visits[0].idle.map((s) => s.ongoing), [false, false]);
-  assert.equal(day1.seconds, 70);
-  assert.equal(day1.idleSeconds, 65);
+  assert.equal(day1.seconds, 705);
+  assert.equal(day1.idleSeconds, 700);
   const overview = await send(admin, "GET", `/day?day=${todayInIndia()}`);
   const row = overview.body.people.find((p) => p.name === "Asha Rao");
-  assert.equal(row.seconds, 70);
-  assert.equal(row.idleSeconds, 65);
+  assert.equal(row.seconds, 705);
+  assert.equal(row.idleSeconds, 700);
+});
+
+test("a stretch away shorter than 5 minutes isn't an inactive stretch", async (t) => {
+  clockAt(t, MONDAY_11AM);
+  const { admin, asha } = await people();
+  await send(asha, "POST", "/check-in");
+  mock.timers.tick(4 * 60_000);
+  await send(asha, "POST", "/active"); // back after 4 minutes: was never red
+  mock.timers.tick(5_000);
+  const today = (await send(admin, "GET", `/people/${asha._id}`)).body.days[0];
+  assert.deepEqual(today.visits[0].idle, []);
+  assert.equal(today.idleSeconds, 0);
 });
 
 test("visits from before the activity signal show no inactive stretches", async (t) => {
@@ -423,9 +435,9 @@ test("someone who joins and never uses the laptop shows as inactive from the mom
   clockAt(t, MONDAY_11AM);
   const { subadmin, asha } = await people();
   await send(asha, "POST", "/check-in");
-  mock.timers.tick(25_000);
+  mock.timers.tick(5.5 * 60_000);
   const [stretch] = (await send(subadmin, "GET", `/people/${asha._id}`)).body.days[0].visits[0].idle;
-  assert.deepEqual([stretch.from, stretch.seconds, stretch.ongoing], [MONDAY_11AM.toISOString(), 25, true]);
+  assert.deepEqual([stretch.from, stretch.seconds, stretch.ongoing], [MONDAY_11AM.toISOString(), 330, true]);
 });
 
 test("employees and interns never get their own inactive times; admins and sub admins do", async (t) => {
@@ -434,7 +446,7 @@ test("employees and interns never get their own inactive times; admins and sub a
   const inactiveIn = (body) => JSON.stringify(body).includes("idle");
   for (const person of [asha, kabir, superadmin, admin, subadmin]) {
     const joined = await send(person, "POST", "/check-in");
-    mock.timers.tick(30_000);
+    mock.timers.tick(6 * 60_000);
     const mine = await send(person, "GET", "/me");
     const ranged = await send(person, "GET", `/me?from=${todayInIndia()}&to=${todayInIndia()}`);
     const left = await send(person, "POST", "/check-out");
@@ -442,8 +454,8 @@ test("employees and interns never get their own inactive times; admins and sub a
     const manager = person !== asha && person !== kabir;
     assert.deepEqual(sees, manager ? [true, true, true, true] : [false, false, false, false], person.role);
     // their own time in still adds up, in seconds
-    assert.equal(todayOf(mine.body).seconds, 30, person.role);
+    assert.equal(todayOf(mine.body).seconds, 360, person.role);
   }
   // their managers still see it
-  assert.equal((await send(admin, "GET", `/people/${asha._id}`)).body.days[0].idleSeconds, 30);
+  assert.equal((await send(admin, "GET", `/people/${asha._id}`)).body.days[0].idleSeconds, 360);
 });
