@@ -28,3 +28,10 @@ target/
 .DS_Store
 Thumbs.db
 
+
+# From the website
+*.log
+*.local
+
+# A template with no secrets, kept in git
+!.env.example
