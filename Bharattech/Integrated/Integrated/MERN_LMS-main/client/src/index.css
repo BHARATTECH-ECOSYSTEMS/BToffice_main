@@ -70,10 +70,11 @@
   border-radius: 14px;
   box-shadow: 0 12px 32px rgb(20 19 15 / 0.12);
 }
-/* at the top centre, just under the sticky navbar (72 px), so they never cover a button (owner's 2A, 2026-10-27);
-   phones too, where Toastify's own rule would put them over the navbar */
-.learn .Toastify__toast-container--top-center {
-  top: 84px;
+/* at the bottom right (owner, 2026-10-30; the top centre sat in the middle of the screen), raised above an open
+   window's lowest buttons by useToastLift so they never cover Mark as watched, Save and the like */
+.learn .Toastify__toast-container--bottom-right {
+  bottom: var(--toast-lift, 16px);
+  transition: bottom 200ms ease-out;
 }
 /* a finger-sized tap area on phones (owner's L2A, 2026-10-27): at least 44 x 44 px, a see-through layer centred on the
    control, so nothing on the page moves */
@@ -109,7 +110,7 @@
 }
 @media (max-width: 480px) {
   /* Toastify runs them edge to edge on phones; keep the page's own 12 px margins */
-  .learn .Toastify__toast-container--top-center {
+  .learn .Toastify__toast-container--bottom-right {
     left: 12px;
     right: 12px;
     width: auto;

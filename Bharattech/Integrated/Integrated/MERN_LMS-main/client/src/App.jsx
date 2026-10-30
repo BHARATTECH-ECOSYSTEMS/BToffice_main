@@ -16,10 +16,12 @@ import Navbar from "./components/students/Navbar";
 import RequireRole from "./components/auth/RequireRole";
 import { useAuth } from "./context/AuthContext";
 import EducatorNavbar from "./components/educator/Navbar";
+import { useToastLift } from "./hooks/useToastLift";
 
 
 function App() {
   const { isAdmin, viewRole, loading } = useAuth();
+  useToastLift();
 
   // the page scrollbar shows again (index.css html.learn-page): learner and educator pages alike since the
   // educator redesign (owner's 1A, 2026-10-26)
@@ -31,7 +33,7 @@ function App() {
 
   return (
     <div className="learn text-default min-h-screen bg-paper text-ink">
-      <ToastContainer position="top-center" autoClose={3000} />
+      <ToastContainer position="bottom-right" autoClose={3000} />
 
       {viewRole === "educator" ? <EducatorNavbar /> : <Navbar />}
 
