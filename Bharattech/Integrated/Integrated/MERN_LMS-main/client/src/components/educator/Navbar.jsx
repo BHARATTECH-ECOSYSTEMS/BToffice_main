@@ -29,7 +29,7 @@ function EducatorNavbar() {
   const { menuOpen, setMenuOpen, navRef } = usePhoneMenu();
 
   const handleStudentView = () => {
-    switchViewRole("student");
+    if (!switchViewRole("student")) return;
     toast.success("You're now seeing Learning as a learner.");
     navigate("/");
   };

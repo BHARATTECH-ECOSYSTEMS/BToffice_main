@@ -1,6 +1,7 @@
 /* eslint-disable react-refresh/only-export-components */
 import { createContext, useCallback, useContext, useState } from "react";
 import keycloak from "../auth/keycloak";
+import { createSwitchGuard } from "../utils/viewSwitch";
 
 // Who is signed in comes only from the token Keycloak gave this page (main.jsx signs in before anything renders);
 // nothing in the address or in browser storage can change it. The server checks every request again.
@@ -78,6 +79,7 @@ const getInitialViewRole = (user) => {
 export const AuthProvider = ({ children }) => {
   const [user] = useState(userFromToken);
   const [viewRole, setViewRoleState] = useState(() => getInitialViewRole(user));
+  const [switchAllowed] = useState(createSwitchGuard);
 
   const setViewRole = (role) => {
     const nextRole = normalizeViewRole(role);
@@ -107,7 +109,8 @@ export const AuthProvider = ({ children }) => {
   );
 
   const isAdmin = () => canUseEducatorView(user.role);
-  const switchViewRole = (role) => setViewRole(role);
+  // false when nothing changed: a repeat within a second (a double-click) or a view this account can't have
+  const switchViewRole = (role) => switchAllowed() && setViewRole(role);
   const isEducator = viewRole === "educator" && isAdmin();
   const setIsEducator = (enabled) => setViewRole(enabled ? "educator" : "student");
 

@@ -30,7 +30,7 @@ function Navbar() {
   }
 
   const handleEducatorView = () => {
-    switchViewRole("educator");
+    if (!switchViewRole("educator")) return;
     toast.success("You're now seeing Learning as an educator.");
     navigate("/educator/dashboard");
   };
