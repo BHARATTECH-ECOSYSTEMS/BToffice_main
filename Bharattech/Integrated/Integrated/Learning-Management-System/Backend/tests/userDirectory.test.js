@@ -1,8 +1,11 @@
-const { test, before, beforeEach, after } = require("node:test");
+const { test, before, beforeEach, after, mock } = require("node:test");
 const assert = require("node:assert/strict");
 const User = require("../models/User");
 const { getDirectory, getUserById } = require("../controllers/userController");
 const { connectTestDb, clearTestDb, disconnectTestDb, userFields } = require("./helpers/testDb");
+const OfficeVisit = require("../models/OfficeVisit");
+const { todayInIndia } = require("../utils/days");
+const { inWorkingHours } = require("../utils/presence");
 
 before(connectTestDb);
 beforeEach(clearTestDb);
@@ -59,8 +62,35 @@ test("the directory lists everyone with only the details a colleague may see", a
       team: "People Ops",
       joinedOn: "2024-03-01",
       status: "active",
+      presence: inWorkingHours(new Date()) ? "out" : "off",
     },
   ]);
+});
+
+test("each colleague's live dot is listed, but not the times behind it", async (t) => {
+  // a Monday morning in India, in working hours (the dot is off outside them)
+  mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-26T11:00:00+05:30") });
+  t.after(() => mock.timers.reset());
+  const asha = await User.create(userFields({ fullName: "Asha Rao" }));
+  await User.create(userFields({ fullName: "Kabir Das" }));
+  const now = new Date();
+  await OfficeVisit.create({ user: asha._id, day: todayInIndia(), inAt: new Date(now.getTime() - 20 * 60_000), lastActiveAt: now, open: true });
+
+  const { body } = await call(getDirectory, asEmployee);
+
+  assert.deepEqual(body.map((p) => [p.name, p.presence]), [["Asha Rao", "active"], ["Kabir Das", "out"]]);
+  const sent = JSON.stringify(body);
+  for (const time of ["lastActiveAt", "inAt", now.toISOString()]) assert.ok(!sent.includes(time), `${time} was sent`);
+});
+
+test("a visit left open from an earlier day doesn't put someone in the e-Office", async (t) => {
+  mock.timers.enable({ apis: ["Date"], now: new Date("2026-10-26T11:00:00+05:30") });
+  t.after(() => mock.timers.reset());
+  const asha = await User.create(userFields({ fullName: "Asha Rao" }));
+  // nobody has asked for attendance since, so it hasn't been closed yet
+  await OfficeVisit.create({ user: asha._id, day: "2026-10-25", inAt: new Date("2026-10-25T18:00:00+05:30"), lastActiveAt: new Date(), open: true });
+
+  assert.equal((await call(getDirectory, asEmployee)).body[0].presence, "out");
 });
 
 test("passwords, sessions and Keycloak IDs never leave the backend", async () => {

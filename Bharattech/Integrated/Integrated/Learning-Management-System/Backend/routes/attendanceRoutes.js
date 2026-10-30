@@ -12,6 +12,9 @@ router.get("/me", attendance.myAttendance);
 router.post("/check-in", attendance.checkIn);
 router.post("/check-out", attendance.checkOut);
 
+// "Still active": the portal sends it about once a minute while you're in and using the laptop (everyone, for themselves)
+router.post("/active", attendance.stillActive);
+
 // Everyone's day, and one person's history (admins, superadmins and sub admins)
 router.get("/day", attendance.dayOverview);
 router.get("/people/:userId", attendance.personHistory);

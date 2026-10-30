@@ -8,6 +8,7 @@ const mongoose = require("mongoose");
 const REASON_MAX = 300;
 
 const TimesSchema = new mongoose.Schema({ inAt: Date, outAt: Date }, { _id: false });
+const StretchSchema = new mongoose.Schema({ from: { type: Date, required: true }, to: { type: Date, required: true } }, { _id: false });
 
 const CorrectionSchema = new mongoose.Schema(
   {
@@ -29,6 +30,11 @@ const OfficeVisitSchema = new mongoose.Schema(
     outAt: { type: Date, default: null },
     open: { type: Boolean, default: true },
     noCheckOut: { type: Boolean, default: false },
+    // the last "still active" signal from the portal while this visit was open (utils/presence.js); never sent out
+    lastActiveAt: { type: Date, default: null },
+    // finished stretches without use (utils/presence.js idleStretch), for the visit's History; the one still going
+    // is worked out from lastActiveAt when the visit is read
+    idle: { type: [StretchSchema], default: [] },
     corrections: { type: [CorrectionSchema], default: [] },
   },
   { timestamps: true }

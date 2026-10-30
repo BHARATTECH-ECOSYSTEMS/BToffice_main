@@ -1,4 +1,5 @@
-const { test, before, beforeEach, after } = require("node:test");
+const { test, before, beforeEach, after, mock } = require("node:test");
+const { IDLE_MS } = require("../utils/presence");
 const assert = require("node:assert/strict");
 const express = require("express");
 const { connectTestDb, clearTestDb, disconnectTestDb, userFields } = require("./helpers/testDb");
@@ -288,4 +289,161 @@ test("a visit that is still going can't be corrected, and a correction can't end
   await send(asha, "POST", "/check-out");
   const later = await send(admin, "PATCH", `/visits/${open._id}`, { inAt: open.inAt.toISOString(), outAt: new Date(Date.now() + 3600_000).toISOString(), reason: "Early" });
   assert.equal(later.status, 400);
+});
+
+// The live dot (utils/presence.js) depends on the clock, so these tests set it: a Monday morning in India (working
+// hours), or a Saturday. Only Date is replaced; timers and the database run as usual.
+const MONDAY_11AM = new Date("2026-10-26T11:00:00+05:30");
+const clockAt = (t, moment) => {
+  mock.timers.enable({ apis: ["Date"], now: moment });
+  t.after(() => mock.timers.reset());
+};
+
+test("the activity signal keeps someone in the e-Office active", async (t) => {
+  clockAt(t, MONDAY_11AM);
+  const { asha } = await people();
+  const notIn = await send(asha, "POST", "/active");
+  assert.equal(notIn.status, 200);
+  assert.equal(notIn.body.presence, "out");
+  assert.equal(await OfficeVisit.countDocuments({ user: asha._id }), 0);
+
+  assert.equal((await send(asha, "POST", "/check-in")).body.presence, "active");
+  mock.timers.tick(IDLE_MS);
+  assert.equal((await send(asha, "GET", "/me")).body.presence, "inactive");
+
+  const back = await send(asha, "POST", "/active");
+  assert.equal(back.status, 200);
+  assert.equal(back.body.presence, "active");
+  assert.equal((await OfficeVisit.findOne({ user: asha._id, open: true })).lastActiveAt.getTime(), Date.now());
+  mock.timers.tick(IDLE_MS - 1);
+  assert.equal((await send(asha, "GET", "/me")).body.presence, "active");
+  assert.equal((await send(asha, "POST", "/check-out")).body.presence, "out");
+});
+
+test("the activity signal is saved at most once every 5 seconds", async (t) => {
+  clockAt(t, MONDAY_11AM);
+  const { asha } = await people();
+  await send(asha, "POST", "/check-in");
+  await send(asha, "POST", "/active");
+  const first = Date.now();
+  mock.timers.tick(5_000 - 1);
+  await send(asha, "POST", "/active");
+  assert.equal((await OfficeVisit.findOne({ user: asha._id, open: true })).lastActiveAt.getTime(), first);
+  mock.timers.tick(1);
+  await send(asha, "POST", "/active");
+  assert.equal((await OfficeVisit.findOne({ user: asha._id, open: true })).lastActiveAt.getTime(), first + 5_000);
+});
+
+test("outside working hours everyone's dot is off, even while in", async (t) => {
+  clockAt(t, new Date("2026-10-31T11:00:00+05:30"));
+  const { admin, asha } = await people();
+  await send(asha, "POST", "/check-in");
+  assert.equal((await send(asha, "POST", "/active")).body.presence, "off");
+  const today = await send(admin, "GET", `/day?day=${todayInIndia()}`);
+  assert.ok(today.body.people.every((p) => p.presence === "off"));
+});
+
+test("a visit left open from an earlier day doesn't count as being in", async (t) => {
+  clockAt(t, MONDAY_11AM);
+  const { asha } = await people();
+  const old = await pastVisit(asha, day(-1), "09:00", null);
+  assert.equal((await send(asha, "POST", "/active")).body.presence, "out");
+  assert.equal((await OfficeVisit.findById(old._id)).lastActiveAt, null);
+});
+
+test("managers see today's dots, never on other days, and never the times behind them", async (t) => {
+  clockAt(t, MONDAY_11AM);
+  const { admin, asha } = await people();
+  await send(asha, "POST", "/check-in");
+  await send(asha, "POST", "/active");
+  await pastVisit(asha, day(-1), "09:00", "17:00");
+  const today = await send(admin, "GET", `/day?day=${todayInIndia()}`);
+  const byName = Object.fromEntries(today.body.people.map((p) => [p.name, p]));
+  assert.equal(byName["Asha Rao"].presence, "active");
+  assert.equal(byName["Kabir Das"].presence, "out");
+  assert.ok(!JSON.stringify(today.body).includes("lastActiveAt"));
+  const before = await send(admin, "GET", `/day?day=${day(-1)}`);
+  assert.ok(before.body.people.every((p) => p.presence === null));
+});
+
+test("an account without a stored record (demo) sends no activity", async () => {
+  assert.equal((await send({ id: "demo-employee", role: "Employee" }, "POST", "/active")).status, 403);
+});
+
+test("History lists each inactive stretch with its seconds, the ongoing one up to now", async (t) => {
+  clockAt(t, MONDAY_11AM);
+  const { admin, asha } = await people();
+  await send(asha, "POST", "/check-in");
+  mock.timers.tick(30_000);
+  await send(asha, "POST", "/active"); // back after 30 s away
+  mock.timers.tick(5_000);
+  await send(asha, "POST", "/active"); // 5 s: still in use, no stretch
+  mock.timers.tick(25_000); // away again, still going
+
+  const visitOf = (body) => body.days[0].visits[0];
+  const mine = await send(admin, "GET", `/people/${asha._id}?from=${todayInIndia()}&to=${todayInIndia()}`);
+  assert.deepEqual(
+    visitOf(mine.body).idle.map((s) => [s.from, s.to, s.seconds]),
+    [
+      [MONDAY_11AM.toISOString(), new Date(MONDAY_11AM.getTime() + 30_000).toISOString(), 30],
+      [new Date(MONDAY_11AM.getTime() + 35_000).toISOString(), new Date(MONDAY_11AM.getTime() + 60_000).toISOString(), 25],
+    ]
+  );
+  // only the stretch still going is marked so; the finished one isn't
+  assert.deepEqual(visitOf(mine.body).idle.map((s) => s.ongoing), [false, true]);
+  assert.equal(mine.body.days[0].seconds, 60);
+  assert.equal(mine.body.days[0].idleSeconds, 55);
+
+  // leaving ends the ongoing stretch where the visit ends
+  mock.timers.tick(10_000);
+  await send(asha, "POST", "/check-out");
+  const history = await send(admin, "GET", `/people/${asha._id}?from=${todayInIndia()}&to=${todayInIndia()}`);
+  const [day1] = history.body.days;
+  assert.deepEqual(day1.visits[0].idle.map((s) => s.seconds), [30, 35]);
+  assert.deepEqual(day1.visits[0].idle.map((s) => s.ongoing), [false, false]);
+  assert.equal(day1.seconds, 70);
+  assert.equal(day1.idleSeconds, 65);
+  const overview = await send(admin, "GET", `/day?day=${todayInIndia()}`);
+  const row = overview.body.people.find((p) => p.name === "Asha Rao");
+  assert.equal(row.seconds, 70);
+  assert.equal(row.idleSeconds, 65);
+});
+
+test("visits from before the activity signal show no inactive stretches", async (t) => {
+  clockAt(t, MONDAY_11AM);
+  const { admin } = await people();
+  await pastVisit(admin, todayInIndia(), "10:00", "10:30");
+  const today = todayOf((await send(admin, "GET", "/me")).body);
+  assert.deepEqual(today.visits[0].idle, []);
+  assert.equal(today.idleSeconds, 0);
+  assert.equal(today.seconds, 30 * 60);
+});
+
+test("someone who joins and never uses the laptop shows as inactive from the moment they joined", async (t) => {
+  clockAt(t, MONDAY_11AM);
+  const { subadmin, asha } = await people();
+  await send(asha, "POST", "/check-in");
+  mock.timers.tick(25_000);
+  const [stretch] = (await send(subadmin, "GET", `/people/${asha._id}`)).body.days[0].visits[0].idle;
+  assert.deepEqual([stretch.from, stretch.seconds, stretch.ongoing], [MONDAY_11AM.toISOString(), 25, true]);
+});
+
+test("employees and interns never get their own inactive times; admins and sub admins do", async (t) => {
+  clockAt(t, MONDAY_11AM);
+  const { superadmin, admin, subadmin, asha, kabir } = await people();
+  const inactiveIn = (body) => JSON.stringify(body).includes("idle");
+  for (const person of [asha, kabir, superadmin, admin, subadmin]) {
+    const joined = await send(person, "POST", "/check-in");
+    mock.timers.tick(30_000);
+    const mine = await send(person, "GET", "/me");
+    const ranged = await send(person, "GET", `/me?from=${todayInIndia()}&to=${todayInIndia()}`);
+    const left = await send(person, "POST", "/check-out");
+    const sees = [joined, mine, ranged, left].map((res) => inactiveIn(res.body));
+    const manager = person !== asha && person !== kabir;
+    assert.deepEqual(sees, manager ? [true, true, true, true] : [false, false, false, false], person.role);
+    // their own time in still adds up, in seconds
+    assert.equal(todayOf(mine.body).seconds, 30, person.role);
+  }
+  // their managers still see it
+  assert.equal((await send(admin, "GET", `/people/${asha._id}`)).body.days[0].idleSeconds, 30);
 });

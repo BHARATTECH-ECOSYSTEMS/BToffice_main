@@ -2,12 +2,15 @@ const bcrypt = require("bcryptjs");
 const { randomUUID } = require("crypto");
 const mongoose = require("mongoose");
 const User = require("../models/User");
+const OfficeVisit = require("../models/OfficeVisit");
 const { kcAdmin, ensureKeycloakAdmin: authKeycloakAdmin, keycloakReply } = require("../utils/keycloakAdmin");
 const { photoType, saveUserPhoto, findUserPhoto, openUserPhoto, deleteUserPhoto } = require("../utils/userPhotos");
 const { isAdmin } = require("../utils/refusal");
 const { notePhotoChanged } = require("../utils/notify");
 const { waitsForFirstPassword, hasRecord } = require("./inviteController");
 const { moveRemovedRecordsAside, freeUsernameFor } = require("../utils/takenNames");
+const { presenceOf } = require("../utils/presence");
+const { todayInIndia } = require("../utils/days");
 
 const KEYCLOAK_REALM = process.env.KEYCLOAK_REALM || "bharattech";
 const DEMO_AUTH_ENABLED = process.env.AUTH_MODE === "demo";
@@ -517,15 +520,21 @@ exports.readFullName = readFullName;
 exports.keycloakNames = keycloakNames;
 
 // The people directory for every signed-in person. It reads the local copy only, so it stays fast however many
-// people there are; GET /api/user syncs from Keycloak instead, but returns whole records to anyone signed in.
+// people there are; GET /api/user syncs from Keycloak instead, but returns whole records to anyone signed in. Each
+// person carries their live e-Office dot (utils/presence.js), only the colour.
 exports.getDirectory = async (req, res) => {
   try {
-    const users = await User.find({ isDeleted: { $ne: true } })
-      .select(DIRECTORY_FIELDS)
-      .collation({ locale: "en", strength: 2 })
-      .sort({ fullName: 1, username: 1 })
-      .lean();
-    res.json(users.map((u) => toDirectoryEntry(u, req.user)));
+    const [users, visits] = await Promise.all([
+      User.find({ isDeleted: { $ne: true } })
+        .select(DIRECTORY_FIELDS)
+        .collation({ locale: "en", strength: 2 })
+        .sort({ fullName: 1, username: 1 })
+        .lean(),
+      OfficeVisit.find({ open: true, day: todayInIndia() }).select("user inAt lastActiveAt").lean(),
+    ]);
+    const now = new Date();
+    const openVisit = new Map(visits.map((v) => [String(v.user), v]));
+    res.json(users.map((u) => ({ ...toDirectoryEntry(u, req.user), presence: presenceOf(openVisit.get(String(u._id)) || null, now) })));
   } catch (error) {
     console.error("Get directory error:", error);
     res.status(500).json({ message: "Failed to load the people directory" });

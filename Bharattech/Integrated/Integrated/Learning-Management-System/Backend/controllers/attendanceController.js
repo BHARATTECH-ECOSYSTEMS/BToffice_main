@@ -4,6 +4,7 @@ const User = require("../models/User");
 const { canEditUser } = require("./userController");
 const { todayInIndia, readDay, indiaDayOf, endOfIndiaDay } = require("../utils/days");
 const { Refusal, answerError, isAdmin, isManager, isObjectId } = require("../utils/refusal");
+const { presenceOf, idleStretch } = require("../utils/presence");
 
 /*
  * e-Office attendance (/api/attendance; server.js signs everyone in).
@@ -13,6 +14,8 @@ const { Refusal, answerError, isAdmin, isManager, isObjectId } = require("../uti
  * - Everyone sees their own history; Super Admins, Admins and Sub Admins see everyone's.
  * - Super Admins and Admins correct a finished visit's times with a reason (an Admin only for the people they may
  *   edit, and themselves); every correction is kept on the visit.
+ * - While someone is in, the portal sends a "still active" signal when they use the laptop; everyone's replies carry
+ *   the live dot it gives (utils/presence.js), never the times behind it.
  * No bell notes or emails, and no location or network checks (owner's choice 6A).
  */
 
@@ -20,6 +23,10 @@ const { Refusal, answerError, isAdmin, isManager, isObjectId } = require("../uti
 const RANGE_MAX_DAYS = 400;
 const HISTORY_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
+// one save per person every 5 seconds is plenty for a dot that turns red after 20 (utils/presence.js)
+const SIGNAL_EVERY_MS = 5 * 1000;
+// a visit keeps its newest stretches without use; a working day can't hold many more
+const IDLE_KEEP = 500;
 const PERSON = "fullName email employeeId role";
 
 const iso = (moment) => (moment ? new Date(moment).toISOString() : null);
@@ -34,16 +41,36 @@ const closeFinishedDays = () =>
   );
 
 const times = (t) => ({ inAt: iso(t?.inAt), outAt: iso(t?.outAt) });
-const visitView = (visit) => ({
+
+/**
+ * A visit's stretches without use: the saved ones, plus the one since the last sign of use, up to the visit's end (or
+ * now while it's going). Kept inside the visit's own times, so a correction also trims them. Visits from before the
+ * activity signal have no lastActiveAt and show none.
+ */
+const idleOf = (visit, now) => {
+  const end = visit.outAt ? visit.outAt.getTime() : now;
+  const tail = visit.lastActiveAt ? idleStretch(visit.lastActiveAt, new Date(end), visit.day) : null;
+  // the stretch since the last use is still going while the visit is
+  return [...(visit.idle || []), ...(tail ? [{ ...tail, ongoing: !visit.outAt }] : [])]
+    .map((s) => ({ from: Math.max(s.from.getTime(), visit.inAt.getTime()), to: Math.min(s.to.getTime(), end), ongoing: s.ongoing === true }))
+    .filter((s) => s.to > s.from)
+    .map((s) => ({ from: iso(s.from), to: iso(s.to), seconds: Math.floor((s.to - s.from) / 1000), ongoing: s.ongoing }));
+};
+
+const visitView = (visit, now) => ({
   id: String(visit._id),
   inAt: iso(visit.inAt),
   outAt: iso(visit.outAt),
   noCheckOut: Boolean(visit.noCheckOut),
+  idle: idleOf(visit, now),
   corrections: (visit.corrections || []).map((c) => ({ at: iso(c.at), byName: c.byName, reason: c.reason, from: times(c.from), to: times(c.to) })),
 });
 
+const spentMs = (visits, now) => visits.reduce((sum, v) => sum + ((v.outAt ? v.outAt.getTime() : now) - v.inAt.getTime()), 0);
 /** Whole minutes spent in, counting a visit that's still going up to now. */
-const minutesOf = (visits, now) => Math.floor(visits.reduce((sum, v) => sum + ((v.outAt ? v.outAt.getTime() : now) - v.inAt.getTime()), 0) / 60000);
+const minutesOf = (visits, now) => Math.floor(spentMs(visits, now) / 60000);
+const secondsOf = (visits, now) => Math.floor(spentMs(visits, now) / 1000);
+const idleSecondsOf = (views) => views.reduce((sum, v) => sum + v.idle.reduce((s, stretch) => s + stretch.seconds, 0), 0);
 
 /** Visits grouped by day, newest day first, each day's visits in order. */
 const daysOf = (visits, now) => {
@@ -51,7 +78,10 @@ const daysOf = (visits, now) => {
   for (const visit of [...visits].sort((a, b) => a.inAt - b.inAt)) byDay.set(visit.day, [...(byDay.get(visit.day) || []), visit]);
   return [...byDay.entries()]
     .sort(([a], [b]) => (a < b ? 1 : -1))
-    .map(([day, list]) => ({ day, minutes: minutesOf(list, now), noCheckOut: list.some((v) => v.noCheckOut), visits: list.map(visitView) }));
+    .map(([day, list]) => {
+      const visits = list.map((v) => visitView(v, now));
+      return { day, minutes: minutesOf(list, now), seconds: secondsOf(list, now), idleSeconds: idleSecondsOf(visits), noCheckOut: list.some((v) => v.noCheckOut), visits };
+    });
 };
 
 /** from/to from the query, or the last HISTORY_DAYS days when neither is given. */
@@ -71,12 +101,23 @@ const requireRecord = (user) => {
 
 const canCorrect = (actor, person) => isAdmin(actor) && (String(person._id) === String(actor.id) || canEditUser(actor.role, person.role));
 
-/** The person's own attendance: whether they're in now and their days in the range (today only by default). */
+// employees and interns don't see their own stretches without use in My attendance; their admins and sub admins see
+// them in History (owner's choice, 2026-10-30)
+const withoutIdle = (days) => days.map(({ idleSeconds, visits, ...day }) => ({ ...day, visits: visits.map(({ idle, ...visit }) => visit) }));
+
+/** The person's open visit if it started today: one left open from an earlier day doesn't count as being in. */
+const openToday = (userId) => OfficeVisit.findOne({ user: userId, open: true, day: todayInIndia() });
+
+/**
+ * The person's own attendance: whether they're in now, their live dot and their days in the range (today only by
+ * default). Callers close finished days first, so an open visit is today's.
+ */
 const myDays = async (user, range) => {
   const today = todayInIndia();
   const { from, to } = range || { from: today, to: today };
-  const [visits, inNow] = await Promise.all([OfficeVisit.find({ user: user.id, day: { $gte: from, $lte: to } }), OfficeVisit.exists({ user: user.id, open: true })]);
-  return { today, inNow: Boolean(inNow), days: daysOf(visits, Date.now()) };
+  const [visits, open] = await Promise.all([OfficeVisit.find({ user: user.id, day: { $gte: from, $lte: to } }), OfficeVisit.findOne({ user: user.id, open: true })]);
+  const days = daysOf(visits, Date.now());
+  return { today, inNow: Boolean(open), presence: presenceOf(open, new Date()), days: isManager(user) ? days : withoutIdle(days) };
 };
 
 // GET /api/attendance/me[?from=YYYY-MM-DD&to=YYYY-MM-DD]
@@ -99,7 +140,8 @@ exports.checkIn = async (req, res) => {
     await closeFinishedDays();
     const now = new Date();
     try {
-      await OfficeVisit.create({ user: req.user.id, day: indiaDayOf(now), inAt: now, open: true });
+      // joining counts as the first sign of use
+      await OfficeVisit.create({ user: req.user.id, day: indiaDayOf(now), inAt: now, lastActiveAt: now, open: true });
     } catch (error) {
       if (error.code === 11000) throw new Refusal(409, "You're already checked in.");
       throw error;
@@ -123,6 +165,29 @@ exports.checkOut = async (req, res) => {
   }
 };
 
+// POST /api/attendance/active: "still active", while in. Saved at most once every SIGNAL_EVERY_MS; a gap long enough
+// to have turned the dot red is kept as a stretch without use. Answers the dot.
+exports.stillActive = async (req, res) => {
+  try {
+    requireRecord(req.user);
+    const now = new Date();
+    const visit = await openToday(req.user.id);
+    if (!visit || (visit.lastActiveAt && now.getTime() - visit.lastActiveAt.getTime() < SIGNAL_EVERY_MS)) {
+      return res.status(200).json({ presence: presenceOf(visit, now) });
+    }
+    const gap = idleStretch(visit.lastActiveAt || visit.inAt, now, visit.day);
+    // only if no other signal was saved since it was read, so a stretch is never kept twice
+    const saved = await OfficeVisit.findOneAndUpdate(
+      { _id: visit._id, open: true, lastActiveAt: visit.lastActiveAt },
+      { $set: { lastActiveAt: now }, ...(gap && { $push: { idle: { $each: [gap], $slice: -IDLE_KEEP } } }) },
+      { returnDocument: "after" }
+    );
+    return res.status(200).json({ presence: presenceOf(saved || (await openToday(req.user.id)), now) });
+  } catch (error) {
+    return answerError(res, error, "Still active");
+  }
+};
+
 const personView = (person, actor) => ({ id: String(person._id), name: nameOf(person), employeeId: person.employeeId || "", role: person.role || "", canCorrect: canCorrect(actor, person) });
 
 // GET /api/attendance/day?day=YYYY-MM-DD (Super Admins, Admins, Sub Admins)
@@ -141,17 +206,23 @@ exports.dayOverview = async (req, res) => {
       .sort({ fullName: 1, email: 1 })
       .lean();
     const now = Date.now();
+    const isToday = day === todayInIndia();
     const rows = people.map((person) => {
       const theirs = visits.filter((v) => String(v.user) === String(person._id));
       const inNow = theirs.some((v) => v.open);
+      const views = theirs.map((v) => visitView(v, now));
       return {
         ...personView(person, req.user),
         inNow,
+        // the live dot only means something today
+        presence: isToday ? presenceOf(theirs.find((v) => v.open) || null, new Date(now)) : null,
         minutes: minutesOf(theirs, now),
+        seconds: secondsOf(theirs, now),
+        idleSeconds: idleSecondsOf(views),
         firstIn: iso(theirs[0]?.inAt),
         lastOut: inNow || !theirs.length ? null : iso(theirs[theirs.length - 1].outAt),
         noCheckOut: theirs.some((v) => v.noCheckOut),
-        visits: theirs.map(visitView),
+        visits: views,
       };
     });
     return res.status(200).json({ day, inNow: rows.filter((r) => r.inNow).length, people: rows });
@@ -220,7 +291,7 @@ exports.correctVisit = async (req, res) => {
       { returnDocument: "after" }
     );
     if (!saved) throw new Refusal(409, "Someone else just changed this visit. Reload and try again.");
-    return res.status(200).json({ visit: visitView(saved) });
+    return res.status(200).json({ visit: visitView(saved, Date.now()) });
   } catch (error) {
     return answerError(res, error, "Correct attendance");
   }
