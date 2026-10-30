@@ -4,8 +4,8 @@ import { api } from './api';
 /**
  * The live dot beside each person (the team's request, 2026-10-29). While someone is in the e-Office, the portal sends
  * the backend a small "still active" signal every 10 seconds while they use the laptop (POST /api/attendance/active).
- * The backend keeps the time and decides the colour (utils/presence.js): green after use in the last 20 seconds, red
- * after 20 seconds without, grey when they aren't in or outside working hours (10:00 am–8:30 pm India time, Monday to
+ * The backend keeps the time and decides the colour (utils/presence.js): green after use in the last 5 minutes, red
+ * after 5 minutes without, grey when they aren't in or outside working hours (10:00 am–8:30 pm India time, Monday to
  * Friday). Colleagues only ever get the colour, never the times.
  *
  * Use is any mouse, keyboard, scroll or touch in the portal. In Chrome and Edge, once the person allows it when they
@@ -20,7 +20,8 @@ const PRESENCES = Object.keys(PRESENCE_LABEL);
 /** A dot the backend sent, or undefined for anything else. */
 export const readPresence = (value: unknown): Presence | undefined => (typeof value === 'string' && PRESENCES.includes(value) ? (value as Presence) : undefined);
 
-// the backend turns the dot red after 20 seconds without a signal, so one goes every 10 while in use
+// the backend turns the dot red after 5 minutes without a signal; one goes every 10 s while in use, so the dot turns
+// green again within seconds of coming back
 export const SIGNAL_EVERY_MS = 10_000;
 /** How long one sign of use inside the portal keeps counting: the stretch one signal covers. */
 export const USE_COUNTS_MS = 10_000;
@@ -75,7 +76,8 @@ interface IdleDetectorClass {
 }
 // Chrome and Edge only, so not in TypeScript's own list of browser features
 const idleDetector = () => (globalThis as { IdleDetector?: IdleDetectorClass }).IdleDetector;
-// the browser's shortest allowed threshold: away from the portal, the dot turns red about a minute after the last use
+// the browser's shortest allowed threshold: away from the portal, signals stop a minute after the last use, and the
+// backend turns the dot red 5 minutes after the last one
 const IDLE_THRESHOLD_MS = 60_000;
 
 const allowed = new Set<() => void>();

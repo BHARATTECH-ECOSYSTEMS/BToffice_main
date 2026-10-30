@@ -101,6 +101,7 @@ test('Help explains the dots to connected staff', () => {
   assert.match(dots!.a, /green/i);
   assert.match(dots!.a, /red/i);
   assert.match(dots!.a, /grey/i);
-  assert.match(dots!.a, /20 seconds/i);
+  assert.match(dots!.a, /5 minutes/i);
+  assert.doesNotMatch(dots!.a, /20 seconds|about a minute/i);
   assert.match(dots!.a, /10:00 am.*8:30 pm/i);
 });

@@ -22,7 +22,7 @@ export interface Correction {
   from: VisitTimes;
   to: VisitTimes;
 }
-/** A stretch of 20 seconds or more without use while in (the live dot was red), in working hours. */
+/** A stretch of 5 minutes or more without use while in (the live dot was red), in working hours. */
 export interface IdleStretch {
   from: number;
   to: number;
