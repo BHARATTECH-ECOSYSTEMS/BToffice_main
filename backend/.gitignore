@@ -1,0 +1,30 @@
+# Archives (kept locally only, not pushed to GitHub)
+*.zip
+*.tar
+*.tar.gz
+
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+build/
+.next/
+.vercel/
+.vite/
+.vite-temp/
+target/
+*.tsbuildinfo
+.npm-cache/
+
+# Data / env
+.data/
+.env
+.env.*
+
+# Editor / OS
+.vscode/
+.DS_Store
+Thumbs.db
+

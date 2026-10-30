@@ -1,0 +1,88 @@
+import { test, before, after, beforeEach } from "node:test";
+import assert from "node:assert/strict";
+import Course from "../models/Course.js";
+import User from "../models/User.js";
+import Purchase from "../models/Purchase.js";
+import CourseProgress from "../models/CourseProgress.js";
+import { isValidYouTubeUrl, extractYouTubeId } from "../utils/videoHelpers.js";
+import { startApp, stopApp, clearDatabase, tokenFor, call, sampleCourse, baseUrl } from "./helpers.js";
+
+// Review 2026-10-26 low list, Learning (owner's 1A, 2A, 3A, 5A): "My enrollments" sent each course whole, with the
+// list of everyone enrolled and everyone's ratings; any localhost site could call the live server, and a blocked site
+// got a 500; two first visits at once during an account move could fail; and the YouTube check took any link with
+// "youtube.com/…" somewhere inside it.
+
+before(startApp);
+after(stopApp);
+beforeEach(clearDatabase);
+
+const content = [{ chapterId: "c1", chapterOrder: 1, chapterTitle: "One", chapterContent: [{ lectureId: "l1", lectureOrder: 1, lectureTitle: "One", lectureDuration: 5, lectureUrl: "https://youtu.be/dQw4w9WgXcQ", isPreviewFree: true }] }];
+
+test("my enrolled courses don't list the other students, and carry only my own rating", async () => {
+  await User.create({ _id: "educator-1", name: "Asha Rao", email: "asha@example.test" });
+  const course = await Course.create({
+    ...sampleCourse(),
+    courseContent: content,
+    courseThumbnail: "data:image/png;base64,AA==",
+    isPublished: true,
+    educator: "educator-1",
+    enrolledStudents: ["kc-me", "kc-other"],
+    courseRatings: [{ userId: "kc-me", rating: 4 }, { userId: "kc-other", rating: 1 }],
+  });
+  await User.create({ _id: "kc-me", name: "Me", email: "me@example.test", enrolledCourses: [course._id] });
+  const res = await call("GET", "/api/user/enrolled-courses", { token: tokenFor({ sub: "kc-me", email: "me@example.test" }) });
+  assert.equal(res.status, 200);
+  const [mine] = res.data.data.enrolledCourses;
+  assert.equal(mine.enrolledStudents, undefined);
+  assert.deepEqual(mine.courseRatings.map((r) => [r.userId, r.rating]), [["kc-me", 4]]);
+  assert.ok(!JSON.stringify(res.data).includes("kc-other"));
+});
+
+test("localhost sites may call the server only when it isn't live", async () => {
+  // app.js loads after startApp: its sign-in check reads the stand-in Keycloak's address when it loads
+  const { isAllowedOrigin } = await import("../app.js");
+  process.env.NODE_ENV = "development";
+  assert.equal(isAllowedOrigin("http://localhost:5175"), true);
+  process.env.NODE_ENV = "production";
+  assert.equal(isAllowedOrigin("http://localhost:5175"), false);
+  delete process.env.NODE_ENV;
+  process.env.RENDER = "true";
+  assert.equal(isAllowedOrigin("http://127.0.0.1:5175"), false, "a Render server is live too");
+  delete process.env.RENDER;
+  process.env.NODE_ENV = "test";
+  assert.equal(isAllowedOrigin(undefined), true, "no Origin: a server-to-server call");
+});
+
+test("a site that isn't allowed is refused plainly, not with a server error", async () => {
+  const res = await fetch(`${baseUrl}/api/courses/all`, { headers: { Origin: "https://not-ours.example" } });
+  assert.notEqual(res.status, 500);
+  assert.equal(res.headers.get("access-control-allow-origin"), null);
+});
+
+test("two first visits at once during an account move both work, and keep every enrollment and progress", async () => {
+  await User.create({ _id: "educator-1", name: "Asha Rao", email: "asha@example.test" });
+  const courses = await Promise.all([1, 2, 3].map(() => Course.create({ ...sampleCourse(), courseContent: content, courseThumbnail: "data:image/png;base64,AA==", isPublished: true, educator: "educator-1", enrolledStudents: ["kc-old"] })));
+  await User.create({ _id: "kc-old", name: "Kabir Das", email: "kabir@example.test", enrolledCourses: courses.map((c) => c._id) });
+  for (const c of courses) {
+    await Purchase.create({ userId: "kc-old", courseId: c._id, amount: 0, status: "completed" });
+    await CourseProgress.create({ userId: "kc-old", courseId: String(c._id), lectureCompleted: ["l1"], completed: true });
+  }
+  const token = tokenFor({ sub: "kc-new", email: "kabir@example.test", name: "Kabir Das" });
+  const replies = await Promise.all(Array.from({ length: 6 }, () => call("GET", "/api/user/profile", { token })));
+  assert.deepEqual(replies.map((r) => r.status), [200, 200, 200, 200, 200, 200]);
+  assert.equal(await User.countDocuments({ email: "kabir@example.test" }), 1);
+  assert.equal(await User.findById("kc-old"), null);
+  // nothing lost while two visits finish the same move
+  assert.equal(await Purchase.countDocuments({ userId: "kc-new" }), 3);
+  assert.equal(await CourseProgress.countDocuments({ userId: "kc-new" }), 3);
+  assert.equal(await Purchase.countDocuments({ userId: "kc-old" }) + (await CourseProgress.countDocuments({ userId: "kc-old" })), 0);
+});
+
+test("a lecture link must really be on YouTube", () => {
+  for (const good of ["https://youtu.be/dQw4w9WgXcQ", "https://www.youtube.com/watch?v=dQw4w9WgXcQ", "https://m.youtube.com/watch?v=dQw4w9WgXcQ&t=10", "https://youtube.com/shorts/dQw4w9WgXcQ", "https://www.youtube.com/embed/dQw4w9WgXcQ", "dQw4w9WgXcQ"]) {
+    assert.equal(extractYouTubeId(good), "dQw4w9WgXcQ", good);
+  }
+  for (const bad of ["https://other.example/?youtube.com/watch?v=dQw4w9WgXcQ", "https://youtube.com.other.example/watch?v=dQw4w9WgXcQ", "https://other.example/youtu.be/dQw4w9WgXcQ", "javascript:alert(1)//youtu.be/dQw4w9WgXcQ", "ftp://youtube.com/watch?v=dQw4w9WgXcQ"]) {
+    assert.equal(isValidYouTubeUrl(bad), false, bad);
+  }
+});

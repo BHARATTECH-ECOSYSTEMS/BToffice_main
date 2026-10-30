@@ -1,0 +1,240 @@
+// Storage Service - Client-side interface for interview storage
+// Calls API routes which interact with the configured storage backend
+
+import { StoredInterview, StoredStudy } from '@/types';
+
+// Save completed interview
+export async function saveCompletedInterview(
+  interview: Omit<StoredInterview, 'completedAt' | 'status'>,
+  participantToken?: string | null
+): Promise<{ success: boolean; id: string }> {
+  try {
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (participantToken) {
+      headers['Authorization'] = `Bearer ${participantToken}`;
+    }
+
+    const response = await fetch('/api/interviews/save', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        ...interview,
+        completedAt: Date.now(),
+        status: 'completed'
+      }),
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return {
+      success: data.success ?? true,
+      id: data.id || data.interviewId || ''
+    };
+  } catch (error) {
+    console.error('Error saving interview:', error);
+    return { success: false, id: '' };
+  }
+}
+
+export interface PaginatedInterviewsResponse {
+  interviews: StoredInterview[];
+  totalCount: number;
+  totalPages: number;
+  currentPage: number;
+  limit: number;
+}
+
+// Get paginated interviews (researcher only)
+export async function getPaginatedInterviews(params?: {
+  studyId?: string | null;
+  page?: number;
+  limit?: number;
+}): Promise<PaginatedInterviewsResponse> {
+  try {
+    const queryParams = new URLSearchParams();
+    if (params?.studyId) queryParams.set('studyId', params.studyId);
+    queryParams.set('page', String(params?.page || 1));
+    queryParams.set('limit', String(params?.limit || 10));
+
+    const response = await fetch(`/api/interviews?${queryParams.toString()}`, {
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+      interviews: data.interviews || [],
+      totalCount: data.totalCount ?? data.interviews?.length ?? 0,
+      totalPages: data.totalPages ?? Math.max(1, Math.ceil((data.totalCount ?? data.interviews?.length ?? 0) / (params?.limit || 10))),
+      currentPage: data.currentPage ?? params?.page ?? 1,
+      limit: data.limit ?? params?.limit ?? 10
+    };
+  } catch (error) {
+    console.error('Error fetching paginated interviews:', error);
+    return {
+      interviews: [],
+      totalCount: 0,
+      totalPages: 1,
+      currentPage: params?.page ?? 1,
+      limit: params?.limit ?? 10
+    };
+  }
+}
+
+// Get all interviews (researcher only)
+export async function getAllInterviews(): Promise<StoredInterview[]> {
+  try {
+    const response = await fetch('/api/interviews', {
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.interviews || [];
+  } catch (error) {
+    console.error('Error fetching interviews:', error);
+    return [];
+  }
+}
+
+// Get single interview by ID
+export async function getInterview(id: string): Promise<StoredInterview | null> {
+  try {
+    const response = await fetch(`/api/interviews/${id}`, {
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.interview || null;
+  } catch (error) {
+    console.error('Error fetching interview:', error);
+    return null;
+  }
+}
+
+// Export all interviews as ZIP
+export async function exportAllInterviews(): Promise<Blob | null> {
+  try {
+    const response = await fetch('/api/interviews/export');
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    return await response.blob();
+  } catch (error) {
+    console.error('Error exporting interviews:', error);
+    return null;
+  }
+}
+
+// Get interviews for a specific study
+export async function getStudyInterviews(studyId: string): Promise<StoredInterview[]> {
+  try {
+    const response = await fetch(`/api/interviews?studyId=${encodeURIComponent(studyId)}`, {
+      cache: 'no-store'
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.interviews || [];
+  } catch (error) {
+    console.error('Error fetching study interviews:', error);
+    return [];
+  }
+}
+
+// Get all studies (researcher only)
+export async function getAllStudies(): Promise<{ studies: StoredStudy[]; warning?: string }> {
+  try {
+    const response = await fetch('/api/studies');
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return {
+      studies: data.studies || [],
+      warning: data.warning
+    };
+  } catch (error) {
+    console.error('Error fetching studies:', error);
+    return { studies: [] };
+  }
+}
+
+// Get single study by ID
+export async function getStudy(id: string): Promise<StoredStudy | null> {
+  try {
+    const response = await fetch(`/api/studies/${id}`);
+
+    if (!response.ok) {
+      return null;
+    }
+
+    const data = await response.json();
+    return data.study || null;
+  } catch (error) {
+    console.error('Error fetching study:', error);
+    return null;
+  }
+}
+
+// Delete study
+export async function deleteStudy(id: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`/api/studies/${id}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      return { success: false, error: data.error };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error deleting study:', error);
+    return { success: false, error: 'Failed to delete study' };
+  }
+}
+
+export async function setStudyLocked(id: string, locked: boolean): Promise<{ success: boolean; error?: string }> {
+  try {
+    const response = await fetch(`/api/studies/${id}/lock`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ locked })
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      return { success: false, error: data.error };
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error('Error updating study lock state:', error);
+    return { success: false, error: 'Failed to update lock state' };
+  }
+}
+

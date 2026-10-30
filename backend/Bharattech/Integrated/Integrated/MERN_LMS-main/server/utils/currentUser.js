@@ -1,0 +1,121 @@
+import Course from "../models/Course.js";
+import CourseProgress from "../models/CourseProgress.js";
+import Purchase from "../models/Purchase.js";
+import User from "../models/User.js";
+
+/**
+ * Points everything that belonged to an old record at the person's new sign-in account, then removes the old record.
+ * Each step can be run again, so a move cut short is simply finished on the next visit. A move cut short can find the
+ * new account already using a course (one enrollment and one progress record per person per course): the two are
+ * combined instead of moved, and the new account's rating stays.
+ */
+async function finishMove(oldId, newId) {
+  // (the new record got the old one's course list when it was made, in moveToNewAccount)
+  // every change names the old id too, so two visits finishing the same move can't undo each other's work
+  for (const purchase of await Purchase.find({ userId: oldId }).lean()) {
+    const kept = await Purchase.exists({ userId: newId, courseId: purchase.courseId });
+    if (kept) await Purchase.deleteOne({ _id: purchase._id, userId: oldId });
+    else await Purchase.updateOne({ _id: purchase._id, userId: oldId }, { $set: { userId: newId } }).catch(alreadyThere);
+  }
+  for (const progress of await CourseProgress.find({ userId: oldId }).lean()) {
+    const kept = await CourseProgress.findOne({ userId: newId, courseId: progress.courseId });
+    if (!kept) {
+      await CourseProgress.updateOne({ _id: progress._id, userId: oldId }, { $set: { userId: newId } }).catch(alreadyThere);
+      continue;
+    }
+    const done = [...new Set([...kept.lectureCompleted, ...progress.lectureCompleted])];
+    const lectures = await lectureIdsOf(progress.courseId);
+    const completed = kept.completed || progress.completed || (lectures.length > 0 && lectures.every((id) => done.includes(id)));
+    await CourseProgress.updateOne({ _id: kept._id }, { $set: { lectureCompleted: done, completed } });
+    await CourseProgress.deleteOne({ _id: progress._id, userId: oldId });
+  }
+  await Course.updateMany({ educator: oldId }, { $set: { educator: newId } });
+  await Course.updateMany({ enrolledStudents: oldId }, { $addToSet: { enrolledStudents: newId } });
+  await Course.updateMany({ enrolledStudents: oldId }, { $pull: { enrolledStudents: oldId } });
+  await Course.updateMany({ $and: [{ "courseRatings.userId": oldId }, { "courseRatings.userId": newId }] }, { $pull: { courseRatings: { userId: oldId } } });
+  await Course.updateMany(
+    { "courseRatings.userId": oldId },
+    { $set: { "courseRatings.$[mine].userId": newId } },
+    { arrayFilters: [{ "mine.userId": oldId }] }
+  );
+  await User.deleteOne({ _id: oldId });
+}
+
+/** A move step another visit finished first (the new account already holds that course): the next visit combines it. */
+function alreadyThere(error) {
+  if (error?.code !== 11000) throw error;
+}
+
+/** Every lecture id in a course, to tell whether combined progress finishes it. */
+async function lectureIdsOf(courseId) {
+  const course = await Course.findById(courseId).select("courseContent.chapterContent.lectureId").lean();
+  return (course?.courseContent ?? []).flatMap((chapter) => (chapter.chapterContent ?? []).map((lecture) => lecture.lectureId));
+}
+
+/**
+ * Someone whose sign-in account was made again (deleted, then invited again) comes back with a new id and the same
+ * email (owner's 5A, 2026-10-26): their old record's courses, progress, ratings and the courses they teach become the
+ * new account's. The old record gives up its email first, since emails are unique.
+ */
+async function moveToNewAccount(old, id, name, email) {
+  await User.updateOne({ _id: old._id }, { $set: { email: `moved-${old._id}@bharattech.local`, movedTo: id } });
+  try {
+    await User.create({ _id: id, name: name || old.name, email: email || old.email, imageUrl: old.imageUrl || "", enrolledCourses: old.enrolledCourses });
+  } catch (error) {
+    // two first visits at once: the other one made the record; this one helps finish the move
+    if (error?.code !== 11000 || !(await User.exists({ _id: id }))) throw error;
+  }
+  await finishMove(old._id, id);
+  return User.findById(id);
+}
+
+/**
+ * The signed-in person's LMS record, made on their first visit. Its name and email follow their sign-in, so a rename
+ * in the portal shows here on their next visit; a sign-in without them keeps the ones on file.
+ */
+export async function ensureUser(req) {
+  const id = req.user?.id;
+  if (!id) return null;
+  const name = req.user?.name;
+  const email = req.user?.email;
+
+  let user = await User.findById(id);
+  if (user) {
+    const unfinished = await User.findOne({ movedTo: id }).select("_id").lean();
+    if (unfinished) {
+      await finishMove(unfinished._id, id);
+      user = await User.findById(id);
+    }
+    if (name && user.name !== name) user.name = name;
+    // the email follows the sign-in too, unless another record holds it: a stale one let a new account with this
+    // person's old email take their courses on its first visit (security report 2026-10-28 lead 12)
+    if (email && user.email !== email && !(await User.exists({ email, _id: { $ne: id } }))) user.email = email;
+    if (user.isModified()) await user.save();
+    return user;
+  }
+
+  // an old record already giving up its email to this account (a move cut short), else one with the same email, but
+  // only when Keycloak has verified it (anyone can change their own email; our invites verify it)
+  const verified = req.user?.emailVerified === true;
+  const old = (await User.findOne({ movedTo: id })) || (email && verified ? await User.findOne({ email }) : null);
+  if (old) return moveToNewAccount(old, id, name, email);
+  // an unverified email another record holds: a record of its own, with a stand-in email (emails are unique)
+  const ownEmail = email && !(await User.exists({ email })) ? email : `${id}@bharattech.local`;
+
+  try {
+    return await User.create({
+      _id: id,
+      name: name || req.user?.username || email || "BharatTech User",
+      email: ownEmail,
+      imageUrl: "",
+      enrolledCourses: [],
+    });
+  } catch (error) {
+    // two first requests at once: the other one made it
+    if (error?.code === 11000) {
+      const made = await User.findById(id);
+      if (made) return made;
+    }
+    throw error;
+  }
+}

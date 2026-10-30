@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Shift Ledger</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <div class="ambient ambient-left"></div>
+    <div class="ambient ambient-right"></div>
+    <main class="app-card">
+      <section class="hero">
+        <p class="eyebrow">Attendance Control</p>
+        <h1>Shift Ledger</h1>
+        <p class="hero-copy">
+          Secure login, daily punch in, punch out, and a clear work log for each employee.
+        </p>
+        <div class="credential-note">
+          <span>Default login</span>
+          <strong>admin@company.com / admin123</strong>
+        </div>
+      </section>
+
+      <section id="auth-view" class="panel"></section>
+      <section id="dashboard-view" class="panel hidden"></section>
+    </main>
+  </div>
+
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,5 @@
+packages:
+  - .
+  - src-tauri/src/sidecars/claude_agent
+allowBuilds:
+  esbuild: set this to true or false

@@ -1,0 +1,31 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "license": "MIT",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "server": "nodemon server.js",
+    "start": "node server.js",
+    "test": "node --test --test-concurrency=1 --test-timeout=60000 --import ./tests/setup.js \"tests/**/*.test.js\""
+  },
+  "keywords": [],
+  "author": "amzilox",
+  "description": "",
+  "dependencies": {
+    "cloudinary": "^2.7.0",
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.1.0",
+    "express-mongo-sanitize": "^2.2.0",
+    "express-rate-limit": "^8.7.0",
+    "helmet": "^8.3.0",
+    "hpp": "^0.2.3",
+    "jsonwebtoken": "^9.0.3",
+    "jwks-rsa": "^3.2.0",
+    "mongoose": "^8.18.3",
+    "multer": "^2.0.2",
+    "nodemon": "^3.1.10",
+    "sanitize-html": "^2.18.0"
+  }
+}

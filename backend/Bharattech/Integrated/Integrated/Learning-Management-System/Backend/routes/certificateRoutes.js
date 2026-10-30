@@ -1,0 +1,188 @@
+const express = require("express");
+const fs = require("fs/promises");
+const mongoose = require("mongoose");
+const path = require("path");
+
+const router = express.Router();
+
+const { requireAdmin } = require("../middlewares/keycloakAuth");
+// server.js signs everyone in before these routes (app.use("/api/certificates", keycloakAuth, certificateRoutes)), so they don't check again
+const Certificate = require("../models/Certificate");
+const generateCertificate = require("../utils/generateCertifcate");
+const User = require("../models/User");
+const { notifyCertificateIssued, forgetNotesAbout } = require("../utils/notify");
+const { myCertificates, certificatePdf } = require("../controllers/certificateAccessController");
+const { readCertificateDetails } = require("../utils/certificateTemplate");
+
+// the portal's certificate types are far shorter; this keeps a typed title on the page
+const TITLE_MAX = 120;
+
+/**
+ * The signed-in admin's own record, or null. A certificate is issued only in their name: before step 17 an unknown
+ * issuer fell back to the oldest Admin, or a new Admin record was made up for them.
+ */
+const resolveIssuerUser = async (req) => {
+  if (mongoose.Types.ObjectId.isValid(req.user?.id)) {
+    const issuerById = await User.findById(req.user.id);
+    if (issuerById) return issuerById;
+  }
+
+  if (req.user?.keycloakId) {
+    const issuerByKeycloakId = await User.findOne({
+      keycloakId: req.user.keycloakId,
+      isDeleted: { $ne: true },
+    });
+    if (issuerByKeycloakId) return issuerByKeycloakId;
+  }
+
+  if (req.user?.email) {
+    const issuerByEmail = await User.findOne({
+      email: req.user.email.toLowerCase(),
+      isDeleted: { $ne: true },
+    });
+    if (issuerByEmail) return issuerByEmail;
+  }
+
+  return null;
+};
+
+router.post("/generate", requireAdmin, async (req, res) => {
+  const { userId, title } = req.body;
+
+  try {
+    if (!userId || !title) {
+      return res.status(400).json({
+        message: "User and certificate type are required",
+      });
+    }
+
+    if (typeof title !== "string" || title.trim().length > TITLE_MAX) {
+      return res.status(400).json({ message: `Keep the certificate title to ${TITLE_MAX} characters.` });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    // a certificate goes to someone who is here: not to a blocked or removed account
+    if (user.isDeleted) return res.status(409).json({ message: "This person was removed, so no certificate can be issued to them." });
+    if (user.isBanned) return res.status(409).json({ message: "This person is blocked. Unblock them first to issue a certificate." });
+
+    // before the PDF is made, so a refused request leaves no file behind
+    const issuer = await resolveIssuerUser(req);
+    if (!issuer) {
+      return res.status(403).json({ message: "Your account has no record here, so it can't issue certificates." });
+    }
+
+    const details = readCertificateDetails(req.body);
+    if (details.error) return res.status(400).json({ message: details.error });
+
+    const name =
+      user.fullName ||
+      `${user.firstName || ""} ${user.lastName || ""}`.trim() ||
+      user.email ||
+      "User";
+
+    const certificateNumber = `CERT-${Date.now()}-${Math.floor(
+      Math.random() * 10000
+    )}`;
+
+    const filePath = await generateCertificate({
+      name,
+      title,
+      certificateNumber,
+      role: user.role,
+      email: user.email,
+      username: user.username,
+      ...details,
+    });
+
+    const cert = new Certificate({
+      userId: user._id,
+      title,
+      certificateNumber,
+      filePath,
+      issuedBy: issuer._id,
+      jobTitle: details.jobTitle,
+      fromDate: details.fromDate,
+      toDate: details.toDate,
+    });
+
+    await cert.save();
+    await notifyCertificateIssued({ certificate: cert, recipient: user, issuer });
+
+    res.status(201).json({
+      message: "Certificate generated successfully",
+      certificate: cert,
+    });
+  } catch (error) {
+    console.error("Certificate error:", error);
+    res.status(500).json({
+      message: "Server error",
+    });
+  }
+});
+
+router.get("/", requireAdmin, async (req, res) => {
+  try {
+    const certificates = await Certificate.find({})
+      .populate("issuedBy", "fullName email role")
+      .populate("userId", "fullName email username role")
+      .sort({ issuedAt: -1, createdAt: -1 });
+
+    res.json(certificates);
+  } catch (error) {
+    console.error("Certificate history error:", error);
+    res.status(500).json({
+      message: "Failed to fetch certificate history",
+    });
+  }
+});
+
+// The signed-in person's own certificates (matched by account, never by name)
+router.get("/my", myCertificates);
+
+// A certificate as a PDF, built fresh each time; for its owner, admins and superadmins
+router.get("/:id/pdf", certificatePdf);
+
+router.delete("/:id", requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ message: "Invalid certificate id" });
+    }
+
+    const certificate = await Certificate.findById(id);
+
+    if (!certificate) {
+      return res.status(404).json({ message: "Certificate not found" });
+    }
+
+    await Certificate.deleteOne({ _id: id });
+    await forgetNotesAbout(id);
+
+    if (certificate.filePath) {
+      const certificatesDir = path.resolve(__dirname, "../certificates");
+      const fileName = path.basename(certificate.filePath);
+      const filePath = path.join(certificatesDir, fileName);
+
+      try {
+        await fs.unlink(filePath);
+      } catch (fileError) {
+        if (fileError.code !== "ENOENT") {
+          console.warn("Certificate file cleanup failed:", fileError.message);
+        }
+      }
+    }
+
+    res.json({ message: "Certificate deleted successfully" });
+  } catch (error) {
+    console.error("Delete certificate error:", error);
+    res.status(500).json({
+      message: "Failed to delete certificate",
+    });
+  }
+});
+
+module.exports = router;

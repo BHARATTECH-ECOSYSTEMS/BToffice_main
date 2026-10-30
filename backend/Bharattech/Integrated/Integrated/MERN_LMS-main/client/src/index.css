@@ -1,0 +1,252 @@
+@import url("https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap");
+
+@import url("https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─── BharatTech Global Brand Design Tokens ─── */
+:root {
+  --brand-primary: #ff5a00;
+  --brand-secondary: #0f172a;
+  --brand-accent: #3b82f6;
+  --brand-success: #10b981;
+  --brand-warning: #f59e0b;
+  --brand-error: #ef4444;
+
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+}
+
+/* Premium transitions for background & border (avoids overriding transform/opacity on animations) */
+* {
+  /* font-family: Roboto; */
+  font-family: "Ubuntu", sans-serif;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Accessible focus rings for keyboard navigation */
+*:focus-visible {
+  outline: 2px solid var(--brand-primary);
+  outline-offset: 2px;
+}
+
+/* The learner pages wear the portal's look (owner's 2A, 2026-10-26); the educator pages keep their own for now. */
+.learn,
+.learn * {
+  font-family: Figtree, system-ui, sans-serif;
+}
+.learn .font-display {
+  font-family: "Bricolage Grotesque", system-ui, sans-serif;
+  font-optical-sizing: auto;
+}
+.learn *:focus-visible {
+  outline-color: #6e58f5;
+}
+/* toasts in the portal's colours (owner's refinement), only on learner pages */
+.learn {
+  --toastify-color-light: #fdfcf9;
+  --toastify-text-color-light: #14130f;
+  --toastify-color-success: #6e58f5;
+  --toastify-color-info: #6e58f5;
+  --toastify-color-warning: #ff8643;
+  --toastify-color-error: #b42318;
+  /* the library derives these from the colours above once, at :root, so they are set here too */
+  --toastify-icon-color-success: #6e58f5;
+  --toastify-icon-color-info: #6e58f5;
+  --toastify-icon-color-warning: #ff8643;
+  --toastify-icon-color-error: #b42318;
+  --toastify-color-progress-success: #6e58f5;
+  --toastify-color-progress-info: #6e58f5;
+  --toastify-color-progress-warning: #ff8643;
+  --toastify-color-progress-error: #b42318;
+  --toastify-font-family: Figtree, system-ui, sans-serif;
+}
+.learn .Toastify__toast {
+  border: 1px solid rgb(20 19 15 / 0.08);
+  border-radius: 14px;
+  box-shadow: 0 12px 32px rgb(20 19 15 / 0.12);
+}
+/* at the bottom right (owner, 2026-10-30; the top centre sat in the middle of the screen), raised above an open
+   window's lowest buttons by useToastLift so they never cover Mark as watched, Save and the like */
+.learn .Toastify__toast-container--bottom-right {
+  bottom: var(--toast-lift, 16px);
+  transition: bottom 200ms ease-out;
+}
+/* a finger-sized tap area on phones (owner's L2A, 2026-10-27): at least 44 x 44 px, a see-through layer centred on the
+   control, so nothing on the page moves */
+@media (max-width: 767px) {
+  /* the toast's close button is placed by Toastify already, which the layer needs too */
+  .learn .tap {
+    position: relative;
+  }
+  .learn .tap::after,
+  .learn .Toastify__close-button::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: max(100%, 44px);
+    height: max(100%, 44px);
+    transform: translate(-50%, -50%);
+  }
+  /* Add a course's description toolbar (owner's E3A, 2026-10-27): its buttons sit edge to edge, so layers would
+     overlap; on phones they are a real 44 px instead (Quill's own 28 x 24, same 18 px icon) and the toolbar wraps */
+  .learn .ql-snow.ql-toolbar button {
+    width: 44px;
+    height: 44px;
+    padding: 13px;
+  }
+  .learn .ql-snow .ql-picker {
+    height: 44px;
+  }
+  .learn .ql-snow .ql-picker-label {
+    display: flex;
+    align-items: center;
+  }
+}
+@media (max-width: 480px) {
+  /* Toastify runs them edge to edge on phones; keep the page's own 12 px margins */
+  .learn .Toastify__toast-container--bottom-right {
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+}
+
+/* the company CSS hides every scrollbar; on learner pages the page's own comes back (App.jsx sets the class), so
+   you can see how long a page is. The standard properties win over the ::-webkit-scrollbar rule. */
+html.learn-page {
+  scrollbar-width: auto;
+  scrollbar-color: rgb(20 19 15 / 0.28) transparent;
+}
+
+/* a clicked course card's cover grows into the course page's cover (hooks/useCoverMorph.js); the rest of the page
+   crossfades quickly. Reduced motion never starts the morph. */
+::view-transition-group(course-cover) {
+  animation-duration: 300ms;
+  animation-timing-function: cubic-bezier(0.77, 0, 0.175, 1);
+}
+/* both covers have rounded top corners; the moving picture keeps them */
+::view-transition-image-pair(course-cover) {
+  overflow: hidden;
+  border-radius: 16px 16px 0 0;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 180ms;
+}
+
+/* the course description editor (Quill) inside the Add a course form: one frame, the form's own */
+.learn .course-editor .ql-toolbar.ql-snow {
+  border: 0;
+  border-bottom: 1px solid rgb(20 19 15 / 0.08);
+}
+.learn .course-editor .ql-container.ql-snow {
+  border: 0;
+  font-family: Figtree, system-ui, sans-serif;
+  font-size: 15px;
+}
+
+.learn .rich-text {
+  font-size: 16px;
+  line-height: 1.65;
+  color: #5c574e;
+}
+.learn .rich-text h1,
+.learn .rich-text h2,
+.learn .rich-text h3 {
+  font-size: 18px;
+  font-weight: 650;
+  color: #14130f;
+  margin: 20px 0 8px;
+}
+.learn .rich-text > :first-child {
+  margin-top: 0;
+}
+.learn .rich-text a {
+  color: #5a41e2;
+  text-decoration: underline;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+::-webkit-scrollbar {
+  display: none;
+}
+
+.rich-text {
+  font-size: 15px;
+  color: #7a7b7d;
+}
+
+.rich-text p {
+  margin-bottom: 16px;
+}
+
+.rich-text h1 {
+  font-size: 36px;
+  font-weight: 800;
+  color: #252525;
+  margin: 32px 0;
+}
+
+.rich-text h2 {
+  font-size: 22px;
+  font-weight: 700;
+  color: #252525;
+  margin: 24px 0;
+}
+
+.rich-text h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #333333;
+  margin: 20px 0;
+}
+
+.rich-text h4 {
+  font-size: 16px;
+  font-weight: 500;
+  color: #444444;
+  margin: 16px 0;
+}
+
+.rich-text h5 {
+  font-size: 14px;
+  font-weight: 400;
+  color: #555555;
+  margin: 12px 0;
+}
+
+.rich-text h6 {
+  font-size: 12px;
+  font-weight: 400;
+  color: #666666;
+  margin: 8px 0;
+}
+
+.rich-text strong {
+  font-weight: 700;
+}
+
+.rich-text ol {
+  margin-left: 30px;
+  list-style-type: decimal;
+}
+
+.rich-text ul {
+  margin-left: 30px;
+  list-style-type: disc;
+}
+
+.rich-text li {
+  margin-bottom: 8px;
+}

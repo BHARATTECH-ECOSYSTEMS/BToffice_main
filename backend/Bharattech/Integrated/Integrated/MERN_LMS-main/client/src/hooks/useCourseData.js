@@ -1,0 +1,68 @@
+import { useEffect, useCallback, useState } from "react";
+import { useAppConfig } from "../context/AppContext";
+import { useAuth } from "../context/AuthContext";
+import { useEnrollments } from "../context/EnrollmentContext";
+import axios from "axios";
+import { toast } from "react-toastify";
+import { ownRating } from "../utils/courseHelpers";
+
+export const useCourseData = (courseId, source = "all_courses") => {
+  const { backendUrl } = useAppConfig();
+  const { userData, getToken } = useAuth();
+  const { enrolledCourses } = useEnrollments();
+  const [courseData, setCourseData] = useState(null);
+  const [initRating, setInitRating] = useState(0);
+
+  const handleRate = async (rating) => {
+    try {
+      const token = await getToken();
+      const { data } = await axios.post(
+        `${backendUrl}/api/user/add-rating`,
+        { courseId, rating },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (data.status === "success") {
+        toast.success(data.message);
+        fetchCourseData();
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  };
+
+  const fetchCourseData = useCallback(async () => {
+    try {
+      // 1/ If source is 'enrolled', use data from context:
+      if (source === "enrolled") {
+        const course = enrolledCourses.find(
+          (course) => course._id === courseId
+        );
+        if (course) {
+          setCourseData(course);
+          const rating = ownRating(course, userData);
+          if (rating) {
+            setInitRating(rating);
+          }
+          return; // Blaa man7taaj backend data ✅;
+        }
+      }
+
+      // 2/ Otherwise, 9elleeb ela data mn server:
+      const { data } = await axios.get(`${backendUrl}/api/courses/${courseId}`);
+
+      if (data.success) {
+        setCourseData(data.data.course);
+      } else {
+        toast.error(data.message);
+      }
+    } catch (error) {
+      toast.error(error.message);
+    }
+  }, [source, enrolledCourses, courseId, backendUrl, userData]);
+
+  useEffect(() => {
+    fetchCourseData();
+  }, [fetchCourseData]);
+  return { initRating, handleRate, courseData };
+};
