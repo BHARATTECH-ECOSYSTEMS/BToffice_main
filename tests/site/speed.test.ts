@@ -23,7 +23,8 @@ test('off screen, every endless animation in a section holds still, and nothing 
     .filter((f) => f.endsWith('.css') && !OUTSIDE_SECTIONS.has(f))
     .flatMap((f) => rules(styles(f)).filter(([, decl]) => /animation(-iteration-count)?\s*:[^;]*\binfinite\b/.test(decl)).flatMap(([sel]) => sel.split(',').map((s) => `${f}: ${s.trim()}`)));
   assert.ok(endless.length > 20, `only ${endless.length} endless animations found: the scan is broken`);
-  const missing = endless.filter((e) => !paused.has(`[data-offscreen] ${e.split(': ')[1]}`));
+  // the live logo is the one exception: every copy moves as one and never stops (owner, 2026-10-30)
+  const missing = endless.filter((e) => !/\.faq-mark-(thread|origin)\b/.test(e) && !paused.has(`[data-offscreen] ${e.split(': ')[1]}`));
   assert.deepEqual(missing, []);
 });
 
@@ -58,20 +59,17 @@ test("the hero's own slow-machine check doesn't run while it draws at 30 on purp
   assert.match(studio, /if \(!pacing\) this\.adapt\(dt\)/);
 });
 
-// The small round logo (top bar, back-to-top orb) keeps drawing while the page scrolls: frozen mid-thread on every
-// scroll, then jumping on, it read as lag (owner's B, 2026-10-25). The big marks inside sections still hold still.
-test('while scrolling, the top-bar and back-to-top logo keep moving; the other endless loops still pause', () => {
+// Every copy of the live logo moves as one and never stops (owner, 2026-10-30): no pause while scrolling, off screen,
+// or inside a hidden orb or nav glance, since a paused copy falls out of step with the others. Other endless loops
+// still hold still while the page scrolls.
+test('the live logo never pauses; the other endless loops still pause while scrolling', () => {
   const base = styles('base.css');
-  const scrollRules = rules(base).filter(([sel]) => sel.includes('[data-scrolling]'));
-  const paused = scrollRules.filter(([, decl]) => /animation-play-state:\s*paused/.test(decl));
-  const running = scrollRules.filter(([, decl]) => /animation-play-state:\s*running/.test(decl));
-  assert.ok(paused.some(([sel]) => sel.includes('.faq-mark-thread')), 'the marks inside sections no longer pause');
-  assert.ok(paused.some(([sel]) => sel.includes('.beam-light')), 'the other loops no longer pause');
-  const resumed = running.map(([sel]) => sel).join(' ');
-  for (const where of ['.nav-orb', '.to-top-well']) assert.ok(resumed.includes(where), `${where}'s logo still pauses while scrolling`);
-  for (const part of ['.faq-mark-thread', '.faq-mark-origin']) assert.ok(resumed.includes(part), `${part} still pauses in the small logo`);
-  // a hidden back-to-top orb keeps its own pause (.to-top:not([data-shown]) *)
-  assert.ok(resumed.includes('.to-top[data-shown]'), 'the hidden back-to-top orb would draw while scrolling');
-  // the resume rule must come after the pause rule, which it ties with
-  assert.ok(base.lastIndexOf('animation-play-state: running') > base.indexOf('[data-scrolling]'), 'the resume rule comes before the pause');
+  const pausing = rules(base).filter(([, decl]) => /animation-play-state:\s*paused/.test(decl));
+  for (const [sel] of pausing) assert.ok(!/faq-mark/.test(sel), `the live logo still pauses: ${sel.trim().slice(0, 80)}`);
+  assert.ok(pausing.some(([sel]) => sel.includes('[data-scrolling]') && sel.includes('.beam-light')), 'the other loops no longer pause');
+  // the hidden orb and nav glance pause everything in them (* rules), so the logo inside is let run again, after them
+  const running = rules(base).filter(([, decl]) => /animation-play-state:\s*running/.test(decl));
+  const resume = running.find(([sel]) => sel.includes('.to-top') && sel.includes('.nav-peek') && sel.includes('.faq-mark-thread') && sel.includes('.faq-mark-origin'));
+  assert.ok(resume, 'the logo in the hidden orb or nav glance pauses');
+  assert.ok(base.indexOf(resume![0]) > base.indexOf('.to-top:not([data-shown]) *'), 'the resume rule comes before the pause it overrides');
 });

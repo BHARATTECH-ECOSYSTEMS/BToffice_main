@@ -1,6 +1,7 @@
-import { useEffect, useId, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ElementType, type ReactNode } from 'react';
 import { ORIGIN_POINT, threadPaths } from '../gl/threads';
 import type { HueName } from '../gl/palette';
+import { onPageClock } from './logoClock';
 
 const PATHS = threadPaths();
 
@@ -39,8 +40,14 @@ export function LogoMark({ size = 28 }: { size?: number }) {
 export function ThreadMark({ size }: { size?: number }) {
   // the mark appears many times on a page, so each copy needs its own clip id
   const clip = `mark-disc-${useId().replace(/:/g, '')}`;
+  // every copy shows the same moment of the loop (logoClock.ts); the browser restarts a loop when its copy is shown
+  // again after being hidden, and onAnimationStart pins it back
+  const ref = useRef<SVGSVGElement>(null);
+  useLayoutEffect(() => {
+    if (ref.current) onPageClock(ref.current);
+  }, []);
   return (
-    <svg className="faq-mark" viewBox="-1.1 -1.1 2.2 2.2" aria-hidden="true" style={size ? { width: size, height: size } : undefined}>
+    <svg ref={ref} className="faq-mark" viewBox="-1.1 -1.1 2.2 2.2" aria-hidden="true" style={size ? { width: size, height: size } : undefined} onAnimationStart={(e) => onPageClock(e.currentTarget)}>
       <clipPath id={clip}>
         <circle r="1" />
       </clipPath>
