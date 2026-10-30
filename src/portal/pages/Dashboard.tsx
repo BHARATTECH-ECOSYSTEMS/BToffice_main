@@ -4,6 +4,7 @@ import { CERTIFICATE_TYPES, PERSON_STATUS_LABEL, ROLE_LABEL, toolById, type Pers
 import { hasArrived, managesPortal, markArrived, useSession } from '../session';
 import { formatDate, usePeopleById, usePortal } from '../store';
 import { Badge, btnClass, BtnLabel, DeleteButton, Empty, initials, Modal, NotConnected, PIcon, PresenceDot, SearchField, Stat, ToolButton, useListFlip, useNotice } from '../ui';
+import { useScrollBox } from '../scrollBox';
 import { askToWatchActivity, useMyPresence } from '../presence';
 import { attendanceFailedMessage, formatDuration, indiaHour, indiaTimeSec, indiaToday, useAttendanceDay } from '../attendance';
 import { useOfficeSource } from './officeSource';
@@ -821,8 +822,11 @@ function TaskBoard({
   // open tasks first, soonest due first; tasks with no due date after the dated ones
   const sorted = [...list].sort((a, b) => Number(a.status === 'done') - Number(b.status === 'done') || (a.due || '~').localeCompare(b.due || '~'));
   const listRef = useListFlip<HTMLUListElement>(sorted.map((t) => `${t.id}:${t.status}`).join());
+  // the board keeps the wheel only while its tasks overflow it; otherwise the page glides on under the cursor
+  const boardRef = useRef<HTMLElement>(null);
+  const boardScrolls = useScrollBox(boardRef);
   return (
-    <section className="p-card p-board" aria-labelledby="board-title" data-lenis-prevent>
+    <section ref={boardRef} className="p-card p-board" aria-labelledby="board-title" data-lenis-prevent={boardScrolls || undefined}>
       <div className="p-board-head">
         <h2 id="board-title" className="p-card-title">
           {title}
