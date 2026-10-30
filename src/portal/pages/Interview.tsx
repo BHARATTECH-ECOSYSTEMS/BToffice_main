@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { openInterviewTool } from '../interview';
 import { LAST_STEP, PREVIEW_MESSAGES, PREVIEW_PHASES, PREVIEW_TIMELINE, previewState, startStep, type MessageStatus, type PreviewMessage } from '../interviewPreview';
+import { useScrollBox } from '../scrollBox';
 import { useSession } from '../session';
 import { btnClass, BtnLabel, PageHead, PortalNotFound } from '../ui';
 
@@ -102,6 +103,18 @@ function InterviewPreview() {
 
   const { status, highlight, phase } = previewState(step);
   const phaseIndex = PREVIEW_PHASES.indexOf(phase);
+  const chat = useRef<HTMLDivElement>(null);
+  const chatScrolls = useScrollBox(chat);
+
+  // the whole interview is taller than the window, so the window follows the newest line as it appears
+  useEffect(() => {
+    const box = chat.current;
+    if (!box || reduced) return;
+    const seen = box.querySelectorAll<HTMLElement>('.p-iv-msg:not([data-status="hidden"])');
+    const latest = seen[seen.length - 1];
+    const top = latest ? Math.max(0, latest.offsetTop + latest.offsetHeight + 16 - box.clientHeight) : 0;
+    box.scrollTo({ top, behavior: step ? 'smooth' : 'auto' });
+  }, [step, reduced]);
 
   return (
     <figure className="p-iv-preview" aria-label="Example of what a candidate sees">
@@ -110,15 +123,14 @@ function InterviewPreview() {
           <span className="p-iv-window-title">What the candidate sees</span>
           <span className="p-iv-example">Example</span>
         </header>
-        <div className="p-iv-phase" aria-hidden="true">
-          <ol className="p-iv-phase-bar">
-            {PREVIEW_PHASES.map((p, i) => (
-              <li key={p} data-on={i <= phaseIndex || undefined} />
-            ))}
-          </ol>
-          <span className="p-iv-phase-name">{phase}</span>
-        </div>
-        <div className="p-iv-chat">
+        <ol className="p-iv-phase" aria-label="Interview steps">
+          {PREVIEW_PHASES.map((p, i) => (
+            <li key={p} data-on={i <= phaseIndex || undefined} aria-current={i === phaseIndex ? 'step' : undefined}>
+              {p}
+            </li>
+          ))}
+        </ol>
+        <div className="p-iv-chat" ref={chat} data-lenis-prevent={chatScrolls || undefined}>
           {PREVIEW_MESSAGES.map((m) => (
             <PreviewBubble key={m.id} message={m} status={status[m.id]} lit={highlight} />
           ))}
