@@ -2785,6 +2785,8 @@ a.p-cal-item-title {
   justify-content: center;
   gap: 8px;
   min-height: 42px;
+  /* the longer label ("My attendance") otherwise fills its pill edge to edge */
+  padding-inline: 18px;
   border-radius: var(--r-pill);
   font-size: 14px;
   font-weight: 600;
@@ -3968,64 +3970,203 @@ td > .p-presence-dot,
   gap: 6px;
   justify-items: end;
 }
-.p-att-days,
-.p-att-visits {
+/* times and lengths stay in the text face; even-width digits keep a column's numbers lined up */
+.p-table .is-num {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* a person's history: the dates in four numbers */
+.p-att-sum {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin: 20px 0 4px;
+  padding: 14px 0;
+  border-block: 1px solid var(--line);
+}
+.p-att-sum > div {
+  display: grid;
+  gap: 4px;
+  padding: 0 16px;
+}
+.p-att-sum > div:first-child {
+  padding-left: 0;
+}
+.p-att-sum > div + div {
+  border-left: 1px solid var(--line);
+}
+.p-att-sum dt {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.p-att-sum dd {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.p-att-sum .is-idle dd {
+  color: var(--p-error-text);
+}
+
+/* days of visits, newest first: a heading, the day's bar, then its visits */
+.p-att-days {
   margin: 0;
   padding: 0;
   list-style: none;
 }
 .p-att-days > li {
-  padding: 12px 0;
+  padding: 22px 0 10px;
   border-bottom: 1px solid var(--line);
 }
 .p-att-days > li:last-child {
   border-bottom: 0;
+  padding-bottom: 0;
 }
 .p-att-day-head {
   display: flex;
   align-items: center;
   gap: 8px;
 }
+.p-att-day-name {
+  margin: 0 4px 0 0;
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 620;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
 .p-att-total {
   margin-left: auto;
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 620;
   font-variant-numeric: tabular-nums;
-  font-weight: 600;
+  color: var(--ink);
 }
-.p-att-visits {
-  margin-top: 6px;
-  font-size: 14px;
-  color: var(--ink-soft);
+
+/* the day at a glance (DayBarView): violet = in, red = inactive, a faint mark on every hour */
+.p-att-bar {
+  margin: 14px 0 6px;
 }
-.p-att-visits > li {
+.p-att-bar-track {
+  position: relative;
+  height: 10px;
+  /* nearly square ends and nothing clipped: a short visit at either end of the day stays visible */
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--ink) 6%, transparent);
+}
+.p-att-bar-track > * {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+}
+.p-att-bar-track .is-hour {
+  width: 1px;
+  background: color-mix(in srgb, var(--ink) 10%, transparent);
+}
+.p-att-bar-track .is-in {
+  min-width: 2px;
+  border-radius: 2px;
+  background: var(--violet);
+}
+.p-att-bar-track .is-idle {
+  min-width: 2px;
+  background: #ef4444;
+}
+.p-att-bar-ends {
   display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 12px;
-  padding: 2px 0;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: 12px;
   font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+/* a day's visits: each visit and its notes form one group (tbody), with one line between groups */
+.p-att-visits td {
+  padding-block: 10px;
+  border-bottom: 0;
+}
+.p-att-visits tbody + tbody {
+  border-top: 1px solid var(--line);
+}
+.p-att-visits th:nth-child(-n + 4) {
+  width: 22%;
+}
+.p-att-visits tr.p-att-notes > td {
+  padding-top: 0;
+}
+@media (hover: hover) and (pointer: fine) {
+  .p-att-visits tbody tr:hover {
+    background: none;
+  }
+  .p-att-visits tbody:hover {
+    background: color-mix(in srgb, var(--violet) 4%, transparent);
+  }
+}
+.p-att-notes p {
+  margin: 0;
+}
+.p-att-idle-sum {
+  color: var(--p-error-text);
 }
 .p-att-fix {
-  flex-basis: 100%;
-  margin: 0;
+  margin: 4px 0 0;
   white-space: pre-line;
   font-size: 13px;
   color: var(--ink-soft);
 }
-/* a visit's stretches without use (the live dot was red), under its times */
-.p-att-idle {
-  flex-basis: 100%;
-  display: grid;
-  gap: 2px;
-  margin: 0;
-  padding: 0 0 0 4px;
-  list-style: none;
-  font-size: 13px;
-  color: #dc2626;
-}
-.p-att-idle > li {
-  display: flex;
+/* a visit's stretches without use (the live dot was red), folded under it */
+.p-att-idle summary {
+  display: inline-flex;
   align-items: center;
   gap: 8px;
+  min-height: 28px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--p-error-text);
+  cursor: pointer;
+  list-style: none;
+}
+.p-att-idle summary::-webkit-details-marker {
+  display: none;
+}
+.p-att-idle summary .p-icon {
+  rotate: 90deg;
+  transition: rotate var(--dur-ui) var(--ease);
+}
+.p-att-idle[open] summary .p-icon {
+  rotate: -90deg;
+}
+.p-att-idle summary:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.p-att-idle ul {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 2px 24px;
+  margin: 4px 0 6px;
+  padding: 0 0 0 16px;
+  list-style: none;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.p-att-idle li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  border-bottom: 1px dashed var(--line);
 }
 
 .p-profile {

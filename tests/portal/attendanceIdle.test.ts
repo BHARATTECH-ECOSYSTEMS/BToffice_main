@@ -54,8 +54,10 @@ test('times and lengths show seconds', () => {
 
 test('History lists each inactive stretch with its times and length, and the day’s total', () => {
   const page = readFileSync('src/portal/pages/Attendance.tsx', 'utf8');
-  assert.match(page, /v\.idle\.map\(/);
-  assert.match(page, /Inactive \{indiaTimeSec\(s\.from\)\} – \{s\.ongoing \? 'now' : indiaTimeSec\(s\.to\)\}/);
+  assert.match(page, /visit\.idle\.map\(/);
+  // the stretches sit folded under "N inactive stretches", so each line is just its times
+  assert.match(page, /\{n\} inactive \{n === 1 \? 'stretch' : 'stretches'\}/);
+  assert.match(page, /\{indiaTimeSec\(s\.from\)\} – \{s\.ongoing \? 'now' : indiaTimeSec\(s\.to\)\}/);
   assert.match(page, /formatDuration\(s\.seconds\)/);
   assert.match(page, /d\.idleSeconds > 0/);
   assert.match(page, /formatDuration\(d\.seconds\)/);

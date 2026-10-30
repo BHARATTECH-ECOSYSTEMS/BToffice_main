@@ -4,7 +4,9 @@ import {
   attendanceFailedMessage,
   correctionProblem,
   correctVisit,
+  dayBar,
   formatDuration,
+  historySummary,
   indiaClock,
   indiaTimeSec,
   indiaToday,
@@ -13,6 +15,7 @@ import {
   useAttendanceDay,
   useMyAttendance,
   usePersonHistory,
+  visitIdleSeconds,
   type AttendanceDay,
   type DayRange,
   type DayRow,
@@ -21,7 +24,7 @@ import {
 } from '../attendance';
 import { managesPortal, useSession } from '../session';
 import { formatDate } from '../store';
-import { Badge, btnClass, BtnLabel, Empty, Modal, PageHead, PresenceDot, Stat, useNotice } from '../ui';
+import { Badge, btnClass, BtnLabel, Empty, Modal, PageHead, PIcon, PresenceDot, Stat, useNotice } from '../ui';
 import { SIGNAL_EVERY_MS } from '../presence';
 
 /**
@@ -84,6 +87,9 @@ function LoadFailed({ what, error, retry }: { what: string; error: ApiError; ret
 }
 
 const lastThirtyDays = (): DayRange => ({ from: shiftDay(indiaToday(), -30), to: indiaToday() });
+
+/** A cell with nothing to show; one look for it everywhere on the page. */
+const NONE = <span className="p-dim">-</span>;
 
 /** From and to for a history (owner's 4A); the list follows as soon as the two make a range the backend takes. */
 function RangePicker({ range, onChange, label }: { range: DayRange; onChange: (range: DayRange) => void; label: string }) {
@@ -211,10 +217,10 @@ function TeamDay() {
                         </>
                       )}
                     </td>
-                    {isToday && <td>{r.inNow ? <PresenceDot presence={r.presence} label /> : <span className="p-dim">-</span>}</td>}
-                    <td>{r.firstIn ? indiaTimeSec(r.firstIn) : '-'}</td>
-                    <td>{r.lastOut ? indiaTimeSec(r.lastOut) : '-'}</td>
-                    <td className="is-mono">{r.visits.length ? formatDuration(r.seconds) : '-'}</td>
+                    {isToday && <td>{r.inNow ? <PresenceDot presence={r.presence} label /> : NONE}</td>}
+                    <td className="is-num">{r.firstIn ? indiaTimeSec(r.firstIn) : NONE}</td>
+                    <td className="is-num">{r.lastOut ? indiaTimeSec(r.lastOut) : NONE}</td>
+                    <td className="is-num">{r.visits.length ? formatDuration(r.seconds) : NONE}</td>
                     <td className="is-end">
                       <button type="button" className="p-link" onClick={() => setPerson(r)}>
                         History<span className="sr-only"> of {r.name}</span>
@@ -251,6 +257,7 @@ function PersonDays({ person, onCorrected, onClose }: { person: DayRow; onCorrec
       <div className="p-card-head">
         <h2 id="person-days" className="p-card-title">
           {person.name}
+          {person.employeeId && <span className="p-dim is-mono">{person.employeeId}</span>}
         </h2>
         <div className="p-att-pick">
           <RangePicker range={range} onChange={setRange} label={`Show ${person.name}’s attendance between`} />
@@ -259,6 +266,7 @@ function PersonDays({ person, onCorrected, onClose }: { person: DayRow; onCorrec
           </button>
         </div>
       </div>
+      {state.kind === 'ready' && <HistorySummary days={state.value.days} />}
       {notice}
       <Days
         state={state.kind === 'ready' ? { kind: 'ready', value: state.value.days } : state}
@@ -282,6 +290,31 @@ function PersonDays({ person, onCorrected, onClose }: { person: DayRow; onCorrec
         />
       )}
     </section>
+  );
+}
+
+/** The chosen dates in four numbers, above the days themselves. */
+function HistorySummary({ days }: { days: AttendanceDay[] }) {
+  const sum = historySummary(days);
+  return (
+    <dl className="p-att-sum">
+      <div>
+        <dt>Days in</dt>
+        <dd>{sum.daysIn}</dd>
+      </div>
+      <div>
+        <dt>Total time</dt>
+        <dd>{formatDuration(sum.seconds)}</dd>
+      </div>
+      <div className={sum.idleSeconds ? 'is-idle' : undefined}>
+        <dt>Inactive</dt>
+        <dd>{formatDuration(sum.idleSeconds)}</dd>
+      </div>
+      <div>
+        <dt>Average per day</dt>
+        <dd>{sum.daysIn ? formatDuration(sum.perDay) : NONE}</dd>
+      </div>
+    </dl>
   );
 }
 
@@ -311,50 +344,133 @@ function Days({
   if (state.kind === 'error') return <LoadFailed what={what} error={state.error} retry={retry} />;
   const days = Array.isArray(state.value) ? state.value : state.value.days;
   if (!days.length) return <Empty icon="calendar" title="No visits yet">{empty}</Empty>;
+  const now = Date.now();
+  // employees and interns are never sent inactive stretches, so the column only shows where there are some
+  const showIdle = days.some((d) => d.idleSeconds > 0 || d.visits.some((v) => v.idle.length));
+  const columns = 3 + Number(showIdle) + Number(!!onCorrect);
   return (
     <ul className="p-att-days">
-      {days.map((d) => (
-        <li key={d.day}>
-          <div className="p-att-day-head">
-            <span className="is-strong">{d.day === indiaToday() ? 'Today' : formatDate(d.day)}</span>
-            {d.noCheckOut && <Badge kind="todo">No check-out</Badge>}
-            {d.idleSeconds > 0 && <Badge kind="inactive">Inactive {formatDuration(d.idleSeconds)}</Badge>}
-            <span className="p-att-total">{formatDuration(d.seconds)}</span>
-          </div>
-          <ul className="p-att-visits">
-            {d.visits.map((v) => (
-              <li key={v.id}>
-                <span>
-                  {indiaTimeSec(v.inAt)} – {v.outAt === null ? 'now' : indiaTimeSec(v.outAt)}
-                  {v.noCheckOut && <span className="p-dim">{v.corrections.length ? ' (no check-out; corrected below)' : ' (ended at midnight, no check-out)'}</span>}
-                </span>
-                {onCorrect && v.outAt !== null && (
-                  <button type="button" className="p-link" onClick={() => onCorrect(v, d.day)}>
-                    Correct
-                  </button>
-                )}
-                {v.idle.length > 0 && (
-                  <ul className="p-att-idle" aria-label="Inactive">
-                    {v.idle.map((s) => (
-                      <li key={s.from}>
-                        <span className="p-presence-dot is-inactive" aria-hidden="true" />
-                        Inactive {indiaTimeSec(s.from)} – {s.ongoing ? 'now' : indiaTimeSec(s.to)}
-                        <span className="p-dim"> · {formatDuration(s.seconds)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {v.corrections.map((c, i) => (
-                  <p key={i} className="p-att-fix">
-                    Corrected by {c.byName || 'an admin'}: “{c.reason}” (was {indiaTimeSec(c.from.inAt)} – {c.from.outAt === null ? '…' : indiaTimeSec(c.from.outAt)})
-                  </p>
-                ))}
-              </li>
-            ))}
-          </ul>
-        </li>
-      ))}
+      {days.map((d) => {
+        const label = d.day === indiaToday() ? 'Today' : formatDate(d.day);
+        return (
+          <li key={d.day}>
+            <div className="p-att-day-head">
+              <h3 className="p-att-day-name">{label}</h3>
+              {d.noCheckOut && <Badge kind="todo">No check-out</Badge>}
+              {d.idleSeconds > 0 && <Badge kind="inactive">Inactive {formatDuration(d.idleSeconds)}</Badge>}
+              <span className="p-att-total">{formatDuration(d.seconds)}</span>
+            </div>
+            <DayBarView day={d} now={now} />
+            <table className="p-table p-att-visits">
+              <caption className="sr-only">Visits, {label}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">In</th>
+                  <th scope="col">Out</th>
+                  <th scope="col">Time</th>
+                  {showIdle && <th scope="col">Inactive</th>}
+                  {onCorrect && (
+                    <th scope="col">
+                      <span className="sr-only">Correct</span>
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              {d.visits.map((v) => (
+                // a visit and its notes share one group, so they read (and highlight) as one
+                <tbody key={v.id}>
+                  <tr>
+                    <td className="is-num">{indiaTimeSec(v.inAt)}</td>
+                    <td className="is-num">{v.outAt === null ? 'now' : indiaTimeSec(v.outAt)}</td>
+                    <td className="is-num">{formatDuration(((v.outAt ?? now) - v.inAt) / 1000)}</td>
+                    {showIdle && <td className="is-num">{visitIdleSeconds(v) ? <span className="p-att-idle-sum">{formatDuration(visitIdleSeconds(v))}</span> : NONE}</td>}
+                    {onCorrect && (
+                      <td className="is-end">
+                        {v.outAt !== null && (
+                          <button type="button" className="p-link" onClick={() => onCorrect(v, d.day)}>
+                            Correct<span className="sr-only"> the visit from {indiaTimeSec(v.inAt)}</span>
+                          </button>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                  {(v.noCheckOut || v.idle.length > 0 || v.corrections.length > 0) && (
+                    <tr className="p-att-notes">
+                      <td colSpan={columns}>
+                        {v.noCheckOut && <p className="p-dim">{v.corrections.length ? 'No check-out; corrected below.' : 'Ended at midnight, no check-out.'}</p>}
+                        {v.idle.length > 0 && <IdleStretches visit={v} />}
+                        {v.corrections.map((c, i) => (
+                          <p key={i} className="p-att-fix">
+                            Corrected by {c.byName || 'an admin'}: “{c.reason}” (was {indiaTimeSec(c.from.inAt)} – {c.from.outAt === null ? '…' : indiaTimeSec(c.from.outAt)})
+                          </p>
+                        ))}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              ))}
+            </table>
+          </li>
+        );
+      })}
     </ul>
+  );
+}
+
+const share = (n: number) => `${(n * 100).toFixed(3)}%`;
+
+/**
+ * A day at a glance (attendance.ts dayBar): violet where they were in, red where the live dot was red, with a mark
+ * on every hour. The visits table under it says the same in words, so screen readers skip the bar.
+ */
+function DayBarView({ day, now }: { day: AttendanceDay; now: number }) {
+  const bar = dayBar(day, now);
+  // India is UTC+5:30, so its whole hours fall at half past on the UTC clock
+  const HOUR = 3_600_000;
+  const hours: number[] = [];
+  for (let t = Math.ceil((bar.start + HOUR / 2) / HOUR) * HOUR - HOUR / 2; t < bar.end; t += HOUR) if (t > bar.start) hours.push(t);
+  return (
+    <div className="p-att-bar" aria-hidden="true">
+      <div className="p-att-bar-track">
+        {hours.map((t) => (
+          <i key={t} className="is-hour" style={{ left: share((t - bar.start) / (bar.end - bar.start)) }} />
+        ))}
+        {bar.visits.map((s, i) => (
+          <span key={`v${i}`} className="is-in" style={{ left: share(s.left), width: share(s.width) }} />
+        ))}
+        {bar.idle.map((s, i) => (
+          <span key={`i${i}`} className="is-idle" style={{ left: share(s.left), width: share(s.width) }} />
+        ))}
+      </div>
+      <div className="p-att-bar-ends">
+        <span>{indiaTimeSec(bar.start)}</span>
+        <span>{indiaTimeSec(bar.end)}</span>
+      </div>
+    </div>
+  );
+}
+
+/** A visit's stretches without use, folded: a busy day can have dozens. */
+function IdleStretches({ visit }: { visit: Visit }) {
+  const n = visit.idle.length;
+  return (
+    <details className="p-att-idle">
+      <summary>
+        <span className="p-presence-dot is-inactive" aria-hidden="true" />
+        {n} inactive {n === 1 ? 'stretch' : 'stretches'}
+        <PIcon name="chevron" size={12} />
+      </summary>
+      <ul>
+        {visit.idle.map((s) => (
+          <li key={s.from}>
+            <span className="is-num">
+              {indiaTimeSec(s.from)} – {s.ongoing ? 'now' : indiaTimeSec(s.to)}
+            </span>
+            <span className="p-dim">{formatDuration(s.seconds)}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }
 

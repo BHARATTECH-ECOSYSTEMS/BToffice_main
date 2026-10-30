@@ -194,6 +194,42 @@ export function formatDuration(seconds: number) {
   return m ? `${m}m ${s % 60}s` : `${s % 60}s`;
 }
 
+/** Where something sits on a day's bar, as shares (0–1) of the bar's length. */
+export type BarSpan = { left: number; width: number };
+export interface DayBar {
+  start: number;
+  end: number;
+  visits: BarSpan[];
+  idle: BarSpan[];
+}
+
+/**
+ * A day at a glance: its visits and inactive stretches on a bar that runs over working hours (10:00–20:30 India time,
+ * as the live dot does), widened only when a visit falls outside them. The visit still going reaches up to `now`.
+ */
+export function dayBar(day: AttendanceDay, now: number): DayBar {
+  const ends = day.visits.map((v) => v.outAt ?? Math.max(v.inAt, now));
+  const start = Math.min(indiaMoment(day.day, '10:00'), ...day.visits.map((v) => v.inAt));
+  const end = Math.max(indiaMoment(day.day, '20:30'), ...ends);
+  const span = (from: number, to: number): BarSpan => ({ left: (from - start) / (end - start), width: Math.max(0, to - from) / (end - start) });
+  return {
+    start,
+    end,
+    visits: day.visits.map((v, i) => span(v.inAt, ends[i])),
+    idle: day.visits.flatMap((v) => v.idle.map((s) => span(s.from, s.to))),
+  };
+}
+
+export const visitIdleSeconds = (visit: Visit) => visit.idle.reduce((sum, s) => sum + s.seconds, 0);
+
+/** One person's dates in four numbers: days with a visit, time in, time inactive, and time in per day in. */
+export function historySummary(days: AttendanceDay[]) {
+  const daysIn = days.filter((d) => d.visits.length).length;
+  const seconds = days.reduce((sum, d) => sum + d.seconds, 0);
+  const idleSeconds = days.reduce((sum, d) => sum + d.idleSeconds, 0);
+  return { daysIn, seconds, idleSeconds, perDay: daysIn ? Math.round(seconds / daysIn) : 0 };
+}
+
 /** Time spent in over these visits, the one still going counted up to `now`. */
 export const spentMs = (visits: Visit[], now: number) => visits.reduce((sum, v) => sum + Math.max(0, (v.outAt ?? now) - v.inAt), 0);
 
