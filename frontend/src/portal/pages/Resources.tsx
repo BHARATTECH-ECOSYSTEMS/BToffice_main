@@ -1,0 +1,257 @@
+import { useState } from 'react';
+import { useParams } from 'react-router';
+import { api } from '../api';
+import { TOOLS, toolById, type LinkResource, type Tool } from '../data';
+import { LMS_PLATFORM } from '../lmsPlatform';
+import { managesPortal, useSession, type Role } from '../session';
+import { usePeopleById, usePortal } from '../store';
+import { btnClass, BtnLabel, DeleteButton, Empty, Modal, NotConnected, PageHead, PIcon, PortalNotFound, ToolButton, useNotice } from '../ui';
+import { ConnectedResources } from './ResourcesConnected';
+
+// The cards keep the old portal's order, which differs from the sidebar's.
+const CARD_ORDER = ['coder', 'huly', 'librechat', 'chatwoot', 'invoice', 'plane', 'securo', 'screego', 'excalidraw', 'lobehub'];
+
+/** The tool cards a role sees; they are part of the website, not the backend. */
+export const visibleTools = (role: Role) =>
+  TOOLS.filter((t) => t.id !== 'hrms' && !t.navOnly && (!t.adminOnly || role === 'admin')).sort((a, b) => CARD_ORDER.indexOf(a.id) - CARD_ORDER.indexOf(b.id));
+
+/** The backend's shared links when it is connected; the demo links otherwise. The tool cards are the same in both. */
+export function Resources() {
+  return api ? <ConnectedResources /> : <DemoResources />;
+}
+
+function DemoResources() {
+  const role = useSession()!.role;
+  const isManager = managesPortal(role);
+  const { links, me, addLink } = usePortal();
+  const [adding, setAdding] = useState(false);
+  const [notice, notify] = useNotice();
+  const tools = visibleTools(role);
+  // Employees see shared links that were assigned to them; admins see them all.
+  const visibleLinks = isManager ? links : links.filter((l) => l.assignedTo.includes(me.id));
+
+  return (
+    <>
+      <PageHead title="Resources" sub="Every tool and reference the team works with.">
+        {/* as in the real portal (ResourcesConnected): only Super Admins and Admins add links */}
+        {role === 'admin' && (
+          <button type="button" className={btnClass('light')} onClick={() => setAdding(true)}>
+            <BtnLabel icon="plus">Add resource</BtnLabel>
+          </button>
+        )}
+      </PageHead>
+      <div className="p-grid">
+        {tools.map((t) => (
+          <ToolCard key={t.id} tool={t} />
+        ))}
+        {visibleLinks.map((l) => (
+          <LinkCard key={l.id} link={l} isManager={isManager} canDelete={role === 'admin'} notify={notify} />
+        ))}
+      </div>
+      {notice}
+      {adding && (
+        <AddLink
+          onClose={() => setAdding(false)}
+          onAdd={(name, url) => {
+            addLink(name, url);
+            notify(`${name} was added.`);
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+export function ToolCard({ tool }: { tool: Tool }) {
+  return (
+    <article className="p-card p-resource">
+      <span className="p-tile-icon">
+        <PIcon name={tool.icon} />
+      </span>
+      <div>
+        <h2 className="p-card-title">{tool.name}</h2>
+        <p className="p-card-meta">{tool.category}</p>
+      </div>
+      <p className="p-muted">{tool.body}</p>
+      <div className="p-resource-foot">
+        <ToolButton url={tool.url} label={tool.openLabel ?? 'Open Platform'} name={tool.name} />
+        {tool.caption && <p className="p-resource-caption">{tool.caption}</p>}
+        {tool.secondary && <ToolButton url={tool.secondary.url} label={tool.secondary.label} name={tool.name} icon={tool.secondary.icon} variant="ghost" />}
+        <p className="p-tags">
+          {tool.tags.map((t) => (
+            <span key={t}>{t}</span>
+          ))}
+        </p>
+        {!tool.url && <NotConnected />}
+      </div>
+    </article>
+  );
+}
+
+function LinkCard({ link, isManager, canDelete, notify }: { link: LinkResource; isManager: boolean; canDelete: boolean; notify: (t: string) => void }) {
+  const { people, removeLink, assignLink } = usePortal();
+  const byId = usePeopleById();
+  const [who, setWho] = useState('');
+  return (
+    <article className="p-card p-resource">
+      <span className="p-tile-icon">
+        <PIcon name="link" />
+      </span>
+      <h2 className="p-card-title">{link.name}</h2>
+      <p className="p-muted p-url">{link.url}</p>
+      <div className="p-resource-foot">
+        <div className="p-row">
+          <a className={btnClass('primary')} href={link.url} target="_blank" rel="noreferrer">
+            <BtnLabel arrow="up-right">Open</BtnLabel>
+            <span className="sr-only">{link.name} (opens in a new tab)</span>
+          </a>
+          {canDelete && (
+            <DeleteButton srText={link.name} onDone={() => (removeLink(link.id), notify(`${link.name} was deleted.`))} />
+          )}
+        </div>
+        {isManager && (
+          <form
+            className="p-assign"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (!who) return;
+              assignLink(link.id, who);
+              notify(`${link.name} was assigned to ${byId.get(who)?.name}.`);
+              setWho('');
+            }}
+          >
+            <label className="p-field is-tight">
+              <span>Assign user</span>
+              <select className="p-select" value={who} onChange={(e) => setWho(e.target.value)}>
+                <option value="">Select user</option>
+                {people
+                  .filter((p) => !link.assignedTo.includes(p.id))
+                  .map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            <button type="submit" className={btnClass('ghost')} disabled={!who}>
+              <BtnLabel icon="users">Assign</BtnLabel>
+            </button>
+          </form>
+        )}
+        {isManager && link.assignedTo.length > 0 && <p className="p-dim">Assigned to {link.assignedTo.map((id) => byId.get(id)?.name ?? 'removed user').join(', ')}</p>}
+      </div>
+    </article>
+  );
+}
+
+/** `onAdd` may save to the backend: the form then waits, and shows the reason if it fails (thrown as an Error). */
+export function AddLink({ onClose, onAdd }: { onClose: () => void; onAdd: (name: string, url: string) => void | Promise<void> }) {
+  const [name, setName] = useState('');
+  const [url, setUrl] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  return (
+    <Modal
+      title="Add resource"
+      icon="link"
+      onClose={onClose}
+      onSubmit={async () => {
+        if (busy) return;
+        if (!name.trim()) return setError('Give the resource a name.');
+        // the backend's limit
+        if (name.trim().length > 120) return setError('Keep the name to 120 characters or fewer.');
+        let parsed: URL;
+        try {
+          parsed = new URL(url.trim());
+        } catch {
+          return setError('Enter a full web address, starting with https://');
+        }
+        // only web links: a javascript: or data: address would run code when someone clicks Open
+        if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return setError('Only http and https addresses can be added.');
+        setBusy(true);
+        try {
+          await onAdd(name.trim(), parsed.href);
+          onClose();
+        } catch (e) {
+          setError((e as Error).message);
+          setBusy(false);
+        }
+      }}
+      footer={
+        <>
+          <button type="button" className={btnClass('ghost')} onClick={onClose}>
+            <BtnLabel>Cancel</BtnLabel>
+          </button>
+          <button type="submit" className={btnClass('primary')} disabled={busy}>
+            <BtnLabel>{busy ? 'Adding…' : 'Add resource'}</BtnLabel>
+          </button>
+        </>
+      }
+    >
+      <label className="p-field">
+        <span>Name</span>
+        <input value={name} onChange={(e) => (setName(e.target.value), setError(''))} placeholder="React documentation" autoFocus />
+      </label>
+      <label className="p-field">
+        <span>Web address</span>
+        <input type="url" value={url} onChange={(e) => (setUrl(e.target.value), setError(''))} placeholder="https://" />
+      </label>
+      {error && (
+        <p className="p-error" role="alert">
+          {error}
+        </p>
+      )}
+    </Modal>
+  );
+}
+
+/** One self-hosted tool, opened from the sidebar. */
+export function ToolPage() {
+  const { id = '' } = useParams();
+  const isAdmin = useSession()!.role === 'admin';
+  const tool = toolById(id);
+  if (!tool || (tool.adminOnly && !isAdmin)) return <PortalNotFound />;
+  return (
+    <>
+      <PageHead title={tool.navLabel ?? tool.name} sub={tool.body} />
+      <section className="p-card p-tool">
+        <span className="p-tile-icon is-large">
+          <PIcon name={tool.icon} size={26} />
+        </span>
+        <div>
+          <h2 className="p-card-title">{tool.name}</h2>
+          <p className="p-card-meta">{tool.category}</p>
+        </div>
+        <p className="p-tags">
+          {tool.tags.map((t) => (
+            <span key={t}>{t}</span>
+          ))}
+        </p>
+        <ToolButton url={tool.url} label="Open" name={tool.name} wide={false} />
+      </section>
+    </>
+  );
+}
+
+/** A section that is planned but not built yet. */
+/**
+ * /portal/lms and anything under it (older bell notes link to courses): the portal's own course pages were removed
+ * (owner, 2026-10-26), so this says where courses are.
+ */
+export function LearningElsewhere() {
+  return (
+    <>
+      <PageHead title="Learning" sub="Courses in the company’s LMS Platform." />
+      <section className="p-card">
+        <Empty icon="cap" title="Courses are in the LMS Platform">
+          {LMS_PLATFORM
+            ? 'Choose Learning in the top bar: it opens the LMS Platform in a new tab, signed in as you.'
+            : 'Learning opens it in a new tab, signed in as you, once it is connected to this portal. It isn’t connected here.'}
+        </Empty>
+      </section>
+    </>
+  );
+}
+
+// Re-exported so the router can still lazy-load the portal's 404 page from this chunk.
+export { PortalNotFound };

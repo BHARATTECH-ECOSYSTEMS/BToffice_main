@@ -1,0 +1,450 @@
+/* ══ Careers (home): open roles in a dark panel ══════════════════════════════════════════════
+   The heading and the whole panel fit on one screen: the panel's padding, the big "Open roles" and the role rows
+   all shrink with the screen's height (vh), down to a floor that keeps them comfortable to read and click.
+   Everything moves on transform and opacity, apart from a role folding away under a filter. Entrances run once,
+   when the panel is first seen ([data-in]); the drifting light only while it is on screen ([data-live]). */
+
+/* on short screens the heading sits closer to the panel, so both fit */
+.careers-sec .section-head {
+  margin-bottom: min(var(--head-gap), 4vh);
+}
+.careers-panel {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  gap: var(--split-gap);
+  padding: clamp(24px, min(3.4vw, 4.4vh), 48px);
+  border-radius: var(--r-lg);
+  background: #14130f;
+  color: #fff;
+  opacity: 0;
+  transform: translateY(48px) scale(0.98);
+  transition: opacity 0.9s var(--ease), transform 1.2s var(--ease-expo);
+}
+.careers-panel[data-in] {
+  opacity: 1;
+  transform: none;
+}
+:root[data-theme='dark'] .careers-panel {
+  background: #151424;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+}
+
+/* Smoky 3D glass: a frosted top, a lit top edge and a shaded bottom over the drifting light. Under the cursor a
+   soft spotlight warms the glass and the rim nearest the cursor lights up (--gx/--gy from useGlassTilt). */
+.careers-panel {
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22),
+    inset 0 0 0 1px rgb(255 255 255 / 0.07),
+    inset 0 -30px 60px -30px rgb(0 0 0 / 0.7),
+    0 40px 80px -48px rgb(20 19 15 / 0.6);
+}
+.careers-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.07), rgb(255 255 255 / 0) 30%);
+  pointer-events: none;
+}
+/* Each is a window onto one spot of light that useGlassTilt moves under the cursor with a transform, so the panel
+   isn't repainted on every mouse move. */
+.careers-light,
+.careers-rim {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.4s var(--ease);
+}
+.careers-light > i,
+.careers-rim > i {
+  position: absolute;
+  /* at rest, centred on the panel */
+  top: calc(50% - var(--spot) / 2);
+  left: calc(50% - var(--spot) / 2);
+  width: var(--spot);
+  height: var(--spot);
+  border-radius: 50%;
+  will-change: transform;
+}
+.careers-light > i {
+  --spot: 840px;
+  background: radial-gradient(closest-side, rgb(140 121 255 / 0.16), rgb(255 160 80 / 0.05) 45%, transparent 70%);
+}
+/* the rim: a 1.5px ring, brightest nearest the cursor */
+.careers-rim {
+  padding: 1.5px;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+.careers-rim > i {
+  --spot: 600px;
+  background: radial-gradient(closest-side, rgb(255 255 255 / 0.75), rgb(175 160 255 / 0.25) 40%, transparent 70%);
+}
+@media (hover: hover) and (pointer: fine) {
+  .careers-panel:hover :is(.careers-light, .careers-rim) {
+    opacity: 1;
+  }
+}
+/* Desktop: the panel runs to the sheet edges like the other dark sheets, so it takes their side padding and
+   radius; the vertical padding keeps fitting the screen height. The light layers inherit the radius. */
+@media (min-width: 901px) {
+  .careers-panel {
+    padding-inline: var(--sheet-pad);
+    border-radius: var(--r-sheet);
+  }
+}
+
+/* ── the light drifting behind it ── */
+.careers-glow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.careers-glow i {
+  position: absolute;
+  width: 48%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  opacity: 0.24;
+  animation: careers-drift 20s ease-in-out infinite alternate paused;
+}
+/* the softness is painted as a gradient rather than a blur filter: a filtered layer under a transform
+   animation is re-blurred on the GPU every frame. It lives on a child so the box (and with it the drift,
+   which moves by percentages of the box) keeps its size; the inset is about two blur radii. */
+.careers-glow i::before {
+  content: '';
+  position: absolute;
+  inset: -140px;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    var(--glow) 32%,
+    color-mix(in srgb, var(--glow) 50%, transparent) 62%,
+    transparent
+  );
+}
+.careers-glow i:nth-child(1) {
+  left: -14%;
+  top: -30%;
+  --glow: var(--violet);
+}
+.careers-glow i:nth-child(2) {
+  right: -12%;
+  bottom: -40%;
+  /* warm hues go muddy at low strength over near-black, so these stay faint accents to the violet */
+  --glow: var(--tangerine);
+  opacity: 0.12;
+  animation-duration: 26s;
+  animation-delay: -8s;
+}
+.careers-glow i:nth-child(3) {
+  left: 34%;
+  top: 30%;
+  width: 34%;
+  --glow: var(--saffron);
+  opacity: 0.07;
+  animation-duration: 30s;
+  animation-delay: -14s;
+}
+.careers-panel[data-live] .careers-glow i {
+  animation-play-state: running;
+}
+@keyframes careers-drift {
+  to {
+    transform: translate3d(14%, 12%, 0) scale(1.18);
+  }
+}
+
+/* ── left: the count, the line, the departments ── */
+.careers-intro {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+  min-width: 0;
+}
+.careers-count {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+  font-family: var(--display);
+  font-size: clamp(44px, min(5.4vw, 7.4vh), 80px);
+  font-weight: 700;
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+.careers-count small {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0;
+  color: rgb(255 255 255 / 0.66);
+}
+.careers-count em {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: var(--fs-label);
+  font-style: normal;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--saffron);
+}
+/* a live dot, ringing */
+.careers-count em i {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--saffron);
+}
+.careers-count em i::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid var(--saffron);
+  animation: careers-ring 2.2s ease-out infinite paused;
+}
+.careers-panel[data-live] .careers-count em i::after {
+  animation-play-state: running;
+}
+@keyframes careers-ring {
+  from {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  to {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+.careers-lede {
+  max-width: 40ch;
+  font-size: 16px;
+  line-height: 1.6;
+  color: rgb(255 255 255 / 0.68);
+}
+
+.careers-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.careers-filter button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid rgb(255 255 255 / 0.14);
+  border-radius: var(--r-pill);
+  background: rgb(255 255 255 / 0.05);
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #fff;
+  transition: background 0.3s var(--ease), border-color 0.3s var(--ease), transform 0.3s var(--ease);
+}
+.careers-filter button:hover {
+  border-color: color-mix(in srgb, var(--tone) 60%, transparent);
+}
+.careers-filter button:active {
+  transform: scale(0.96);
+}
+.careers-filter button[aria-pressed='true'] {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--tone) 30%, transparent);
+}
+.careers-filter button:focus-visible {
+  outline: 2px solid var(--tone);
+  outline-offset: 2px;
+}
+.careers-filter i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+.careers-panel[data-in] .careers-filter button {
+  animation: careers-pop 0.6s var(--ease-expo) calc(0.55s + var(--i) * 0.06s) both;
+}
+@keyframes careers-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.92);
+  }
+}
+
+/* ── right: the roles ── */
+.careers-roles {
+  align-self: center;
+}
+/* a role folds away by its row's height (0fr), the one change here that is not transform or opacity */
+.careers-role {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition: grid-template-rows 0.55s var(--ease), opacity 0.35s var(--ease);
+}
+.careers-role > div {
+  min-height: 0;
+  overflow: hidden;
+}
+.careers-role[data-hidden] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.careers-role a {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: 14px;
+  padding: clamp(8px, 1.2vh, 15px) 10px;
+}
+/* each row's rule draws itself in as the row arrives */
+.careers-role a::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: rgb(255 255 255 / 0.12);
+  transform-origin: left;
+}
+/* on hover a band of the department's colour sweeps in from the left */
+.careers-role a::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: var(--r-xs);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--tone) 26%, transparent), transparent 85%);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform var(--dur-ui) var(--ease);
+}
+.careers-role a:focus-visible::before {
+  transform: scaleX(1);
+}
+@media (hover: hover) and (pointer: fine) {
+  .careers-role a:hover::before {
+    transform: scaleX(1);
+  }
+}
+.careers-role a:focus-visible {
+  outline: none;
+}
+/* the department's colour as a dot; it no longer carries a row number */
+.careers-role a > i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--tone);
+  transition: transform var(--dur-hover) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .careers-role a:hover > i {
+    transform: rotate(-8deg) scale(1.08);
+  }
+}
+.careers-role-name {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  transition: transform 0.45s var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .careers-role a:hover .careers-role-name {
+    transform: translateX(6px);
+  }
+}
+.careers-role b {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.careers-role small {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: rgb(255 255 255 / 0.5);
+}
+.careers-where {
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: nowrap;
+  color: rgb(255 255 255 / 0.55);
+}
+.careers-role .arrow {
+  opacity: 0.35;
+  transition: opacity 0.3s var(--ease), transform 0.45s var(--ease-expo);
+}
+@media (hover: hover) and (pointer: fine) {
+  .careers-role a:hover .arrow {
+    opacity: 1;
+    transform: translateX(4px);
+  }
+}
+/* the roles arrive one after another, sliding in from the right */
+.careers-panel[data-in] .careers-role a {
+  animation: careers-row 0.8s var(--ease-expo) calc(0.3s + var(--i) * 0.07s) both;
+}
+.careers-panel[data-in] .careers-role a::after {
+  animation: careers-rule 1s var(--ease-expo) calc(0.4s + var(--i) * 0.07s) both;
+}
+@keyframes careers-row {
+  from {
+    opacity: 0;
+    transform: translateX(32px);
+  }
+}
+@keyframes careers-rule {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .careers-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .careers-role a {
+    grid-template-columns: 10px minmax(0, 1fr) 16px;
+  }
+  .careers-where {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .careers-panel,
+  .careers-role {
+    transition: none;
+  }
+  .careers-panel {
+    transform: none;
+  }
+  .careers-panel[data-in] .careers-role a,
+  .careers-panel[data-in] .careers-role a::after,
+  .careers-panel[data-in] .careers-filter button,
+  .careers-glow i,
+  .careers-count em i::after {
+    animation: none;
+  }
+}

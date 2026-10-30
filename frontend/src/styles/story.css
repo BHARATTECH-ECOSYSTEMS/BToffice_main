@@ -1,0 +1,2134 @@
+/* Bharattech Origin — the pinned story: chapters, step tabs, the layer stack, the hero plate and the nav glance.
+   Loaded after fx.css. Flat colour only: no gradients anywhere but the logo itself. */
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ══ Chapters ═══════════════════════════════════════════════════════════════ */
+
+.chapter {
+  position: relative;
+  height: calc(100svh + var(--n) * var(--screens) * 100svh);
+}
+.chapter-pin {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: stretch;
+  height: 100svh;
+  padding: calc(var(--nav-h) + 40px) 0 32px;
+  overflow: clip;
+}
+.chapter-pin > .wrap {
+  height: 100%;
+}
+
+/* Pinned frames put their heading in a narrow side column. At the shared size a line like "An operating
+   system," wrapped to a third row and pushed the list down, so here the heading also scales with its column
+   (10.7% of its width keeps the longest line on one row) and is never larger than the shared size. */
+@media (min-width: 901px) {
+  .arch-side,
+  .svc-left-col,
+  .wheel-copy {
+    container-type: inline-size;
+  }
+  .arch-side .h2,
+  .svc-left-col .h2,
+  .wheel-copy .h2 {
+    font-size: min(var(--fs-h2), 10.7cqi);
+  }
+}
+
+/* step tabs: a bar per step that fills as the step is read */
+
+/* every step sits in the same cell; the current one is in front, the rest wait above or below */
+.steps {
+  display: grid;
+}
+.step {
+  grid-area: 1 / 1;
+  min-width: 0;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(22px);
+  filter: blur(8px);
+  pointer-events: none;
+  transition:
+    opacity 0.4s var(--ease),
+    transform 0.8s var(--ease-expo),
+    filter 0.4s var(--ease),
+    visibility 0s linear 0.4s;
+}
+.step[data-pos='before'] {
+  transform: translateY(-22px);
+}
+.step[data-on] {
+  visibility: visible;
+  opacity: 1;
+  transform: none;
+  filter: none;
+  pointer-events: auto;
+  transition-delay: 0.12s, 0.12s, 0.12s, 0s;
+}
+.lite .step {
+  filter: none;
+}
+
+.step[data-on] [style*='--k'] {
+  animation: rowIn 0.7s var(--ease-expo) both;
+  animation-delay: calc(0.18s + var(--k) * 70ms);
+}
+@keyframes rowIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+}
+
+/* ── Problem ── */
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ── How it works ── */
+
+.ch-how .chapter-pin {
+  padding-top: calc(var(--nav-h) + 20px);
+  padding-bottom: 24px;
+}
+/* the panel spans edge to edge like the architecture sheet below it */
+.how-frame {
+  /* one even margin inside the orange panel, on all four sides; the heading and the steps share it */
+  --how-pad: clamp(14px, 1.6vw, 22px);
+  --node: 56px;
+  max-width: none;
+  padding-inline: var(--sheet-x);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: clamp(10px, 1.8svh, 20px);
+}
+/* the heading starts where the panel's boxes do */
+.how-head {
+  width: 100%;
+  padding-inline: var(--how-pad);
+  /* room between the heading and the step line; it shrinks with the screen so short laptops still fit */
+  margin-bottom: clamp(6px, 2.2svh, 22px);
+}
+/* The first step sits over the left box's edge and the last over the right box's, so the line between them
+   spans the boxes' full width. Each step is as wide as its icon; its label hangs centred below. */
+.ch-how .pipe {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding-inline: var(--how-pad);
+}
+.ch-how .pipe-step {
+  width: var(--node);
+  white-space: nowrap;
+}
+.ch-how .pipe-node {
+  width: var(--node);
+  height: var(--node);
+}
+/* the end labels read inward, so they never pass the boxes' edges */
+.ch-how .pipe-step:first-of-type {
+  justify-items: start;
+}
+.ch-how .pipe-step:last-of-type {
+  justify-items: end;
+}
+.ch-how .pipe-rail {
+  top: calc(var(--node) / 2 - 1px);
+  left: calc(var(--how-pad) + var(--node) / 2);
+  right: calc(var(--how-pad) + var(--node) / 2);
+}
+.ch-how .how-panel {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1fr) minmax(0, 1.15fr);
+  /* the boxes take the panel's height rather than their content's, so on short screens they shrink with the
+     panel and keep its bottom margin instead of running past it and being cut off */
+  grid-template-rows: minmax(0, 1fr);
+  align-items: stretch;
+  gap: 16px;
+  padding: var(--how-pad);
+  border-radius: var(--r-sheet);
+  /* fills the frame's 1fr row so the panel matches the full-height chapters around it */
+  min-height: 0;
+  transition: background-color 0.6s var(--ease);
+}
+/* a background fade can't run on the compositor, so each step would repaint the
+   whole panel for 0.6s mid-scroll; weak GPUs snap to the new tone instead */
+@media (min-width: 901px) {
+  .lite .ch-how .how-panel {
+    transition: none;
+  }
+}
+.how-copy .how-main {
+  animation: none;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: clamp(18px, 2.2vw, 28px);
+}
+.how-big {
+  font-family: var(--display);
+  font-size: clamp(38px, 4.2vw, 68px);
+  font-weight: var(--fw-head);
+  letter-spacing: -0.04em;
+  line-height: 0.95;
+}
+.how-main p {
+  max-width: 400px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: rgb(255 255 255 / 0.88);
+  margin-top: 10px;
+}
+.how-powered {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+}
+.how-powered .chip-soft {
+  background: rgb(255 255 255 / 0.18);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.15);
+}
+.ch-how .console {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.ch-how .console-log {
+  flex: 1;
+  min-height: 0;
+  gap: 8px;
+  overflow: hidden;
+  padding: 14px 14px 16px;
+  /* on short screens the trace can run past the box; it fades out rather than ending on a cut line */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 26px), transparent);
+}
+/* finished steps fold to two lines at most, so the step being run always has room */
+.ch-how .console-log li[data-done] > span:last-child {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.ch-how .console-log li[data-done] .console-k::after {
+  content: ' ✓';
+  color: #3fd39e;
+}
+.ch-how .console-log li[data-wait] {
+  color: rgb(255 255 255 / 0.2);
+}
+.ch-how .console-log li[data-wait] .console-k {
+  color: rgb(255 255 255 / 0.28);
+}
+.console-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 14px;
+  border-top: 1px solid rgb(255 255 255 / 0.07);
+  font-family: var(--mono);
+  font-size: var(--fs-label);
+  color: rgb(255 255 255 / 0.45);
+}
+.console-foot i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3fd39e;
+  box-shadow: 0 0 0 3px rgb(63 211 158 / 0.18);
+}
+.how-scenes {
+  height: 100%;
+}
+.how-scene {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  border-radius: var(--r-md);
+  background: rgb(255 255 255 / 0.12);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+  color: #fff;
+  overflow: hidden;
+}
+.how-scene > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.how-scene path,
+.how-scene line {
+  fill: none;
+  stroke: rgb(255 255 255 / 0.7);
+  stroke-width: 1.5;
+}
+.how-scene path[pathLength] {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+.step[data-on] .how-scene path[pathLength] {
+  animation: draw 1s var(--ease-expo) forwards;
+  animation-delay: calc(0.2s + var(--k, 0) * 0.12s);
+}
+.scene-core {
+  position: absolute;
+  top: 50%;
+  right: 9%;
+  padding: 8px 14px;
+  border-radius: var(--r-xs);
+  transform: translateY(-50%);
+  background: #fff;
+  color: var(--tone);
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 16px -2px rgba(0, 0, 0, 0.25);
+  z-index: 2;
+}
+.scene-inputs > span {
+  position: absolute;
+  left: 9%;
+  top: calc(22% + var(--k) * 18.67%);
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-xs);
+  background: rgb(255 255 255 / 0.22);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
+  color: #fff;
+  z-index: 2;
+}
+.scene-recall,
+.scene-plan {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+  padding: 22px 18px;
+  height: 100%;
+}
+.scene-recall span,
+.scene-plan span {
+  display: grid;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  background: rgb(255 255 255 / 0.14);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.18);
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: background-color 0.3s var(--ease), color 0.3s var(--ease), box-shadow 0.3s var(--ease), opacity 0.3s var(--ease);
+}
+.scene-recall span {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.scene-recall small {
+  font-family: var(--mono);
+  font-size: var(--fs-label-sm);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  line-height: 1.2;
+}
+.scene-recall [data-hit] {
+  background: #fff;
+  color: var(--ink);
+  transform: scale(1.02);
+  box-shadow: 0 10px 24px -5px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+:root[data-theme='dark'] .scene-recall [data-hit],
+.dark .scene-recall [data-hit] {
+  background: rgba(255, 255, 255, 0.24);
+  color: #FFFFFF;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35), 0 10px 24px -5px rgba(0, 0, 0, 0.4);
+}
+.scene-plan span {
+  grid-template-columns: 10px 1fr;
+  align-items: center;
+  gap: 12px;
+}
+/* a plain bullet: the plan's steps read in order without numbers */
+.scene-plan i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+:root[data-theme='dark'] .scene-plan i,
+.dark .scene-plan i {
+  background: rgba(255, 255, 255, 0.22);
+}
+.scene-act .scene-core {
+  left: 9%;
+  right: auto;
+}
+.scene-act > span {
+  position: absolute;
+  left: 67%;
+  top: calc(24% + var(--k) * 26%);
+  transform: translateY(-50%);
+  padding: 8px 14px;
+  border-radius: var(--r-xs);
+  background: rgb(255 255 255 / 0.2);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.25);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 2;
+}
+.scene-learn {
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.scene-learn > svg {
+  position: static;
+  width: 100%;
+  height: 100%;
+  max-width: 240px;
+  max-height: 180px;
+}
+.scene-learn circle {
+  fill: rgb(255 255 255 / 0.25);
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+.scene-learn .is-core {
+  fill: #fff;
+}
+.scene-learn .is-new {
+  fill: #fff;
+}
+.scene-learn .is-ping {
+  fill: none;
+  transform-origin: 176px 76px;
+  animation: scenePing 1.8s ease-out infinite;
+}
+.scene-learn line[data-new] {
+  stroke: #fff;
+  stroke-width: 2.5;
+  stroke-dasharray: 4 4;
+}
+/* its own name: fx.css has a different 'ping', and whichever file loaded last won for both */
+@keyframes scenePing {
+  to {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+/* ── Architecture: a dark room the reader steps into ── */
+
+.ch-arch {
+  color: #fff;
+}
+/* The dark sheet is black glass, built like the FAQ's "Still curious?" card (.faq-ask) but kept black: a solid ink
+   slab with a frosted top that catches the cursor's shine, a lit top edge, a thin rim and a shaded bottom, all in
+   neutral white so nothing tints the black. It doesn't lean (it fills the screen while pinned) and nothing is
+   backdrop-blurred (a live blur would be redrawn on every scroll frame). */
+.ch-arch .chapter-pin::before,
+.ch-arch .chapter-pin::after {
+  content: '';
+  position: absolute;
+  inset: 10px var(--sheet-x);
+  z-index: -1;
+  border-radius: var(--r-sheet);
+  pointer-events: none;
+}
+.ch-arch .chapter-pin::before {
+  background: var(--ink-bg);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.26),
+    inset 0 0 0 1px rgb(255 255 255 / 0.09),
+    inset 0 -60px 120px -60px rgb(0 0 0 / 0.55),
+    0 2px 4px rgb(20 19 15 / 0.08),
+    0 46px 90px -40px rgb(0 0 0 / 0.45);
+}
+/* the frost: a pale top, above the black and below the words */
+.ch-arch .chapter-pin::after {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0) 36%);
+}
+/* the cursor's shine, a spot useGlassTilt moves by transform inside a window the size of the sheet, so the sheet
+   isn't repainted on every mouse move; between the black and the frost */
+.ch-arch .arch-shine {
+  position: absolute;
+  inset: 10px var(--sheet-x);
+  z-index: -1;
+  border-radius: var(--r-sheet);
+  overflow: hidden;
+  pointer-events: none;
+}
+.ch-arch .arch-shine > i {
+  position: absolute;
+  /* at rest, centred 30% across the top edge */
+  top: -460px;
+  left: calc(30% - 460px);
+  width: 920px;
+  height: 920px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 255 255 / 0.1), rgb(255 255 255 / 0) 65%);
+  will-change: transform;
+}
+
+.ch-arch .headline .is-accent {
+  color: #F59E00;
+}
+.ch-arch .arch {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr);
+  align-items: center;
+  height: 100%;
+  /* measured from the dark sheet's edges, so both sides get the same room inside it */
+  max-width: none;
+  padding-inline: calc(var(--sheet-x) + var(--sheet-pad));
+}
+.arch-side .arch-list {
+  gap: 16px;
+  margin-top: 24px;
+}
+.ch-arch .arch-family button {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  border-radius: var(--r-xs);
+}
+.ch-arch .arch-name {
+  font-size: 15.5px;
+  white-space: nowrap;
+}
+.ch-arch .arch-family button[data-done] {
+  color: rgb(255 255 255 / 0.82);
+}
+.ch-arch .arch-visual {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 8px;
+  height: 100%;
+}
+.stack {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  perspective: 1800px;
+}
+.stack-scene {
+  position: relative;
+  width: min(300px, 30svh);
+  aspect-ratio: 1;
+  transform-style: preserve-3d;
+  transform: rotateX(58deg) rotateZ(-42deg);
+}
+.stack-plate {
+  --z: calc((var(--n) - 1 - var(--i)) * min(26px, 2.7svh) - min(104px, 10.8svh));
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-lg);
+  background: rgb(255 255 255 / 0.05);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2);
+  color: rgb(255 255 255 / 0.3);
+  transform: translateZ(var(--z));
+  transition:
+    transform 0.8s var(--ease-expo),
+    background-color 0.5s var(--ease),
+    color 0.5s var(--ease),
+    box-shadow 0.5s var(--ease),
+    opacity 0.5s var(--ease);
+}
+.stack-plate[data-above] {
+  transform: translateZ(calc(var(--z) + min(120px, 12svh)));
+  opacity: 0.32;
+}
+.stack-plate[data-on] {
+  transform: translateZ(calc(var(--z) + min(64px, 6.5svh)));
+  background: var(--tone);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.45), 0 40px 70px -30px rgb(0 0 0 / 0.9);
+}
+.plate-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.plate-art * {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.plate-art .pl-fill {
+  fill: currentColor;
+  fill-opacity: 0.14;
+}
+.plate-art .pl-solid,
+.plate-art .pl-dot {
+  fill: currentColor;
+}
+.plate-art .pl-thin {
+  stroke-width: 2;
+  opacity: 0.7;
+}
+.plate-art .pl-bold {
+  stroke-width: 7;
+}
+.plate-art .pl-lens {
+  fill: currentColor;
+  fill-opacity: 0.18;
+  stroke-width: 5;
+}
+.stack-plate[data-on] .plate-art .pl-solid {
+  animation: plateIn 0.9s var(--ease-expo) both;
+}
+@keyframes plateIn {
+  from {
+    opacity: 0;
+  }
+}
+.stack-chip {
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: currentColor;
+}
+.stack-chip b {
+  display: none;
+  font-family: var(--display);
+  font-size: 15px;
+  font-weight: 600;
+}
+.stack-plate[data-on] .stack-chip b {
+  display: inline;
+}
+.arch-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 4px;
+  gap: 18px;
+  /* fills its column, so its right edge sits as far in from the sheet as the heading does on the left */
+  width: 100%;
+  padding: 18px 20px 20px 22px;
+  border-radius: var(--r-md);
+  background: rgb(255 255 255 / 0.05);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.1);
+}
+.arch-card-body {
+  display: grid;
+  gap: 6px;
+}
+.arch-card .cell-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgb(255 255 255 / 0.55);
+}
+.arch-card .cell-label i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: var(--tone);
+}
+.arch-card h3 {
+  font-size: 24px;
+  color: #fff;
+}
+.arch-card-what {
+  font-size: 14.5px;
+  color: rgb(255 255 255 / 0.68);
+}
+.arch-card-trace {
+  margin-top: 4px;
+  padding-left: 12px;
+  border-left: 2px solid var(--tone);
+  font-size: 14.5px;
+  color: rgb(255 255 255 / 0.92);
+}
+.arch-card-trace span {
+  display: block;
+  font-family: var(--mono);
+  font-size: var(--fs-label-sm);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: rgb(255 255 255 / 0.45);
+}
+.arch-card-meter {
+  position: relative;
+  overflow: hidden;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 0.1);
+}
+.arch-card-meter b {
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 0;
+  background: var(--tone);
+  transition:
+    transform 0.6s var(--ease-expo),
+    background-color 0.4s var(--ease);
+}
+
+/* ══ Beams: icon and label in one chip, so a label never hides under its icon ══ */
+
+.beams-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px 5px 5px;
+  border-radius: var(--r-pill);
+  background: var(--paper);
+  box-shadow: 0 0 0 1px var(--line), 0 10px 24px -16px rgb(40 24 110 / 0.5);
+}
+.beams-node .icon {
+  width: 15px;
+  height: 15px;
+  padding: 6px;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--tone) 12%, white);
+  box-shadow: none;
+}
+.beams-node em {
+  font-size: 12.5px;
+}
+.beam-halo {
+  fill: rgb(124 92 255 / 0.08);
+}
+
+/* ══ Phones and short screens ═══════════════════════════════════════════════ */
+
+/* Short laptop screens: the pinned frame has to fit one screen, so the heading, the steps and the panel's
+   contents tighten up and the boxes keep their full height inside the panel. */
+@media (min-width: 901px) and (max-height: 760px) {
+  .ch-how .how-head .h2 {
+    font-size: min(var(--fs-h2), 7.4svh);
+  }
+  .how-frame {
+    --node: 44px;
+  }
+  .ch-how .pipe-step {
+    font-size: 15px;
+  }
+  .ch-how .pipe-node {
+    border-radius: var(--r-sm);
+  }
+  .ch-how .pipe-node svg {
+    width: 18px;
+    height: 18px;
+  }
+  .how-copy .how-main {
+    padding: 14px 16px;
+  }
+  .how-big {
+    font-size: clamp(30px, 6.4svh, 56px);
+  }
+  .how-main p {
+    margin-top: 6px;
+    font-size: 15px;
+  }
+  .how-powered {
+    padding-top: 10px;
+  }
+  .scene-plan {
+    gap: 8px;
+    padding: 14px;
+  }
+  .scene-plan span {
+    padding: 9px 12px;
+  }
+}
+
+@media (max-width: 1100px) {
+
+  .ch-how .how-panel {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  }
+  .how-scenes {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  .chapter-pin {
+    padding: calc(var(--nav-h) + 22px) 0 18px;
+  }
+
+  .ch-how .pipe-step {
+    font-size: 12px;
+  }
+  .how-frame {
+    --node: 40px;
+  }
+  .ch-how .pipe-node {
+    border-radius: var(--r-sm);
+  }
+  .ch-how .how-panel {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .ch-how .console {
+    display: none;
+  }
+  .ch-arch .arch {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .arch-side .arch-list {
+    display: none;
+  }
+  .stack-scene {
+    width: min(200px, 24svh);
+  }
+  .arch-card h3 {
+    font-size: 20px;
+  }
+
+}
+
+@media (max-height: 760px) and (min-width: 901px) {
+  .chapter-pin {
+    padding-top: calc(var(--nav-h) + 24px);
+  }
+
+}
+
+/* ══ Covers: white drawings on one flat colour ═════════════════════════════ */
+
+.cover svg * {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.cover .cv-soft {
+  fill: rgb(255 255 255 / 0.16);
+}
+.cover .cv-solid {
+  fill: #fff;
+}
+.cover .cv-ink {
+  stroke: var(--tone);
+}
+.cover .cv-bold {
+  stroke-width: 4;
+}
+.cover .cv-dash {
+  stroke: rgb(255 255 255 / 0.6);
+  stroke-dasharray: 3 5;
+}
+.cover .cv-ping {
+  stroke: rgb(255 255 255 / 0.55);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: coverPing 2.6s ease-out infinite;
+  animation-delay: calc(var(--k, 0) * -0.4s);
+}
+@keyframes coverPing {
+  50% {
+    transform: scale(1.35);
+    opacity: 0.4;
+  }
+}
+.cover .cv-pop {
+  transition: transform 0.6s var(--ease-expo);
+  transition-delay: calc(var(--k, 0) * 40ms);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cell:hover .cover .cv-pop,
+  .fan-card:hover .cover .cv-pop {
+    transform: translateY(-4px);
+  }
+}
+/* a smoked backing so the small white label reads on light and violet covers alike (white glass gave 3.4:1) */
+.cover-tag {
+  background: rgb(20 16 40 / 0.42);
+}
+
+/* the fan on the services page */
+.cover-fan {
+  /* how far apart the cards sit */
+  --spread: 196px;
+  position: relative;
+  width: min(100%, 600px);
+  height: 360px;
+  margin: 0 auto;
+}
+/* On a laptop the hero's visual column is narrower than the fan, and a fixed spread pushed the outer cards past
+   the screen's edge, so the spread follows the fan's own width (still 196px at the full 600px). */
+@media (min-width: 901px) {
+  .cover-fan {
+    container-type: inline-size;
+    --spread: min(196px, (100cqi - 208px) / 2);
+  }
+}
+.fan-card {
+  position: absolute;
+  left: 50%;
+  top: 30px;
+  width: 212px;
+  display: grid;
+  gap: 6px;
+  padding: 8px 8px 14px;
+  border-radius: var(--r-md);
+  background: var(--paper);
+  box-shadow: 0 0 0 1px var(--line), 0 28px 50px -30px rgb(40 24 110 / 0.55);
+  transform: translateX(calc(-50% + var(--i) * var(--spread))) translateY(calc(var(--i) * var(--i) * 22px)) rotate(calc(var(--i) * 6deg));
+  transition:
+    transform 0.6s var(--ease-expo),
+    box-shadow 0.4s var(--ease),
+    scale var(--dur-press) var(--ease);
+  animation: fanIn 1s var(--ease-expo) backwards;
+  animation-delay: calc(0.3s + var(--d) * 0.12s);
+}
+@keyframes fanIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(40px) rotate(0);
+  }
+}
+.fan-card:nth-child(2) {
+  z-index: 2;
+}
+@media (hover: hover) and (pointer: fine) {
+  .fan-card:hover {
+    z-index: 3;
+    transform: translateX(calc(-50% + var(--i) * (var(--spread) + 10px))) translateY(-14px) rotate(0);
+    box-shadow: 0 0 0 1px var(--line), 0 40px 60px -30px rgb(40 24 110 / 0.6);
+  }
+  /* the lift moves the card up to 36px off the pointer; this strip keeps its old footprint hoverable, so a
+     pointer near the bottom edge no longer drops the card and lifts it again */
+  .fan-card:hover::after {
+    content: '';
+    position: absolute;
+    inset: 100% 0 -40px;
+  }
+  .cover-fan:hover .fan-card:not(:hover) {
+    transform: translateX(calc(-50% + var(--i) * (var(--spread) + 10px))) translateY(calc(var(--i) * var(--i) * 30px)) rotate(calc(var(--i) * 8deg)) scale(0.96);
+  }
+}
+.fan-card .cover {
+  margin: 0 0 6px;
+  border-radius: var(--r-sm);
+}
+.fan-meta {
+  padding: 0 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.fan-card b {
+  padding: 0 6px;
+  font-family: var(--display);
+  font-size: 15.5px;
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+
+/* posts: a feature row, then rows that always fill */
+.posts-bento .cell-link {
+  gap: 0;
+}
+.post-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 14px;
+}
+.posts-bento .post-body > p:not([class]) {
+  color: var(--ink-soft);
+  font-size: 15px;
+}
+.posts-bento .post.is-row .cell-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 28px;
+}
+.posts-bento .post.is-row .cover {
+  margin: 0;
+}
+
+/* ══ Careers: the role cards (phones and reduced motion) ══════════════════════ */
+
+.role-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+/* rows fill themselves: a short last row stretches instead of leaving a gap */
+.role-grid > li {
+  flex: 1 1 calc(25% - 12px);
+  min-width: 260px;
+}
+.role-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.5s var(--ease-expo),
+    box-shadow 0.4s var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .role-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--tone) 35%, transparent), 0 26px 44px -28px var(--tone);
+  }
+}
+.role-art {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 150px;
+  background: color-mix(in srgb, var(--tone) 8%, var(--paper));
+  border-bottom: 1px solid var(--line);
+}
+.role-art .domain-art {
+  width: 62%;
+  max-width: 220px;
+  transition: transform 0.7s var(--ease-expo);
+}
+@media (hover: hover) and (pointer: fine) {
+  .role-card:hover .role-art .domain-art {
+    transform: scale(1.06);
+  }
+}
+.role-dept {
+  position: absolute;
+  left: 14px;
+  top: 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: var(--paper);
+  font-family: var(--mono);
+  font-size: var(--fs-label-sm);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: color-mix(in srgb, var(--tone) 75%, var(--ink));
+}
+.role-dept i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+.role-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 20px 20px;
+}
+.role-body > b {
+  font-family: var(--display);
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-head);
+  letter-spacing: -0.025em;
+}
+.role-body > small {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+.role-facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 12px 0 16px;
+}
+.role-facts span {
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  background: var(--bg-2);
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--ink-2);
+}
+.role-card .role-go {
+  margin-top: auto;
+}
+
+@media (max-width: 640px) {
+  .cover-fan {
+    height: 300px;
+    transform: scale(0.78);
+    transform-origin: 50% 0;
+  }
+  .posts-bento .post.is-row .cell-link {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* ══ Nav glance ═════════════════════════════════════════════════════════════ */
+
+.nav-peek {
+  position: absolute;
+  top: calc(var(--nav-h) + 12px);
+  z-index: 3;
+  width: min(860px, calc(100vw - 40px));
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-6px) scale(0.98);
+  transform-origin: var(--caret) 0;
+  will-change: transform, opacity;
+  /* leaving is quicker than arriving */
+  transition:
+    opacity 0.14s ease-out,
+    transform 0.18s var(--ease-expo),
+    visibility 0s 0.18s;
+}
+.nav[data-compact] .nav-peek {
+  top: 68px;
+}
+.nav-peek[data-open] {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition:
+    opacity 0.18s ease-out,
+    transform 0.26s var(--ease-expo),
+    visibility 0s;
+}
+.nav-peek-caret {
+  position: absolute;
+  top: -5px;
+  left: clamp(28px, var(--caret), calc(100% - 28px));
+  z-index: 0;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 3px 0 0 0;
+  background: var(--paper);
+  box-shadow: -1px -1px 0 rgb(20 19 15 / 0.06);
+  rotate: 45deg;
+  /* same timing as the nav highlight, so the caret travels with it */
+  transition: left 0.22s var(--ease-expo);
+}
+.nav-peek-body {
+  position: relative;
+  z-index: 1;
+  height: var(--h);
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: 0 0 0 1px rgb(20 19 15 / 0.06), 0 2px 6px -2px rgb(20 19 15 / 0.08), 0 34px 70px -30px rgb(20 19 15 / 0.38);
+}
+/* Panes swap at once: every section, reached by opening the glance or by moving along the nav, plays its own
+   entrance below instead of a shared cross-fade. */
+.nav-peek-pane {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 10px;
+  opacity: 0;
+  pointer-events: none;
+}
+.nav-peek-pane[data-on] {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* the caret glides along with the nav highlight, except on a fresh open where it starts in place */
+.nav-peek:not([data-morph]) .nav-peek-caret {
+  transition: none;
+}
+/* default entrance, used where a section sets nothing of its own */
+.nav-peek[data-open] .nav-peek-pane[data-on] [style*='--k'] {
+  animation: peekIn 0.34s var(--ease-expo) both;
+  animation-delay: calc(var(--k) * 22ms);
+}
+@keyframes peekIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+/* ── Each section opens its own way ─────────────────────────────────────────
+   The selectors key on data-open, so a section's entrance replays each time it becomes the open one, whether
+   the glance has just opened or the pointer has moved along the nav. These rules sit after the default so they win at equal specificity. */
+
+/* Research: a drop falls from the link, lands, and spreads into the panel like liquid (filter in NavPeek). */
+.peek-goo-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.peek-goo {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  right: 0;
+  /* under the real panel, which fades in over it, so the panel never looks see-through */
+  z-index: 0;
+  height: calc(var(--h) + 24px);
+  opacity: 0;
+  pointer-events: none;
+  filter: url(#peek-goo);
+}
+.peek-goo i {
+  position: absolute;
+  display: block;
+  background: var(--paper);
+}
+.peek-goo-drop {
+  top: 0;
+  transform-origin: 50% 0;
+  left: clamp(28px, var(--caret), calc(100% - 28px));
+  width: 26px;
+  height: 26px;
+  margin-left: -13px;
+  border-radius: 50%;
+}
+.peek-goo-body {
+  top: 24px;
+  left: 0;
+  right: 0;
+  height: var(--h);
+  border-radius: var(--r-lg);
+  transform-origin: clamp(28px, var(--caret), calc(100% - 28px)) 0;
+}
+.nav-peek[data-open='research'] {
+  transition: none;
+}
+/* the whole drip runs in about 0.6s: it is a menu people open often, so it must not hold them up */
+.nav-peek[data-open='research'] .peek-goo {
+  animation: gooLayer 0.6s linear both;
+}
+.nav-peek[data-open='research'] .peek-goo-drop {
+  animation: gooDrop 0.26s cubic-bezier(0.5, 0, 0.7, 1) both;
+}
+.nav-peek[data-open='research'] .peek-goo-body {
+  animation: gooSpread 0.38s cubic-bezier(0.3, 0.9, 0.3, 1) 0.06s both;
+}
+.nav-peek[data-open='research'] .nav-peek-body,
+.nav-peek[data-open='research'] .nav-peek-caret {
+  animation: peekFade 0.15s ease-out 0.26s backwards;
+}
+.nav-peek[data-open='research'] .nav-peek-pane[data-on] [style*='--k'] {
+  animation-delay: calc(0.27s + var(--k) * 45ms);
+}
+@keyframes gooLayer {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes gooDrop {
+  0% {
+    transform: scale(0.5, 0.3);
+  }
+  40% {
+    transform: scale(0.7, 1.8);
+  }
+  70% {
+    transform: translateY(16px) scale(0.9, 1.25);
+  }
+  100% {
+    transform: translateY(34px) scale(0.6, 1.1);
+  }
+}
+/* grows from a blob at the link, overshoots and wobbles once before it settles */
+@keyframes gooSpread {
+  0% {
+    transform: scale(0.05, 0.08);
+  }
+  48% {
+    transform: scale(1.02, 1.08);
+  }
+  68% {
+    transform: scale(0.992, 0.96);
+  }
+  85% {
+    transform: scale(1.004, 1.015);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes peekFade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Services: the posts are dealt onto the panel like cards. */
+.peek-posts > :nth-child(1) {
+  --deal: -6deg;
+}
+.peek-posts > :nth-child(2) {
+  --deal: 4deg;
+}
+.peek-posts > :nth-child(3) {
+  --deal: -3deg;
+}
+.nav-peek[data-open='services'] .nav-peek-pane[data-on] .peek-posts > [style*='--k'] {
+  transform-origin: 50% 0;
+  animation: peekDeal 0.55s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: calc(0.04s + var(--k) * 80ms);
+}
+@keyframes peekDeal {
+  from {
+    opacity: 0;
+    transform: translateY(-28px) rotate(var(--deal, 0deg));
+  }
+}
+
+/* The clip shapes are driven through a registered property: Chrome runs a plain clip-path animation on the
+   compositor, where it fails to clip the panel's own animating cards. */
+@property --peek-wipe {
+  syntax: '<length-percentage>';
+  inherits: false;
+  initial-value: 0%;
+}
+
+/* The clip reveals show the panel at once rather than fading it in, or the reveal is over before it is seen. */
+.nav-peek[data-open='capabilities'],
+.nav-peek[data-open='contact'] {
+  transition: none;
+}
+
+/* Capabilities: the panel unrolls downwards and the three families fold down into place. */
+.nav-peek[data-open='capabilities'] .nav-peek-body {
+  /* the clip reaches 80px past the panel so it never cuts off its shadow */
+  clip-path: inset(-80px -80px calc(var(--peek-wipe) - 80px) -80px);
+  animation: peekBlind 0.5s cubic-bezier(0.65, 0, 0.35, 1) backwards;
+}
+.nav-peek[data-open='capabilities'] .nav-peek-pane[data-on] .peek-families > [style*='--k'] {
+  transform-origin: 50% 0;
+  animation: peekFold 0.55s var(--ease-expo) both;
+  animation-delay: calc(0.12s + var(--k) * 70ms);
+}
+@keyframes peekBlind {
+  from {
+    --peek-wipe: calc(100% + 80px);
+  }
+}
+@keyframes peekFold {
+  from {
+    opacity: 0;
+    transform: perspective(700px) rotateX(-75deg);
+  }
+}
+
+/* Careers: the panel stretches out of the link; roles slide in from the left, the summary from the right. */
+.nav-peek[data-open='careers'] .nav-peek-body {
+  transform-origin: var(--caret) 0;
+  animation: peekStretch 0.42s cubic-bezier(0.34, 1.25, 0.64, 1) backwards;
+}
+.nav-peek[data-open='careers'] .nav-peek-pane[data-on] .peek-list > [style*='--k'] {
+  animation: peekFromLeft 0.45s var(--ease-expo) both;
+  animation-delay: calc(0.1s + var(--k) * 45ms);
+}
+.nav-peek[data-open='careers'] .nav-peek-pane[data-on] .peek-side[style*='--k'] {
+  animation: peekFromRight 0.5s var(--ease-expo) 0.16s both;
+}
+@keyframes peekStretch {
+  from {
+    opacity: 0;
+    transform: scale(0.35, 0.6);
+  }
+}
+@keyframes peekFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+}
+@keyframes peekFromRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+}
+
+/* Blog: the panel turns in like a magazine page from its left edge, then each post turns in after it, a leaf at a
+   time; the topics card settles in last. Transform and opacity only. */
+.nav-peek[data-open='blog'] .nav-peek-body {
+  transform-origin: 0 50%;
+  animation: peekTurn 0.5s cubic-bezier(0.22, 0.9, 0.3, 1) backwards;
+}
+.nav-peek[data-open='blog'] .nav-peek-pane[data-on] .peek-list > [style*='--k'] {
+  transform-origin: 0 50%;
+  animation: peekLeaf 0.5s var(--ease-expo) both;
+  animation-delay: calc(0.16s + var(--k) * 60ms);
+}
+.nav-peek[data-open='blog'] .nav-peek-pane[data-on] .peek-side[style*='--k'] {
+  animation: peekFade 0.3s ease-out 0.42s both;
+}
+@keyframes peekTurn {
+  from {
+    opacity: 0;
+    transform: perspective(1600px) rotateY(-62deg);
+  }
+}
+@keyframes peekLeaf {
+  from {
+    opacity: 0;
+    transform: perspective(900px) rotateY(-55deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-peek[data-open='blog'] .nav-peek-body,
+  .nav-peek[data-open='blog'] .nav-peek-pane[data-on] .peek-list > [style*='--k'],
+  .nav-peek[data-open='blog'] .nav-peek-pane[data-on] .peek-side[style*='--k'] {
+    animation: peekFade 0.2s ease-out both;
+  }
+}
+
+/* About: the panel pulls into focus, like a camera finding the subject. */
+.nav-peek[data-open='about'] .nav-peek-body {
+  animation: peekFocus 0.45s ease-out backwards;
+}
+@keyframes peekFocus {
+  from {
+    opacity: 0;
+    filter: blur(10px);
+    transform: scale(1.03);
+  }
+}
+
+/* Contact: the panel ripples out in a circle from the link; the rows pop in. */
+.nav-peek[data-open='contact'] .nav-peek-body {
+  --peek-wipe: 150%;
+  clip-path: circle(var(--peek-wipe) at var(--caret) 0);
+  animation: peekRipple 0.6s cubic-bezier(0.45, 0, 0.25, 1) backwards;
+}
+.nav-peek[data-open='contact'] .nav-peek-pane[data-on] .peek-list > [style*='--k'] {
+  transform-origin: 0 50%;
+  animation: peekPop 0.4s cubic-bezier(0.34, 1.4, 0.64, 1) both;
+  animation-delay: calc(0.36s + var(--k) * 55ms);
+}
+@keyframes peekRipple {
+  from {
+    --peek-wipe: 0%;
+  }
+}
+/* the dark card is revealed by the ripple itself; animating it inside the clip lets it escape the circle */
+.nav-peek[data-open='contact'] .nav-peek-pane[data-on] .peek-side[style*='--k'] {
+  animation: none;
+}
+@keyframes peekPop {
+  from {
+    opacity: 0;
+    transform: scale(0.92);
+  }
+}
+.peek-visual {
+  display: grid;
+  gap: 8px;
+}
+.peek-tile {
+  position: relative;
+  display: grid;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  text-align: left;
+  transition:
+    transform var(--dur-hover) var(--ease),
+    box-shadow var(--dur-hover) var(--ease),
+    background-color var(--dur-hover) var(--ease),
+    scale var(--dur-press) var(--ease);
+}
+.peek-tile:focus-visible {
+  transform: translateY(var(--lift));
+}
+@media (hover: hover) and (pointer: fine) {
+  .peek-tile:hover {
+    transform: translateY(var(--lift));
+  }
+}
+.peek-tile:focus-visible {
+  outline: 2px solid var(--tone, var(--brand));
+  outline-offset: 2px;
+}
+
+.peek-domains {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.peek-domain {
+  align-content: start;
+  gap: 1px;
+  padding: 0 14px 12px;
+  background: color-mix(in srgb, var(--tone) 8%, var(--paper));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 16%, transparent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .peek-domain:hover {
+    box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--tone) 45%, transparent), 0 14px 26px -18px var(--tone);
+  }
+}
+.peek-domain-art {
+  display: grid;
+  place-items: center;
+  height: 84px;
+  margin: 0 -14px 8px;
+}
+.peek-domain-art .domain-art {
+  width: 70%;
+  max-height: 80px;
+}
+.peek-domain b {
+  font-family: var(--display);
+  font-size: 15.5px;
+  font-weight: var(--fw-head);
+  letter-spacing: -0.015em;
+}
+.peek-domain small {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.peek-families {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.peek-family {
+  align-content: start;
+  gap: 8px;
+  padding: 0 0 14px;
+  background: color-mix(in srgb, var(--tone) 8%, var(--paper));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 16%, transparent);
+}
+/* On the dark theme a tone tint on the dark surface reads as brown (orange) or olive (yellow): the tiles stay neutral
+   and carry their colour as a crisp top edge, as the Services cards do. */
+:root[data-theme='dark'] :is(.peek-domain, .peek-family),
+.dark :is(.peek-domain, .peek-family) {
+  background: color-mix(in srgb, white 4%, var(--paper));
+  box-shadow:
+    inset 0 2px 0 var(--tone),
+    inset 0 0 0 1px var(--line);
+}
+@media (hover: hover) and (pointer: fine) {
+  :root[data-theme='dark'] :is(.peek-domain, .peek-family):hover,
+  .dark :is(.peek-domain, .peek-family):hover {
+    box-shadow:
+      inset 0 2px 0 var(--tone),
+      inset 0 0 0 1px color-mix(in srgb, var(--tone) 70%, transparent),
+      0 14px 26px -18px rgb(0 0 0 / 0.8);
+  }
+}
+.peek-family-art {
+  height: 128px;
+  overflow: hidden;
+  padding: 12px 12px 0;
+  pointer-events: none;
+}
+.peek-family-art .ui-card {
+  transform: scale(0.62);
+  transform-origin: 0 0;
+  width: 161%;
+}
+.peek-family-name {
+  display: flex;
+  padding: 0 14px;
+  font-family: var(--display);
+  font-size: 16px;
+  font-weight: 640;
+}
+.peek-family-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 14px;
+}
+.peek-family-list span {
+  padding: 3px 8px;
+  border-radius: var(--r-pill);
+  background: var(--paper);
+  font-size: 11.5px;
+  font-weight: 550;
+  color: var(--ink-2);
+}
+
+.peek-posts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.peek-post {
+  align-content: start;
+  gap: 4px;
+  padding: 8px 8px 12px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.peek-post .cover {
+  margin: 0 0 6px;
+  border-radius: var(--r-xs);
+}
+.peek-post .cover-tag {
+  display: none;
+}
+.peek-post small {
+  padding: 0 6px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.peek-post b {
+  padding: 0 6px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.peek-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0 4px 14px;
+}
+.peek-foot p {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  min-width: 0;
+}
+.peek-foot b {
+  font-family: var(--display);
+  font-size: 26px;
+  font-weight: var(--fw-head);
+  letter-spacing: -0.03em;
+  color: var(--tone);
+}
+.peek-foot span {
+  font-weight: 650;
+}
+.peek-foot small {
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.peek-go {
+  display: inline-flex;
+  align-items: center;
+  flex: none;
+  gap: 6px;
+  height: 36px;
+  padding: 0 15px;
+  border-radius: var(--r-pill);
+  background: var(--ink);
+  /* the page colour, so it is the opposite of --ink in both themes (a fixed white vanished on the dark theme's light pill) */
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 600;
+  transition: background-color 0.25s var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .peek-go:hover {
+    background: var(--tone, var(--brand));
+  }
+}
+
+.peek-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 240px;
+  gap: 8px;
+}
+.peek-list {
+  display: grid;
+  align-content: start;
+  gap: 2px;
+}
+.peek-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+  text-align: left;
+  transition: background-color 0.25s var(--ease),
+    scale var(--dur-press) var(--ease);
+}
+.peek-row:focus-visible {
+  background: color-mix(in srgb, var(--tone) 9%, transparent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .peek-row:hover {
+    background: color-mix(in srgb, var(--tone) 9%, transparent);
+  }
+}
+.peek-row > .arrow {
+  flex: none;
+  color: var(--tone);
+  opacity: 0;
+  transition: opacity 0.25s var(--ease);
+}
+.peek-row:focus-visible > .arrow {
+  opacity: 1;
+}
+@media (hover: hover) and (pointer: fine) {
+  .peek-row:hover > .arrow {
+    opacity: 1;
+  }
+}
+.peek-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--tone);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone) 14%, transparent);
+}
+.peek-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, var(--tone) 12%, var(--paper));
+  color: var(--tone);
+  transition:
+    background-color 0.25s var(--ease),
+    color 0.25s var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .peek-row:hover .peek-icon {
+    background: var(--tone);
+    color: #fff;
+  }
+}
+.peek-row-text {
+  display: grid;
+  flex: 1;
+  gap: 1px;
+  min-width: 0;
+}
+.peek-row-text b {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+.peek-row-text small {
+  overflow: hidden;
+  font-size: 12.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--ink-soft);
+}
+.peek-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 18px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--tone) 9%, var(--paper));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tone) 16%, transparent);
+}
+.peek-side-figure {
+  font-family: var(--display);
+  font-size: 30px;
+  font-weight: var(--fw-head);
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: color-mix(in srgb, var(--tone) 80%, var(--ink));
+}
+.peek-side-label {
+  font-size: 19px;
+  font-weight: 650;
+}
+.peek-side-blurb {
+  margin: 6px 0 16px;
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgb(255 255 255 / 0.72);
+}
+.peek-depts {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  margin: 14px 0 16px;
+}
+.peek-depts li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.peek-depts i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+.peek-side .peek-go {
+  margin-top: auto;
+}
+.peek-side-ink {
+  background: var(--ink);
+  color: #fff;
+  box-shadow: none;
+}
+:root[data-theme='dark'] .peek-side-ink,
+.dark .peek-side-ink {
+  background: #151424;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #FAF9F6;
+}
+:root[data-theme='dark'] .peek-side-ink .peek-side-blurb,
+.dark .peek-side-ink .peek-side-blurb {
+  color: rgba(250, 249, 246, 0.72);
+}
+.peek-side-ink .peek-go {
+  background: #fff;
+  color: var(--ink);
+}
+:root[data-theme='dark'] .peek-side-ink .peek-go,
+.dark .peek-side-ink .peek-go {
+  background: #FAF9F6;
+  color: #0A0910;
+}
+@media (hover: hover) and (pointer: fine) {
+  .peek-side-ink .peek-go:hover {
+    background: var(--brand);
+    color: #fff;
+  }
+  :root[data-theme='dark'] .peek-side-ink .peek-go:hover,
+  .dark .peek-side-ink .peek-go:hover {
+    background: var(--brand);
+    color: #FFFFFF;
+  }
+}
+.peek-mail {
+  margin-top: 10px;
+  font-size: 12px;
+  color: rgb(255 255 255 / 0.7);
+}
+.peek-mail:hover {
+  color: #fff;
+}
+
+@media (max-width: 1024px) {
+  .nav-peek {
+    display: none;
+  }
+}
+
+/* ══ Inner pages: tighter rhythm, a drawing in every card ══════════════════ */
+
+.page-hero + .section,
+.page-hero + section {
+  padding-top: clamp(24px, 3vw, 48px);
+}
+
+/* product drawings keep their own ink, even inside dark cells */
+.ui-card {
+  color: var(--ink);
+}
+
+/* ══ FAQ: tagged questions beside an ask card ═══════════════════════════════ */
+
+.faq .faq-grid {
+  gap: clamp(24px, 4vw, 56px);
+}
+/* desktop uses the shared split token so Home's FAQ matches Contact's (which
+   misses the descendant rule above) and every other split layout */
+@media (min-width: 901px) {
+  .faq .faq-grid {
+    gap: var(--split-gap);
+  }
+}
+.faq-head {
+  display: flex;
+  flex-direction: column;
+}
+.faq-ask {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+  margin-top: 28px;
+}
+.faq-ask h3 {
+  margin: 6px 0 8px;
+  font-size: 22px;
+}
+/* 3D violet glass: a deep translucent slab with light drifting inside it, a frosted top, a lit top edge and a
+   shaded bottom. Once its entrance has settled it leans towards the cursor and the shine follows the pointer
+   (useGlassTilt in Faq.tsx sets --rx/--ry/--gx/--gy). */
+.faq .faq-ask.cell-ink {
+  background: linear-gradient(150deg, #3a2c9a 0%, #221a5e 45%, #120f2c 100%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.32),
+    inset 0 0 0 1px rgb(255 255 255 / 0.1),
+    inset 0 -24px 48px -24px rgb(0 0 0 / 0.55),
+    0 2px 4px rgb(20 19 15 / 0.08),
+    0 34px 64px -30px rgb(53 24 154 / 0.6);
+}
+.faq .faq-ask[data-settled] {
+  transform: perspective(1000px) rotateX(calc(var(--rx, 0deg) * 0.45)) rotateY(calc(var(--ry, 0deg) * 0.55));
+  transition:
+    transform 0.3s var(--ease),
+    box-shadow var(--dur-hover) var(--ease),
+    scale var(--dur-press) var(--ease);
+}
+.faq-ask-glow {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+.faq-ask-glow i {
+  position: absolute;
+  width: 60%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  animation: faq-glow 14s ease-in-out infinite alternate;
+}
+/* a gradient instead of a blur filter, on a child so the drift path keeps its size: see .careers-glow i::before */
+.faq-ask-glow i::before {
+  content: '';
+  position: absolute;
+  inset: -92px;
+  border-radius: 50%;
+  background: radial-gradient(
+    closest-side,
+    var(--glow) 32%,
+    color-mix(in srgb, var(--glow) 50%, transparent) 62%,
+    transparent
+  );
+}
+.faq-ask-glow i:first-child {
+  left: -18%;
+  top: -40%;
+  --glow: rgb(140 121 255 / 0.75);
+}
+.faq-ask-glow i:last-child {
+  right: -16%;
+  bottom: -46%;
+  --glow: rgb(255 170 60 / 0.35);
+  animation-duration: 18s;
+  animation-delay: -6s;
+}
+@keyframes faq-glow {
+  to {
+    transform: translate3d(22%, 18%, 0) scale(1.15);
+  }
+}
+/* the cursor's shine, a spot useGlassTilt moves by transform so the card isn't repainted on every mouse move;
+   above the drifting light, below the frost */
+.faq-ask-shine {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.faq-ask-shine > i {
+  position: absolute;
+  /* at rest, centred 30% across the top edge */
+  top: -260px;
+  left: calc(30% - 260px);
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0) 65%);
+  will-change: transform;
+}
+/* the frost: a pale top half, above the drifting light and the shine and below the words */
+.faq .faq-ask::after {
+  z-index: -1;
+  padding: 0;
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.14), rgb(255 255 255 / 0) 42%);
+  -webkit-mask: none;
+  mask: none;
+  opacity: 1;
+}
+.faq .faq-ask::before {
+  display: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .faq-ask-glow i {
+    animation: none;
+  }
+}
+.faq-mark {
+  width: 112px;
+  height: 112px;
+  overflow: visible;
+  /* Its own layer: the endless thread loop is a paint animation, and in the page's layer it repainted the page's
+     whole root layer every frame (the nav's mark is always on screen): 3.6 ms of raster per idle frame on an
+     integrated GPU, against 0.5 ms like this. */
+  will-change: transform;
+}
+.faq-mark-disc {
+  fill: var(--violet);
+}
+.faq-mark-thread {
+  fill: none;
+  stroke: #F8F7F3;
+  stroke-width: 0.17;
+  stroke-linecap: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: faq-thread 5s var(--ease) infinite;
+  animation-delay: calc(var(--k) * 0.25s);
+}
+@keyframes faq-thread {
+  0% {
+    stroke-dashoffset: 1;
+  }
+  30%,
+  80% {
+    stroke-dashoffset: 0;
+  }
+  100% {
+    stroke-dashoffset: -1;
+  }
+}
+.faq-mark-origin {
+  fill: var(--saffron);
+  animation: faq-origin 5s var(--ease) infinite;
+}
+@keyframes faq-origin {
+  0%,
+  25% {
+    opacity: 0;
+  }
+  35%,
+  80% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 0;
+  }
+}
+.faq-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 18px;
+}
+.faq-mail {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: rgb(255 255 255 / 0.6);
+  transition: color 0.3s var(--ease);
+}
+.faq-mail:hover {
+  color: #fff;
+}
+.faq .accordion {
+  padding: 4px 26px;
+  border-top: 0;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+}
+.faq .acc-item:last-child {
+  border-bottom: 0;
+}
+.faq .acc-item button {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr) auto;
+  gap: 16px;
+  padding: 20px 0;
+}
+.acc-tag {
+  display: inline-flex;
+  align-items: center;
+  justify-self: start;
+  padding: 5px 10px;
+  border-radius: var(--r-pill);
+  /* tinted from the theme's card colour (not white), so its ink reads in both themes */
+  background: color-mix(in srgb, var(--tone) 10%, var(--paper));
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: color-mix(in srgb, var(--tone) 80%, var(--ink));
+}
+.faq .acc-panel p {
+  padding-left: 128px;
+}
+@media (max-width: 900px) {
+  .faq-head {
+    position: static;
+  }
+  .faq .acc-item button {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .acc-tag {
+    grid-column: 1 / -1;
+  }
+  .faq .acc-panel p {
+    padding-left: 0;
+  }
+}
+@media (max-width: 640px) {
+  .faq-ask {
+    grid-template-columns: 1fr;
+  }
+  .faq-mark {
+    width: 80px;
+    height: 80px;
+  }
+}
+.btn-light {
+  background: #fff;
+  color: var(--ink);
+}
+:root[data-theme='dark'] .btn-light,
+.dark .btn-light {
+  background: rgba(255, 255, 255, 0.12);
+  color: #FFFFFF;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-light:hover {
+    background: var(--bg-2);
+  }
+  :root[data-theme='dark'] .btn-light:hover,
+  .dark .btn-light:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: #FFFFFF;
+  }
+}

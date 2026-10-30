@@ -1,0 +1,836 @@
+/* ══ Services (pages/Services.tsx) ═════════════════════════════════════════════
+   A tall section whose copy scrolls in the normal flow while the cards travel down the page with it, from a
+   corridor, down a vertical helix, into a ring (ServiceJourney + gl/journeyScene.ts), drawn on a full-screen stage
+   layer behind the copy. An index and a focus panel naming the card in front stay on screen; any card opens a
+   reading pop-up (ServiceDialog) that flies out and turns over. Then a closing call to action. */
+
+.svc {
+  /* Everything here comes from the site palette in base.css: Violet, Tango Orange and Pitch Yellow, with the dark
+     theme's page, surface and text tones (the page is always dark). The three groups of cards take the three hues. */
+  --svc-night: var(--bg);
+  --svc-surface: var(--paper);
+  --svc-on: var(--ink);
+  --svc-on-2: var(--ink-soft);
+  --svc-on-3: var(--muted);
+  --svc-lavender: var(--violet-text);
+  --svc-light: #f8f7f3; /* Cultured: the face of a light card */
+  --svc-dark-ink: #14130f; /* Charcoal Ink: type on a light card */
+}
+
+/* ── The journey ───────────────────────────────────────────────────────────── */
+
+.svc-journey {
+  /* the page's content column, so the copy lines up with the nav and the sections below */
+  --col-x: max(var(--gutter), (100% - var(--content)) / 2);
+  /* the copy sits high enough to clear the floating back-to-top button in the corner */
+  --foot-y: clamp(88px, 11vh, 112px);
+  position: relative;
+  /* its height comes from the chapters: the stage layer overlaps them rather than adding to it */
+  background: var(--svc-night);
+}
+.svc-journey__pin {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  min-height: 640px;
+  overflow: hidden;
+  isolation: isolate;
+  color: var(--svc-on);
+  /* violet light only: Tango Orange this faint over the night reads as brown */
+  background:
+    radial-gradient(70% 60% at 50% 40%, rgb(110 88 245 / 0.16), transparent 70%),
+    var(--svc-night);
+}
+.svc-journey__stage {
+  position: absolute;
+  inset: 0;
+  /* a horizontal drag turns the ring; a vertical one still scrolls the page */
+  touch-action: pan-y;
+  user-select: none;
+}
+.svc-journey__stage.is-dragging,
+.svc-journey__stage.is-dragging .svc-card__face {
+  cursor: grabbing;
+}
+.svc-journey-gl,
+.svc-journey-css {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+/* a dark foot keeps the copy legible while cards pass under it, and the edges fall away into the night */
+.svc-journey__shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(to top, rgb(10 9 16 / 0.85) 0%, rgb(10 9 16 / 0.5) 20%, transparent 40%),
+    linear-gradient(to bottom, rgb(10 9 16 / 0.7), transparent 18%),
+    linear-gradient(to right, rgb(10 9 16 / 0.55), transparent 42%),
+    radial-gradient(120% 90% at 50% 45%, transparent 58%, rgb(0 0 0 / 0.55));
+}
+
+/* the veil: a fade into the page colour that rises from the bottom over the tail, as at the end of the home hero
+   (.story-veil). ServiceJourney moves it; it starts below the frame. */
+.svc-veil {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+  height: 30svh;
+  background: linear-gradient(to bottom, transparent, var(--bg) 85%);
+  transform: translate3d(0, 100svh, 0);
+  pointer-events: none;
+}
+
+/* the right-hand column: the index above the focus panel, stacked so they can never collide */
+.svc-side {
+  position: absolute;
+  /* a little out into the page margin past the content column, but never closer than 32px to the edge */
+  right: max(32px, var(--col-x) - 48px);
+  bottom: var(--foot-y);
+  z-index: 2;
+  /* the index, the chips and the card are one column of the same width, so all their edges line up */
+  display: grid;
+  width: 360px;
+  gap: 16px;
+}
+
+/* the index: the three formations side by side, the current one lit */
+.svc-index {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 5px;
+  border-radius: 18px;
+  /* cards pass behind it in the ring, so it keeps a dark backing of its own */
+  background: rgb(10 9 16 / 0.72);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08);
+}
+.svc-index__stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 38px;
+  border-radius: 13px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--svc-on-3);
+  transition:
+    color var(--dur-hover) var(--ease),
+    background-color var(--dur-ui) var(--ease),
+    scale var(--dur-press) var(--ease);
+}
+.svc-index__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.45);
+  transition:
+    background-color var(--dur-ui) var(--ease),
+    box-shadow var(--dur-ui) var(--ease),
+    scale var(--dur-ui) var(--ease-expo);
+}
+.svc-index__stop[aria-current] {
+  color: var(--svc-on);
+  background: rgb(255 255 255 / 0.08);
+}
+.svc-index__stop[aria-current] .svc-index__dot {
+  scale: 1.2;
+  background: var(--violet);
+  box-shadow: 0 0 0 3px rgb(110 88 245 / 0.28);
+}
+@media (hover: hover) and (pointer: fine) {
+  .svc-index__stop:not([aria-current]):hover {
+    color: var(--svc-on);
+    background: rgb(255 255 255 / 0.05);
+  }
+}
+.svc-index__stop:active {
+  scale: 0.97;
+}
+.svc-index__stop:focus-visible {
+  outline: 2px solid var(--svc-lavender);
+  outline-offset: 2px;
+}
+
+/* the copy: three chapters in the normal flow, scrolling over the stage, each as tall as its formation's stretch */
+.svc-chapters {
+  position: relative;
+  z-index: 1;
+  margin-top: -100svh;
+  /* the stage underneath takes the clicks and drags; the copy is only read */
+  pointer-events: none;
+}
+.svc-chapter {
+  padding-inline: var(--col-x);
+}
+.svc-chapter > * {
+  max-width: min(560px, 42vw);
+}
+.svc-chapter.is-tunnel {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 120svh;
+  /* the headline sits at the foot of the first screen */
+  padding-bottom: calc(20svh + var(--foot-y));
+}
+.svc-chapter.is-tunnel > .headline {
+  max-width: min(860px, 58vw);
+}
+/* the helix runs between the copy and the panel, so the copy here keeps to a narrower column */
+.svc-chapter.is-spiral > * {
+  max-width: min(440px, 34vw);
+}
+.svc .svc-chapter.is-spiral .svc-h2 {
+  font-size: clamp(38px, 3.8vw, 56px);
+}
+.svc-chapter.is-spiral {
+  display: grid;
+  align-content: start;
+  gap: 28svh;
+  height: 220svh;
+  padding-top: 30svh;
+}
+/* the last stretch: the ring holds while the veil brings the page colour up into the frame */
+.svc-chapter.is-tail {
+  height: 60svh;
+}
+.svc-chapter.is-ring {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  height: 160svh;
+  padding-bottom: var(--foot-y);
+}
+/* the closing copy sits a little left of the column, out into the page margin (never closer than 32px to the edge) */
+/* every chapter's copy keeps the same distance from the left edge as the right-hand column from the right */
+.svc .svc-journey .svc-chapter > * {
+  margin-left: calc(-1 * clamp(0px, (100vw - var(--content)) / 2 - 32px, 48px));
+}
+/* desktop: rebuild --col-x from 100cqw (#main's width) so the copy mirrors .svc-side exactly;
+   100vw counts a classic scrollbar and has no gutter floor, so the two sides drifted apart */
+@media (min-width: 901px) {
+  .svc .svc-journey .svc-chapter > * {
+    margin-left: calc(-1 * clamp(0px, max(var(--gutter), (100cqw - var(--content)) / 2) - 32px, 48px));
+  }
+}
+.svc .svc-chapter.is-ring .svc-h2 {
+  font-size: clamp(38px, 3.9vw, 60px);
+}
+
+/* one block per group of cards, passing on the left while the helix carries them on the right */
+.svc-group {
+  display: grid;
+  gap: 10px;
+  padding-left: 22px;
+  border-left: 1px solid color-mix(in srgb, var(--kind) 55%, transparent);
+}
+.svc .svc-group__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(26px, 2.4vw, 34px);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: var(--svc-on);
+}
+.svc-group__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--kind);
+  box-shadow: 0 0 14px var(--kind);
+}
+.svc-group p {
+  max-width: 40ch;
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--svc-on-2);
+  text-wrap: pretty;
+}
+.svc-caption__side {
+  max-width: 44ch;
+  margin-top: 22px;
+}
+.svc-caption__side p {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.55;
+  color: var(--svc-on-2);
+  text-wrap: pretty;
+}
+.svc-caption__side .svc-caption__hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--svc-on-3);
+}
+/* a short line of light keeps running through the hint, so it reads as "keep going" */
+.svc-caption__hint::before {
+  content: '';
+  width: 28px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--svc-on-2), transparent);
+  background-size: 200% 100%;
+  animation: svc-hint 2.2s var(--ease) infinite;
+}
+@keyframes svc-hint {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+.svc .svc-h1,
+.svc .svc-h2 {
+  margin: 0;
+  font-weight: var(--fw-head);
+  line-height: 0.94;
+  color: var(--svc-on);
+  text-wrap: balance;
+}
+.svc .svc-h1 {
+  font-size: clamp(52px, 5.6vw, 92px);
+  letter-spacing: -0.054em;
+}
+.svc .svc-h2 {
+  letter-spacing: -0.05em;
+}
+
+/* the focus panel: whichever card is in front, in plain readable type, plus a way into each group */
+.svc-focus {
+  display: grid;
+  gap: 16px;
+}
+/* three equal chips across the full width, edge to edge with the index above and the card below */
+.svc-focus__groups {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+.svc-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  min-height: 34px;
+  padding: 0 8px;
+  white-space: nowrap;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  color: var(--svc-on-2);
+  /* near-solid, because cards pass behind it */
+  background: color-mix(in oklab, var(--svc-surface) 92%, transparent);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.12);
+  transition:
+    color var(--dur-hover) var(--ease),
+    background-color var(--dur-ui) var(--ease),
+    box-shadow var(--dur-ui) var(--ease),
+    scale var(--dur-press) var(--ease);
+}
+.svc-chip__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--kind);
+}
+.svc-chip.is-service,
+.svc-focus__card.is-service,
+.svc-group.is-service {
+  --kind: var(--svc-lavender);
+}
+.svc-chip.is-approach,
+.svc-focus__card.is-approach,
+.svc-group.is-approach {
+  --kind: var(--tangerine);
+}
+.svc-chip.is-sector,
+.svc-focus__card.is-sector,
+.svc-group.is-sector {
+  --kind: var(--saffron);
+}
+.svc-chip[aria-pressed='true'] {
+  color: var(--svc-on);
+  background: color-mix(in oklab, var(--svc-surface), white 10%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--kind) 60%, transparent);
+}
+@media (hover: hover) and (pointer: fine) {
+  .svc-chip:hover {
+    color: var(--svc-on);
+    background: color-mix(in oklab, var(--svc-surface), white 10%);
+  }
+}
+.svc-chip:active {
+  scale: 0.96;
+}
+.svc-chip:focus-visible {
+  outline: 2px solid var(--svc-lavender);
+  outline-offset: 2px;
+}
+.svc-focus__card {
+  position: relative;
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  padding: 22px 24px 24px;
+  border-radius: 22px;
+  background: linear-gradient(160deg, color-mix(in oklab, var(--svc-surface), white 6%), var(--svc-surface));
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.1),
+    inset 0 1px 0 rgb(255 255 255 / 0.08),
+    0 30px 60px -28px rgb(0 0 0 / 0.9);
+  animation: svc-focus-in 420ms var(--ease-expo);
+}
+/* a line of the card's own colour along the top edge says which group it belongs to */
+.svc-focus__card::before {
+  content: '';
+  position: absolute;
+  left: 24px;
+  right: 24px;
+  top: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--kind), transparent);
+}
+@keyframes svc-focus-in {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+.svc-focus__icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  color: var(--kind);
+  background: rgb(255 255 255 / 0.07);
+}
+.svc .svc-focus__title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  font-family: var(--display);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  color: var(--svc-on);
+}
+.svc-focus__line {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--svc-on-2);
+  text-wrap: pretty;
+}
+.svc-focus__open {
+  margin-top: 8px;
+}
+
+/* The cards. Each is ONE flat surface in the 3D scene: a separate back face doubled the surfaces the browser has to
+   depth-sort every frame (with each pair coplanar, the costly case), and that was what dropped frames. */
+.svc-card-host .svc-card__face {
+  /* its own GPU layer, so the scene's fades are composited instead of repainting the card every frame */
+  will-change: transform;
+}
+.svc-card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+/* the open card has left the ring for the pop-up */
+.svc-card.is-away {
+  visibility: hidden;
+}
+.svc-card {
+  --card-hue: var(--violet);
+}
+.svc-card.is-approach {
+  --card-hue: var(--tangerine);
+}
+.svc-card.is-sector {
+  --card-hue: var(--saffron);
+}
+.svc-card__face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 18px 20px;
+  border-radius: 18px;
+  text-align: left;
+  color: var(--svc-on);
+  background: linear-gradient(160deg, color-mix(in oklab, var(--svc-surface), white 7%), var(--svc-surface));
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.1),
+    0 24px 50px -24px rgb(0 0 0 / 0.8);
+  cursor: pointer;
+  /* only the hover lift animates: colour transitions on cards that change focus several times a second cost a
+     repaint per frame */
+  transition: translate 0.4s var(--ease-expo);
+}
+/* the group's colour as a crisp line along the top edge: violet, Tango Orange or Pitch Yellow at full strength */
+.svc-card__face::before {
+  content: '';
+  position: absolute;
+  left: 20px;
+  right: 20px;
+  top: 0;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--card-hue);
+}
+.svc-card.is-sector .svc-card__face {
+  color: var(--svc-dark-ink);
+  background: var(--svc-light);
+}
+/* the card nearest the viewer lights up, as in the reference */
+.svc-card.is-front .svc-card__face {
+  color: var(--svc-dark-ink);
+  background: var(--svc-light);
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.7),
+    0 30px 70px -22px rgb(110 88 245 / 0.6);
+}
+.svc-card.is-sector.is-front .svc-card__face {
+  color: #fff;
+  background: var(--violet);
+}
+.svc-card__top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.svc-card__icon {
+  display: grid;
+  place-items: center;
+  width: calc(32px * var(--up, 1));
+  height: calc(32px * var(--up, 1));
+  border-radius: calc(10px * var(--up, 1));
+  color: var(--svc-lavender);
+  background: rgb(255 255 255 / 0.08);
+}
+.svc-card.is-approach .svc-card__icon {
+  color: var(--tangerine);
+}
+.svc-card.is-front .svc-card__icon {
+  color: var(--violet);
+  background: rgb(110 88 245 / 0.12);
+}
+.svc-card.is-sector .svc-card__icon {
+  color: var(--svc-dark-ink);
+  background: var(--saffron);
+}
+.svc-card.is-sector.is-front .svc-card__icon {
+  color: #fff;
+  background: rgb(255 255 255 / 0.18);
+}
+/* a card turned away (the scene marks it) shows a plain back, not its text in mirror writing */
+.svc-card-host[data-away] .svc-card .svc-card__face {
+  color: transparent;
+  background: linear-gradient(160deg, var(--svc-surface), var(--svc-night));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07);
+}
+.svc-card-host[data-away] .svc-card__face > * {
+  visibility: hidden;
+}
+.svc-card__kind {
+  font-family: var(--mono);
+  font-size: calc(10.5px * var(--up, 1));
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.62;
+}
+.svc-card__title {
+  margin-top: calc(6px * var(--up, 1));
+  font-family: var(--display);
+  font-size: calc(22px * var(--up, 1));
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+.svc-card__line {
+  font-size: calc(13.5px * var(--up, 1));
+  line-height: 1.45;
+  opacity: 0.74;
+}
+@media (hover: hover) and (pointer: fine) {
+  .svc-journey__stage:not(.is-dragging) .svc-card__face:hover {
+    translate: 0 -8px;
+  }
+}
+.svc-card__face:focus-visible {
+  outline: 2px solid var(--svc-lavender);
+  outline-offset: 4px;
+}
+
+/* ── The pop-up ────────────────────────────────────────────────────────────── */
+
+.svc-dialog {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: transparent;
+  perspective: 1800px;
+}
+.svc-dialog[open] {
+  display: grid;
+  place-items: center;
+}
+.svc-dialog::backdrop {
+  background: transparent;
+}
+.svc-dialog__scrim {
+  position: fixed;
+  inset: 0;
+  background: rgb(10 9 16 / 0.58);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.svc-dialog__fly {
+  position: relative;
+  width: min(680px, 92vw);
+  transform-style: preserve-3d;
+}
+.svc-dialog__turn {
+  position: relative;
+  transform-style: preserve-3d;
+}
+/* the card's own face, at the panel's size, until the turn hides it */
+.svc-dialog__front {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+.svc-dialog__front .svc-card__face {
+  border-radius: 26px;
+  padding: calc(18px * var(--up, 1)) calc(20px * var(--up, 1));
+  gap: calc(8px * var(--up, 1));
+  cursor: default;
+}
+.svc-dialog__back {
+  position: relative;
+  max-height: 86vh;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 40px 44px 36px;
+  border-radius: 26px;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: 0 40px 120px -30px rgb(0 0 0 / 0.6);
+  transform: rotateY(180deg);
+  backface-visibility: hidden;
+}
+.svc-dialog__back.is-flat {
+  transform: none;
+}
+.svc-dialog__body {
+  display: grid;
+  gap: 18px;
+}
+/* the card's group, under its title, marked with the group's colour */
+.svc-dialog__kind {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 0 0;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.svc-dialog__kind::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+.svc-dialog__kind.is-service::before {
+  background: var(--violet);
+}
+.svc-dialog__kind.is-approach::before {
+  background: var(--tangerine);
+}
+.svc-dialog__kind.is-sector::before {
+  background: var(--saffron);
+}
+.svc-dialog__title {
+  margin: 0;
+  padding-right: 48px;
+  font-family: var(--display);
+  font-size: clamp(30px, 3.4vw, 44px);
+  font-weight: var(--fw-head);
+  line-height: 1;
+  letter-spacing: -0.045em;
+}
+.svc-dialog__summary {
+  margin: 0;
+  font-size: 17px;
+  line-height: 1.6;
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+.svc-dialog__label {
+  margin: 8px 0 10px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.svc-dialog__points,
+.svc-dialog__steps {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.svc-dialog__points li,
+.svc-dialog__steps li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 15.5px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.svc-dialog__points li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0.6em;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--violet);
+}
+/* the steps run in order, so they are joined by a line */
+.svc-dialog__steps li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 0.55em;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 2px var(--tangerine);
+}
+.svc-dialog__steps li + li::after {
+  content: '';
+  position: absolute;
+  left: 5px;
+  bottom: calc(100% - 0.55em);
+  height: calc(100% - 0.4em);
+  width: 1px;
+  background: color-mix(in srgb, var(--tangerine) 45%, transparent);
+}
+.svc-dialog__actions {
+  margin-top: 10px;
+}
+.svc-dialog__close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+  transition:
+    background-color var(--dur-hover) var(--ease),
+    color var(--dur-hover) var(--ease),
+    scale var(--dur-press) var(--ease);
+}
+.svc-dialog__close svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+@media (hover: hover) and (pointer: fine) {
+  .svc-dialog__close:hover {
+    color: #fff;
+    background-color: var(--ink);
+  }
+}
+.svc-dialog__close:active {
+  scale: 0.94;
+}
+.svc-dialog__close:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: 3px;
+}
+
+/* ── Closing ───────────────────────────────────────────────────────────────── */
+
+
+.svc-cta-inner {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: end;
+  gap: 32px 64px;
+}
+.svc-cta-copy p {
+  max-width: 40ch;
+  margin: 0 0 26px;
+  font-size: 18px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+/* desktop: match the Careers closing block (.cr-close__inner) so both page endings are spaced alike */
+@media (min-width: 901px) {
+  .svc-cta-inner {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    column-gap: var(--split-gap);
+  }
+  .svc-cta-copy p {
+    max-width: 44ch;
+    margin-bottom: 24px;
+    font-size: var(--fs-lede);
+  }
+}
+
+/* ── Reduced motion ────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .svc-index__stop,
+  .svc-index__dot,
+  .svc-chip,
+  .svc-card__face {
+    transition: none;
+  }
+}

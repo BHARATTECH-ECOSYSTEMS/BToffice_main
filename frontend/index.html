@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Bharattech Origin | The Operating System for Intelligence</title>
+    <meta name="description" content="Bharattech Origin is an Indian deep-technology research company building a unified intelligence infrastructure designed to learn, remember, reason and evolve." />
+    <meta name="theme-color" content="#FBF6EF" />
+    <script>
+      // The theme before first paint, by the same rule as resolveTheme in src/theme.ts (tests/site/theme.test.ts
+      // checks they agree): Services, Research and the old dark links are dark; otherwise the saved Light/Dark
+      // choice, or the device's own setting for Auto.
+      (function () {
+        try {
+          var params = new URLSearchParams(window.location.search);
+          var hash = window.location.hash || '';
+          var path = window.location.pathname || '';
+          var route = hash.replace(/^#/, '').split('?')[0].replace(/\/+$/, '');
+          var dark = route === '/services' || route === '/research' || params.get('theme') === 'dark' || hash.indexOf('theme=dark') !== -1 || hash.indexOf('/dark') !== -1 || path.indexOf('/dark') === 0;
+          if (!dark) {
+            var saved = null;
+            try { saved = localStorage.getItem('bt-theme'); } catch (e) {}
+            dark = saved === 'dark' || (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          }
+          if (dark) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            document.documentElement.classList.add('dark');
+          }
+        } catch (e) {}
+      })();
+      // Modest machines (≤4 cores or ≤4 GB, or an integrated GPU) get the lighter render path before first paint.
+      // The GPU's answer is remembered: asking opens a WebGL context, which held the first paint back by up to a second.
+      (function () {
+        try {
+          var lite = (navigator.hardwareConcurrency || 8) <= 4 || (navigator.deviceMemory || 8) <= 4;
+          if (!lite) {
+            var weak = null;
+            try { weak = localStorage.getItem('bt-weak-gpu'); } catch (e) {}
+            if (weak === null) {
+              var gl = document.createElement('canvas').getContext('webgl');
+              var dbg = gl && gl.getExtension('WEBGL_debug_renderer_info');
+              var gpu = dbg ? String(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL)) : '';
+              weak = /Intel|Iris|UHD|HD Graphics|Mali|Adreno|PowerVR|SwiftShader|llvmpipe|Basic Render/i.test(gpu) ? '1' : '0';
+              var lose = gl && gl.getExtension('WEBGL_lose_context');
+              if (lose) lose.loseContext();
+              try { localStorage.setItem('bt-weak-gpu', weak); } catch (e) {}
+            }
+            lite = weak === '1';
+          }
+          if (lite) document.documentElement.classList.add('lite');
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Figtree:wght@400..700&family=Geist+Mono:wght@400;500;600&display=swap"
+    />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

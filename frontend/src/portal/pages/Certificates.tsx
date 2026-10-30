@@ -1,0 +1,357 @@
+import { useState } from 'react';
+import { api } from '../api';
+import { indiaToday } from '../attendance';
+import { certificateDetailsProblem, JOB_TITLE_MAX, type CertificateDetails } from '../certificates';
+import { CERTIFICATE_TYPES, type Certificate, type CertificateType } from '../data';
+import { useSession } from '../session';
+import { formatDate, usePeopleById, usePortal } from '../store';
+import { btnClass, BtnLabel, DeleteButton, Empty, Modal, PageHead, PIcon, SearchField, Stat, useNotice } from '../ui';
+import type { PortalIconName } from '../data';
+import { ConnectedCertificates } from './CertificatesConnected';
+
+const TYPE_ICON: Record<CertificateType, PortalIconName> = { bonafide: 'file', character: 'shield', transfer: 'cap', completion: 'book' };
+const typeOf = (id: CertificateType) => CERTIFICATE_TYPES.find((t) => t.id === id)!;
+
+/** The backend's certificates when it is connected; the demo certificates otherwise. */
+export function Certificates() {
+  return api ? <ConnectedCertificates /> : <DemoCertificates />;
+}
+
+function DemoCertificates() {
+  // as in the real portal (CertificatesConnected): only Super Admins and Admins issue; everyone else sees their own
+  const canIssue = useSession()!.role === 'admin';
+  const { certificates, people, issueCertificate } = usePortal();
+  const [tab, setTab] = useState<'issue' | 'history'>(canIssue ? 'issue' : 'history');
+  const [notice, notify] = useNotice();
+
+  return (
+    <>
+      <PageHead title="Certificates" sub={canIssue ? 'Generate certificates and keep track of every one issued.' : 'Certificates issued to you.'} />
+      {canIssue && (
+        <div className="p-tabs" role="tablist" aria-label="Certificates">
+          <button type="button" role="tab" aria-selected={tab === 'issue'} onClick={() => setTab('issue')}>
+            <PIcon name="plus" size={16} /> Issue certificate
+          </button>
+          <button type="button" role="tab" aria-selected={tab === 'history'} onClick={() => setTab('history')}>
+            <PIcon name="clock" size={16} /> History <span className="p-count">{certificates.length}</span>
+          </button>
+        </div>
+      )}
+      {canIssue && tab === 'issue' ? (
+        <IssueWizard
+          people={people}
+          issue={issueCertificate}
+          onIssued={(name, type) => {
+            notify(`${typeOf(type).name} generated for ${name}. It's now in the history.`);
+            setTab('history');
+          }}
+        />
+      ) : (
+        <History isManager={canIssue} notify={notify} />
+      )}
+      {notice}
+    </>
+  );
+}
+
+/**
+ * Issue a certificate in three steps: type, person, review. `issue` may be a backend call; while it runs the
+ * Generate button waits, and if it fails the reason shows and the choices are kept.
+ */
+export function IssueWizard({
+  people,
+  issue,
+  onIssued,
+}: {
+  /** `joined` ("YYYY-MM-DD") starts the certificate's period. */
+  people: { id: string; name: string; email: string; joined?: string }[];
+  /** Whatever it returns is ignored; a promise is waited for. */
+  issue: (type: CertificateType, personId: string, details: CertificateDetails) => unknown;
+  onIssued: (name: string, type: CertificateType) => void;
+}) {
+  const [step, setStep] = useState(0);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [type, setType] = useState<CertificateType | null>(null);
+  const [personId, setPersonId] = useState<string | null>(null);
+  const [q, setQ] = useState('');
+  // every certificate states a job title and a period (the company's design); the period runs from the join date
+  const [details, setDetails] = useState<CertificateDetails>({ jobTitle: '', fromDate: '', toDate: indiaToday() });
+  const person = people.find((p) => p.id === personId);
+  const query = q.trim().toLowerCase();
+  const matches = people.filter((p) => !query || p.name.toLowerCase().includes(query) || p.email.toLowerCase().includes(query));
+  const problem = certificateDetailsProblem(details);
+  const canNext = (step === 0 && type) || (step === 1 && person) || (step === 2 && !problem);
+  const steps = ['Certificate type', 'Person', 'Details', 'Review'];
+  const percent = Math.round(((step + 1) / steps.length) * 100);
+  const choosePerson = (id: string) => {
+    const chosen = people.find((p) => p.id === id);
+    setPersonId(id);
+    if (chosen) setDetails((d) => ({ ...d, fromDate: chosen.joined ?? '' }));
+  };
+
+  return (
+    <section className="p-card" aria-labelledby="wiz-title">
+      <div className="p-progress">
+        <p className="p-progress-line">
+          <span>
+            Step {step + 1} of {steps.length} <span className="p-dim">· {steps[step]}</span>
+          </span>
+          <span className="p-progress-pct">{percent}%</span>
+        </p>
+        <div className="p-progress-bar" role="progressbar" aria-valuemin={1} aria-valuemax={steps.length} aria-valuenow={step + 1} aria-label="Certificate steps">
+          <i style={{ scale: `${(step + 1) / steps.length} 1` }} />
+        </div>
+      </div>
+
+      {step === 0 && (
+        <fieldset className="p-step">
+          <legend id="wiz-title" className="p-card-title">
+            Select certificate type
+          </legend>
+          <p className="p-muted">Choose the type of certificate you want to generate.</p>
+          <div className="p-choices">
+            {CERTIFICATE_TYPES.map((t) => (
+              <label key={t.id} className="p-choice">
+                <input type="radio" name="cert-type" value={t.id} checked={type === t.id} onChange={() => setType(t.id)} />
+                <span className="p-tile-icon">
+                  <PIcon name={TYPE_ICON[t.id]} />
+                </span>
+                <span>
+                  <strong>{t.name}</strong>
+                  <span className="p-muted">{t.body}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      {step === 1 && (
+        <fieldset className="p-step">
+          <legend id="wiz-title" className="p-card-title">
+            Select person
+          </legend>
+          <p className="p-muted">Search and choose the person this certificate is for.</p>
+          <SearchField value={q} onChange={setQ} label="Find user" placeholder="Search by name or email" showLabel />
+          <div className="p-choices is-list" data-lenis-prevent>
+            {matches.map((p) => (
+              <label key={p.id} className="p-choice">
+                <input type="radio" name="cert-person" value={p.id} checked={personId === p.id} onChange={() => choosePerson(p.id)} />
+                <span className="p-avatar is-soft" aria-hidden="true">
+                  {p.name[0]}
+                </span>
+                <span>
+                  <strong>{p.name}</strong>
+                  <span className="p-muted">{p.email}</span>
+                </span>
+              </label>
+            ))}
+            {!matches.length && <Empty icon="users" title="Nobody matches that search" />}
+          </div>
+        </fieldset>
+      )}
+
+      {step === 2 && person && (
+        <fieldset className="p-step">
+          <legend id="wiz-title" className="p-card-title">
+            Job title and period
+          </legend>
+          <p className="p-muted">The certificate says {person.name} has served as this, from the first date to the second.</p>
+          <label className="p-field">
+            <span>Job title</span>
+            <input
+              value={details.jobTitle}
+              maxLength={JOB_TITLE_MAX}
+              placeholder="For example, Fullstack Intern"
+              onChange={(e) => setDetails({ ...details, jobTitle: e.target.value })}
+            />
+          </label>
+          <div className="p-form-row">
+            <label className="p-field">
+              <span>From</span>
+              <input type="date" value={details.fromDate} max={details.toDate || indiaToday()} onChange={(e) => setDetails({ ...details, fromDate: e.target.value })} />
+            </label>
+            <label className="p-field">
+              <span>To</span>
+              <input type="date" value={details.toDate} min={details.fromDate || undefined} max={indiaToday()} onChange={(e) => setDetails({ ...details, toDate: e.target.value })} />
+            </label>
+          </div>
+          <p className="p-field-hint">{problem || (person.joined === details.fromDate ? `From is ${person.name}’s join date; change it if the period started later.` : 'Check the period before you go on.')}</p>
+        </fieldset>
+      )}
+
+      {step === 3 && type && person && (
+        <div className="p-step">
+          <h2 id="wiz-title" className="p-card-title">
+            Review and generate
+          </h2>
+          <p className="p-muted">Review the details before generating the certificate.</p>
+          <dl className="p-review">
+            <div>
+              <dt>Certificate type</dt>
+              <dd>{typeOf(type).name}</dd>
+            </div>
+            <div>
+              <dt>Issued to</dt>
+              <dd>
+                {person.name} <span className="p-muted">{person.email}</span>
+              </dd>
+            </div>
+            <div>
+              <dt>Job title</dt>
+              <dd>{details.jobTitle.trim()}</dd>
+            </div>
+            <div>
+              <dt>Period</dt>
+              <dd>
+                {formatDate(details.fromDate)} to {formatDate(details.toDate)}
+              </dd>
+            </div>
+          </dl>
+          <p className="p-hint">Check the details first. Once generated, the certificate appears in the history, where it can be viewed.</p>
+          {error && (
+            <p className="p-error" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="p-wizard-foot">
+        <button type="button" className={btnClass('ghost')} onClick={() => (setStep((s) => s - 1), setError(''))} disabled={step === 0 || busy}>
+          <BtnLabel arrow="left">Back</BtnLabel>
+        </button>
+        {step < steps.length - 1 ? (
+          <button type="button" className={btnClass('primary')} onClick={() => setStep((s) => s + 1)} disabled={!canNext}>
+            <BtnLabel arrow="right">Next</BtnLabel>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={btnClass('primary')}
+            disabled={busy}
+            onClick={async () => {
+              setBusy(true);
+              setError('');
+              try {
+                await issue(type!, person!.id, details);
+                onIssued(person!.name, type!);
+              } catch (e) {
+                setError(e instanceof Error && e.message ? e.message : 'The certificate couldn’t be generated. Please try again.');
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            <BtnLabel icon="award">{busy ? 'Generating…' : 'Generate certificate'}</BtnLabel>
+          </button>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function History({ isManager, notify }: { isManager: boolean; notify: (t: string) => void }) {
+  const canDelete = useSession()!.role === 'admin';
+  const { certificates, me, removeCertificate } = usePortal();
+  const byId = usePeopleById();
+  const [q, setQ] = useState('');
+  const [viewing, setViewing] = useState<Certificate | null>(null);
+  const mine = isManager ? certificates : certificates.filter((c) => c.recipientId === me.id);
+  const query = q.trim().toLowerCase();
+  const rows = mine.filter((c) => !query || [typeOf(c.type).name, byId.get(c.recipientId)?.name ?? '', c.issuedBy].some((v) => v.toLowerCase().includes(query)));
+  const latest = mine[0];
+
+  return (
+    <>
+      <div className="p-stats is-two">
+        <Stat icon="award" label={isManager ? 'Total issued' : 'Issued to you'} value={mine.length} />
+        <Stat icon="calendar" label="Latest" value={latest ? formatDate(latest.date) : 'None yet'} tone="saffron" />
+      </div>
+      <section className="p-card" aria-labelledby="cert-history">
+        <div className="p-card-head is-start">
+          <span className="p-tile-icon">
+            <PIcon name="clock" />
+          </span>
+          <div>
+            <h2 id="cert-history" className="p-card-title">
+              Certificate history
+            </h2>
+            <p className="p-muted">{isManager ? 'View and manage issued certificates.' : 'View the certificates issued to you.'}</p>
+          </div>
+        </div>
+        <SearchField value={q} onChange={setQ} label="Search certificates" placeholder="Search by type or person" />
+        {rows.length ? (
+          <div className="p-table-wrap">
+            <table className="p-table">
+              <thead>
+                <tr>
+                  <th scope="col">Certificate type</th>
+                  {isManager && <th scope="col">Issued to</th>}
+                  <th scope="col">Issued by</th>
+                  <th scope="col">Date</th>
+                  <th scope="col">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((c) => (
+                  <tr key={c.id}>
+                    <td className="is-strong">{typeOf(c.type).name}</td>
+                    {isManager && <td>{byId.get(c.recipientId)?.name ?? 'Removed user'}</td>}
+                    <td>{c.issuedBy}</td>
+                    <td>{formatDate(c.date)}</td>
+                    <td className="is-end">
+                      <div className="p-row is-end">
+                        <button type="button" className={btnClass('ghost', { small: true })} onClick={() => setViewing(c)}>
+                          <BtnLabel icon="eye">
+                            View<span className="sr-only"> {typeOf(c.type).name}</span>
+                          </BtnLabel>
+                        </button>
+                        {canDelete && (
+                          <DeleteButton small srText={typeOf(c.type).name} onDone={() => (removeCertificate(c.id), notify('Certificate deleted.'))} />
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <Empty icon="award" title={mine.length ? 'Nothing matches that search' : 'No certificates yet'}>
+            {!mine.length && !isManager ? 'Certificates an admin issues to you will be listed here.' : undefined}
+          </Empty>
+        )}
+      </section>
+      {viewing && (
+        <Modal
+          title={typeOf(viewing.type).name}
+          icon="award"
+          onClose={() => setViewing(null)}
+          footer={
+            <button type="button" className={btnClass('ghost')} onClick={() => setViewing(null)}>
+              <BtnLabel>Close</BtnLabel>
+            </button>
+          }
+        >
+          <div className="p-cert">
+            <p className="cell-label">Bharattech Origin</p>
+            <p className="p-cert-type">{typeOf(viewing.type).name}</p>
+            <p className="p-muted">This is to certify that</p>
+            <p className="p-cert-name">{byId.get(viewing.recipientId)?.name ?? 'Removed user'}</p>
+            <p className="p-muted">{typeOf(viewing.type).body}</p>
+            <p className="p-cert-meta">
+              <span>Issued {formatDate(viewing.date)}</span>
+              <span>By {viewing.issuedBy}</span>
+              <span>No. {viewing.id}</span>
+            </p>
+          </div>
+          <p className="p-hint">Preview only. PDF download arrives with the backend.</p>
+        </Modal>
+      )}
+    </>
+  );
+}

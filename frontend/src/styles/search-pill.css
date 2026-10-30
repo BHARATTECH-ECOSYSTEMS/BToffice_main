@@ -1,0 +1,180 @@
+/* ══ The search pill (components/SearchPill.tsx), one look for the site and the portal ══════════════════════════
+   A glass pill with a violet edge. With a mouse an empty pill rests folded to its lens and spreads open when the
+   pointer arrives, on keyboard focus, or while it holds text; touch screens keep it open. Its width animates (this
+   one small box; nothing around it reflows) so its shadow and its hover area always match what is drawn. */
+
+.search-pill-wrap {
+  display: grid;
+  gap: 6px;
+  width: min(100%, 360px);
+  margin-left: auto;
+}
+.search-pill-wrap[data-align='center'] {
+  width: min(100%, 560px);
+  margin-inline: auto;
+}
+.search-pill-label {
+  justify-self: end;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+
+.search-pill {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  margin-left: auto;
+  /* 14px + the 16px lens puts the lens dead centre of the 44px circle it folds into */
+  padding: 0 14px 0 18px;
+  overflow: hidden;
+  border-radius: var(--r-pill);
+  color: var(--violet);
+  cursor: text;
+  /* frosted, faintly violet glass: a bright top edge, a shaded bottom edge, the violet outline and a soft lift */
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.92), rgb(240 236 255 / 0.66));
+  backdrop-filter: blur(12px) saturate(1.4);
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--violet) 55%, transparent),
+    inset 0 1.5px 0 rgb(255 255 255 / 0.95),
+    inset 0 -2px 4px rgb(110 88 245 / 0.1),
+    0 10px 22px -12px rgb(76 56 200 / 0.45);
+  transition: width 260ms var(--ease-io), box-shadow var(--dur-hover) var(--ease), translate var(--dur-hover) var(--ease);
+}
+.search-pill-wrap[data-align='center'] .search-pill {
+  margin-inline: auto;
+}
+.search-pill input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  font: inherit;
+  font-size: 14.5px;
+  color: var(--ink);
+  caret-color: var(--violet);
+}
+/* The ring is on the pill, so the box inside it draws no outline of its own. The doubled class outranks any page's
+   general focus rule: the portal's `.portal :is(a, button, input, select, [tabindex]):focus-visible` weighs three
+   classes (the [tabindex] inside :is counts as one) and would otherwise draw a second ring inside the pill, half cut
+   off by its rounded edge. The browser's own clear button gives way to ours. */
+.search-pill.search-pill .search-pill-field:is(:focus, :focus-visible) {
+  outline: none;
+}
+/* the × keeps a keyboard ring, drawn inside it so the pill's edge can't cut it off */
+.search-pill.search-pill .search-pill-clear:focus-visible {
+  outline: 2px solid var(--violet);
+  outline-offset: -2px;
+}
+.search-pill input::placeholder {
+  color: color-mix(in srgb, var(--violet) 45%, var(--muted));
+}
+.search-pill input::-webkit-search-cancel-button {
+  appearance: none;
+}
+.search-pill-lens {
+  order: 3;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  transition: rotate var(--dur-ui) var(--ease);
+}
+.search-pill-clear {
+  order: 2;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  color: var(--ink-soft);
+  background: rgb(20 19 15 / 0.06);
+  cursor: pointer;
+  transition: background var(--dur-hover) var(--ease), color var(--dur-hover) var(--ease), scale var(--dur-press) var(--ease);
+  animation: search-pill-clear-in 140ms var(--ease);
+}
+.search-pill-clear svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.search-pill-clear:active {
+  scale: 0.9;
+}
+@keyframes search-pill-clear-in {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .search-pill:not(:hover, :focus-within, [data-filled]) {
+    width: 44px;
+    /* folded, the lens is all there is: no gap beside the zero-width box, so it sits dead centre */
+    gap: 0;
+    padding-left: 14px;
+    cursor: pointer;
+  }
+  .search-pill input {
+    transition: opacity var(--dur-ui) var(--ease);
+  }
+  .search-pill:not(:hover, :focus-within, [data-filled]) input {
+    opacity: 0;
+  }
+  .search-pill:hover:not(:focus-within) {
+    translate: 0 -1px;
+    box-shadow:
+      inset 0 0 0 1.5px color-mix(in srgb, var(--violet) 75%, transparent),
+      inset 0 1.5px 0 rgb(255 255 255 / 0.95),
+      inset 0 -2px 4px rgb(110 88 245 / 0.12),
+      0 14px 26px -12px rgb(76 56 200 / 0.5);
+  }
+  .search-pill:hover .search-pill-lens {
+    rotate: -10deg;
+  }
+  .search-pill-clear:hover {
+    color: var(--violet);
+    background: color-mix(in srgb, var(--violet) 12%, transparent);
+  }
+}
+
+/* focus: the violet edge firms up and a soft halo rings it */
+.search-pill:focus-within {
+  box-shadow:
+    inset 0 0 0 1.5px var(--violet),
+    inset 0 1.5px 0 rgb(255 255 255 / 0.95),
+    0 0 0 4px color-mix(in srgb, var(--violet) 16%, transparent),
+    0 12px 24px -12px rgb(76 56 200 / 0.5);
+}
+
+/* on the site's dark pages the glass goes smoky, the edge stays violet */
+:root[data-theme='dark'] .search-pill,
+.dark .search-pill {
+  color: #c9bfff;
+  background: linear-gradient(160deg, rgb(255 255 255 / 0.1), rgb(110 88 245 / 0.08));
+  box-shadow:
+    inset 0 0 0 1.5px color-mix(in srgb, var(--violet) 70%, transparent),
+    inset 0 1px 0 rgb(255 255 255 / 0.18),
+    0 10px 22px -12px rgb(0 0 0 / 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .search-pill,
+  .search-pill input,
+  .search-pill-lens {
+    transition: none;
+  }
+  .search-pill-clear {
+    animation: none;
+  }
+}

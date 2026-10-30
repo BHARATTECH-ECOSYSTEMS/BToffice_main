@@ -1,0 +1,547 @@
+/* ══ Careers ═════════════════════════════════════════════════════════════════
+   Three formations (src/gl/careers): the teams on a ring in the hero, the values down a tunnel, the roles on a
+   spiral. Every colour comes from the site tokens, so the page follows the light and dark themes as they are.
+   Orange and yellow appear only at full strength (lines, dots, chips): faint, they read as brown. */
+
+.cr-css,
+.cr-gl {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.cr-gl {
+  pointer-events: none;
+}
+
+/* A card host is placed in 3D by the scene, which fades the card inside it (opacity on the host would flatten its
+   3D). The card has its own GPU layer, so the fades composite instead of repainting it every frame. */
+.cr-host > * {
+  will-change: transform;
+}
+/* Only the card in front keeps its drawing moving: the drawings animate SVG strokes, which repaint the whole card
+   each frame, and on every card at once that was seven repaints a frame for motion mostly turned away. */
+.cr-host:not([data-front]) .domain-art * {
+  animation-play-state: paused;
+}
+/* a card turned away shows a plain back, not its text in mirror writing */
+.cr-host[data-away] > * {
+  color: transparent;
+  background: var(--bg-2);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.cr-host[data-away] > * > *,
+.cr-host[data-away] > *::before {
+  visibility: hidden;
+}
+
+/* the shared card surface: a crisp 2px line in the card's colour along the top edge */
+:is(.cr-team, .cr-value, .cr-role) {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  text-align: left;
+  color: var(--ink);
+  background: var(--paper);
+  box-shadow: var(--shadow-lg);
+  /* only the hover lift animates: colour transitions on cards whose state changes while moving cost repaints */
+  transition: translate 0.4s var(--ease-expo);
+}
+:is(.cr-team, .cr-value, .cr-role)::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  left: 20px;
+  right: 20px;
+  top: 0;
+  height: 2px;
+  border-radius: 0 0 2px 2px;
+  background: var(--tone);
+}
+/* the card nearest the viewer is lit, as in the references */
+.cr-host[data-front] > :is(.cr-team, .cr-role),
+.cr-value[aria-current] {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--tone) 40%, transparent),
+    0 34px 70px -34px color-mix(in srgb, var(--violet) 70%, transparent);
+}
+:is(.cr-team, .cr-role):focus-visible {
+  outline: 2px solid var(--violet-text);
+  outline-offset: 4px;
+}
+:is(.cr-team, .cr-role) .arrow {
+  transition: translate var(--dur-hover) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cr-ring__stage:not(.is-dragging) .cr-team:hover,
+  .cr-role:hover {
+    translate: 0 -6px;
+  }
+  :is(.cr-team, .cr-role):hover .arrow {
+    translate: 3px 0;
+  }
+}
+:is(.cr-team, .cr-role):active {
+  scale: 0.98;
+}
+
+/* the small department label with its dot, shared by team and role cards */
+:is(.cr-team__dept, .cr-role__dept) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: var(--fs-label-sm);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+:is(.cr-team__dept, .cr-role__dept) i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--tone);
+}
+
+/* ── Hero: the ring of teams ─────────────────────────────────────────────────── */
+
+.cr-ring {
+  position: relative;
+  width: 100%;
+  height: clamp(460px, 40vw, 580px);
+}
+.cr-ring__stage {
+  position: absolute;
+  /* room above for the cards to fall from, and to the sides for the ring's edge cards */
+  inset: -90px -32px 28px;
+  touch-action: pan-y;
+  user-select: none;
+}
+.cr-ring__stage.is-dragging,
+.cr-ring__stage.is-dragging .cr-team {
+  cursor: grabbing;
+}
+/* the ground the ring stands on (placed flat under the cards by the scene), laid down as the cards arrive */
+.cr-ring__floor {
+  border-radius: 50%;
+  background: radial-gradient(closest-side, color-mix(in srgb, var(--violet) 20%, transparent), transparent 92%);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--violet) 24%, transparent);
+  pointer-events: none;
+  animation: cr-fade 1.2s var(--ease) 0.1s both;
+}
+.cr-ring__hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  /* just under the ring's floor */
+  bottom: 40px;
+  margin: 0;
+  text-align: center;
+  font-size: 13px;
+  color: var(--muted);
+  animation: cr-fade 0.8s var(--ease) 1.4s both;
+}
+@keyframes cr-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+.cr-team {
+  display: flex;
+  flex-direction: column;
+}
+.cr-team__art {
+  display: grid;
+  place-items: center;
+  height: 128px;
+  flex: none;
+  background: color-mix(in srgb, var(--tone) 8%, var(--paper));
+  border-bottom: 1px solid var(--line);
+}
+.cr-team__art .domain-art {
+  width: 72%;
+}
+.cr-team__body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 6px;
+  padding: 14px 16px 16px;
+}
+.cr-team__name {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: var(--fw-head);
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.cr-team__go {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--violet-text);
+}
+
+/* ── Values: the tunnel ──────────────────────────────────────────────────────── */
+
+.cr-values {
+  position: relative;
+  /* one screen for the pin, plus a stretch per value to read it in */
+  height: calc(100svh + var(--count) * 80svh);
+}
+.cr-values__pin {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  min-height: 620px;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(60% 55% at 50% 50%, color-mix(in srgb, var(--violet) 7%, transparent), transparent 70%),
+    var(--bg);
+}
+.cr-values__stage {
+  position: absolute;
+  inset: 0;
+}
+/* the page colour rises into the top and bottom edges, so each scene begins and ends inside the page instead of at
+   a hard line; static layers, painted once */
+:is(.cr-values__pin, .cr-roles__pin)::before,
+:is(.cr-values__pin, .cr-roles__pin)::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  left: 0;
+  right: 0;
+  height: 18vh;
+  pointer-events: none;
+}
+:is(.cr-values__pin, .cr-roles__pin)::before {
+  top: 0;
+  background: linear-gradient(var(--bg), transparent);
+}
+:is(.cr-values__pin, .cr-roles__pin)::after {
+  bottom: 0;
+  background: linear-gradient(transparent, var(--bg));
+}
+.cr-values__copy {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-top: calc(var(--nav-h) + clamp(28px, 5vh, 56px));
+  padding-bottom: clamp(32px, 6vh, 64px);
+  pointer-events: none;
+}
+.cr-values__copy > * {
+  pointer-events: auto;
+}
+.cr-values__copy .headline {
+  margin: 0;
+  font-size: min(var(--fs-h2), 6.4vh);
+}
+.cr-values__index {
+  display: grid;
+  justify-items: start;
+  gap: 4px;
+}
+.cr-values__index button {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 15px;
+  color: var(--muted);
+  transition: color var(--dur-hover) var(--ease);
+}
+.cr-values__index button i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  scale: 0.6;
+  transition: scale var(--dur-ui) var(--ease-expo), background-color var(--dur-hover) var(--ease);
+}
+.cr-values__index button[aria-current] {
+  color: var(--ink);
+}
+.cr-values__index button[aria-current] i {
+  scale: 1;
+  background: var(--tone);
+}
+@media (hover: hover) and (pointer: fine) {
+  .cr-values__index button:hover {
+    color: var(--ink);
+  }
+}
+.cr-values__index button:focus-visible {
+  outline: 2px solid var(--violet-text);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.cr-value {
+  display: grid;
+  grid-template-rows: auto 1fr auto auto;
+  gap: 12px;
+  padding: 32px 40px 36px;
+  border-radius: var(--r-lg);
+}
+.cr-value__icon {
+  grid-row: 1;
+}
+.cr-value__title {
+  grid-row: 3;
+}
+.cr-value__body {
+  grid-row: 4;
+}
+.cr-value__icon {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--r-sm);
+  color: var(--tone);
+  background: color-mix(in srgb, var(--tone) 12%, var(--paper));
+}
+.cr-value__title {
+  margin: 0;
+  font-family: var(--display);
+  font-size: 44px;
+  font-weight: var(--fw-head);
+  line-height: 1.02;
+  letter-spacing: -0.035em;
+}
+.cr-value__body {
+  margin: 0;
+  max-width: 40ch;
+  font-size: 19px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+/* the values as a plain grid, for phones and reduced motion */
+.cr-values-grid {
+  margin-top: var(--head-gap);
+}
+
+/* ── Roles: the spiral ───────────────────────────────────────────────────────── */
+
+.cr-roles {
+  position: relative;
+  height: 540svh;
+}
+.cr-roles__pin {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  min-height: 680px;
+  overflow: hidden;
+  isolation: isolate;
+  background:
+    radial-gradient(70% 50% at 50% 58%, color-mix(in srgb, var(--violet) 8%, transparent), transparent 70%),
+    var(--bg);
+}
+.cr-roles__stage {
+  position: absolute;
+  /* the spiral centres in the band between the filters and the strip, not on the whole screen */
+  inset: 8vh 0 0;
+}
+.cr-roles__head {
+  position: absolute;
+  z-index: 2;
+  /* same offset and size cap as the values headline, so the two pinned chapters line up */
+  top: calc(var(--nav-h) + clamp(28px, 5vh, 56px));
+  left: 0;
+  right: 0;
+  display: grid;
+  justify-items: start;
+  gap: clamp(16px, 2.6vh, 28px);
+  pointer-events: none;
+}
+.cr-roles__head > * {
+  pointer-events: auto;
+}
+.cr-roles__head .headline {
+  margin: 0;
+  font-size: min(var(--fs-h2), 6.4vh);
+}
+.cr-roles__controls,
+.cr-roles-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.cr-roles__controls .segmented {
+  flex: none;
+}
+/* the picked team's chip clears itself on a click */
+.cr-chip-x {
+  margin-left: 2px;
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0.6;
+}
+.cr-roles-bar {
+  margin-top: var(--head-gap);
+}
+
+.cr-role {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 24px 26px 22px;
+  border-radius: var(--r-lg);
+}
+.cr-role__title {
+  margin-top: 6px;
+  font-family: var(--display);
+  font-size: 30px;
+  font-weight: var(--fw-head);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+}
+.cr-role__focus {
+  font-size: 16px;
+  color: var(--ink-soft);
+}
+.cr-role__facts {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: auto;
+}
+.cr-role__facts span {
+  padding: 4px 10px;
+  border-radius: var(--r-pill);
+  font-size: 12.5px;
+  color: var(--ink-2);
+  background: var(--bg-2);
+}
+
+/* The strip: the front role in plain type, with Apply. It sits bottom right, on the column's right edge: the
+   spiral winds from bottom left to top right, so that corner is the one no card ever passes through. It stays
+   above the back-to-top button in the corner. */
+.cr-roles__strip {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  bottom: clamp(88px, 11vh, 112px);
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+.cr-strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(100%, 600px);
+  padding: 10px;
+  border-radius: var(--r-pill);
+  background: var(--paper);
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  animation: cr-strip 0.36s var(--ease-expo) both;
+}
+@keyframes cr-strip {
+  from {
+    opacity: 0.4;
+    translate: 0 6px;
+  }
+}
+.cr-strip__text {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+  padding-left: 4px;
+}
+.cr-strip__text b {
+  font-family: var(--display);
+  font-size: 18px;
+  font-weight: var(--fw-head);
+  letter-spacing: -0.02em;
+}
+.cr-strip__text span {
+  overflow: hidden;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.cr-strip__apply {
+  flex: none;
+}
+
+.cr-roles__empty {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 16px;
+  pointer-events: none;
+}
+.cr-roles__empty > * {
+  pointer-events: auto;
+}
+.cr-roles__empty p {
+  margin: 0;
+  font-size: 18px;
+  color: var(--ink-soft);
+}
+.cr-link {
+  font-weight: 600;
+  color: var(--violet-text);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* ── Closing ─────────────────────────────────────────────────────────────────── */
+
+.cr-close__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  align-items: end;
+  gap: var(--split-gap);
+}
+.cr-close__inner .headline {
+  margin: 0;
+}
+.cr-close__copy p {
+  margin: 0 0 24px;
+  max-width: 44ch;
+  font-size: var(--fs-lede);
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+@media (max-width: 900px) {
+  .cr-ring {
+    height: 420px;
+  }
+  .cr-close__inner {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cr-ring__floor,
+  .cr-ring__hint,
+  .cr-strip {
+    animation: none;
+  }
+}

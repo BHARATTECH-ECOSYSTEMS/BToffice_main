@@ -1,0 +1,59 @@
+/* ── The public site on phones and tablets (roadmap step 20, Part 3) ──
+   Nothing here applies above 1024px, so desktop is unchanged. This file comes last in the site's stylesheet
+   (App.tsx imports it last), so it wins a tie; every selector also starts with :root, because some of the pages'
+   own rules name the element inside its parent (Services' card hint) and would otherwise outrank it. The portal's
+   phone rules live in portal.css. */
+
+/* touch screens: phones and tablets */
+@media (max-width: 1024px) {
+  /* Small links and buttons get a finger-sized height (WCAG asks 24px at least); the text stays where it was,
+     centred in the taller box. Links inside running text are left alone. */
+  :root .footer-col a,
+  :root .footer-col button,
+  :root .footer-lead a,
+  :root .about-detail-text a,
+  :root .faq-mail,
+  :root .link-arrow {
+    display: inline-flex;
+    align-items: center;
+    min-height: 32px;
+  }
+  /* the audience tabs (Researchers, Developers, Enterprises) */
+  :root .svc-list__item {
+    justify-content: center;
+    min-height: 44px;
+  }
+
+  /* Labels, dates and tags: 12px at least, readable on a screen held at arm's length (they are 10-11.5px on
+     desktop, where they sit closer to the eye) */
+  :root .post-meta,
+  :root .cell-label,
+  :root .cover-tag,
+  :root .chip-soft,
+  :root .fan-meta,
+  :root .role-dept,
+  :root .cr-team__dept,
+  :root .finale-meta,
+  :root .acc-tag,
+  :root .svc-card__kind,
+  :root .svc-index__stop,
+  :root .how-paper-num,
+  :root .wheel-fam,
+  :root .svc-panel__footer-label,
+  :root .svc-caption__hint,
+  :root .careers-count em,
+  :root .careers-role small,
+  :root .about-detail-text span,
+  :root .arch-card-trace span {
+    font-size: 12px;
+  }
+}
+
+/* phones */
+@media (max-width: 760px) {
+  /* Services' closing: one column, so its button gets the full width (in half of it, it stuck out and the whole
+     page slid sideways) */
+  :root .svc-cta-inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

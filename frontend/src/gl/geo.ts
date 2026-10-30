@@ -1,0 +1,116 @@
+// Low-resolution geography for the network globe. Precision is deliberately
+// coarse: at dot-matrix scale only the silhouette needs to read.
+
+export type LonLat = [number, number];
+
+/** India outline (official boundary, simplified), clockwise from Kutch. */
+export const INDIA: LonLat[] = [
+  [68.2, 23.7], [68.8, 22.3], [70.0, 20.9], [72.6, 21.2], [72.8, 19.0], [73.4, 16.5],
+  [74.1, 14.8], [74.8, 12.9], [75.8, 11.2], [76.3, 9.5], [77.5, 8.1], [78.2, 8.9],
+  [79.3, 10.3], [79.9, 12.0], [80.3, 13.1], [80.1, 15.5], [81.3, 16.4], [82.3, 17.0],
+  [83.3, 17.7], [84.8, 19.2], [86.5, 20.2], [87.0, 21.5], [88.9, 21.6], [88.7, 23.0],
+  [88.1, 24.6], [88.4, 26.2], [89.8, 26.1], [92.2, 25.0], [92.3, 23.4], [92.7, 22.0],
+  [93.4, 22.8], [94.2, 23.9], [95.2, 26.0], [96.9, 27.3], [97.3, 28.2], [95.4, 29.3],
+  [93.8, 28.2], [92.0, 27.5], [89.9, 26.9], [88.8, 28.1], [88.0, 27.4], [86.0, 26.9],
+  [84.0, 27.4], [82.0, 27.9], [80.1, 28.8], [80.9, 30.2], [79.0, 31.1], [78.5, 32.5],
+  [79.5, 34.5], [77.8, 35.6], [75.8, 36.8], [74.4, 37.0], [72.6, 36.2], [73.4, 34.3],
+  [74.0, 32.6], [74.6, 32.3], [74.6, 31.1], [73.9, 30.2], [72.2, 28.3], [70.6, 27.8],
+  [69.5, 27.0], [70.2, 25.8], [69.9, 24.3], [68.8, 24.2],
+];
+
+export const INDIA_HUBS: { name: string; at: LonLat }[] = [
+  { name: 'New Delhi', at: [77.21, 28.61] },
+  { name: 'Mumbai', at: [72.88, 19.08] },
+  { name: 'Bengaluru', at: [77.59, 12.97] },
+  { name: 'Hyderabad', at: [78.49, 17.39] },
+  { name: 'Chennai', at: [80.27, 13.08] },
+  { name: 'Kolkata', at: [88.36, 22.57] },
+  { name: 'Pune', at: [73.86, 18.52] },
+  { name: 'Ahmedabad', at: [72.57, 23.02] },
+  { name: 'Guwahati', at: [91.74, 26.14] },
+  { name: 'Jaipur', at: [75.79, 26.91] },
+];
+
+export const WORLD: { name: string; at: LonLat }[] = [
+  { name: 'London', at: [-0.13, 51.51] },
+  { name: 'Berlin', at: [13.4, 52.52] },
+  { name: 'New York', at: [-74.0, 40.71] },
+  { name: 'San Francisco', at: [-122.42, 37.77] },
+  { name: 'São Paulo', at: [-46.63, -23.55] },
+  { name: 'Nairobi', at: [36.82, -1.29] },
+  { name: 'Dubai', at: [55.27, 25.2] },
+  { name: 'Singapore', at: [103.82, 1.35] },
+  { name: 'Tokyo', at: [139.69, 35.69] },
+  { name: 'Seoul', at: [126.98, 37.57] },
+  { name: 'Sydney', at: [151.21, -33.87] },
+  { name: 'Jakarta', at: [106.85, -6.21] },
+];
+
+/** Labelled on the globe: India, and the regions its links reach. */
+export const GLOBE_LABELS: { name: string; at: LonLat; home?: boolean }[] = [
+  { name: 'India', at: [79, 22.5], home: true },
+  { name: 'Europe', at: [13.4, 52.52] },
+  { name: 'Americas', at: [-74.0, 40.71] },
+  { name: 'Africa', at: [36.82, -1.29] },
+  { name: 'Middle East', at: [55.27, 25.2] },
+  { name: 'Southeast Asia', at: [103.82, 1.35] },
+  { name: 'East Asia', at: [139.69, 35.69] },
+  { name: 'Oceania', at: [151.21, -33.87] },
+];
+
+export const INDIA_BBOX = { minLon: 68, maxLon: 97.5, minLat: 7.8, maxLat: 37.2 };
+
+// Indexed rather than destructured: globes call this thousands of times while building, before the engine has
+// optimised it, and unoptimised array destructuring goes through the iterator protocol on every edge.
+export function inPolygon(pt: LonLat, poly: LonLat[]): boolean {
+  const x = pt[0];
+  const y = pt[1];
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0];
+    const yi = poly[i][1];
+    const xj = poly[j][0];
+    const yj = poly[j][1];
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
+}
+
+/** Globe orientation: India's centre faces the camera. */
+const GLOBE_CENTER: LonLat = [80, 21];
+
+const D2R = Math.PI / 180;
+
+/** Lon/lat to a point on a sphere of radius r, rotated so GLOBE_CENTER faces +z. */
+export function lonLatToVec(lon: number, lat: number, r: number): [number, number, number] {
+  const la = lat * D2R;
+  const lo = (lon - GLOBE_CENTER[0]) * D2R;
+  const x = Math.cos(la) * Math.sin(lo);
+  const y = Math.sin(la);
+  const z = Math.cos(la) * Math.cos(lo);
+  // tilt around X so the centre latitude sits on the equator of the view
+  const t = GLOBE_CENTER[1] * D2R;
+  const y2 = y * Math.cos(t) - z * Math.sin(t);
+  const z2 = y * Math.sin(t) + z * Math.cos(t);
+  return [x * r, y2 * r, z2 * r];
+}
+
+/** World landmass continents: North America, Greenland, South America, Europe, Great Britain, Eurasia, Japan, Sri Lanka, Africa, Madagascar, Sumatra, Borneo, New Guinea, Australia, New Zealand. */
+export const CONTINENTS: LonLat[][] = [
+  [[-168, 66], [-162, 70], [-140, 70], [-125, 72], [-95, 72], [-80, 73], [-65, 62], [-60, 55], [-66, 45], [-70, 42], [-76, 35], [-81, 31], [-80, 25], [-83, 29], [-90, 29], [-97, 26], [-97, 22], [-92, 18], [-87, 21], [-88, 16], [-83, 10], [-79, 8], [-80, 7], [-86, 12], [-92, 14], [-105, 20], [-110, 23], [-115, 30], [-118, 34], [-123, 38], [-124, 42], [-124, 48], [-130, 55], [-138, 59], [-150, 60], [-158, 57], [-165, 60]],
+  [[-55, 60], [-43, 60], [-20, 70], [-18, 78], [-30, 83], [-60, 82], [-72, 78], [-58, 70]],
+  [[-78, 8], [-72, 12], [-62, 11], [-52, 5], [-50, 0], [-35, -5], [-35, -9], [-39, -15], [-40, -22], [-48, -26], [-53, -34], [-58, -38], [-62, -40], [-65, -45], [-68, -52], [-72, -54], [-75, -50], [-73, -40], [-72, -30], [-70, -18], [-76, -14], [-81, -6], [-80, -1], [-77, 4]],
+  [[-10, 36], [-9, 43], [-2, 44], [-5, 48], [2, 51], [5, 53], [8, 54], [8, 57], [5, 58], [5, 62], [10, 64], [15, 68], [20, 70], [28, 71], [40, 68], [60, 68], [60, 55], [50, 47], [40, 45], [36, 47], [30, 45], [28, 41], [26, 40], [23, 38], [20, 40], [18, 40], [16, 38], [12, 44], [8, 44], [3, 43], [0, 39], [-2, 37], [-6, 36]],
+  [[-5, 50], [1, 51], [0, 53], [-3, 56], [-2, 58], [-6, 58], [-5, 55], [-10, 54], [-10, 52], [-3, 54]],
+  [[60, 68], [70, 73], [80, 74], [100, 78], [113, 74], [140, 73], [180, 71], [180, 66], [172, 65], [163, 62], [155, 59], [143, 59], [137, 55], [141, 52], [135, 44], [130, 43], [129, 37], [127, 35], [125, 39], [122, 40], [118, 39], [121, 37], [122, 30], [117, 24], [108, 21], [109, 12], [104, 10], [104, 1], [100, 4], [98, 8], [98, 16], [94, 17], [92, 22], [87, 21], [80, 15], [77, 8], [72, 19], [70, 21], [68, 24], [62, 25], [56, 27], [50, 30], [48, 30], [56, 26], [59, 23], [57, 19], [52, 16], [43, 13], [34, 28], [35, 32], [36, 36], [26, 40], [28, 41], [30, 45], [36, 47], [40, 45], [50, 47], [60, 55]],
+  [[130, 31], [135, 34], [140, 35], [142, 40], [141, 45], [145, 44], [140, 41], [139, 38], [136, 36], [131, 34]],
+  [[79.8, 9.8], [81.2, 8.6], [81.8, 7.2], [80.6, 5.9], [79.8, 7]],
+  [[-17, 21], [-16, 28], [-10, 30], [-6, 36], [10, 37], [11, 33], [20, 31], [32, 31], [34, 28], [43, 12], [51, 12], [48, 5], [40, -3], [40, -10], [40, -16], [35, -24], [33, -28], [27, -34], [19, -35], [16, -28], [12, -17], [13, -8], [9, -1], [9, 4], [4, 6], [-4, 5], [-8, 4], [-13, 8], [-17, 14]],
+  [[44, -25], [47, -25], [50, -15], [49, -12], [44, -17]],
+  [[95, 5], [98, 4], [106, -6], [102, -5], [95, 3]],
+  [[109, 1], [110, -3], [116, -4], [119, 1], [117, 7], [113, 3]],
+  [[131, -1], [141, -3], [150, -10], [142, -9], [137, -5]],
+  [[114, -22], [114, -34], [118, -35], [124, -33], [131, -31], [138, -35], [141, -38], [147, -38], [150, -37], [153, -28], [153, -25], [146, -19], [142, -11], [136, -12], [131, -11], [126, -14], [122, -18]],
+  [[172, -35], [178, -38], [174, -41], [167, -46], [171, -44]]
+];
+

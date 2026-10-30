@@ -1,0 +1,145 @@
+/* ══ Services, and people: one card at a time, each swinging away to the right ══════════════════
+   The section pins while its cards are read. Journal.tsx sets each card's transform and opacity from the
+   scroll; the cards themselves wear the Six domains deck's look (domain-cinema.css). */
+
+/* no bottom padding: the pinned screen already leaves room under the last card, and padding on top of
+   that left about 250px of blank page before the next section */
+.services-swing {
+  padding-bottom: 0;
+}
+.swing-track {
+  position: relative;
+  /* a screen to arrive, then a little over half a screen for each card that swings away */
+  height: calc(100svh + (var(--count) - 1) * 57svh);
+}
+.swing-pin {
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-top: var(--nav-h);
+  /* a card swinging out runs off the right edge; it must not widen the page */
+  overflow: clip;
+}
+.swing-pin .section-head {
+  margin-bottom: clamp(20px, 3.4vh, 40px);
+}
+.swing-side {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.swing-stage {
+  position: relative;
+  height: clamp(360px, 56svh, 470px);
+  /* the two cards waiting behind show 32px of edge above the front one (BEHIND_PX in Journal.tsx); this keeps
+     a real gap between those edges and the heading, which they used to touch */
+  margin-top: calc(32px + clamp(16px, 2.6vh, 28px));
+}
+/* The pinned frame is one screen tall, so the cards take the height left under the heading (never more than
+   470px) instead of a fixed height: on a short laptop window a fixed card ran past the bottom and was cut off. */
+@media (min-width: 901px) {
+  .swing-pin > .wrap {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: center;
+    min-height: 0;
+    padding-bottom: clamp(16px, 4vh, 40px);
+  }
+  /* in a flex column its auto side margins would centre it instead of keeping it on the text column */
+  .swing-pin > .wrap > .wrap-col {
+    width: 100%;
+  }
+  /* lifts the button 6px like .section-head-link, level with the heading's text */
+  .swing-side {
+    padding-bottom: 6px;
+  }
+  .swing-stage {
+    flex: 0 1 470px;
+    height: auto;
+    min-height: 280px;
+  }
+  /* the panel follows the card's height; its usual 360px minimum pushed it out of the card's bottom edge */
+  .swing-cover {
+    min-height: 0;
+  }
+}
+/* no lone last word on a card title */
+.swing-face h3 {
+  text-wrap: balance;
+}
+.swing-card {
+  position: absolute;
+  inset: 0;
+  will-change: transform, opacity;
+}
+.swing-face {
+  height: 100%;
+  min-height: 0;
+  /* the same warm off-white as the Six domains cards */
+  background: var(--bg-2);
+}
+.swing-face .post-meta {
+  margin-top: 16px;
+}
+.swing-face:hover .link-arrow {
+  color: var(--tone, var(--violet));
+}
+/* the cover fills the media panel instead of sitting in it with the bento's bleed */
+.swing-cover .cover {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  aspect-ratio: auto;
+  border-radius: 0;
+}
+/* The drawings are made for a small 16:9 cover. Stretched across this large panel they ran to its edges and
+   into the tag, so here they keep an even margin and sit at the panel's exact centre, clear of the tag. */
+.swing-cover .cover svg {
+  top: 14%;
+  left: 10%;
+  width: 80%;
+  height: 72%;
+}
+/* the text keeps the same inset from the card edge as the panel does on its three sides */
+.swing-face .stack-card__copy {
+  padding: 0;
+}
+/* No blur behind the tag: the cover under it is one flat colour, and the cards move every scroll frame, so the
+   blur would be recomputed each frame for no visible change */
+.swing-cover .cover-tag {
+  left: 20px;
+  bottom: 18px;
+  backdrop-filter: none;
+}
+
+/* Phones: no pinning, the cards simply follow each other (as the Six domains deck does) */
+@media (max-width: 900px) {
+  .swing-track {
+    height: auto;
+  }
+  .swing-pin {
+    position: static;
+    display: block;
+    height: auto;
+    padding-top: 0;
+    overflow: visible;
+  }
+  .swing-stage {
+    display: grid;
+    gap: 16px;
+    height: auto;
+    margin-top: 0;
+  }
+  .swing-card {
+    position: relative;
+    inset: auto;
+  }
+  .swing-face {
+    height: auto;
+  }
+}

@@ -1,0 +1,146 @@
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useQuiet, useScene } from '../gl/Scene';
+import { Headline, useQuickChange } from '../components/ui';
+import { CAPABILITIES, CAPABILITY_GROUPS } from '../content';
+import type { HueName } from '../gl/palette';
+import { pageScroll, trackBox, viewHeight } from '../components/trackBox';
+
+const TONES: HueName[] = ['violet', 'tangerine', 'saffron'];
+const LINES = [
+  'Read the world in any form: text, images, speech and the web.',
+  'Compose agents and workflows that inherit everything the system knows.',
+  'Run it on your data, under your governance, from cloud to edge.',
+];
+const N = CAPABILITIES.length;
+const STEP = 360 / N;
+/** Screens of scroll per capability (cut by a third from 0.32, so the wheel turns without dragging). */
+const PACE = 0.21;
+
+// The ring never changes, so it is built once: React skips the same element on each of the wheel's re-renders.
+const WHEEL_RING = (
+  <svg className="wheel-ring" viewBox="-100 -100 200 200">
+    <circle r="99.5" className="wheel-outer" />
+    {TONES.map((t, i) => (
+      <circle
+        key={t}
+        r="97"
+        className="wheel-arc"
+        pathLength={360}
+        style={{ stroke: `var(--${t})`, strokeDasharray: `${5 * STEP - 3} ${360 - 5 * STEP + 3}`, strokeDashoffset: `${-(i * 5 * STEP - STEP / 2 + 1.5)}` } as CSSProperties}
+      />
+    ))}
+    <g className="wheel-ticks">
+      {Array.from({ length: N * 4 }, (_, k) => {
+        const a = (k / (N * 4)) * Math.PI * 2;
+        const long = k % 4 === 0;
+        return <line key={k} x1={Math.cos(a) * 64} y1={Math.sin(a) * 64} x2={Math.cos(a) * (long ? 58 : 61)} y2={Math.sin(a) * (long ? 58 : 61)} className={long ? 'wheel-tick is-long' : 'wheel-tick'} />;
+      })}
+    </g>
+    <circle r="50" className="wheel-inner" />
+  </svg>
+);
+
+/**
+ * Fifteen capabilities on one wheel. Scrolling turns it, and the capability that comes round to the
+ * pointer opens in the card beside it. The wheel's three coloured arcs are the three families.
+ */
+export function Capabilities() {
+  const ref = useRef<HTMLElement>(null);
+  const wheel = useRef<HTMLDivElement>(null);
+  const [active, setActive] = useState(0);
+  // the card is announced only once the visitor has picked a family, not on every turn of the wheel
+  const [chosen, setChosen] = useState(false);
+  const quick = useQuickChange(active);
+  const { scrollTo } = useScene();
+  useQuiet(ref);
+
+  useEffect(() => {
+    let raf = 0;
+    // the section's cached position, so the per-frame update never forces a layout
+    const { box, release } = trackBox(ref.current!);
+    const measure = () => {
+      raf = 0;
+      const run = Math.max(1, box.height - viewHeight());
+      const p = Math.min(1, Math.max(0, (pageScroll() - box.top) / run));
+      const pos = p * (N - 1);
+      // settle on each capability for a moment before turning on to the next
+      const i = Math.floor(pos);
+      const f = pos - i;
+      const eased = i + (f < 0.45 ? 0 : f > 0.85 ? 1 : (f - 0.45) / 0.4);
+      const k = Math.min(N - 1, eased);
+      wheel.current?.style.setProperty('--turn', `${-k * STEP}deg`);
+      setActive((a) => (a === Math.round(k) ? a : Math.round(k)));
+    };
+    const on = () => {
+      if (!raf) raf = requestAnimationFrame(measure);
+    };
+    measure();
+    window.addEventListener('scroll', on, { passive: true });
+    window.addEventListener('resize', on);
+    return () => {
+      cancelAnimationFrame(raf);
+      release();
+      window.removeEventListener('scroll', on);
+      window.removeEventListener('resize', on);
+    };
+  }, []);
+
+  const go = (i: number) => {
+    const el = ref.current;
+    if (!el) return;
+    setChosen(true);
+    const top = el.getBoundingClientRect().top + window.scrollY;
+    scrollTo(top + ((i + 0.2) / (N - 1)) * (el.offsetHeight - window.innerHeight));
+  };
+
+  const cap = CAPABILITIES[active];
+  const fam = Math.floor(active / 5);
+
+  return (
+    <section id="capabilities" ref={ref} className="wheel-sec" style={{ '--count': N, '--pace': PACE } as CSSProperties}>
+      <div className="wheel-pin">
+        <div className="wrap wheel-grid">
+          <div className="wheel-copy">
+            <Headline tone="cobalt" lines={['One intelligence.', 'Infinite capabilities.']} />
+
+            <div className="wheel-card" style={{ '--tone': `var(--${TONES[fam]})` } as CSSProperties} aria-live={chosen ? 'polite' : 'off'}>
+              <div className="wheel-card-top">
+                <span className="wheel-fam">
+                  <i />
+                  {CAPABILITY_GROUPS[fam]}
+                </span>
+              </div>
+              <div className="wheel-card-body" key={active} data-quick={quick || undefined}>
+                <h3>{cap.name}</h3>
+                <p>{cap.body}</p>
+              </div>
+              <p className="wheel-line">{LINES[fam]}</p>
+            </div>
+
+            <ul className="wheel-fams">
+              {CAPABILITY_GROUPS.map((g, i) => (
+                <li key={g} data-on={i === fam || undefined} style={{ '--tone': `var(--${TONES[i]})` } as CSSProperties}>
+                  <button type="button" onClick={() => go(i * 5)}>
+                    <i />
+                    {g}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="wheel" ref={wheel} aria-hidden="true">
+          {WHEEL_RING}
+          {CAPABILITIES.map((c, i) => (
+            <span key={c.name} className="wheel-chip" data-on={i === active || undefined} style={{ '--a': `${i * STEP}deg`, '--tone': `var(--${TONES[Math.floor(i / 5)]})` } as CSSProperties}>
+              <span>
+                {c.name}
+              </span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}

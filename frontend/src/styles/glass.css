@@ -1,0 +1,88 @@
+/* ══ 3D glass for the site's light boxes ═══════════════════════════════════════════════════════
+   One recipe for every light card, panel and sheet: a frosted sheen over the top (a background-image layered on the
+   box's own colour, so tinted boxes keep their tint), a lit top edge, a bright rim, a softly shaded bottom and a
+   drop shadow, so each box reads as a slab of glass resting above the page. Boxes whose own shadow meant something
+   (a tone glow, an upward shadow) keep it as their --glass-drop.
+   Deliberately no backdrop-filter: several of these sit in pinned chapters or over the moving WebGL scene, where a
+   blur is redrawn every frame (it was removed from the Audiences panel for that reason).
+   Light theme only; the dark theme keeps its own box styles. Loaded last, from main.tsx. */
+
+:root {
+  --glass-sheen:
+    linear-gradient(180deg, rgb(255 255 255 / 0.7), rgb(255 255 255 / 0) 38%),
+    linear-gradient(180deg, rgb(110 88 245 / 0) 60%, rgb(110 88 245 / 0.045));
+  --glass-edge:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    inset 0 0 0 1px rgb(255 255 255 / 0.55),
+    inset 0 -14px 28px -22px rgb(60 40 160 / 0.22),
+    0 0 0 1px rgb(20 19 15 / 0.06);
+  --glass-drop: 0 1px 1px rgb(20 19 15 / 0.04), 0 18px 40px -26px rgb(40 24 110 / 0.32);
+  --glass-lift: 0 2px 2px rgb(20 19 15 / 0.04), 0 30px 56px -28px rgb(40 24 110 / 0.45);
+}
+
+:root:not([data-theme='dark'])
+  :is(
+    .cell:not(.cell-ink),
+    .fan-card,
+    .role-card,
+    .stack-card__inner,
+    .how-paper,
+    .about-contact-details,
+    .contact-sheet,
+    .swing-face,
+    .wheel-card,
+    .accordion,
+    .nav-peek-body
+  ) {
+  background-image: var(--glass-sheen);
+  box-shadow: var(--glass-edge), var(--glass-drop);
+}
+
+/* the shadows that carried meaning, kept under the glass */
+.fan-card {
+  --glass-drop: 0 28px 50px -30px rgb(40 24 110 / 0.55);
+}
+.wheel-card {
+  --glass-drop: 0 30px 60px -38px color-mix(in srgb, var(--tone) 60%, transparent);
+}
+.nav-peek-body {
+  --glass-drop: 0 2px 6px -2px rgb(20 19 15 / 0.08), 0 34px 70px -30px rgb(20 19 15 / 0.38);
+}
+/* flat strips inside the page flow: glass, but resting low */
+.contact-sheet,
+.accordion {
+  --glass-drop: 0 14px 30px -24px rgb(40 24 110 / 0.28);
+}
+
+/* boxes that lifted on hover still do: the glass rises and its shadow deepens */
+@media (hover: hover) and (pointer: fine) {
+  :root:not([data-theme='dark']) :is(.cell:not(.cell-ink), .fan-card, .role-card):hover {
+    box-shadow: var(--glass-edge), var(--glass-lift);
+  }
+}
+
+/* ── Glass in motion (useGlassMotion.ts): the box under the mouse leans towards it on a spring (its inline `rotate`,
+   set only while it leans or springs back) and a shine follows the pointer. The shine is its own small layer that
+   the hook moves with a transform, so the box itself never repaints as the mouse moves. It sits behind the box's
+   content and above its glass: the box becomes a stacking context while hovered, and the shine is behind (z -1). */
+[data-gm] {
+  isolation: isolate;
+}
+.gm-shine {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  overflow: hidden;
+  pointer-events: none;
+}
+.gm-shine > i {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 378px;
+  height: 378px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgb(255 255 255 / 0.55), rgb(255 255 255 / 0));
+  will-change: transform;
+}

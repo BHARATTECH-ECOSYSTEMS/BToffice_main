@@ -1,0 +1,246 @@
+/* ══════════════════════════════════════════════════════════════════════════════
+   Bharattech Origin — Research domains deck
+   Layout after the "Our work" deck on https://d-50-production.up.railway.app/:
+   a split section head, then plain stacking cards (copy left, ink reel right).
+   ══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── 0. Research Section Header & Eyebrow Typography ─────────────────────── */
+
+.research-head-block {
+  display: flex;
+  flex-direction: column;
+}
+
+.section.research .headline .line > span {
+  letter-spacing: -0.038em;
+}
+
+/* ── 1. Section head: copy on the left, one action on the right ─────────────── */
+
+.research-head {
+  /* above the 3D scene (z-index 5): the network globe comes to rest behind this heading */
+  position: relative;
+  z-index: 6;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px 48px;
+  margin-bottom: var(--head-gap);
+}
+
+.research-head .btn {
+  flex-shrink: 0;
+}
+/* sits 6px up like .section-head-link, so it lines up with the heading's text rather than its line box */
+@media (min-width: 901px) {
+  .research-head > .btn {
+    margin-bottom: 6px;
+  }
+}
+
+/* ── 2. Stacking deck ─────────────────────────────────────────────────────── */
+
+.domain-deck {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: clamp(24px, 4vh, 40px);
+}
+
+/* Each card pins a little lower than the one before, leaving a visible stack edge. */
+.stack-card {
+  position: sticky;
+  top: calc(var(--nav-h) + 24px + var(--i) * 12px);
+  transform-origin: 50% 0;
+  transition: transform 0.5s var(--ease);
+}
+
+.stack-card.is-behind {
+  transform: scale(0.97);
+}
+
+/* ── 3. Card ──────────────────────────────────────────────────────────────── */
+
+.stack-card__inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+  gap: clamp(24px, 4vw, 44px);
+  min-height: 440px;
+  padding: var(--card-pad);
+  border-radius: var(--r-lg);
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  box-shadow: 0 24px 48px -32px rgb(20 19 15 / 0.28);
+}
+
+.stack-card__copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 8px 0 8px 8px;
+}
+
+.stack-card__num {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+
+.stack-card__title {
+  margin: 12px 0 0;
+  font-family: var(--display);
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: var(--fw-head);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+}
+
+.stack-card__body {
+  margin: 12px 0 0;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.stack-card__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 18px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.stack-card__tags li {
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  font-size: 13px;
+  color: var(--ink-2);
+  background: color-mix(in srgb, var(--ink) 6%, var(--bg-2));
+}
+
+.link-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: fit-content;
+  margin-top: 22px;
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.link-arrow:hover {
+  color: var(--violet);
+}
+
+.link-arrow svg {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.25s var(--ease);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .link-arrow:hover svg {
+    transform: translateX(4px);
+  }
+}
+
+/* No frame of its own: the animation sits straight on the card, so the card is the only box. */
+.stack-card__media {
+  position: relative;
+  margin: 0;
+  min-height: 360px;
+  overflow: hidden;
+}
+
+/* ── 10. The Demaze Reel Cinema Stage (.reel) ─────────────────────────────── */
+
+.reel {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+.reel__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+  outline: none;
+  z-index: 1;
+}
+
+.reel__viewfinder {
+  position: absolute;
+  inset: 12px 14px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.vf-cross {
+  position: absolute;
+  font-family: var(--mono, ui-monospace, monospace);
+  font-size: 11px;
+  line-height: 1;
+  color: color-mix(in srgb, var(--ink) 25%, transparent);
+  font-weight: 300;
+}
+
+.vf-tl { top: 0; left: 0; }
+.vf-tr { top: 0; right: 0; }
+.vf-bl { bottom: 0; left: 0; }
+.vf-br { bottom: 0; right: 0; }
+
+/* ── 11. Responsive ─────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .research-head {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  /* No pinning on small screens: cards simply follow each other. */
+  .stack-card {
+    position: relative;
+    top: auto;
+  }
+
+  .stack-card.is-behind {
+    transform: none;
+  }
+
+  .stack-card__inner {
+    grid-template-columns: 1fr;
+    min-height: 0;
+  }
+
+  /* Height comes from the aspect ratio. A min-height here would force the width past the card
+     (aspect-ratio derives width from it), clipping the right side of the reel. */
+  .stack-card__media {
+    order: -1;
+    width: 100%;
+    min-height: 0;
+    aspect-ratio: 16 / 10;
+  }
+
+  .stack-card__copy {
+    padding: 4px;
+  }
+}
+
+@media (max-width: 640px) {
+  .stack-card__media {
+    aspect-ratio: 5 / 4;
+  }
+}

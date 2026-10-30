@@ -1,0 +1,255 @@
+/* Contact page: the hero's two actions, one wide sheet (how to reach us beside the brief form), and the
+   office card, a 3D map of Kanpur beside the visit copy. Light theme only. */
+
+.contact-hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 28px;
+}
+
+/* ── the sheet: runs to the nav bar's edges like the other big boxes ── */
+
+.contact-sheet {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(28px, 4vw, 64px);
+  align-items: start;
+  padding: var(--sheet-pad);
+  border-radius: var(--r-sheet);
+  background: color-mix(in srgb, var(--violet) 5%, var(--bg-2));
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+/* scrolls with the panel: a short sticky hold beside the form made these boxes drift against it */
+.contact-intro {
+  display: grid;
+  gap: 18px;
+}
+.contact-intro .h2 {
+  margin-bottom: 14px;
+}
+.contact-rows {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.contact-rows li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: var(--r-md);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+}
+.contact-rows p {
+  margin: 0 0 3px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.contact-rows b {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+.contact-rows .text-link {
+  font-weight: 600;
+}
+.contact-sheet .contact-form {
+  box-shadow: 0 0 0 1px var(--line), 0 30px 60px -40px rgb(40 24 110 / 0.35);
+}
+
+/* ── visit: the office map beside the copy ── */
+
+.visit {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: clamp(28px, 4.4vw, 72px);
+  align-items: center;
+}
+.visit-copy {
+  display: grid;
+  gap: 18px;
+  justify-items: start;
+}
+.visit-copy .lede {
+  max-width: 42ch;
+  margin: 0;
+}
+.visit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.visit-map {
+  position: relative;
+  aspect-ratio: 16 / 11;
+  overflow: hidden;
+  border-radius: var(--r-lg);
+  /* matches the scene's clear colour and fog, so the canvas fades in without a seam */
+  background: #F4F1EA;
+  box-shadow: 0 0 0 1px var(--line), 0 40px 80px -50px rgb(40 24 110 / 0.4);
+}
+.visit-map__stage {
+  position: absolute;
+  inset: 0;
+}
+.visit-map__canvas {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.8s var(--ease);
+}
+.visit-map[data-ready] .visit-map__canvas {
+  opacity: 1;
+}
+
+/* until the scene draws (or if it never can): a quiet street grid and the pin */
+.visit-map__fallback {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgb(20 19 15 / 0.05) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(rgb(20 19 15 / 0.05) 1px, transparent 1px) 0 0 / 56px 56px;
+  transition: opacity 0.8s var(--ease);
+}
+.visit-map__fallback i {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 22px;
+  height: 22px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--violet);
+  transform: translate(-50%, -50%) rotate(-45deg);
+  box-shadow: 0 0 0 10px rgb(110 88 245 / 0.12);
+}
+.visit-map[data-ready] .visit-map__fallback {
+  opacity: 0;
+}
+
+/* labels placed by the scene, which also fades them in: their anchor point is the bottom centre */
+.visit-map__tag {
+  opacity: 0;
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  will-change: transform;
+}
+.visit-map__tag > * {
+  display: block;
+}
+.visit-map__tag.is-pin {
+  display: grid;
+  gap: 2px;
+  padding: 9px 14px 10px;
+  border-radius: 14px;
+  background: rgb(255 255 255 / 0.92);
+  box-shadow: 0 0 0 1px rgb(110 88 245 / 0.22), 0 14px 30px -14px rgb(40 24 110 / 0.45);
+  translate: -50% calc(-100% - 6px);
+}
+.visit-map__tag.is-pin b {
+  font: 600 14px var(--display);
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+.visit-map__tag.is-pin span {
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.visit-map__tag.is-place {
+  translate: -50% -50%;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgb(70 80 140 / 0.75);
+}
+.visit-map__chip {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px 9px 12px;
+  border-radius: var(--r-pill);
+  background: rgb(255 255 255 / 0.9);
+  box-shadow: 0 0 0 1px var(--line-strong), 0 10px 24px -14px rgb(20 19 15 / 0.35);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  transition: box-shadow var(--dur-hover) var(--ease);
+}
+.visit-map__chip i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--violet);
+  box-shadow: 0 0 0 4px rgb(110 88 245 / 0.18);
+}
+@media (hover: hover) and (pointer: fine) {
+  .visit-map__chip:hover {
+    box-shadow: 0 0 0 1px var(--violet), 0 10px 24px -14px rgb(40 24 110 / 0.5);
+  }
+}
+
+/* dark theme: the city at night (gl/officeMap NIGHT); the card, labels and chip follow it */
+:root[data-theme='dark'] .visit-map,
+.dark .visit-map {
+  background: #12111B;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.08), 0 40px 80px -50px rgb(0 0 0 / 0.7);
+}
+:root[data-theme='dark'] .visit-map__fallback,
+.dark .visit-map__fallback {
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 0.05) 1px, transparent 1px) 0 0 / 56px 56px,
+    linear-gradient(rgb(255 255 255 / 0.05) 1px, transparent 1px) 0 0 / 56px 56px;
+}
+:root[data-theme='dark'] .visit-map__tag.is-pin,
+.dark .visit-map__tag.is-pin {
+  background: rgb(26 25 39 / 0.92);
+  box-shadow: 0 0 0 1px rgb(110 88 245 / 0.45), 0 14px 30px -14px rgb(0 0 0 / 0.7);
+}
+:root[data-theme='dark'] .visit-map__tag.is-pin b,
+.dark .visit-map__tag.is-pin b {
+  color: #FAF9F6;
+}
+:root[data-theme='dark'] .visit-map__tag.is-pin span,
+.dark .visit-map__tag.is-pin span {
+  color: rgb(250 249 246 / 0.65);
+}
+:root[data-theme='dark'] .visit-map__tag.is-place,
+.dark .visit-map__tag.is-place {
+  color: rgb(160 172 235 / 0.8);
+}
+:root[data-theme='dark'] .visit-map__chip,
+.dark .visit-map__chip {
+  background: rgb(26 25 39 / 0.9);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.14), 0 10px 24px -14px rgb(0 0 0 / 0.7);
+  color: #FAF9F6;
+}
+
+/* desktop: same split gap as the sheet above and every other two-column split */
+@media (min-width: 901px) {
+  .visit {
+    gap: var(--split-gap);
+  }
+}
+
+@media (max-width: 900px) {
+  .contact-sheet,
+  .visit {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
