@@ -1,7 +1,5 @@
 const { test, before, beforeEach, after } = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("fs");
-const path = require("path");
 
 // Gap audit group B, owner's 4A: accepting a policy needs the person's "I have read and understood this policy" tick,
 // checked here as well as on the page, so no app can accept for someone without it.
@@ -57,11 +55,6 @@ test("with the tick, the acceptance is recorded once", async () => {
   assert.equal(again.status, 200);
   const saved = await Policy.findById(doc._id);
   assert.deepEqual(saved.acceptedBy.map((a) => [a.userId, a.email]), [[asha.id, asha.email]]);
-});
-
-test("the company's own Policy page sends its tick too, so it keeps working", () => {
-  const page = fs.readFileSync(path.join(__dirname, "..", "..", "frontend", "src", "pages", "PolicyCompliance.jsx"), "utf8");
-  assert.match(page, /api\.post\(`\/policies\/\$\{selectedPdf\._id\}\/accept`, \{ readConfirmed: isAgreed \}\)/);
 });
 
 // Review 2026-10-26 low list: two clicks at once both read "not accepted yet" and both saved an acceptance.

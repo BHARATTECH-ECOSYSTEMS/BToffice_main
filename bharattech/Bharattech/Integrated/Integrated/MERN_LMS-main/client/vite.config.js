@@ -6,8 +6,8 @@ export default defineConfig({
   plugins: [react()],
   server: {
     // Pinned off 5174 — that port is used by the Cinematic Landing Page
-    // marketing site's dev server. Keep this in sync with VITE_LMS_URL in
-    // Learning-Management-System/frontend/.env.local.
+    // marketing site's dev server. Keep this in sync with VITE_LMS_PLATFORM_URL in
+    // the website's .env.local.
     port: 5175,
     strictPort: true,
     allowedHosts: ['keycloak.local'],
