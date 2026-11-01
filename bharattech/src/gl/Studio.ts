@@ -337,6 +337,8 @@ export class Studio {
     this.bare = !!opts.bare;
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: this.bare, powerPreference: 'high-performance' });
     if (this.bare) this.renderer.setClearColor(0x000000, 0);
+    // reading back every shader's log makes the first draw wait on the GPU; development builds still report errors
+    this.renderer.debug.checkShaderErrors = import.meta.env.DEV;
     // a page's small glass logo (bare) draws twice the screen's pixels: its edge and threads come from the shader, so
     // only more pixels smooth them (stair-stepped on dark pages otherwise); it is small enough to afford it
     this.renderer.setPixelRatio(this.bare ? Math.min(window.devicePixelRatio * SHARP_RATIO, 4) : Math.min(window.devicePixelRatio, lite ? 0.85 : 1.25));

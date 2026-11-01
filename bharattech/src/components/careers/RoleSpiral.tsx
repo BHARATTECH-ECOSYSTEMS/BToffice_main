@@ -5,6 +5,7 @@ import { useQuiet, useScene } from '../../gl/Scene';
 import { DEPT_TONES, type ROLES } from '../../content';
 import { mountRoleSpiral, type RoleSpiral as Spiral } from '../../gl/careers/roleSpiral';
 import { pinnedScrollTop, useHosts, useStageFrames } from './useStageFrames';
+import { buildWhenQuietOrNear } from '../warmQueue';
 
 export type Role = (typeof ROLES)[number];
 
@@ -39,18 +40,27 @@ export function RoleSpiral({
   const { scrollTo } = useScene();
   useQuiet(sectionRef);
   const kept = keep.filter(Boolean).length;
+  // the spiral is built a little after the page opens, and starts from the filters chosen by then
+  const keepNow = useRef(keep);
+  keepNow.current = keep;
 
   useEffect(() => {
+    const section = sectionRef.current;
     const stage = stageRef.current;
     const canvas = glRef.current;
-    if (!stage || !canvas) return;
-    const s = mountRoleSpiral({ stage, canvas, hosts, onFront: setFront });
-    spiral.current = s;
-    frame.current = s.frame;
+    if (!section || !stage || !canvas) return;
+    let s: Spiral | null = null;
+    const cancel = buildWhenQuietOrNear(section, () => {
+      s = mountRoleSpiral({ stage, canvas, hosts, onFront: setFront });
+      if (keepNow.current.some((k) => !k)) s.setKeep(keepNow.current);
+      spiral.current = s;
+      frame.current = s.frame;
+    });
     return () => {
+      cancel();
       frame.current = null;
       spiral.current = null;
-      s.destroy();
+      s?.destroy();
     };
   }, [hosts, frame]);
 

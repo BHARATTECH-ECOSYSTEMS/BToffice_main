@@ -54,6 +54,34 @@ function pumpWarm() {
   });
 }
 
+/** A new page's own entrance (RouteSweep's 560 ms page-in) plays before a scene is built for being near the screen. */
+const SETTLE_MS = 700;
+
+/**
+ * Runs `build` once: at a quiet moment, or once the page has settled and `el` is within `margin` of the screen,
+ * whichever is first. Returns a cancel function. Creating a WebGL context while the new page was still being drawn
+ * held it 0.55 s (the context waits for the busy GPU process); a moment later the same took 0.09 s.
+ */
+export function buildWhenQuietOrNear(el: Element, build: () => void, margin = '100% 0px'): () => void {
+  let done = false;
+  const once = () => {
+    if (done) return;
+    done = true;
+    cancel();
+    build();
+  };
+  const cancelWarm = warmWhenQuiet(once);
+  const near = new IntersectionObserver(([entry]) => entry.isIntersecting && once(), { rootMargin: margin });
+  const arm = window.setTimeout(() => near.observe(el), SETTLE_MS);
+  const cancel = () => {
+    done = true;
+    cancelWarm();
+    window.clearTimeout(arm);
+    near.disconnect();
+  };
+  return cancel;
+}
+
 /** Queues a build for a quiet moment (`first`: ahead of those already waiting); returns a cancel function. */
 export function warmWhenQuiet(run: () => void, first = false): () => void {
   const task: WarmTask = { run, cancelled: false };

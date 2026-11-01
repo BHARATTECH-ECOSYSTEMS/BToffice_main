@@ -498,7 +498,8 @@ function LoginDialog({ onClose, reset }: { onClose: () => void; reset: { token: 
           <i className="login-glow is-b" />
           <i className="login-glow is-c" />
           <div className="login-logo">
-            <LogoGlass background={dark ? '#1A1830' : '#EEEAFE'} entrance bounce />
+            {/* built once the card has grown open (login-grow), so the opening never stutters */}
+            <LogoGlass background={dark ? '#1A1830' : '#EEEAFE'} entrance bounce buildAfter={600} />
           </div>
           <Brand mark={<ThreadMark />} />
           <p className="login-art-line">The operating system for intelligence.</p>

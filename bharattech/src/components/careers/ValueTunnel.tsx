@@ -6,6 +6,7 @@ import { useQuiet, useScene } from '../../gl/Scene';
 import { mountValueTunnel, type ValueTunnel as Tunnel } from '../../gl/careers/valueTunnel';
 import type { HueName } from '../../gl/palette';
 import { pinnedScrollTop, useHosts, useStageFrames } from './useStageFrames';
+import { buildWhenQuietOrNear } from '../warmQueue';
 
 export interface Value {
   title: string;
@@ -31,16 +32,21 @@ export function ValueTunnel({ values }: { values: Value[] }) {
   useQuiet(sectionRef);
 
   useEffect(() => {
+    const section = sectionRef.current;
     const stage = stageRef.current;
     const canvas = glRef.current;
-    if (!stage || !canvas) return;
-    const t = mountValueTunnel({ stage, canvas, hosts, onCurrent: setCurrent });
-    tunnel.current = t;
-    frame.current = t.frame;
+    if (!section || !stage || !canvas) return;
+    let t: Tunnel | null = null;
+    const cancel = buildWhenQuietOrNear(section, () => {
+      t = mountValueTunnel({ stage, canvas, hosts, onCurrent: setCurrent });
+      tunnel.current = t;
+      frame.current = t.frame;
+    });
     return () => {
+      cancel();
       frame.current = null;
       tunnel.current = null;
-      t.destroy();
+      t?.destroy();
     };
   }, [hosts, frame]);
 
