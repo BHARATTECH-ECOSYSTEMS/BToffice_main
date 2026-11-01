@@ -8,14 +8,12 @@ import { PHOTO_MAX_MB, PHOTO_TYPES, photoFileProblem, toJpeg, toSquare } from '.
 import { nameChangeHint, phoneProblem, saveMyPhones, useAccountProfile, type AccountProfile, type ProfileState } from '../profile';
 import { endSessionForNewSignIn, ROLE_NAME, setDisplayName, setPhoto, useSession } from '../session';
 import { Badge, btnClass, BtnLabel, initials, Modal, PageHead, PIcon, useNotice } from '../ui';
-import { ThemeChoices } from '../../components/ThemeSwitch';
 
 const MIN_PASSWORD = 8;
 
 const SECTIONS: { id: string; label: string; icon: PortalIconName; Panel: () => React.JSX.Element }[] = [
   { id: 'profile', label: 'Profile', icon: 'users', Panel: ProfileSection },
   { id: 'password', label: 'Password', icon: 'lock', Panel: PasswordPanel },
-  { id: 'appearance', label: 'Appearance', icon: 'eye', Panel: AppearancePanel },
 ];
 
 /**
@@ -486,23 +484,6 @@ function PasswordPanel() {
       </Row>
       <Row label="Confirm new password" htmlFor="pw-confirm">
         {field('pw-confirm', confirm, setConfirm, 'new-password')}
-      </Row>
-    </SettingsCard>
-  );
-}
-
-/** Light, Dark or Auto. It applies at once and is kept in this browser only, so each device can differ. */
-function AppearancePanel() {
-  return (
-    <SettingsCard
-      id="settings-appearance"
-      title="Appearance"
-      sub="How the site and the portal look in this browser."
-      onSubmit={(e) => e.preventDefault()}
-      footer={<p className="p-muted">Changes apply at once. Services and Research stay dark whatever you pick.</p>}
-    >
-      <Row label="Theme" hint="Auto follows your phone or computer's own setting. Saved in this browser only.">
-        <ThemeChoices />
       </Row>
     </SettingsCard>
   );

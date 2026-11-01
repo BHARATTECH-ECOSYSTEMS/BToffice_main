@@ -386,16 +386,6 @@ body:has(.portal) .scene {
   font-size: 22px;
   box-shadow: 0 0 0 4px var(--paper), 0 0 0 5px var(--line);
 }
-/* Settings → Appearance: Light, Dark, Auto, each with the icon the top-bar key shows */
-.p-theme-choices svg {
-  width: 16px;
-  height: 16px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.8;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-}
 .p-set-checks {
   display: grid;
   gap: 6px;
@@ -5007,7 +4997,6 @@ html:has(.portal),
   /* the page keys don't fit: a menu button opens them all, and the theme choices move into it */
   .p-top .nav-links,
   .p-top::after,
-  .p-top .nav-theme,
   .p-top > .p-menu:not(.p-sheet) {
     display: none;
   }
@@ -5092,16 +5081,6 @@ html:has(.portal),
   }
   .p-sheet .p-menu-link {
     min-height: 46px;
-  }
-  .p-sheet-theme {
-    padding: 0 8px 6px;
-  }
-  .p-sheet-theme .segmented {
-    display: flex;
-  }
-  .p-sheet-theme .segmented button {
-    flex: 1;
-    justify-content: center;
   }
 
   /* one column */

@@ -1,93 +1,72 @@
 import { useSyncExternalStore } from 'react';
 
 /**
- * Light or dark. People pick Light, Dark or Auto (follow the device) with the switch in the top bars or in portal
- * Settings; the pick is remembered in this browser only. Services and Research are always dark: a night journey
- * and a glowing swarm. The first-paint script in index.html applies the same rule before any of this loads, and
+ * Light or dark, by the clock: light from 6:00 until 18:00 on the visitor's own clock, dark the rest of the day, for
+ * the site and the portal alike. There is no switch. Services and Research are always dark: a night journey and a
+ * glowing swarm. The first-paint script in index.html applies the same rule before any of this loads, and
  * tests/site/theme.test.ts keeps the two in step.
  */
-export type ThemeChoice = 'light' | 'dark' | 'auto';
 export type Theme = 'light' | 'dark';
 
-export const THEME_KEY = 'bt-theme';
-export const THEME_CHOICES: ThemeChoice[] = ['auto', 'light', 'dark'];
-export const THEME_LABEL: Record<ThemeChoice, string> = { auto: 'Auto', light: 'Light', dark: 'Dark' };
-// the device's own setting, which Auto follows
-const DEVICE_DARK = '(prefers-color-scheme: dark)';
+/** The hours the day runs from and until, on a 24-hour clock. */
+const DAY_FROM = 6;
+const DAY_UNTIL = 18;
 
 const ALWAYS_DARK = new Set(['/services', '/research']);
 
-export function readThemeChoice(storage: Pick<Storage, 'getItem'> | null): ThemeChoice {
-  try {
-    const saved = storage?.getItem(THEME_KEY);
-    return saved === 'light' || saved === 'dark' ? saved : 'auto';
-  } catch {
-    // storage can be blocked (private windows, site data off): the device decides
-    return 'auto';
-  }
+export const isDaytime = (now: Date) => now.getHours() >= DAY_FROM && now.getHours() < DAY_UNTIL;
+
+/** How long until the next 6:00 or 18:00, so an open page changes over on time. */
+export function msUntilThemeChange(now: Date) {
+  const next = new Date(now);
+  next.setMinutes(0, 0, 0);
+  const hour = now.getHours();
+  if (hour < DAY_FROM) next.setHours(DAY_FROM);
+  else if (hour < DAY_UNTIL) next.setHours(DAY_UNTIL);
+  else next.setHours(24 + DAY_FROM);
+  return next.getTime() - now.getTime();
 }
 
 /**
  * `pathname` is the page's route (after the #); `path`, `search` and `hash` are the whole address, which only the
  * old dark links use.
  */
-export function resolveTheme({ choice, systemDark, pathname, search = '', hash = '', path = '' }: { choice: ThemeChoice; systemDark: boolean; pathname: string; search?: string; hash?: string; path?: string }): Theme {
+export function resolveTheme({ day, pathname, search = '', hash = '', path = '' }: { day: boolean; pathname: string; search?: string; hash?: string; path?: string }): Theme {
   // ?theme=dark, #/?theme=dark and /dark are older links that still open the dark site
   const linkedDark = new URLSearchParams(search).get('theme') === 'dark' || hash.includes('theme=dark') || hash.includes('/dark') || pathname.startsWith('/dark') || path.startsWith('/dark');
   if (ALWAYS_DARK.has(pathname.replace(/\/+$/, '')) || linkedDark) return 'dark';
-  if (choice === 'auto') return systemDark ? 'dark' : 'light';
-  return choice;
+  return day ? 'light' : 'dark';
 }
 
 /** The parts of the address resolveTheme reads besides the route. */
 export const pageAddress = () => ({ search: window.location.search, hash: window.location.hash, path: window.location.pathname });
 
-/** The top-bar button's next step: Auto → Light → Dark → Auto. */
-export const nextThemeChoice = (choice: ThemeChoice) => THEME_CHOICES[(THEME_CHOICES.indexOf(choice) + 1) % THEME_CHOICES.length];
-
-type DeviceSetting = { matches: boolean; addEventListener(type: 'change', fn: () => void): void };
-export type ThemeState = { choice: ThemeChoice; systemDark: boolean };
-
-/** The current choice plus the device's setting, shared by everything that shows or changes the theme. */
-export function createThemeStore({ storage, media }: { storage: Pick<Storage, 'getItem' | 'setItem'> | null; media: DeviceSetting | null }) {
-  let state: ThemeState = { choice: readThemeChoice(storage), systemDark: !!media?.matches };
-  const listeners = new Set<() => void>();
-  const update = (next: ThemeState) => {
-    if (next.choice === state.choice && next.systemDark === state.systemDark) return;
-    // a new object only on a real change: React re-renders whenever the snapshot is a different object
-    state = next;
-    listeners.forEach((fn) => fn());
+/**
+ * Whether it is day now, re-checked at the next 6:00 or 18:00 and whenever the tab comes back into view (a laptop
+ * that slept through the change has timers that never fired).
+ */
+function watchDaytime(fn: () => void) {
+  let timer = 0;
+  const arm = () => {
+    window.clearTimeout(timer);
+    // a second late, so the clock has certainly passed the hour when the page looks again
+    timer = window.setTimeout(() => (fn(), arm()), msUntilThemeChange(new Date()) + 1000);
   };
-  media?.addEventListener('change', () => update({ ...state, systemDark: media.matches }));
-  return {
-    get: () => state,
-    set(choice: ThemeChoice) {
-      try {
-        storage?.setItem(THEME_KEY, choice);
-      } catch {
-        // not saved, but this visit still changes
-      }
-      update({ ...state, choice });
-    },
-    /** Re-reads the saved choice, after another tab changed it. */
-    refresh: () => update({ ...state, choice: readThemeChoice(storage) }),
-    subscribe(fn: () => void) {
-      listeners.add(fn);
-      return () => void listeners.delete(fn);
-    },
+  const onVisible = () => {
+    if (document.visibilityState !== 'visible') return;
+    fn();
+    arm();
+  };
+  arm();
+  document.addEventListener('visibilitychange', onVisible);
+  return () => {
+    window.clearTimeout(timer);
+    document.removeEventListener('visibilitychange', onVisible);
   };
 }
-
-const browser = typeof window !== 'undefined';
-const store = createThemeStore({
-  storage: browser ? (() => { try { return window.localStorage; } catch { return null; } })() : null,
-  media: browser && typeof window.matchMedia === 'function' ? window.matchMedia(DEVICE_DARK) : null,
-});
-if (browser) window.addEventListener('storage', (e) => e.key === THEME_KEY && store.refresh());
-
-export const setThemeChoice = store.set;
-/** The choice and the device's setting, for whatever decides the page's theme. */
-export const useThemeState = () => useSyncExternalStore(store.subscribe, store.get, store.get);
+const readDaytime = () => isDaytime(new Date());
+/** Whether it is day (light) or night (dark) right now, kept current while the page is open. */
+export const useDaytime = () => useSyncExternalStore(watchDaytime, readDaytime, () => true);
 
 const readDocumentTheme = (): Theme => (document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
 function watchDocumentTheme(fn: () => void) {

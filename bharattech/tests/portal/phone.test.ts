@@ -81,12 +81,11 @@ const media = (query: string) => {
   return out.join('\n');
 };
 
-test('on phones the page row gives way to the menu button, and the theme key moves into the menu', () => {
+test('on phones the page row gives way to the menu button', () => {
   const phone = media('(max-width: 760px)');
   // (a selector may share its rule with others)
   assert.match(phone, /\.p-top \.nav-links[^{]*\{[^}]*display:\s*none/);
   assert.match(phone, /\.p-burger\s*\{[^}]*display:\s*(grid|flex|block)/);
-  assert.match(phone, /\.p-top \.nav-theme[^{]*\{[^}]*display:\s*none/);
   const layout = src('src/portal/PortalLayout.tsx');
   assert.match(layout, /<PortalMenu\b/);
   assert.match(layout, /useTableLabels\(/);

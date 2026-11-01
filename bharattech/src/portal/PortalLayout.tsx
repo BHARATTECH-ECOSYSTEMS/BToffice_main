@@ -6,7 +6,6 @@ import { keyAt, KeyLabel, keyPointer, MotionLink, OPENING, useKeyHighlight } fro
 import { useGlassTilt } from '../components/useGlassTilt';
 import { useNavBubble } from '../components/useNavBubble';
 import { usePointerBloom } from '../components/usePointerBloom';
-import { ThemeButton, ThemeChoices } from '../components/ThemeSwitch';
 import { useApplyTheme } from '../useApplyTheme';
 import { auth } from './auth';
 import { api } from './api';
@@ -74,9 +73,8 @@ const TOP: TopItem[] = [
   { key: 'community', label: 'Community', to: '/portal/community', tone: 'tangerine', fx: 'magnet' },
 ];
 
-// every button of the top bar, for the liquid drop: the brand, the page keys, the theme key, the bell and the
-// profile button
-const TOP_BUTTONS = '.nav-brand, .nav-links > a, .nav-links > button, .nav-theme, .p-bell-btn, .p-user-btn';
+// every button of the top bar, for the liquid drop: the brand, the page keys, the bell and the profile button
+const TOP_BUTTONS = '.nav-brand, .nav-links > a, .nav-links > button, .p-bell-btn, .p-user-btn';
 
 // hover intent for the top bar's menus: a short wait before opening, and a grace period on leaving so the
 // pointer can travel from the button down into the menu
@@ -173,7 +171,6 @@ export function PortalLayout() {
             </MotionLink>
             <TopNav items={items} active={activeKey(items, pathname)} />
             <div className="p-top-end">
-              <ThemeButton />
               <UserMenu name={session.name} email={session.email} role={session.role} photo={photo} onHelp={() => setHelpOpen(true)} onSignOut={signOut} />
               <NotifyMenu muted={session.mutedNotifications ?? []} />
               <PortalMenu items={items} />
@@ -365,7 +362,7 @@ function PillMenu({
 
 /**
  * Phones (portal.css, max-width 760px): the row of page keys doesn't fit, so this button opens every page the person
- * may reach in one panel under the bar, with the theme choices at its foot. It closes on a page change, on Escape
+ * may reach in one panel under the bar. It closes on a page change, on Escape
  * (focus returns to the button) and on a press outside it.
  */
 function PortalMenu({ items }: { items: TopItem[] }) {
@@ -434,10 +431,6 @@ function PortalMenu({ items }: { items: TopItem[] }) {
             </ul>
           </div>
         ))}
-        <div className="p-menu-group p-sheet-theme">
-          <p className="p-menu-label">Theme</p>
-          <ThemeChoices />
-        </div>
       </nav>
     </>
   );

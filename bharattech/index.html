@@ -8,8 +8,8 @@
     <meta name="theme-color" content="#FBF6EF" />
     <script>
       // The theme before first paint, by the same rule as resolveTheme in src/theme.ts (tests/site/theme.test.ts
-      // checks they agree): Services, Research and the old dark links are dark; otherwise the saved Light/Dark
-      // choice, or the device's own setting for Auto.
+      // checks they agree): Services, Research and the old dark links are dark; otherwise light from 6:00 until
+      // 18:00 on the visitor's clock and dark the rest of the day.
       (function () {
         try {
           var params = new URLSearchParams(window.location.search);
@@ -18,9 +18,8 @@
           var route = hash.replace(/^#/, '').split('?')[0].replace(/\/+$/, '');
           var dark = route === '/services' || route === '/research' || params.get('theme') === 'dark' || hash.indexOf('theme=dark') !== -1 || hash.indexOf('/dark') !== -1 || path.indexOf('/dark') === 0;
           if (!dark) {
-            var saved = null;
-            try { saved = localStorage.getItem('bt-theme'); } catch (e) {}
-            dark = saved === 'dark' || (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            var hour = new Date().getHours();
+            dark = hour < 6 || hour >= 18;
           }
           if (dark) {
             document.documentElement.setAttribute('data-theme', 'dark');
