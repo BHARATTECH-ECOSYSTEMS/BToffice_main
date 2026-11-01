@@ -17,6 +17,7 @@ import './styles/company-about.css';
 import './styles/careers.css';
 import './styles/services.css';
 import './styles/research.css';
+import './styles/blog.css';
 import './styles/contact.css';
 import './styles/portal.css';
 import './styles/id-card.css';

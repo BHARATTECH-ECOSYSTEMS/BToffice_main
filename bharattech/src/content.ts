@@ -326,6 +326,9 @@ export const POSTS = [
   },
 ];
 
+/** Each post category's colour, shared by the Blog and the article pages. */
+export const CATEGORY_TONE: Record<string, HueName> = { Research: 'violet', Technology: 'saffron', Company: 'tangerine' };
+
 export const PRIVACY = [
   ['Information we collect', 'We collect information you provide directly to us, such as when you contact us through our website, subscribe to updates, or apply for a position at Bharattech Origin. This may include your name, email address, organization, and the content of your communications. We also collect limited technical information automatically when you visit our website, including IP address, browser type, and pages visited, solely for security and analytics purposes.'],
   ['How we use your information', 'We use the information we collect to respond to your enquiries, process applications, send requested updates and communications, improve our website and services, and comply with legal obligations. We do not use personal information to train AI models or for any purpose beyond what is described in this policy.'],

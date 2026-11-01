@@ -1,0 +1,459 @@
+/* ══ Blog: one post at a time (desktop) ═════════════════════════════════════
+   The section pins for one screen plus a stretch per post; components/blog/BlogDeck.tsx lifts each card away for the
+   next. Phones and reduced motion never render it and keep the posts grid in fx.css. */
+
+.dk {
+  position: relative;
+  height: calc(100svh + (var(--count) - 1) * 75svh);
+}
+.dk-pin {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100svh;
+  min-height: 640px;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--bg);
+}
+.dk-top {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 40px;
+  width: 100%;
+  padding-top: calc(var(--nav-h) + clamp(28px, 5vh, 52px));
+}
+/* a band of the page colour behind the title: a card lifting away slides under it and out of sight, fading into
+   the page at the band's soft lower edge instead of crossing the title */
+.dk-top::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  bottom: -18px;
+  left: -100vw;
+  right: -100vw;
+  background: linear-gradient(var(--bg) calc(100% - 18px), transparent);
+  pointer-events: none;
+}
+.dk-title {
+  margin: 0;
+  font-size: clamp(44px, min(5vw, 8.4vh), 76px);
+  white-space: nowrap;
+}
+/* one line here: the title shares its row with the filters */
+.dk-title .line {
+  display: inline-block;
+}
+.dk-title .line + .line {
+  margin-left: 0.24em;
+}
+.dk-lede {
+  margin: clamp(8px, 1.4vh, 14px) 0 0;
+  max-width: 58ch;
+  font-size: 15.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+.dk-top .segmented {
+  flex: none;
+  flex-wrap: nowrap;
+}
+
+.dk-stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: 1;
+  min-height: 0;
+  /* room above the deck for the cards waiting behind, and below it for the marks */
+  padding: clamp(64px, 9vh, 84px) var(--pad, 24px) clamp(64px, 9vh, 88px);
+}
+.dk-deck {
+  position: relative;
+  width: min(1040px, 100%);
+  height: clamp(340px, calc(100svh - 390px), 510px);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  perspective: 1800px;
+  perspective-origin: 50% 0%;
+  animation: dk-in 1s var(--ease-expo) 0.15s both;
+}
+@keyframes dk-in {
+  from {
+    opacity: 0;
+    translate: 0 36px;
+  }
+}
+.dk-deck > li {
+  position: absolute;
+  inset: 0;
+  /* the waiting cards shrink toward the top, so their top edges show above the one in front */
+  transform-origin: 50% 0%;
+}
+
+.dk-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: clamp(28px, 3.4vw, 52px);
+  height: 100%;
+  padding: 16px;
+  border-radius: 28px;
+  background: var(--paper);
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 36px 70px -44px rgb(20 19 15 / 0.5);
+  color: inherit;
+  text-decoration: none;
+}
+:root[data-theme='dark'] .dk-card {
+  box-shadow:
+    0 0 0 1px var(--line),
+    0 36px 70px -36px rgb(0 0 0 / 0.85);
+}
+/* dims a card waiting behind; opacity only, written by BlogDeck */
+.dk-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  border-radius: inherit;
+  background: var(--bg);
+  opacity: 0;
+  pointer-events: none;
+}
+.dk-card .cover {
+  height: 100%;
+  aspect-ratio: auto;
+  border-radius: 20px;
+}
+.dk-card:focus-visible {
+  outline: 2px solid var(--violet-text);
+  outline-offset: 4px;
+}
+.dk-text {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: clamp(16px, 3vh, 36px) clamp(16px, 2vw, 30px) clamp(12px, 2.2vh, 24px) 0;
+}
+.dk-post-title {
+  margin: clamp(12px, 2.2vh, 22px) 0 clamp(8px, 1.2vh, 12px);
+  font-family: var(--display);
+  font-size: clamp(28px, min(3vw, 5vh), 46px);
+  font-weight: 700;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.dk-dek {
+  display: block;
+  margin-bottom: clamp(10px, 1.8vh, 16px);
+  font-family: var(--display);
+  font-size: clamp(17px, 1.4vw, 20px);
+  font-weight: 500;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: color-mix(in srgb, var(--tone) 55%, var(--ink));
+}
+.dk-excerpt {
+  margin: 0;
+  max-width: 44ch;
+  font-size: clamp(15px, 1.15vw, 16.5px);
+  line-height: 1.6;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+}
+.dk-read {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 16px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.dk-read .arrow {
+  transition: transform 200ms var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .dk-card:hover .dk-read .arrow {
+    transform: translateX(4px);
+  }
+}
+
+/* where the reader is in the deck, and a way to jump to any post */
+.dk-marks {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(24px, 4vh, 40px);
+  display: flex;
+  gap: 6px;
+  translate: -50% 0;
+}
+.dk-marks button {
+  position: relative;
+  width: 18px;
+  height: 20px;
+  transition: width 0.45s var(--ease-expo);
+}
+.dk-marks button::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 8px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  transition: background-color var(--dur-ui) var(--ease);
+}
+.dk-marks button[aria-current] {
+  width: 40px;
+}
+.dk-marks button[aria-current]::after {
+  background: var(--tone);
+}
+@media (hover: hover) and (pointer: fine) {
+  .dk-marks button:not([aria-current]):hover::after {
+    background: color-mix(in srgb, var(--tone) 50%, var(--line-strong));
+  }
+}
+.dk-marks button:focus-visible {
+  outline: 2px solid var(--violet-text);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* the cover lifted off the deck while the article opens (components/blog/coverMorph.ts) */
+.cover-ghost {
+  position: fixed;
+  z-index: 95;
+  margin: 0;
+  aspect-ratio: auto;
+  pointer-events: none;
+}
+
+/* ══ A post (pages/Article.tsx) ══════════════════════════════════════════════
+   A header in the post's own colour, its cover where the deck's card landed, then one calm column. */
+
+/* fills across the top of the window as the article is read */
+.article-progress {
+  position: fixed;
+  z-index: 90;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  pointer-events: none;
+}
+.article-progress i {
+  display: block;
+  height: 100%;
+  background: var(--tone);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+
+.article .back {
+  margin-bottom: 24px;
+}
+.article-hero {
+  display: grid;
+  gap: 24px;
+  padding: 20px;
+  border-radius: 32px;
+  background: var(--tone);
+  color: var(--on-tone);
+}
+.article-hero-text {
+  display: grid;
+  align-content: end;
+  gap: 18px;
+  padding: 12px 8px 8px;
+}
+.article-hero .post-meta {
+  margin: 0;
+  color: var(--on-tone);
+}
+.article-hero .post-meta span {
+  background: color-mix(in srgb, var(--on-tone) 16%, transparent);
+  color: var(--on-tone);
+}
+.article-title {
+  margin: 0;
+  font-size: clamp(38px, 4.4vw, 68px);
+  text-wrap: balance;
+}
+.article-dek {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(20px, 1.8vw, 26px);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.article-hero-art {
+  border-radius: 22px;
+}
+.article-hero-art .cover {
+  border-radius: inherit;
+}
+/* the category is already in the header's details */
+.article-hero-art .cover-tag {
+  display: none;
+}
+
+.article-column {
+  max-width: 720px;
+  margin: clamp(40px, 6vw, 72px) auto 0;
+}
+.article-body {
+  margin: 0;
+  font-size: 19px;
+  line-height: 1.7;
+  text-wrap: pretty;
+}
+
+/* the closing block: the full essay is on its way, and how to get it */
+.article-end {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  margin-top: 48px;
+  padding: 28px 28px 30px;
+  border-radius: var(--r-lg);
+  background: color-mix(in srgb, var(--tone) 7%, var(--paper));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--tone) 18%, transparent);
+}
+.article-end h2 {
+  margin: 0;
+  font-family: var(--display);
+  font-size: clamp(24px, 2.4vw, 30px);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+}
+.article-end p {
+  margin: 0 0 8px;
+  max-width: 52ch;
+  color: var(--ink-soft);
+}
+
+/* the posts either side, in the Blog's order */
+.article-pager {
+  display: grid;
+  gap: 14px;
+}
+.pager-card {
+  display: grid;
+  grid-template-columns: 128px minmax(0, 1fr);
+  align-items: center;
+  gap: 20px;
+  padding: 14px;
+  border-radius: var(--r-lg);
+  background: var(--paper);
+  box-shadow: var(--shadow-sm);
+  color: inherit;
+  text-decoration: none;
+  transition:
+    translate 0.3s var(--ease-expo),
+    box-shadow 0.3s var(--ease);
+}
+.pager-card .cover {
+  aspect-ratio: 4 / 3;
+  border-radius: var(--r-md);
+}
+.pager-card .cover-tag {
+  display: none;
+}
+.pager-copy {
+  display: grid;
+  gap: 6px;
+}
+.pager-dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--tone) 60%, var(--ink));
+}
+.pager-title {
+  font-family: var(--display);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+.pager-dek {
+  font-size: 14.5px;
+  color: var(--ink-soft);
+}
+@media (hover: hover) and (pointer: fine) {
+  .pager-card:hover {
+    translate: 0 -3px;
+    box-shadow: var(--shadow-lg);
+  }
+}
+.pager-card:focus-visible {
+  outline: 2px solid var(--violet-text);
+  outline-offset: 3px;
+}
+
+@media (min-width: 901px) {
+  .article-hero {
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: clamp(32px, 4vw, 64px);
+    min-height: min(66vh, 600px);
+    padding: 22px;
+  }
+  .article-hero-text {
+    padding: 28px 0 30px 30px;
+  }
+  .article-hero-art .cover {
+    height: 100%;
+    aspect-ratio: auto;
+  }
+  .article-body {
+    font-size: 20px;
+  }
+  .article-end {
+    margin-top: 64px;
+    padding: 36px 40px 40px;
+  }
+  .article-more {
+    padding-top: clamp(56px, 8vw, 104px);
+  }
+  .article-pager {
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  .pager-card {
+    grid-template-columns: 168px minmax(0, 1fr);
+    padding: 16px;
+  }
+  /* the next post sits on the right with its cover outward, even when there is no previous one */
+  .pager-card.is-next {
+    grid-column: 2;
+    grid-template-columns: minmax(0, 1fr) 168px;
+    text-align: right;
+  }
+  .pager-card.is-next .cover {
+    order: 2;
+  }
+  .pager-card.is-next .pager-copy {
+    justify-items: end;
+  }
+}
+@media (max-width: 900px) {
+  .article-progress {
+    display: none;
+  }
+}

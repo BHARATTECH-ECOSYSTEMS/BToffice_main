@@ -1,13 +1,15 @@
-import { useState, type CSSProperties } from 'react';
+import { useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { PageHero, Quiet } from '../components/PageHero';
 import { Arrow, Reveal, toneStyle } from '../components/ui';
-import { POSTS } from '../content';
+import { CATEGORY_TONE, POSTS } from '../content';
 import type { HueName } from '../gl/palette';
 import { Cover } from '../components/art';
+import { isCompact } from '../gl/Scene';
+import { BlogDeck } from '../components/blog/BlogDeck';
 
 const CATS = ['All', ...Array.from(new Set(POSTS.map((p) => p.category)))];
-const CAT_TONE: Record<string, HueName> = { Research: 'violet', Technology: 'saffron', Company: 'tangerine' };
+const CAT_TONE: Record<string, HueName> = CATEGORY_TONE;
 
 /**
  * Column spans for n cards on a 12-column grid, so no row is left with a lone card:
@@ -42,9 +44,33 @@ function CoverFan() {
   );
 }
 
+/**
+ * The Blog. On desktop the posts come one at a time, a deck of large cards that the scroll lifts away one by one
+ * (BlogDeck); phones and reduced motion keep the plain grid of post cards.
+ */
 export function Blog() {
+  const [flat] = useState(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches || isCompact());
   const [cat, setCat] = useState('All');
-  const posts = POSTS.filter((p) => cat === 'All' || p.category === cat);
+  const posts = useMemo(() => POSTS.filter((p) => cat === 'All' || p.category === cat), [cat]);
+  const controls = (
+    <div className="segmented" role="group" aria-label="Category">
+      {CATS.map((c) => (
+        <button key={c} aria-pressed={cat === c} style={toneStyle(CAT_TONE[c] ?? 'ink')} onClick={() => setCat(c)}>
+          <i aria-hidden="true" />
+          {c}
+        </button>
+      ))}
+    </div>
+  );
+  return flat ? (
+    <PostsGrid posts={posts} cat={cat} controls={controls} />
+  ) : (
+    <BlogDeck posts={posts} tone={(p) => CAT_TONE[p.category]} controls={controls} />
+  );
+}
+
+/** The posts as a grid of cards under the page's hero, for phones and reduced motion. */
+function PostsGrid({ posts, cat, controls }: { posts: typeof POSTS; cat: string; controls: ReactNode }) {
   const spans = spansFor(posts.length);
   return (
     <>
@@ -56,14 +82,7 @@ export function Blog() {
       />
       <Quiet className="section section-tight">
         <div className="wrap">
-          <div className="segmented" role="group" aria-label="Category">
-            {CATS.map((c) => (
-              <button key={c} aria-pressed={cat === c} style={toneStyle(CAT_TONE[c] ?? 'ink')} onClick={() => setCat(c)}>
-                <i aria-hidden="true" />
-                {c}
-              </button>
-            ))}
-          </div>
+          {controls}
           <div className="bento posts-bento" key={cat}>
             {posts.map((p, i) => {
               const wide = spans[i] >= 8;

@@ -38,7 +38,8 @@ export function RouteSweep() {
       const link = target?.closest<HTMLAnchorElement>('a');
       const capabilities = target?.closest('.nav-links > button, .nav-sheet li > button');
       if (!link && !capabilities) return;
-      if (link && (link.target === '_blank' || link.hasAttribute('download'))) return;
+      // the Blog's book opens a post with its own cover flight (blog/coverMorph.ts)
+      if (link && (link.target === '_blank' || link.hasAttribute('download') || link.hasAttribute('data-morph'))) return;
       const href = link?.getAttribute('href') ?? (capabilities ? '#/' : '');
       if (!href.startsWith('#/')) return;
       const route = href.slice(1);
