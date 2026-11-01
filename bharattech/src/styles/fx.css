@@ -392,6 +392,29 @@
 .legal-toc {
   position: sticky;
   top: var(--sticky-top);
+  /* the first link sits level with the first section's heading */
+  padding-top: 34px;
+}
+/* one marker glides behind the link of the section being read */
+.legal-toc-mark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: var(--w);
+  height: var(--h);
+  transform: translate(var(--x), var(--y));
+  border-radius: var(--r-xs);
+  background: color-mix(in srgb, var(--violet) 12%, transparent);
+  pointer-events: none;
+  transition:
+    transform 0.42s var(--ease-expo),
+    width 0.42s var(--ease-expo),
+    height 0.42s var(--ease-expo);
+}
+@media (prefers-reduced-motion: reduce) {
+  .legal-toc-mark {
+    transition: none;
+  }
 }
 .legal-toc ol {
   display: grid;
@@ -404,6 +427,7 @@
   }
 }
 .legal-toc a {
+  position: relative;
   display: block;
   padding: 6px 12px;
   border-radius: var(--r-xs);
@@ -413,8 +437,15 @@
     background 0.2s var(--ease),
     color 0.2s var(--ease);
 }
+/* on the light page plain violet reads 3.8:1 on its own tint; a touch of ink lifts it past 4.5:1 */
+.legal-toc a[aria-current] {
+  color: color-mix(in srgb, var(--violet-text) 82%, var(--ink));
+}
+:is([data-theme='dark'], .dark) .legal-toc a[aria-current] {
+  color: var(--violet-text);
+}
 @media (hover: hover) and (pointer: fine) {
-  .legal-toc a:hover {
+  .legal-toc a:not([aria-current]):hover {
     background: var(--paper);
     color: var(--ink);
   }
@@ -429,6 +460,10 @@
   }
   .legal-toc {
     position: static;
+    padding-top: 0;
+  }
+  .legal-toc-mark {
+    display: none;
   }
 }
 .legal-body section {
@@ -437,19 +472,60 @@
   scroll-margin-top: var(--sticky-top);
 }
 .legal-body h2 {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
   margin-bottom: 12px;
   font-family: var(--display);
   font-size: 24px;
   font-weight: 600;
   letter-spacing: -0.025em;
+  text-wrap: balance;
 }
 .legal-body p {
   color: var(--ink-soft);
   font-size: 16px;
   line-height: 1.7;
+}
+/* more room above each heading than between it and its text, so every section reads as its own block */
+@media (min-width: 901px) {
+  .legal-body section {
+    padding: 40px 0 44px;
+    border-top-color: color-mix(in srgb, var(--line) 70%, transparent);
+  }
+  .legal-body h2 {
+    margin-bottom: 14px;
+  }
+  .legal-body p {
+    max-width: 68ch;
+  }
+}
+.legal-body p a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: var(--line-strong);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition:
+    color var(--dur-hover) var(--ease),
+    text-decoration-color var(--dur-hover) var(--ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .legal-body p a:hover {
+    color: var(--violet-text);
+    text-decoration-color: currentColor;
+  }
+}
+.legal-end {
+  padding-top: 28px;
+  border-top: 1px solid var(--line);
+}
+@media (min-width: 901px) {
+  .legal-end {
+    padding-top: 40px;
+    border-top-color: color-mix(in srgb, var(--line) 70%, transparent);
+  }
+}
+.legal-end p {
+  font-size: 14px;
+  color: var(--muted);
 }
 
 /* ══ Brand ══════════════════════════════════════════════════════════════════ */
